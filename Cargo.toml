@@ -1,0 +1,10 @@
+[package]
+name = "lintin"
+version = "0.1.0"
+authors = ["Linus Probert"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libtelnet-rs = { git = "https://github.com/LiquidityC/libtelnet-rs" }

@@ -2,50 +2,28 @@ use libtelnet_rs::{events::TelnetEvents, telnet::op_command as cmd, Parser};
 use std::io::{stdin, stdout, Read, Write};
 use std::net::TcpStream;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
-    Arc,
 };
 use std::thread;
 use std::time::Duration;
 use termion::{event::Key, input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
 
 mod output_buffer;
+mod session;
 use crate::output_buffer::OutputBuffer;
+use crate::session::{Session, SessionBuilder};
 
 const HOST: &str = "achaea.com";
 const PORT: u32 = 23;
 
-fn main() {
-    let server = format!("{}:{}", HOST, PORT);
-    print!("Connecting to: {}...", server);
-    let stream = TcpStream::connect(server)
-        .unwrap_or_else(|server| panic!("Failed to connect to {}", server));
-    println!("Connected!");
-    stream
-        .set_read_timeout(Some(Duration::new(3, 0)))
-        .expect("Failed to set read timeout on socket");
-    let read_stream = stream.try_clone().expect("Failed to create read_stream");
-    let write_stream = stream.try_clone().expect("Failed to create write_stream");
-
-    let terminate = Arc::new(AtomicBool::new(false));
-    let terminate_receive = terminate.clone();
-    let terminate_write = terminate.clone();
-    let terminate_input = terminate.clone();
-
-    let (receive_write, receive_read): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = channel();
-    let (transmit_write, transmit_read): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = channel();
-    let (input_write, input_read): (Sender<String>, Receiver<String>) = channel();
-    let (input_buffer_write, input_buffer_read): (Sender<String>, Receiver<String>) = channel();
-    let input_transmit_write = transmit_write.clone();
-    let (ui_update_input_write, ui_update_read): (Sender<bool>, Receiver<bool>) = channel();
-    let ui_update_receive_write = ui_update_input_write.clone();
-
+fn spawn_receive_thread(session: Session, read_stream: TcpStream) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let mut read_stream = read_stream;
-        let receive_write = receive_write;
-        let terminate = terminate_receive;
-        let ui_update = ui_update_receive_write;
+        let receive_write = session.output_writer;
+        let terminate = session.terminate;
+        let ui_update = session.ui_update_notifier;
+
         loop {
             if terminate.load(Ordering::Relaxed) {
                 read_stream.shutdown(std::net::Shutdown::Both).unwrap();
@@ -62,11 +40,17 @@ fn main() {
                 }
             }
         }
-    });
+    })
+}
 
+fn spawn_transmit_thread(
+    session: Session,
+    write_stream: TcpStream,
+    transmit_read: Receiver<Vec<u8>>,
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let transmit_read = transmit_read;
-        let terminate = terminate_write;
+        let terminate = session.terminate;
         let mut write_stream = write_stream;
         'transmit_loop: loop {
             if terminate.load(Ordering::Relaxed) {
@@ -80,17 +64,23 @@ fn main() {
                 }
             }
         }
-    });
+    })
+}
 
+fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let input_write = input_write;
-        let ui_update = ui_update_input_write;
-        let input_buffer_write = input_buffer_write;
-        let terminate = terminate_input;
+        let input_write = session.input_writer;
+        let ui_update = session.ui_update_notifier;
+        let input_buffer_write = session.input_buffer_write;
+        let terminate = session.terminate;
         let stdin = stdin();
         let mut buffer = String::new();
 
         for c in stdin.keys() {
+            if terminate.load(Ordering::Relaxed) {
+                break;
+            }
+
             match c.unwrap() {
                 Key::Char('\n') => {
                     input_write.send(buffer.clone()).unwrap();
@@ -106,21 +96,59 @@ fn main() {
             input_buffer_write.send(buffer.clone()).unwrap();
             ui_update.send(true).unwrap();
         }
-    });
+    })
+}
 
+fn spawn_input_relay_thread(
+    session: Session,
+    input_read: Receiver<String>,
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let mut parser = Parser::new();
         let input_read = input_read;
-        let input_transmit_write = input_transmit_write;
+        let transmit_writer = session.transmit_writer;
 
         loop {
             if let Ok(input) = input_read.recv() {
                 if let TelnetEvents::DataSend(data) = parser.send_text(input.as_str()) {
-                    input_transmit_write.send(data).unwrap();
+                    transmit_writer.send(data).unwrap();
                 }
             }
         }
-    });
+    })
+}
+
+fn main() {
+    let server = format!("{}:{}", HOST, PORT);
+    print!("Connecting to: {}...", server);
+    let stream = TcpStream::connect(server)
+        .unwrap_or_else(|server| panic!("Failed to connect to {}", server));
+    println!("Connected!");
+    stream
+        .set_read_timeout(Some(Duration::new(3, 0)))
+        .expect("Failed to set read timeout on socket");
+    let read_stream = stream.try_clone().expect("Failed to create read_stream");
+    let write_stream = stream.try_clone().expect("Failed to create write_stream");
+
+    let (receive_write, receive_read): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = channel();
+    let (transmit_write, transmit_read): (Sender<Vec<u8>>, Receiver<Vec<u8>>) = channel();
+    let (input_write, input_read): (Sender<String>, Receiver<String>) = channel();
+    let (input_buffer_write, input_buffer_read): (Sender<String>, Receiver<String>) = channel();
+    let (ui_update_input_write, ui_update_read): (Sender<bool>, Receiver<bool>) = channel();
+
+    let session = SessionBuilder::new()
+        .output_writer(receive_write)
+        .transmit_writer(transmit_write)
+        .input_writer(input_write)
+        .input_buffer_write(input_buffer_write)
+        .ui_update_notifier(ui_update_input_write)
+        .build();
+
+    // Read socket stream
+    spawn_receive_thread(session.clone(), read_stream);
+    spawn_transmit_thread(session.clone(), write_stream, transmit_read);
+    spawn_input_thread(session.clone());
+    spawn_input_relay_thread(session.clone(), input_read);
 
     {
         let (t_width, t_height) = termion::terminal_size().unwrap();
@@ -135,7 +163,7 @@ fn main() {
         let mut parser = Parser::with_capacity(1024);
         let mut prompt_input = String::new();
         'main_loop: loop {
-            if terminate.load(Ordering::Relaxed) {
+            if session.terminate.load(Ordering::Relaxed) {
                 writeln!(screen, "Exiting main thread").unwrap();
                 break 'main_loop;
             }
@@ -173,7 +201,7 @@ fn main() {
                             TelnetEvents::Subnegotiation(_) => (),
                             TelnetEvents::DataSend(msg) => {
                                 if !msg.is_empty() {
-                                    transmit_write.send(msg).unwrap();
+                                    session.transmit_writer.send(msg).unwrap();
                                 }
                             }
                             TelnetEvents::DataReceive(msg) => {
@@ -182,7 +210,7 @@ fn main() {
                                     write!(screen, "{}", termion::cursor::Goto(1, output_line))
                                         .unwrap();
                                     for line in new_lines {
-                                        write!(screen, "> {}\r\n", line.trim_end(),).unwrap();
+                                        write!(screen, "{}\r\n", line.trim_end(),).unwrap();
                                     }
                                     write!(screen, "{}", termion::cursor::Goto(1, prompt_line))
                                         .unwrap();

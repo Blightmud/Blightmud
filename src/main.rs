@@ -16,6 +16,8 @@ use crate::ansi::*;
 use crate::output_buffer::OutputBuffer;
 use crate::session::{Session, SessionBuilder};
 
+type TelnetData = Option<Vec<u8>>;
+
 fn _spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         debug!("Receive stream spawned");
@@ -50,13 +52,9 @@ fn _spawn_transmit_thread(
         debug!("Transmit stream spawned");
         let transmit_read = transmit_read;
         let mut write_stream = session.stream.unwrap();
-        loop {
-            if let Ok(Some(data)) = transmit_read.recv() {
-                if let Err(info) = write_stream.write_all(data.as_slice()) {
-                    panic!("Failed to write to socket: {:?}", info);
-                }
-            } else {
-                break;
+        while let Ok(Some(data)) = transmit_read.recv() {
+            if let Err(info) = write_stream.write_all(data.as_slice()) {
+                panic!("Failed to write to socket: {:?}", info);
             }
         }
         debug!("Transmit stream closing");
@@ -112,22 +110,16 @@ fn spawn_input_relay_thread(
         let ui_update = session.ui_update_notifier;
         let connected = session.connected.clone();
 
-        loop {
-            if let Ok(Some(input)) = input_read.recv() {
-                if connected.load(Ordering::Relaxed) {
-                    if let TelnetEvents::DataSend(data) = parser.send_text(input.as_str()) {
-                        transmit_writer.send(Some(data)).unwrap();
-                    }
-                } else {
-                    local_output_writer
-                        .send(
-                            format!("{}[!!] No active session{}", FG_RED, DEFAULT).to_string(),
-                        )
-                        .unwrap();
-                    ui_update.send(true).unwrap();
+        while let Ok(Some(input)) = input_read.recv() {
+            if connected.load(Ordering::Relaxed) {
+                if let TelnetEvents::DataSend(data) = parser.send_text(input.as_str()) {
+                    transmit_writer.send(Some(data)).unwrap();
                 }
             } else {
-                break;
+                local_output_writer
+                    .send(format!("{}[!!] No active session{}", FG_RED, DEFAULT).to_string())
+                    .unwrap();
+                ui_update.send(true).unwrap();
             }
         }
         debug!("Input relay stream closing");
@@ -138,10 +130,8 @@ fn main() {
     simple_logging::log_to_file("logs/log.txt", log::LevelFilter::Debug).unwrap();
     info!("Starting application");
 
-    let (receive_write, receive_read): (Sender<Option<Vec<u8>>>, Receiver<Option<Vec<u8>>>) =
-        channel();
-    let (transmit_write, _transmit_read): (Sender<Option<Vec<u8>>>, Receiver<Option<Vec<u8>>>) =
-        channel();
+    let (receive_write, receive_read): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
+    let (transmit_write, _transmit_read): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
     let (input_write, input_read): (Sender<Option<String>>, Receiver<Option<String>>) = channel();
     let (local_output_writer, local_output_reader): (Sender<String>, Receiver<String>) = channel();
     let (input_buffer_write, input_buffer_read): (Sender<String>, Receiver<String>) = channel();
@@ -169,7 +159,13 @@ fn main() {
         let prompt_line = t_height;
         let mut output_buffer = OutputBuffer::new();
         write!(screen, "{}{}", termion::clear::All, termion::cursor::Hide).unwrap();
-        write!(screen, "{}{}", ScrollRegion(1, output_line), DisableOriginMode).unwrap(); // Set scroll region, non origin mode
+        write!(
+            screen,
+            "{}{}",
+            ScrollRegion(1, output_line),
+            DisableOriginMode
+        )
+        .unwrap(); // Set scroll region, non origin mode
         write!(screen, "{}", termion::cursor::Goto(1, output_line + 1)).unwrap();
         write!(screen, "{:_<1$}", "", t_width as usize).unwrap(); // Print separator
         screen.flush().unwrap();
@@ -193,11 +189,14 @@ fn main() {
                     .unwrap();
                 }
                 if let Ok(msg) = local_output_reader.try_recv() {
-                    write!(screen, "{}{}\r\n{}",
+                    write!(
+                        screen,
+                        "{}{}\r\n{}",
                         termion::cursor::Goto(1, output_line),
                         msg,
                         termion::cursor::Goto(1, prompt_line)
-                    ).unwrap();
+                    )
+                    .unwrap();
                 }
                 if let Ok(Some(data)) = receive_read.try_recv() {
                     for event in parser.receive(data.as_slice()) {

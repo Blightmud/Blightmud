@@ -1,4 +1,13 @@
-use std::{net::TcpStream, sync::{atomic::{Ordering, AtomicBool}, mpsc::Sender, Arc}};
+use std::{
+    net::TcpStream,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::Sender,
+        Arc,
+    },
+};
+
+use crate::TelnetData;
 
 pub struct Session {
     pub host: String,
@@ -6,8 +15,8 @@ pub struct Session {
     pub connected: Arc<AtomicBool>,
     pub stream: Option<TcpStream>,
     pub terminate: Arc<AtomicBool>,
-    pub transmit_writer: Sender<Option<Vec<u8>>>,
-    pub output_writer: Sender<Option<Vec<u8>>>,
+    pub transmit_writer: Sender<TelnetData>,
+    pub output_writer: Sender<TelnetData>,
     pub local_output_writer: Sender<String>,
     pub input_writer: Sender<Option<String>>,
     pub ui_update_notifier: Sender<bool>,
@@ -23,7 +32,7 @@ impl Clone for Session {
 
         Self {
             host: self.host.clone(),
-            port: self.port.clone(),
+            port: self.port,
             connected: self.connected.clone(),
             stream,
             terminate: self.terminate.clone(),
@@ -63,8 +72,8 @@ impl Session {
 #[derive(Clone)]
 pub struct SessionBuilder {
     terminate: Arc<AtomicBool>,
-    transmit_writer: Option<Sender<Option<Vec<u8>>>>,
-    output_writer: Option<Sender<Option<Vec<u8>>>>,
+    transmit_writer: Option<Sender<TelnetData>>,
+    output_writer: Option<Sender<TelnetData>>,
     local_output_writer: Option<Sender<String>>,
     input_writer: Option<Sender<Option<String>>>,
     ui_update_notifier: Option<Sender<bool>>,
@@ -84,12 +93,12 @@ impl SessionBuilder {
         }
     }
 
-    pub fn transmit_writer(mut self, transmit_writer: Sender<Option<Vec<u8>>>) -> Self {
+    pub fn transmit_writer(mut self, transmit_writer: Sender<TelnetData>) -> Self {
         self.transmit_writer = Some(transmit_writer);
         self
     }
 
-    pub fn output_writer(mut self, output_writer: Sender<Option<Vec<u8>>>) -> Self {
+    pub fn output_writer(mut self, output_writer: Sender<TelnetData>) -> Self {
         self.output_writer = Some(output_writer);
         self
     }

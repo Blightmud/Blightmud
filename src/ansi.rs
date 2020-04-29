@@ -1,7 +1,7 @@
 use std::fmt;
 
-pub const DEFAULT:  &'static str = "\x1b[0m";
-pub const FG_RED:   &'static str = "\x1b[31m";
+pub const DEFAULT: &str = "\x1b[0m";
+pub const FG_RED: &str = "\x1b[31m";
 
 pub struct ScrollRegion(pub u16, pub u16);
 impl fmt::Display for ScrollRegion {

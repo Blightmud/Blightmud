@@ -22,7 +22,7 @@ use crate::command::parse_command;
 
 type TelnetData = Option<Vec<u8>>;
 
-fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
+fn spawn_receive_thread(mut session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let mut read_stream = if let Ok(stream) = &session.stream.lock() {
             stream.as_ref().unwrap().try_clone().unwrap()
@@ -30,7 +30,7 @@ fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
             error!("Failed to spawn receive stream without a live connection");
             panic!("Failed to spawn receive stream");
         };
-        let writer = session.main_thread_writer;
+        let writer = &session.main_thread_writer;
 
         debug!("Receive stream spawned");
         loop {
@@ -41,9 +41,13 @@ fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
                         .send(Event::ServerOutput(Vec::from(data.split_at(bytes_read).0)))
                         .unwrap();
                 } else {
+                    session.send_event(Event::Error("Zero bytes received from socket".to_string()));
+                    session.send_event(Event::Disconnect);
                     break;
                 }
             } else {
+                session.send_event(Event::Error("Failed to read from socket".to_string()));
+                session.send_event(Event::Disconnect);
                 break;
             }
         }

@@ -1,5 +1,5 @@
 [package]
-name = "lintin"
+name = "rsMud"
 version = "0.1.0"
 authors = ["Linus Probert"]
 edition = "2018"

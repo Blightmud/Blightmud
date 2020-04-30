@@ -16,10 +16,11 @@ pub fn parse_command(msg: &str) -> Event {
                 if let Ok(p2) = p2.unwrap().parse::<u32>() {
                     Event::Connect(p1, p2)
                 } else {
-                    Event::Error("USAGE: /connect <host: String> <port: Positive number>".to_string())
+                    Event::Error(
+                        "USAGE: /connect <host: String> <port: Positive number>".to_string(),
+                    )
                 }
             }
-
         }
         Some("/disconnect") | Some("/dc") => Event::Disconnect,
         Some("/quit") | Some("/q") => Event::Quit,

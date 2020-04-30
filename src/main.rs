@@ -9,16 +9,16 @@ use std::thread;
 use termion::{event::Key, input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
 
 mod ansi;
+mod command;
 mod event;
 mod output_buffer;
 mod session;
-mod command;
 
 use crate::ansi::*;
+use crate::command::parse_command;
 use crate::event::Event;
 use crate::output_buffer::OutputBuffer;
 use crate::session::{Session, SessionBuilder};
-use crate::command::parse_command;
 
 type TelnetData = Option<Vec<u8>>;
 
@@ -235,12 +235,18 @@ fn main() {
                     Event::Connect(host, port) => {
                         session.disconnect();
                         if session.connect(&host, port) {
-                            let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
+                            let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) =
+                                channel();
                             spawn_receive_thread(session.clone());
                             spawn_transmit_thread(session.clone(), reader);
                             transmit_writer.replace(writer);
                         } else {
-                            session.main_thread_writer.send(Event::Error(format!("Failed to connect to {}:{}", host, port).to_string())).unwrap();
+                            session
+                                .main_thread_writer
+                                .send(Event::Error(
+                                    format!("Failed to connect to {}:{}", host, port).to_string(),
+                                ))
+                                .unwrap();
                         }
                     }
                     Event::Error(msg) => {
@@ -268,7 +274,8 @@ fn main() {
                     Event::LoadScript(_) => {}
                     Event::Disconnect => {
                         session.disconnect();
-                        let msg = format!("Disconnecting from: {}:{}", session.host, session.port).to_string();
+                        let msg = format!("Disconnecting from: {}:{}", session.host, session.port)
+                            .to_string();
                         session.send_event(Event::Info(msg));
                         if let Some(transmit_writer) = &transmit_writer {
                             transmit_writer.send(None).unwrap();

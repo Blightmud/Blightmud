@@ -41,12 +41,12 @@ fn spawn_receive_thread(mut session: Session) -> thread::JoinHandle<()> {
                         .send(Event::ServerOutput(Vec::from(data.split_at(bytes_read).0)))
                         .unwrap();
                 } else {
-                    session.send_event(Event::Error("Zero bytes received from socket".to_string()));
+                    session.send_event(Event::Error("Connection closed".to_string()));
                     session.send_event(Event::Disconnect);
                     break;
                 }
             } else {
-                session.send_event(Event::Error("Failed to read from socket".to_string()));
+                session.send_event(Event::Error("Connection failed".to_string()));
                 session.send_event(Event::Disconnect);
                 break;
             }

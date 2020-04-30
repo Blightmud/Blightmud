@@ -1,12 +1,12 @@
 use libtelnet_rs::{events::TelnetEvents, telnet::op_command as cmd, Parser};
 use log::{debug, error, info};
-use std::io::{stdin, stdout, Read, Write};
+use std::io::{stdout, Read, Write};
 use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
 use std::thread;
-use termion::{event::Key, input::TermRead, raw::IntoRawMode, screen::AlternateScreen};
+use termion::{raw::IntoRawMode, screen::AlternateScreen};
 
 mod ansi;
 mod command;
@@ -15,7 +15,7 @@ mod output_buffer;
 mod session;
 
 use crate::ansi::*;
-use crate::command::parse_command;
+use crate::command::spawn_input_thread;
 use crate::event::Event;
 use crate::output_buffer::OutputBuffer;
 use crate::session::{Session, SessionBuilder};
@@ -80,41 +80,6 @@ fn spawn_transmit_thread(
     })
 }
 
-fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        debug!("Input stream spawned");
-        let writer = session.main_thread_writer;
-        let terminate = session.terminate;
-        let stdin = stdin();
-        let mut buffer = String::new();
-
-        for c in stdin.keys() {
-            match c.unwrap() {
-                Key::Char('\n') => {
-                    writer.send(parse_command(&buffer)).unwrap();
-                    buffer.clear();
-                }
-                Key::Char(c) => buffer.push(c),
-                Key::Ctrl('c') => {
-                    debug!("Caught ctrl-c, terminating");
-                    terminate.store(true, Ordering::Relaxed);
-                    writer.send(Event::Quit).unwrap();
-                    break;
-                }
-                Key::Backspace => {
-                    buffer.pop();
-                }
-                _ => {}
-            };
-            writer.send(Event::UserInputBuffer(buffer.clone())).unwrap();
-            if terminate.load(Ordering::Relaxed) {
-                break;
-            }
-        }
-        debug!("Input stream closing");
-    })
-}
-
 fn main() {
     simple_logging::log_to_file("logs/log.txt", log::LevelFilter::Debug).unwrap();
     info!("Starting application");
@@ -125,7 +90,7 @@ fn main() {
         .main_thread_writer(main_thread_writer)
         .build();
 
-    let input_thread = spawn_input_thread(session.clone());
+    let _input_thread = spawn_input_thread(session.clone());
 
     {
         let (t_width, t_height) = termion::terminal_size().unwrap();
@@ -298,9 +263,7 @@ fn main() {
 
     debug!("Shutting down threads");
     session.close();
-    debug!("Joining threads");
-    //receive_thread.join().unwrap();
-    //transmit_thread.join().unwrap();
-    input_thread.join().unwrap();
+    //debug!("Joining threads");
+    //input_thread.join().unwrap();
     info!("Shutting down");
 }

@@ -8,6 +8,7 @@ use std::{
 };
 
 use crate::Event;
+use log::debug;
 
 #[derive(Clone)]
 pub struct Session {
@@ -23,14 +24,17 @@ impl Session {
     pub fn connect(&mut self, host: &str, port: u32) -> bool {
         self.host = host.to_string();
         self.port = port;
+        debug!("Connecting to {}:{}", self.host, self.port);
         if let Ok(stream) = TcpStream::connect(format!("{}:{}", host, port)) {
             self.stream.lock().unwrap().replace(stream);
             self.connected.store(true, Ordering::Relaxed);
+            debug!("Connected to {}:{}", self.host, self.port);
         }
         self.connected.load(Ordering::Relaxed)
     }
 
     pub fn disconnect(&mut self) {
+        debug!("Disconnecting from {}:{}", self.host, self.port);
         if self.connected.load(Ordering::Relaxed) {
             if let Ok(mut stream) = self.stream.lock() {
                 stream
@@ -42,6 +46,7 @@ impl Session {
                 self.connected.store(false, Ordering::Relaxed);
             }
         }
+        debug!("Disconnected from {}:{}", self.host, self.port);
     }
 
     pub fn send_event(&mut self, event: Event) {

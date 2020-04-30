@@ -12,15 +12,17 @@ mod ansi;
 mod event;
 mod output_buffer;
 mod session;
+mod command;
 
 use crate::ansi::*;
 use crate::event::Event;
 use crate::output_buffer::OutputBuffer;
 use crate::session::{Session, SessionBuilder};
+use crate::command::parse_command;
 
 type TelnetData = Option<Vec<u8>>;
 
-fn _spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
+fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let mut read_stream = if let Ok(stream) = &session.stream.lock() {
             stream.as_ref().unwrap().try_clone().unwrap()
@@ -49,8 +51,8 @@ fn _spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
     })
 }
 
-fn _spawn_transmit_thread(
-    session: Session,
+fn spawn_transmit_thread(
+    mut session: Session,
     transmit_read: Receiver<Option<Vec<u8>>>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
@@ -64,7 +66,10 @@ fn _spawn_transmit_thread(
         debug!("Transmit stream spawned");
         while let Ok(Some(data)) = transmit_read.recv() {
             if let Err(info) = write_stream.write_all(data.as_slice()) {
-                panic!("Failed to write to socket: {:?}", info);
+                session.disconnect();
+                let error = format!("Failed to write to socket: {}", info).to_string();
+                session.send_event(Event::Error(error));
+                session.send_event(Event::Disconnect);
             }
         }
         debug!("Transmit stream closing");
@@ -82,7 +87,7 @@ fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         for c in stdin.keys() {
             match c.unwrap() {
                 Key::Char('\n') => {
-                    writer.send(Event::ServerInput(buffer.clone())).unwrap();
+                    writer.send(parse_command(&buffer)).unwrap();
                     buffer.clear();
                 }
                 Key::Char(c) => buffer.push(c),
@@ -111,16 +116,11 @@ fn main() {
     info!("Starting application");
 
     let (main_thread_writer, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
-    let (transmit_writer, _transmit_read): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
 
     let mut session = SessionBuilder::new()
-        .transmit_writer(transmit_writer)
         .main_thread_writer(main_thread_writer)
         .build();
 
-    // Read socket stream
-    //let receive_thread = spawn_receive_thread(session.clone());
-    //let transmit_thread = spawn_transmit_thread(session.clone(), transmit_read);
     let input_thread = spawn_input_thread(session.clone());
 
     {
@@ -142,6 +142,8 @@ fn main() {
         screen.flush().unwrap();
         let mut parser = Parser::with_capacity(1024);
         let mut prompt_input = String::new();
+        let mut transmit_writer: Option<Sender<TelnetData>> = None;
+
         loop {
             if session.terminate.load(Ordering::Relaxed) {
                 break;
@@ -168,8 +170,10 @@ fn main() {
                                 TelnetEvents::Negotiation(_) => (),
                                 TelnetEvents::Subnegotiation(_) => (),
                                 TelnetEvents::DataSend(msg) => {
-                                    if !msg.is_empty() {
-                                        session.transmit_writer.send(Some(msg)).unwrap();
+                                    if let Some(transmit_writer) = &transmit_writer {
+                                        if !msg.is_empty() {
+                                            transmit_writer.send(Some(msg)).unwrap();
+                                        }
                                     }
                                 }
                                 TelnetEvents::DataReceive(msg) => {
@@ -190,7 +194,9 @@ fn main() {
                     Event::ServerInput(msg) => {
                         if session.connected.load(Ordering::Relaxed) {
                             if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
-                                session.transmit_writer.send(Some(buffer)).unwrap();
+                                if let Some(transmit_writer) = &transmit_writer {
+                                    transmit_writer.send(Some(buffer)).unwrap();
+                                }
                             }
                         } else {
                             let msg = format!("{}[!!] No active session{}", FG_RED, DEFAULT);
@@ -222,13 +228,54 @@ fn main() {
                         )
                         .unwrap();
                     }
-                    Event::Connect(_, _) => {}
+                    Event::Connect(host, port) => {
+                        session.disconnect();
+                        if session.connect(&host, port) {
+                            let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
+                            spawn_receive_thread(session.clone());
+                            spawn_transmit_thread(session.clone(), reader);
+                            transmit_writer.replace(writer);
+                        } else {
+                            session.main_thread_writer.send(Event::Error(format!("Failed to connect to {}:{}", host, port).to_string())).unwrap();
+                        }
+                    }
+                    Event::Error(msg) => {
+                        write!(
+                            screen,
+                            "{}{}[!!] {}{}\r\n{}",
+                            termion::cursor::Goto(1, output_line),
+                            FG_RED,
+                            msg,
+                            DEFAULT,
+                            termion::cursor::Goto(1, prompt_line)
+                        )
+                        .unwrap();
+                    }
+                    Event::Info(msg) => {
+                        write!(
+                            screen,
+                            "{}[**] {}\r\n{}",
+                            termion::cursor::Goto(1, output_line),
+                            msg,
+                            termion::cursor::Goto(1, prompt_line),
+                        )
+                        .unwrap();
+                    }
                     Event::LoadScript(_) => {}
                     Event::Disconnect => {
                         session.disconnect();
+                        let msg = format!("Disconnecting from: {}:{}", session.host, session.port).to_string();
+                        session.send_event(Event::Info(msg));
+                        if let Some(transmit_writer) = &transmit_writer {
+                            transmit_writer.send(None).unwrap();
+                        }
+                        transmit_writer = None;
+                        output_buffer.prompt.clear();
+                        session.send_event(Event::UserInputBuffer(String::new()));
                     }
                     Event::Quit => {
                         session.terminate.store(true, Ordering::Relaxed);
+                        session.disconnect();
                         break;
                     }
                 };

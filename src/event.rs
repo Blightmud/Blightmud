@@ -10,6 +10,8 @@ pub enum Event {
     UserInputBuffer(String),
     Connect(String, u32),
     LoadScript(String),
+    ScrollUp,
+    ScrollDown,
     Disconnect,
     Quit,
 }

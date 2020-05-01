@@ -164,6 +164,8 @@ fn main() {
                                 .unwrap();
                         }
                     }
+                    Event::ScrollUp => screen.scroll_up(),
+                    Event::ScrollDown => screen.scroll_down(),
                     Event::Error(msg) => {
                         screen.print_output(&format!("{}[!!]{}{}", FG_RED, msg, DEFAULT));
                     }

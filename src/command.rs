@@ -93,6 +93,12 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                     writer.send(Event::Quit).unwrap();
                     break;
                 }
+                Key::PageUp => {
+                    writer.send(Event::ScrollUp).unwrap();
+                }
+                Key::PageDown => {
+                    writer.send(Event::ScrollDown).unwrap();
+                }
                 Key::Up | Key::Ctrl('p') => buffer.previous(),
                 Key::Down | Key::Ctrl('n') => buffer.next(),
                 Key::Backspace => {

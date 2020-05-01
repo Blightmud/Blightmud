@@ -1,24 +1,29 @@
-use libtelnet_rs::{events::TelnetEvents, telnet::op_command as cmd, Parser};
+use libtelnet_rs::events::TelnetEvents;
 use log::{debug, error, info};
-use std::io::{stdout, Read, Write};
+use std::io::{stdout, Read, Stdout, Write};
 use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
 use std::thread;
-use termion::{raw::IntoRawMode, screen::AlternateScreen};
+use termion::{
+    raw::{IntoRawMode, RawTerminal},
+    screen::AlternateScreen,
+};
 
 mod ansi;
 mod command;
 mod event;
 mod output_buffer;
 mod session;
+mod telnet;
 
 use crate::ansi::*;
 use crate::command::spawn_input_thread;
 use crate::event::Event;
 use crate::output_buffer::OutputBuffer;
 use crate::session::{Session, SessionBuilder};
+use crate::telnet::TelnetHandler;
 
 type TelnetData = Option<Vec<u8>>;
 
@@ -80,38 +85,47 @@ fn spawn_transmit_thread(
     })
 }
 
-fn main() {
+fn start_logging() {
     simple_logging::log_to_file("logs/log.txt", log::LevelFilter::Debug).unwrap();
+}
+
+fn setup_terminal_layout(screen: &mut AlternateScreen<RawTerminal<Stdout>>) -> (u16, u16) {
+    let (t_width, t_height) = termion::terminal_size().unwrap();
+    let output_line = t_height - 3;
+    let prompt_line = t_height;
+    writeln!(screen, "{}{}", ResetScrollRegion, termion::clear::All).unwrap(); // Reset the screen
+    write!(
+        screen,
+        "{}{}",
+        ScrollRegion(1, output_line),
+        DisableOriginMode
+    )
+    .unwrap(); // Set scroll region, non origin mode
+    write!(screen, "{}", termion::cursor::Goto(1, output_line + 1)).unwrap();
+    write!(screen, "{:_<1$}", "", t_width as usize).unwrap(); // Print separator
+    screen.flush().unwrap();
+    (output_line, prompt_line)
+}
+
+fn main() {
+    start_logging();
     info!("Starting application");
 
-    let (main_thread_writer, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
+    let (main_thread_write, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
 
     let mut session = SessionBuilder::new()
-        .main_thread_writer(main_thread_writer)
+        .main_thread_writer(main_thread_write)
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
 
     {
-        let (t_width, t_height) = termion::terminal_size().unwrap();
         let mut screen = AlternateScreen::from(stdout().into_raw_mode().unwrap());
-        let output_line = t_height - 3;
-        let prompt_line = t_height;
+        let (output_line, prompt_line) = setup_terminal_layout(&mut screen);
         let mut output_buffer = OutputBuffer::new();
-        write!(screen, "{}{}", termion::clear::All, termion::cursor::Show).unwrap();
-        write!(
-            screen,
-            "{}{}",
-            ScrollRegion(1, output_line),
-            DisableOriginMode
-        )
-        .unwrap(); // Set scroll region, non origin mode
-        write!(screen, "{}", termion::cursor::Goto(1, output_line + 1)).unwrap();
-        write!(screen, "{:_<1$}", "", t_width as usize).unwrap(); // Print separator
-        screen.flush().unwrap();
-        let mut parser = Parser::with_capacity(1024);
         let mut prompt_input = String::new();
         let mut transmit_writer: Option<Sender<TelnetData>> = None;
+        let mut telnet_handler = TelnetHandler::new(session.clone());
 
         loop {
             if session.terminate.load(Ordering::Relaxed) {
@@ -119,63 +133,40 @@ fn main() {
             }
             if let Ok(event) = main_thread_read.recv() {
                 match event {
-                    Event::ServerOutput(data) => {
-                        for event in parser.receive(data.as_slice()) {
-                            match event {
-                                TelnetEvents::IAC(iac) => {
-                                    if iac.command == cmd::GA {
-                                        output_buffer.buffer_to_prompt();
-                                        write!(
-                                            screen,
-                                            "{}{}{}{}",
-                                            termion::cursor::Goto(1, prompt_line),
-                                            termion::clear::AfterCursor,
-                                            output_buffer.prompt,
-                                            prompt_input,
-                                        )
-                                        .unwrap();
-                                    }
-                                }
-                                TelnetEvents::Negotiation(_) => (),
-                                TelnetEvents::Subnegotiation(_) => (),
-                                TelnetEvents::DataSend(msg) => {
-                                    if let Some(transmit_writer) = &transmit_writer {
-                                        if !msg.is_empty() {
-                                            transmit_writer.send(Some(msg)).unwrap();
-                                        }
-                                    }
-                                }
-                                TelnetEvents::DataReceive(msg) => {
-                                    if !msg.is_empty() {
-                                        let new_lines = output_buffer.receive(msg.as_slice());
-                                        write!(screen, "{}", termion::cursor::Goto(1, output_line))
-                                            .unwrap();
-                                        for line in new_lines {
-                                            write!(screen, "{}\r\n", line.trim_end(),).unwrap();
-                                        }
-                                        write!(screen, "{}", termion::cursor::Goto(1, prompt_line))
-                                            .unwrap();
-                                    }
-                                }
-                            };
+                    Event::Prompt(prompt) => {
+                        write!(
+                            screen,
+                            "{}{}{}{}",
+                            termion::cursor::Goto(1, prompt_line),
+                            termion::clear::AfterCursor,
+                            prompt,
+                            prompt_input,
+                        )
+                        .unwrap();
+                    }
+                    Event::ServerSend(data) => {
+                        if let Some(transmit_writer) = &transmit_writer {
+                            transmit_writer.send(Some(data)).unwrap();
                         }
+                    }
+                    Event::ServerOutput(data) => {
+                        telnet_handler.parse(&data);
                     }
                     Event::ServerInput(msg) => {
                         if session.connected.load(Ordering::Relaxed) {
-                            if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
-                                if let Some(transmit_writer) = &transmit_writer {
-                                    transmit_writer.send(Some(buffer)).unwrap();
+                            if let Ok(mut parser) = session.telnet_parser.lock() {
+                                if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
+                                    if let Some(transmit_writer) = &transmit_writer {
+                                        transmit_writer.send(Some(buffer)).unwrap();
+                                    }
                                 }
                             }
                         } else {
                             let msg = format!("{}[!!] No active session{}", FG_RED, DEFAULT);
-                            session
-                                .main_thread_writer
-                                .send(Event::LocalOutput(msg))
-                                .unwrap();
+                            session.main_thread_writer.send(Event::Output(msg)).unwrap();
                         }
                     }
-                    Event::LocalOutput(msg) => {
+                    Event::Output(msg) => {
                         write!(
                             screen,
                             "{}{}\r\n{}",

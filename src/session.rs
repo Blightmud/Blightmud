@@ -1,3 +1,4 @@
+use libtelnet_rs::Parser;
 use std::{
     net::TcpStream,
     sync::{
@@ -18,6 +19,7 @@ pub struct Session {
     pub stream: Arc<Mutex<Option<TcpStream>>>,
     pub main_thread_writer: Sender<Event>,
     pub terminate: Arc<AtomicBool>,
+    pub telnet_parser: Arc<Mutex<Parser>>,
 }
 
 impl Session {
@@ -86,6 +88,7 @@ impl SessionBuilder {
             stream: Arc::new(Mutex::new(None)),
             main_thread_writer: self.main_thread_writer.unwrap(),
             terminate: Arc::new(AtomicBool::new(false)),
+            telnet_parser: Arc::new(Mutex::new(Parser::with_capacity(1024))),
         }
     }
 }

@@ -1,26 +1,24 @@
 use libtelnet_rs::events::TelnetEvents;
 use log::{debug, error, info};
-use std::io::{stdout, Read, Stdout, Write};
+use std::io::{Read, Write};
 use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
 use std::thread;
-use termion::{
-    raw::{IntoRawMode, RawTerminal},
-    screen::AlternateScreen,
-};
 
 mod ansi;
 mod command;
 mod event;
 mod output_buffer;
+mod screen;
 mod session;
 mod telnet;
 
 use crate::ansi::*;
 use crate::command::spawn_input_thread;
 use crate::event::Event;
+use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
 use crate::telnet::TelnetHandler;
 
@@ -88,24 +86,6 @@ fn start_logging() {
     simple_logging::log_to_file("logs/log.txt", log::LevelFilter::Debug).unwrap();
 }
 
-fn setup_terminal_layout(screen: &mut AlternateScreen<RawTerminal<Stdout>>) -> (u16, u16) {
-    let (t_width, t_height) = termion::terminal_size().unwrap();
-    let output_line = t_height - 3;
-    let prompt_line = t_height;
-    writeln!(screen, "{}{}", ResetScrollRegion, termion::clear::All).unwrap(); // Reset the screen
-    write!(
-        screen,
-        "{}{}",
-        ScrollRegion(1, output_line),
-        DisableOriginMode
-    )
-    .unwrap(); // Set scroll region, non origin mode
-    write!(screen, "{}", termion::cursor::Goto(1, output_line + 1)).unwrap();
-    write!(screen, "{:_<1$}", "", t_width as usize).unwrap(); // Print separator
-    screen.flush().unwrap();
-    (output_line, prompt_line)
-}
-
 fn main() {
     start_logging();
     info!("Starting application");
@@ -119,8 +99,9 @@ fn main() {
     let _input_thread = spawn_input_thread(session.clone());
 
     {
-        let mut screen = AlternateScreen::from(stdout().into_raw_mode().unwrap());
-        let (output_line, prompt_line) = setup_terminal_layout(&mut screen);
+        let mut screen = Screen::new();
+        screen.setup();
+
         let mut transmit_writer: Option<Sender<TelnetData>> = None;
         let mut telnet_handler = TelnetHandler::new(session.clone());
 
@@ -133,15 +114,7 @@ fn main() {
                     Event::Prompt => {
                         let prompt_input = session.prompt_input.lock().unwrap();
                         let output_buffer = session.output_buffer.lock().unwrap();
-                        write!(
-                            screen,
-                            "{}{}{}{}",
-                            termion::cursor::Goto(1, prompt_line),
-                            termion::clear::AfterCursor,
-                            output_buffer.prompt,
-                            prompt_input,
-                        )
-                        .unwrap();
+                        screen.print_prompt(&output_buffer.prompt, &prompt_input);
                     }
                     Event::ServerSend(data) => {
                         if let Some(transmit_writer) = &transmit_writer {
@@ -166,28 +139,13 @@ fn main() {
                         }
                     }
                     Event::Output(msg) => {
-                        write!(
-                            screen,
-                            "{}{}\r\n{}",
-                            termion::cursor::Goto(1, output_line),
-                            msg,
-                            termion::cursor::Goto(1, prompt_line)
-                        )
-                        .unwrap();
+                        screen.print_output(&msg);
                     }
                     Event::UserInputBuffer(input_buffer) => {
                         let mut prompt_input = session.prompt_input.lock().unwrap();
                         let output_buffer = session.output_buffer.lock().unwrap();
                         *prompt_input = input_buffer;
-                        write!(
-                            screen,
-                            "{}{}{} {}",
-                            termion::cursor::Goto(1, prompt_line),
-                            termion::clear::AfterCursor,
-                            output_buffer.prompt,
-                            prompt_input,
-                        )
-                        .unwrap();
+                        screen.print_prompt(&output_buffer.prompt, &prompt_input);
                     }
                     Event::Connect(host, port) => {
                         session.disconnect();
@@ -207,26 +165,10 @@ fn main() {
                         }
                     }
                     Event::Error(msg) => {
-                        write!(
-                            screen,
-                            "{}{}[!!] {}{}\r\n{}",
-                            termion::cursor::Goto(1, output_line),
-                            FG_RED,
-                            msg,
-                            DEFAULT,
-                            termion::cursor::Goto(1, prompt_line)
-                        )
-                        .unwrap();
+                        screen.print_output(&format!("{}[!!]{}{}", FG_RED, msg, DEFAULT));
                     }
                     Event::Info(msg) => {
-                        write!(
-                            screen,
-                            "{}[**] {}\r\n{}",
-                            termion::cursor::Goto(1, output_line),
-                            msg,
-                            termion::cursor::Goto(1, prompt_line),
-                        )
-                        .unwrap();
+                        screen.print_output(&format!("[**]{}", msg));
                     }
                     Event::LoadScript(_) => {}
                     Event::Disconnect => {
@@ -246,10 +188,10 @@ fn main() {
                         break;
                     }
                 };
-                screen.flush().unwrap();
+                screen.flush();
             }
         }
-        writeln!(screen, "{}", ResetScrollRegion).unwrap(); // Reset scroll region
+        screen.reset();
     }
 
     debug!("Shutting down threads");

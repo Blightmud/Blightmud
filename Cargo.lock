@@ -42,17 +42,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0376216280c3cf13ffe420cc59e626a35220f6f02dc929bb5bf152fb86bf80b6"
 
 [[package]]
-name = "lintin"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "libtelnet-rs",
- "log",
- "simple-logging",
- "termion",
-]
-
-[[package]]
 name = "log"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -99,6 +88,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e891cfe48e9100a70a3b6eb652fef28920c117d366339687bd5576160db0f76"
 dependencies = [
  "redox_syscall",
+]
+
+[[package]]
+name = "rs-mud"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "libtelnet-rs",
+ "log",
+ "simple-logging",
+ "termion",
 ]
 
 [[package]]

@@ -21,7 +21,6 @@ mod telnet;
 use crate::ansi::*;
 use crate::command::spawn_input_thread;
 use crate::event::Event;
-use crate::output_buffer::OutputBuffer;
 use crate::session::{Session, SessionBuilder};
 use crate::telnet::TelnetHandler;
 
@@ -122,8 +121,6 @@ fn main() {
     {
         let mut screen = AlternateScreen::from(stdout().into_raw_mode().unwrap());
         let (output_line, prompt_line) = setup_terminal_layout(&mut screen);
-        let mut output_buffer = OutputBuffer::new();
-        let mut prompt_input = String::new();
         let mut transmit_writer: Option<Sender<TelnetData>> = None;
         let mut telnet_handler = TelnetHandler::new(session.clone());
 
@@ -133,13 +130,15 @@ fn main() {
             }
             if let Ok(event) = main_thread_read.recv() {
                 match event {
-                    Event::Prompt(prompt) => {
+                    Event::Prompt => {
+                        let prompt_input = session.prompt_input.lock().unwrap();
+                        let output_buffer = session.output_buffer.lock().unwrap();
                         write!(
                             screen,
                             "{}{}{}{}",
                             termion::cursor::Goto(1, prompt_line),
                             termion::clear::AfterCursor,
-                            prompt,
+                            output_buffer.prompt,
                             prompt_input,
                         )
                         .unwrap();
@@ -177,7 +176,9 @@ fn main() {
                         .unwrap();
                     }
                     Event::UserInputBuffer(input_buffer) => {
-                        prompt_input = input_buffer;
+                        let mut prompt_input = session.prompt_input.lock().unwrap();
+                        let output_buffer = session.output_buffer.lock().unwrap();
+                        *prompt_input = input_buffer;
                         write!(
                             screen,
                             "{}{}{} {}",
@@ -237,7 +238,6 @@ fn main() {
                             transmit_writer.send(None).unwrap();
                         }
                         transmit_writer = None;
-                        output_buffer.prompt.clear();
                         session.send_event(Event::UserInputBuffer(String::new()));
                     }
                     Event::Quit => {

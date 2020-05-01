@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use crate::Event;
+use crate::{output_buffer::OutputBuffer, Event};
 use log::debug;
 
 #[derive(Clone)]
@@ -20,6 +20,8 @@ pub struct Session {
     pub main_thread_writer: Sender<Event>,
     pub terminate: Arc<AtomicBool>,
     pub telnet_parser: Arc<Mutex<Parser>>,
+    pub output_buffer: Arc<Mutex<OutputBuffer>>,
+    pub prompt_input: Arc<Mutex<String>>,
 }
 
 impl Session {
@@ -48,6 +50,7 @@ impl Session {
                 self.connected.store(false, Ordering::Relaxed);
             }
         }
+        self.output_buffer.lock().unwrap().prompt.clear();
         debug!("Disconnected from {}:{}", self.host, self.port);
     }
 
@@ -89,6 +92,8 @@ impl SessionBuilder {
             main_thread_writer: self.main_thread_writer.unwrap(),
             terminate: Arc::new(AtomicBool::new(false)),
             telnet_parser: Arc::new(Mutex::new(Parser::with_capacity(1024))),
+            output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
+            prompt_input: Arc::new(Mutex::new(String::new())),
         }
     }
 }

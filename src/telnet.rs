@@ -7,7 +7,7 @@ use std::sync::{mpsc::Sender, Arc, Mutex};
 pub struct TelnetHandler {
     parser: Arc<Mutex<Parser>>,
     main_thread_writer: Sender<Event>,
-    output_buffer: OutputBuffer,
+    output_buffer: Arc<Mutex<OutputBuffer>>,
 }
 
 impl TelnetHandler {
@@ -15,7 +15,7 @@ impl TelnetHandler {
         Self {
             parser: session.telnet_parser,
             main_thread_writer: session.main_thread_writer,
-            output_buffer: OutputBuffer::new(),
+            output_buffer: session.output_buffer,
         }
     }
 }
@@ -27,10 +27,10 @@ impl TelnetHandler {
                 match event {
                     TelnetEvents::IAC(iac) => {
                         if iac.command == cmd::GA {
-                            self.output_buffer.buffer_to_prompt();
-                            self.main_thread_writer
-                                .send(Event::Prompt(self.output_buffer.prompt.clone()))
-                                .unwrap();
+                            if let Ok(mut output_buffer) = self.output_buffer.lock() {
+                                output_buffer.buffer_to_prompt();
+                                self.main_thread_writer.send(Event::Prompt).unwrap();
+                            }
                         }
                     }
                     TelnetEvents::Negotiation(_) => (),
@@ -44,10 +44,12 @@ impl TelnetHandler {
                     }
                     TelnetEvents::DataReceive(msg) => {
                         if !msg.is_empty() {
-                            let new_lines = self.output_buffer.receive(msg.as_slice());
-                            self.main_thread_writer
-                                .send(Event::Output(new_lines.join("\r\n")))
-                                .unwrap();
+                            if let Ok(mut output_buffer) = self.output_buffer.lock() {
+                                let new_lines = output_buffer.receive(msg.as_slice());
+                                self.main_thread_writer
+                                    .send(Event::Output(new_lines.join("\r\n")))
+                                    .unwrap();
+                            }
                         }
                     }
                 };

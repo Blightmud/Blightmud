@@ -1,7 +1,7 @@
 #[allow(dead_code)]
 pub enum Event {
     ServerOutput(Vec<u8>),
-    Prompt(String),
+    Prompt,
     ServerSend(Vec<u8>),
     ServerInput(String),
     Output(String),

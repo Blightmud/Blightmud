@@ -18,7 +18,11 @@ impl OutputBuffer {
 
     pub fn buffer_to_prompt(&mut self) {
         if !self.buffer.is_empty() {
-            self.prompt = from_utf8(&self.buffer).unwrap().to_string();
+            self.prompt = if let Ok(line) = from_utf8(&self.buffer) {
+                line.to_string()
+            } else {
+                format!("Unparsable line: {:?}", self.buffer)
+            };
             self.buffer.clear();
         }
     }
@@ -33,7 +37,11 @@ impl OutputBuffer {
                 if i == 0 {
                     last_cut = 2
                 } else {
-                    let line = from_utf8(&self.buffer[last_cut..i]).unwrap().to_string();
+                    let line = if let Ok(line) = from_utf8(&self.buffer[last_cut..i]) {
+                        line.to_string()
+                    } else {
+                        format!("Unparsable line: {:?}", &self.buffer[last_cut..i])
+                    };
                     new_lines.push(line);
                     last_cut = i + 2;
                 }

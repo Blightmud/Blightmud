@@ -19,7 +19,7 @@ impl Screen {
         let screen = AlternateScreen::from(stdout().into_raw_mode().unwrap());
         let (width, height) = termion::terminal_size().unwrap();
 
-        let output_line = height - 3;
+        let output_line = height - 2;
         let prompt_line = height;
 
         Self {
@@ -57,14 +57,39 @@ impl Screen {
         write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion).unwrap();
     }
 
-    pub fn print_prompt(&mut self, prompt: &str, input: &str) {
+    pub fn print_prompt(&mut self, prompt: &str) {
         write!(
             self.screen,
             "{}{}{}{}",
+            termion::cursor::Goto(1, self.output_line),
+            termion::scroll::Up(1),
+            prompt,
+            termion::cursor::Goto(1, self.prompt_line),
+        )
+        .unwrap();
+    }
+
+    pub fn print_prompt_input(&mut self, input: &str) {
+        write!(
+            self.screen,
+            "{}{}{}",
             termion::cursor::Goto(1, self.prompt_line),
             termion::clear::AfterCursor,
-            prompt,
             input,
+        )
+        .unwrap();
+    }
+
+    pub fn print_prompt_with_input(&mut self, prompt: &str, input: &str) {
+        write!(
+            self.screen,
+            "{}{}{} {}{}{}",
+            termion::cursor::Goto(1, self.output_line),
+            termion::clear::AfterCursor,
+            prompt,
+            color::Fg(color::LightYellow),
+            input,
+            color::Fg(color::Reset),
         )
         .unwrap();
     }
@@ -72,8 +97,9 @@ impl Screen {
     pub fn print_output(&mut self, output: &str) {
         write!(
             self.screen,
-            "{}{}\r\n{}",
+            "{}{}{}{}",
             termion::cursor::Goto(1, self.output_line),
+            termion::scroll::Up(1),
             output,
             termion::cursor::Goto(1, self.prompt_line)
         )

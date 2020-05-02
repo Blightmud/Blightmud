@@ -112,9 +112,8 @@ fn main() {
             if let Ok(event) = main_thread_read.recv() {
                 match event {
                     Event::Prompt => {
-                        let prompt_input = session.prompt_input.lock().unwrap();
                         let output_buffer = session.output_buffer.lock().unwrap();
-                        screen.print_prompt(&output_buffer.prompt, &prompt_input);
+                        screen.print_prompt(&output_buffer.prompt);
                     }
                     Event::ServerSend(data) => {
                         if let Some(transmit_writer) = &transmit_writer {
@@ -128,6 +127,8 @@ fn main() {
                         if session.connected.load(Ordering::Relaxed) {
                             if let Ok(mut parser) = session.telnet_parser.lock() {
                                 if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
+                                    let output_buffer = session.output_buffer.lock().unwrap();
+                                    screen.print_prompt_with_input(&output_buffer.prompt, &msg);
                                     if let Some(transmit_writer) = &transmit_writer {
                                         transmit_writer.send(Some(buffer)).unwrap();
                                     }
@@ -143,9 +144,8 @@ fn main() {
                     }
                     Event::UserInputBuffer(input_buffer) => {
                         let mut prompt_input = session.prompt_input.lock().unwrap();
-                        let output_buffer = session.output_buffer.lock().unwrap();
                         *prompt_input = input_buffer;
-                        screen.print_prompt(&output_buffer.prompt, &prompt_input);
+                        screen.print_prompt_input(&prompt_input);
                     }
                     Event::Connect(host, port) => {
                         session.disconnect();

@@ -45,11 +45,11 @@ impl Screen {
             "{}{}{}",
             termion::cursor::Goto(1, self.output_line + 1),
             termion::clear::AfterCursor,
-            color::Bg(color::White),
+            color::Fg(color::Green),
         )
         .unwrap();
-        write!(self.screen, "{: <1$}", "", self.width as usize).unwrap(); // Print separator
-        write!(self.screen, "{}", color::Bg(color::Reset)).unwrap();
+        write!(self.screen, "{:_<1$}", "", self.width as usize).unwrap(); // Print separator
+        write!(self.screen, "{}", color::Fg(color::Reset)).unwrap();
         self.screen.flush().unwrap();
     }
 
@@ -107,11 +107,15 @@ impl Screen {
     }
 
     pub fn scroll_up(&mut self) {
-        write!(self.screen, "{}", termion::scroll::Up(5)).unwrap();
+        write!(self.screen, "{}{}{}",
+            termion::cursor::Goto(1,2),
+            termion::scroll::Down(1),
+            "old_data",
+        ).unwrap();
     }
 
     pub fn scroll_down(&mut self) {
-        write!(self.screen, "{}", termion::scroll::Down(5)).unwrap();
+        write!(self.screen, "{}", termion::scroll::Up(5)).unwrap();
     }
 
     pub fn flush(&mut self) {

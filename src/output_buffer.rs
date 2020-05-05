@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::str::from_utf8;
+use log::error;
 
 pub struct OutputBuffer {
     buffer: Vec<u8>,
@@ -21,6 +22,7 @@ impl OutputBuffer {
             self.prompt = if let Ok(line) = from_utf8(&self.buffer) {
                 line.to_string()
             } else {
+                error!("Unparsable line: {:?}", self.buffer);
                 format!("Unparsable line: {:?}", self.buffer)
             };
             self.buffer.clear();
@@ -40,6 +42,7 @@ impl OutputBuffer {
                     let line = if let Ok(line) = from_utf8(&self.buffer[last_cut..i]) {
                         line.to_string()
                     } else {
+                        error!("Unparsable line: {:?}", &self.buffer[last_cut..i]);
                         format!("Unparsable line: {:?}", &self.buffer[last_cut..i])
                     };
                     new_lines.push(line);

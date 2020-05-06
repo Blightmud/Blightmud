@@ -1,6 +1,6 @@
+use log::error;
 use std::collections::VecDeque;
 use std::str::from_utf8;
-use log::error;
 
 pub struct OutputBuffer {
     buffer: Vec<u8>,

@@ -127,8 +127,7 @@ fn main() {
                         if session.connected.load(Ordering::Relaxed) {
                             if let Ok(mut parser) = session.telnet_parser.lock() {
                                 if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
-                                    let output_buffer = session.output_buffer.lock().unwrap();
-                                    screen.print_prompt_with_input(&output_buffer.prompt, &msg);
+                                    screen.print_output(&format!("[**] Sent: '{}'", &msg));
                                     if let Some(transmit_writer) = &transmit_writer {
                                         transmit_writer.send(Some(buffer)).unwrap();
                                     }
@@ -166,6 +165,7 @@ fn main() {
                     }
                     Event::ScrollUp => screen.scroll_up(),
                     Event::ScrollDown => screen.scroll_down(),
+                    Event::ScrollBottom => screen.reset_scroll(),
                     Event::Error(msg) => {
                         screen.print_output(&format!("{}[!!]{}{}", FG_RED, msg, DEFAULT));
                     }
@@ -173,6 +173,10 @@ fn main() {
                         screen.print_output(&format!("[**]{}", msg));
                     }
                     Event::LoadScript(_) => {}
+                    Event::Redraw => {
+                        screen.setup();
+                        screen.reset_scroll();
+                    }
                     Event::Disconnect => {
                         session.disconnect();
                         let msg = format!("Disconnecting from: {}:{}", session.host, session.port)

@@ -12,6 +12,8 @@ pub enum Event {
     LoadScript(String),
     ScrollUp,
     ScrollDown,
+    ScrollBottom,
     Disconnect,
+    Redraw,
     Quit,
 }

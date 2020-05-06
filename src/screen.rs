@@ -52,7 +52,7 @@ impl Screen {
             self.screen,
             "{}{}{}",
             termion::cursor::Goto(1, 1),
-            termion::clear::AfterCursor,
+            termion::clear::CurrentLine,
             color::Fg(color::Green),
         )
         .unwrap();
@@ -62,7 +62,7 @@ impl Screen {
             self.screen,
             "{}{}{}",
             termion::cursor::Goto(1, self.output_line + 1),
-            termion::clear::AfterCursor,
+            termion::clear::CurrentLine,
             color::Fg(color::Green),
         )
         .unwrap();
@@ -91,36 +91,19 @@ impl Screen {
     }
 
     pub fn print_prompt_input(&mut self, input: &str) {
+        let mut input = input;
+        while input.len() >= self.width as usize {
+            let (_, last) = input.split_at(self.width as usize);
+            input = last;
+        }
         write!(
             self.screen,
             "{}{}{}",
             termion::cursor::Goto(1, self.prompt_line),
-            termion::clear::AfterCursor,
+            termion::clear::CurrentLine,
             input,
         )
         .unwrap();
-    }
-
-    pub fn print_prompt_with_input(&mut self, prompt: &str, input: &str) {
-        let line = format!(
-            "{} {}{}{}",
-            prompt.trim_end(),
-            color::Fg(color::LightYellow),
-            input.trim_end(),
-            color::Fg(color::Reset),
-        );
-
-        self.append_to_history(&line);
-        if !self.scroll_data.0 {
-            write!(
-                self.screen,
-                "{}{}{}",
-                termion::cursor::Goto(1, self.output_line),
-                termion::clear::AfterCursor,
-                line,
-            )
-            .unwrap();
-        }
     }
 
     pub fn print_output(&mut self, output: &str) {
@@ -166,7 +149,7 @@ impl Screen {
     }
 
     fn draw_scroll(&mut self) {
-        let output_range = self.output_line - OUTPUT_START_LINE;
+        let output_range = self.output_line - OUTPUT_START_LINE + 1;
         for i in 0..output_range {
             let index = self.scroll_data.1 + i as usize;
             let line_no = OUTPUT_START_LINE + i;
@@ -174,7 +157,7 @@ impl Screen {
                 self.screen,
                 "{}{}{}",
                 termion::cursor::Goto(1, line_no),
-                termion::clear::AfterCursor,
+                termion::clear::CurrentLine,
                 self.history[index],
             )
             .unwrap();
@@ -183,19 +166,33 @@ impl Screen {
 
     pub fn reset_scroll(&mut self) {
         self.scroll_data.0 = false;
-        let output_range = self.output_line - OUTPUT_START_LINE;
-        let output_start_index = self.history.len() - output_range as usize;
-        for i in 0..output_range {
-            let index = output_start_index + i as usize;
-            let line_no = OUTPUT_START_LINE + i;
-            write!(
-                self.screen,
-                "{}{}{}",
-                termion::cursor::Goto(1, line_no),
-                termion::clear::AfterCursor,
-                self.history[index],
-            )
-            .unwrap();
+        let output_range = self.output_line - OUTPUT_START_LINE + 1;
+        let output_start_index = self.history.len() as i32 - output_range as i32;
+        if output_start_index >= 0 {
+            let output_start_index = output_start_index as usize;
+            for i in 0..output_range {
+                let index = output_start_index + i as usize;
+                let line_no = OUTPUT_START_LINE + i;
+                write!(
+                    self.screen,
+                    "{}{}{}",
+                    termion::cursor::Goto(1, line_no),
+                    termion::clear::CurrentLine,
+                    self.history[index],
+                )
+                .unwrap();
+            }
+        } else {
+            for line in &self.history {
+                write!(
+                    self.screen,
+                    "{}{}{}",
+                    termion::cursor::Goto(1, self.output_line),
+                    termion::scroll::Up(1),
+                    line,
+                )
+                .unwrap();
+            }
         }
     }
 

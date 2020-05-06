@@ -188,7 +188,6 @@ fn main() {
                     }
                     Event::LoadScript(_) => {}
                     Event::Redraw => {
-                        screen.print_output("Redrawing");
                         screen.setup();
                         screen.reset_scroll();
                     }

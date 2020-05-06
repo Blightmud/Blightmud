@@ -32,7 +32,9 @@ impl OutputBuffer {
                 if i == 0 {
                     last_cut = 2
                 } else {
-                    let line: String = String::from_utf8_lossy(&self.buffer[last_cut..i]).to_mut().clone();
+                    let line: String = String::from_utf8_lossy(&self.buffer[last_cut..i])
+                        .to_mut()
+                        .clone();
                     new_lines.push(line);
                     last_cut = i + 2;
                 }

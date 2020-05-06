@@ -46,9 +46,11 @@ impl TelnetHandler {
                         if !msg.is_empty() {
                             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                                 let new_lines = output_buffer.receive(msg.as_slice());
-                                self.main_thread_writer
-                                    .send(Event::Output(new_lines.join("\r\n")))
-                                    .unwrap();
+                                for line in new_lines {
+                                    self.main_thread_writer
+                                        .send(Event::Output(line))
+                                        .unwrap();
+                                }
                             }
                         }
                     }

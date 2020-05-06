@@ -125,6 +125,7 @@ fn main() {
                     }
                     Event::ServerInput(msg) => {
                         if session.connected.load(Ordering::Relaxed) {
+                            // Intercept alias system
                             if let Ok(mut parser) = session.telnet_parser.lock() {
                                 if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
                                     screen.print_output(&format!("[**] Sent: '{}'", &msg));
@@ -139,6 +140,7 @@ fn main() {
                         }
                     }
                     Event::Output(msg) => {
+                        // Intercept with trigger system
                         screen.print_output(&msg);
                     }
                     Event::UserInputBuffer(input_buffer) => {

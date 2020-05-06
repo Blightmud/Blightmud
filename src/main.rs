@@ -1,5 +1,6 @@
 use libtelnet_rs::events::TelnetEvents;
 use log::{debug, error, info};
+use signal_hook;
 use std::io::{Read, Write};
 use std::sync::{
     atomic::Ordering,
@@ -82,6 +83,16 @@ fn spawn_transmit_thread(
     })
 }
 
+fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
+    let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();
+    let main_thread_writer = session.main_thread_writer;
+    thread::spawn(move || {
+        for _ in signals.forever() {
+            main_thread_writer.send(Event::Redraw).unwrap();
+        }
+    })
+}
+
 fn start_logging() {
     simple_logging::log_to_file("logs/log.txt", log::LevelFilter::Debug).unwrap();
 }
@@ -97,6 +108,7 @@ fn main() {
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
+    let _signal_thread = register_terminal_resize_listener(session.clone());
 
     {
         let mut screen = Screen::new();
@@ -176,6 +188,7 @@ fn main() {
                     }
                     Event::LoadScript(_) => {}
                     Event::Redraw => {
+                        screen.print_output("Redrawing");
                         screen.setup();
                         screen.reset_scroll();
                     }

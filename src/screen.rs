@@ -41,6 +41,14 @@ impl Screen {
 
     pub fn setup(&mut self) {
         self.reset();
+
+        // Get params in case screen resized
+        let (width, height) = termion::terminal_size().unwrap();
+        self.width = width;
+        self._height = height;
+        self.output_line = height - 2;
+        self.prompt_line = height;
+
         write!(
             self.screen,
             "{}{}",

@@ -1,8 +1,5 @@
 use std::fmt;
 
-pub const DEFAULT: &str = "\x1b[0m";
-pub const FG_RED: &str = "\x1b[31m";
-
 pub struct ScrollRegion(pub u16, pub u16);
 impl fmt::Display for ScrollRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

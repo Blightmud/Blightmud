@@ -1,4 +1,4 @@
-use libtelnet_rs::Parser;
+use libtelnet_rs::{compatibility::CompatibilityTable, telnet::op_option as opt, Parser};
 use std::{
     net::TcpStream,
     sync::{
@@ -32,7 +32,7 @@ impl Session {
         if let Ok(stream) = TcpStream::connect(format!("{}:{}", host, port)) {
             self.stream.lock().unwrap().replace(stream);
             self.connected.store(true, Ordering::Relaxed);
-            debug!("Connected to {}:{}", self.host, self.port);
+            self.main_thread_writer.send(Event::Connected).unwrap();
         }
         self.connected.load(Ordering::Relaxed)
     }
@@ -91,9 +91,18 @@ impl SessionBuilder {
             stream: Arc::new(Mutex::new(None)),
             main_thread_writer: self.main_thread_writer.unwrap(),
             terminate: Arc::new(AtomicBool::new(false)),
-            telnet_parser: Arc::new(Mutex::new(Parser::with_capacity(1024))),
+            telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
+                1024,
+                build_compatibility_table(),
+            ))),
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
             prompt_input: Arc::new(Mutex::new(String::new())),
         }
     }
+}
+
+fn build_compatibility_table() -> CompatibilityTable {
+    let mut telnet_compat = CompatibilityTable::default();
+    telnet_compat.support(opt::GMCP);
+    telnet_compat
 }

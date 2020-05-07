@@ -1,7 +1,12 @@
 use crate::event::Event;
 use crate::output_buffer::OutputBuffer;
 use crate::session::Session;
-use libtelnet_rs::{events::TelnetEvents, telnet::op_command as cmd, Parser};
+use libtelnet_rs::{
+    events::TelnetEvents,
+    telnet::{op_command as cmd, op_option as opt},
+    Parser,
+};
+use log::debug;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
 pub struct TelnetHandler {
@@ -33,8 +38,25 @@ impl TelnetHandler {
                             }
                         }
                     }
-                    TelnetEvents::Negotiation(_) => (),
-                    TelnetEvents::Subnegotiation(_) => (),
+                    TelnetEvents::Negotiation(neg) => {
+                        debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
+                        if neg.option == opt::GMCP && neg.command == cmd::WILL {
+                            if let Some(TelnetEvents::DataSend(data)) = parser._will(opt::GMCP) {
+                                self.main_thread_writer
+                                    .send(Event::ServerSend(data))
+                                    .unwrap();
+                                self.main_thread_writer
+                                    .send(Event::ProtoEnabled(opt::GMCP))
+                                    .unwrap();
+                            }
+                        }
+                    }
+                    TelnetEvents::Subnegotiation(data) => {
+                        let msg = String::from_utf8_lossy(&data.buffer).to_mut().clone();
+                        self.main_thread_writer
+                            .send(Event::GMCPReceive(msg))
+                            .unwrap();
+                    }
                     TelnetEvents::DataSend(msg) => {
                         if !msg.is_empty() {
                             self.main_thread_writer

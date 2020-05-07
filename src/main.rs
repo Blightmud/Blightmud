@@ -1,4 +1,4 @@
-use libtelnet_rs::events::TelnetEvents;
+use libtelnet_rs::{events::TelnetEvents, telnet::op_option as opt};
 use log::{debug, error, info};
 use signal_hook;
 use std::io::{Read, Write};
@@ -7,6 +7,7 @@ use std::sync::{
     mpsc::{channel, Receiver, Sender},
 };
 use std::thread;
+use termion::color;
 
 mod ansi;
 mod command;
@@ -16,7 +17,6 @@ mod screen;
 mod session;
 mod telnet;
 
-use crate::ansi::*;
 use crate::command::spawn_input_thread;
 use crate::event::Event;
 use crate::screen::Screen;
@@ -147,7 +147,11 @@ fn main() {
                                 }
                             }
                         } else {
-                            let msg = format!("{}[!!] No active session{}", FG_RED, DEFAULT);
+                            let msg = format!(
+                                "{}[!!] No active session{}",
+                                color::Fg(color::Red),
+                                color::Fg(color::Reset)
+                            );
                             session.main_thread_writer.send(Event::Output(msg)).unwrap();
                         }
                     }
@@ -177,11 +181,44 @@ fn main() {
                                 .unwrap();
                         }
                     }
+                    Event::Connected => {
+                        debug!("Connected to {}:{}", session.host, session.port);
+                    }
+                    Event::ProtoEnabled(proto) => {
+                        match proto {
+                            opt::GMCP => {
+                                let mut parser = session.telnet_parser.lock().unwrap();
+                                if let Some(event) = parser.subnegotiation_text(
+                                    opt::GMCP,
+                                    "Core.Hello {\"Client\":\"rs-mud\",\"Version\":\"0.1.0\"}",
+                                ) {
+                                    if let TelnetEvents::DataSend(data) = event {
+                                        debug!("Sending GMCP Core.Hello");
+                                        session
+                                            .main_thread_writer
+                                            .send(Event::ServerSend(data))
+                                            .unwrap();
+                                    }
+                                } else {
+                                    error!("Failed to send GMCP Core.Hello");
+                                }
+                            }
+                            _ => {}
+                        };
+                    }
+                    Event::GMCPReceive(_) => {
+                        //screen.print_output(&format!("[GMCP]: {}", msg));
+                    }
                     Event::ScrollUp => screen.scroll_up(),
                     Event::ScrollDown => screen.scroll_down(),
                     Event::ScrollBottom => screen.reset_scroll(),
                     Event::Error(msg) => {
-                        screen.print_output(&format!("{}[!!]{}{}", FG_RED, msg, DEFAULT));
+                        screen.print_output(&format!(
+                            "{}[!!]{}{}",
+                            color::Fg(color::Red),
+                            msg,
+                            color::Fg(color::Reset)
+                        ));
                     }
                     Event::Info(msg) => {
                         screen.print_output(&format!("[**]{}", msg));

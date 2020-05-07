@@ -12,6 +12,7 @@ use termion::color;
 mod ansi;
 mod command;
 mod event;
+mod lua_script;
 mod output_buffer;
 mod screen;
 mod session;
@@ -185,26 +186,23 @@ fn main() {
                         debug!("Connected to {}:{}", session.host, session.port);
                     }
                     Event::ProtoEnabled(proto) => {
-                        match proto {
-                            opt::GMCP => {
-                                let mut parser = session.telnet_parser.lock().unwrap();
-                                if let Some(event) = parser.subnegotiation_text(
-                                    opt::GMCP,
-                                    "Core.Hello {\"Client\":\"rs-mud\",\"Version\":\"0.1.0\"}",
-                                ) {
-                                    if let TelnetEvents::DataSend(data) = event {
-                                        debug!("Sending GMCP Core.Hello");
-                                        session
-                                            .main_thread_writer
-                                            .send(Event::ServerSend(data))
-                                            .unwrap();
-                                    }
-                                } else {
-                                    error!("Failed to send GMCP Core.Hello");
+                        if let opt::GMCP = proto {
+                            let mut parser = session.telnet_parser.lock().unwrap();
+                            if let Some(event) = parser.subnegotiation_text(
+                                opt::GMCP,
+                                "Core.Hello {\"Client\":\"rs-mud\",\"Version\":\"0.1.0\"}",
+                            ) {
+                                if let TelnetEvents::DataSend(data) = event {
+                                    debug!("Sending GMCP Core.Hello");
+                                    session
+                                        .main_thread_writer
+                                        .send(Event::ServerSend(data))
+                                        .unwrap();
                                 }
+                            } else {
+                                error!("Failed to send GMCP Core.Hello");
                             }
-                            _ => {}
-                        };
+                        }
                     }
                     Event::GMCPReceive(_) => {
                         //screen.print_output(&format!("[GMCP]: {}", msg));
@@ -223,7 +221,11 @@ fn main() {
                     Event::Info(msg) => {
                         screen.print_output(&format!("[**]{}", msg));
                     }
-                    Event::LoadScript(_) => {}
+                    Event::LoadScript(path) => {
+                        info!("Loading script: {}", path);
+                        let mut lua = session.lua_script.lock().unwrap();
+                        lua.load_script(&path);
+                    }
                     Event::Redraw => {
                         screen.setup();
                         screen.reset_scroll();

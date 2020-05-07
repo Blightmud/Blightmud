@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use crate::{output_buffer::OutputBuffer, Event};
+use crate::{lua_script::LuaScript, output_buffer::OutputBuffer, Event};
 use log::debug;
 
 #[derive(Clone)]
@@ -22,6 +22,7 @@ pub struct Session {
     pub telnet_parser: Arc<Mutex<Parser>>,
     pub output_buffer: Arc<Mutex<OutputBuffer>>,
     pub prompt_input: Arc<Mutex<String>>,
+    pub lua_script: Arc<Mutex<LuaScript>>,
 }
 
 impl Session {
@@ -84,12 +85,13 @@ impl SessionBuilder {
     }
 
     pub fn build(self) -> Session {
+        let main_thread_writer = self.main_thread_writer.unwrap();
         Session {
             host: String::new(),
             port: 0,
             connected: Arc::new(AtomicBool::new(false)),
             stream: Arc::new(Mutex::new(None)),
-            main_thread_writer: self.main_thread_writer.unwrap(),
+            main_thread_writer: main_thread_writer.clone(),
             terminate: Arc::new(AtomicBool::new(false)),
             telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
                 1024,
@@ -97,6 +99,7 @@ impl SessionBuilder {
             ))),
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
             prompt_input: Arc::new(Mutex::new(String::new())),
+            lua_script: Arc::new(Mutex::new(LuaScript::new(main_thread_writer))),
         }
     }
 }

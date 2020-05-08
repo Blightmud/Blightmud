@@ -96,7 +96,7 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
 
 fn start_logging() {
     if let Some(data_dir) = dirs::data_dir() {
-        let logpath = data_dir.join("rsmud/logs");
+        let logpath = data_dir.join("blightmud/logs");
         std::fs::create_dir_all(&logpath).unwrap();
         let logfile = logpath.join("log.txt");
         simple_logging::log_to_file(logfile.to_str().unwrap(), log::LevelFilter::Debug).unwrap();

@@ -242,7 +242,15 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                     let mut lua = session.lua_script.lock().unwrap();
                     if let Err(err) = lua.load_script(&path) {
                         screen.print_error(&format!("Failed to load file: {}", err));
+                    } else {
+                        screen.print_info(&format!("Loaded script: {}", path));
                     }
+                }
+                Event::ResetScript => {
+                    info!("Clearing scripts");
+                    screen.print_info("Clearing scripts");
+                    let mut lua = session.lua_script.lock().unwrap();
+                    lua.reset();
                 }
                 Event::Redraw => {
                     screen.setup();

@@ -58,6 +58,16 @@ impl UserData for RsMud {
                 .unwrap();
             Ok(())
         });
+        methods.add_method("reset", |_, this, ()| {
+            this.main_thread_writer.send(Event::ResetScript).unwrap();
+            Ok(())
+        });
+        methods.add_method("load", |_, this, path: String| {
+            this.main_thread_writer
+                .send(Event::LoadScript(path))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method("output", |_, this, strings: Variadic<String>| {
             this.main_thread_writer
                 .send(Event::Output(strings.join(" ")))
@@ -137,33 +147,40 @@ pub struct LuaScript {
     writer: Sender<Event>,
 }
 
+fn create_default_lua_state(writer: Sender<Event>) -> Lua {
+    let state = Lua::new();
+
+    let rsmud = RsMud::new(writer);
+    state
+        .context(|ctx| -> LuaResult<()> {
+            let globals = ctx.globals();
+            globals.set("rsmud", rsmud).unwrap();
+
+            let alias_table = ctx.create_table().unwrap();
+            globals.set("__alias_table", alias_table).unwrap();
+            let trigger_table = ctx.create_table().unwrap();
+            globals.set("__trigger_table", trigger_table).unwrap();
+            let prompt_trigger = ctx.create_table().unwrap();
+            globals
+                .set("__prompt_trigger_table", prompt_trigger)
+                .unwrap();
+
+            Ok(())
+        })
+        .unwrap();
+    state
+}
+
 impl LuaScript {
     pub fn new(main_thread_writer: Sender<Event>) -> Self {
-        let state = Lua::new();
-
-        let rsmud = RsMud::new(main_thread_writer.clone());
-        state
-            .context(|ctx| -> LuaResult<()> {
-                let globals = ctx.globals();
-                globals.set("rsmud", rsmud).unwrap();
-
-                let alias_table = ctx.create_table().unwrap();
-                globals.set("__alias_table", alias_table).unwrap();
-                let trigger_table = ctx.create_table().unwrap();
-                globals.set("__trigger_table", trigger_table).unwrap();
-                let prompt_trigger = ctx.create_table().unwrap();
-                globals
-                    .set("__prompt_trigger_table", prompt_trigger)
-                    .unwrap();
-
-                Ok(())
-            })
-            .unwrap();
-
         Self {
-            state,
+            state: create_default_lua_state(main_thread_writer.clone()),
             writer: main_thread_writer,
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.state = create_default_lua_state(self.writer.clone());
     }
 
     pub fn check_for_alias_match(&self, input: &str) -> bool {

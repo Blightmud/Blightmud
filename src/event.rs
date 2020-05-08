@@ -14,6 +14,7 @@ pub enum Event {
     ProtoEnabled(u8),
     GMCPReceive(String),
     LoadScript(String),
+    ResetScript,
     ScrollUp,
     ScrollDown,
     ScrollBottom,

@@ -136,24 +136,27 @@ fn main() {
                     Event::ServerOutput(data) => {
                         telnet_handler.parse(&data);
                     }
-                    Event::ServerInput(msg) => {
-                        if session.connected.load(Ordering::Relaxed) {
-                            // Intercept alias system
-                            if let Ok(mut parser) = session.telnet_parser.lock() {
-                                if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
-                                    screen.print_output(&format!("[**] Sent: '{}'", &msg));
-                                    if let Some(transmit_writer) = &transmit_writer {
-                                        transmit_writer.send(Some(buffer)).unwrap();
+                    Event::ServerInput(msg, check_alias) => {
+                        if let Ok(script) = session.lua_script.lock() {
+                            if check_alias && !script.check_for_alias_match(&msg) {
+                                if session.connected.load(Ordering::Relaxed) {
+                                    if let Ok(mut parser) = session.telnet_parser.lock() {
+                                        if let TelnetEvents::DataSend(buffer) =
+                                            parser.send_text(&msg)
+                                        {
+                                            screen.print_output(&format!("[**] Sent: '{}'", &msg));
+                                            if let Some(transmit_writer) = &transmit_writer {
+                                                transmit_writer.send(Some(buffer)).unwrap();
+                                            }
+                                        }
                                     }
+                                } else {
+                                    session
+                                        .main_thread_writer
+                                        .send(Event::Error("No active session".to_string()))
+                                        .unwrap();
                                 }
                             }
-                        } else {
-                            let msg = format!(
-                                "{}[!!] No active session{}",
-                                color::Fg(color::Red),
-                                color::Fg(color::Reset)
-                            );
-                            session.main_thread_writer.send(Event::Output(msg)).unwrap();
                         }
                     }
                     Event::Output(msg) => {

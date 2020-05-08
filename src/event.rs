@@ -3,7 +3,7 @@ pub enum Event {
     ServerOutput(Vec<u8>),
     Prompt,
     ServerSend(Vec<u8>),
-    ServerInput(String),
+    ServerInput(String, bool),
     Output(String),
     Error(String),
     Info(String),

@@ -154,6 +154,6 @@ fn parse_command(msg: &str) -> Event {
             }
         }
         Some("/quit") | Some("/q") => Event::Quit,
-        _ => Event::ServerInput(msg),
+        _ => Event::ServerInput(msg, true),
     }
 }

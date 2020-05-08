@@ -52,6 +52,12 @@ impl RsMud {
 
 impl UserData for RsMud {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_method("connect", |_, this, (host, port): (String, u32)| {
+            this.main_thread_writer
+                .send(Event::Connect(host, port))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method("output", |_, this, strings: Variadic<String>| {
             this.main_thread_writer
                 .send(Event::Output(strings.join(" ")))

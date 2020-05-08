@@ -1,11 +1,14 @@
-![Rust](https://github.com/LiquidityC/lintin/workflows/Rust/badge.svg)
-![Clippy check](https://github.com/LiquidityC/lintin/workflows/Clippy%20check/badge.svg)
-![Security audit](https://github.com/LiquidityC/lintin/workflows/Security%20audit/badge.svg)
-# rs-Mud  : A mud client for the terminal
+![Rust](https://github.com/LiquidityC/blightmud/workflows/Rust/badge.svg)
+![Clippy check](https://github.com/LiquidityC/blightmud/workflows/Clippy%20check/badge.svg)
+![Security audit](https://github.com/LiquidityC/blightmud/workflows/Security%20audit/badge.svg)
+# Blightmud  : A mud client for the terminal
 
-rs-mud has been a passion project of mine for some time. A big user of the old
+Blightmud has been a passion project of mine for some time. A big user of the old
 but great tinyfugue I always wanted to create my own similar mud client. Even
 though I don't play much muds these days.
+
+## The name?
+The client is written in rust. Some navigating throught the thesaurus brought me to the word 'blight' and here we are.
 
 ## Goals
 - [x] Completely terminal based

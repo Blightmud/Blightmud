@@ -211,7 +211,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         let mut parser = session.telnet_parser.lock().unwrap();
                         if let Some(event) = parser.subnegotiation_text(
                             opt::GMCP,
-                            "Core.Hello {\"Client\":\"rs-mud\",\"Version\":\"0.1.0\"}",
+                            "Core.Hello {\"Client\":\"Blightmud\",\"Version\":\"0.1.0\"}",
                         ) {
                             if let TelnetEvents::DataSend(data) = event {
                                 debug!("Sending GMCP Core.Hello");

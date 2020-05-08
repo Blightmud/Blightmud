@@ -38,11 +38,11 @@ impl Trigger {
 impl UserData for Trigger {}
 
 #[derive(Clone)]
-struct RsMud {
+struct BlightMud {
     main_thread_writer: Sender<Event>,
 }
 
-impl RsMud {
+impl BlightMud {
     fn new(writer: Sender<Event>) -> Self {
         Self {
             main_thread_writer: writer,
@@ -50,7 +50,7 @@ impl RsMud {
     }
 }
 
-impl UserData for RsMud {
+impl UserData for BlightMud {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method("connect", |_, this, (host, port): (String, u32)| {
             this.main_thread_writer
@@ -150,11 +150,11 @@ pub struct LuaScript {
 fn create_default_lua_state(writer: Sender<Event>) -> Lua {
     let state = Lua::new();
 
-    let rsmud = RsMud::new(writer);
+    let blight = BlightMud::new(writer);
     state
         .context(|ctx| -> LuaResult<()> {
             let globals = ctx.globals();
-            globals.set("rsmud", rsmud).unwrap();
+            globals.set("blight", blight).unwrap();
 
             let alias_table = ctx.create_table().unwrap();
             globals.set("__alias_table", alias_table).unwrap();

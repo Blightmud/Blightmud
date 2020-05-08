@@ -57,6 +57,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "blightmud"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dirs",
+ "libtelnet-rs",
+ "log",
+ "regex",
+ "rlua",
+ "signal-hook",
+ "simple-logging",
+ "strip-ansi-escapes",
+ "termion",
+]
+
+[[package]]
 name = "bstr"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -251,22 +267,6 @@ dependencies = [
  "cc",
  "libc",
  "num-traits",
-]
-
-[[package]]
-name = "rs-mud"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "dirs",
- "libtelnet-rs",
- "log",
- "regex",
- "rlua",
- "signal-hook",
- "simple-logging",
- "strip-ansi-escapes",
- "termion",
 ]
 
 [[package]]

@@ -3,6 +3,7 @@ use regex::Regex;
 use rlua::{Lua, Result as LuaResult, UserData, UserDataMethods, Variadic};
 use std::io::prelude::*;
 use std::{error::Error, fs::File, result::Result, sync::mpsc::Sender};
+use strip_ansi_escapes::strip as strip_ansi;
 
 #[derive(Clone)]
 struct Alias {
@@ -196,6 +197,8 @@ impl LuaScript {
     }
 
     fn check_trigger_match(&self, input: &str, table: &str) -> bool {
+        let clean_bytes = strip_ansi(input.as_bytes()).unwrap();
+        let input = &String::from_utf8_lossy(&clean_bytes);
         let mut response = false;
         self.state.context(|ctx| {
             let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();

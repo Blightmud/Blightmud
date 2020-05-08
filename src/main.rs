@@ -22,6 +22,7 @@ use crate::event::Event;
 use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
 use crate::telnet::TelnetHandler;
+use dirs;
 
 type TelnetData = Option<Vec<u8>>;
 
@@ -94,7 +95,12 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
 }
 
 fn start_logging() {
-    simple_logging::log_to_file("logs/log.txt", log::LevelFilter::Debug).unwrap();
+    if let Some(data_dir) = dirs::data_dir() {
+        let logpath = data_dir.join("rsmud/logs");
+        std::fs::create_dir_all(&logpath).unwrap();
+        let logfile = logpath.join("log.txt");
+        simple_logging::log_to_file(logfile.to_str().unwrap(), log::LevelFilter::Debug).unwrap();
+    }
 }
 
 fn main() {

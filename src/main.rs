@@ -7,7 +7,6 @@ use std::sync::{
     mpsc::{channel, Receiver, Sender},
 };
 use std::thread;
-use termion::color;
 
 mod ansi;
 mod command;
@@ -104,161 +103,166 @@ fn main() {
 
     let (main_thread_write, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
 
-    let mut session = SessionBuilder::new()
+    let session = SessionBuilder::new()
         .main_thread_writer(main_thread_write)
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
 
-    {
-        let mut screen = Screen::new();
-        screen.setup();
+    run(main_thread_read, session);
 
-        let mut transmit_writer: Option<Sender<TelnetData>> = None;
-        let mut telnet_handler = TelnetHandler::new(session.clone());
+    info!("Shutting down");
+}
 
-        loop {
-            if session.terminate.load(Ordering::Relaxed) {
-                break;
-            }
-            if let Ok(event) = main_thread_read.recv() {
-                match event {
-                    Event::Prompt => {
-                        let output_buffer = session.output_buffer.lock().unwrap();
-                        screen.print_prompt(&output_buffer.prompt);
+fn run(main_thread_read: Receiver<Event>, mut session: Session) {
+    let mut screen = Screen::new();
+    screen.setup();
+
+    let mut transmit_writer: Option<Sender<TelnetData>> = None;
+    let mut telnet_handler = TelnetHandler::new(session.clone());
+
+    loop {
+        if session.terminate.load(Ordering::Relaxed) {
+            break;
+        }
+        if let Ok(event) = main_thread_read.recv() {
+            match event {
+                Event::Prompt => {
+                    let output_buffer = session.output_buffer.lock().unwrap();
+                    if let Ok(script) = session.lua_script.lock() {
+                        script.check_for_prompt_trigger_match(&output_buffer.prompt);
                     }
-                    Event::ServerSend(data) => {
-                        if let Some(transmit_writer) = &transmit_writer {
-                            transmit_writer.send(Some(data)).unwrap();
-                        }
+                    screen.print_prompt(&output_buffer.prompt);
+                }
+                Event::ServerSend(data) => {
+                    if let Some(transmit_writer) = &transmit_writer {
+                        transmit_writer.send(Some(data)).unwrap();
                     }
-                    Event::ServerOutput(data) => {
-                        telnet_handler.parse(&data);
-                    }
-                    Event::ServerInput(msg, check_alias) => {
-                        if let Ok(script) = session.lua_script.lock() {
-                            if check_alias && !script.check_for_alias_match(&msg) {
-                                if session.connected.load(Ordering::Relaxed) {
-                                    if let Ok(mut parser) = session.telnet_parser.lock() {
-                                        if let TelnetEvents::DataSend(buffer) =
-                                            parser.send_text(&msg)
-                                        {
-                                            screen.print_output(&format!("[**] Sent: '{}'", &msg));
-                                            if let Some(transmit_writer) = &transmit_writer {
-                                                transmit_writer.send(Some(buffer)).unwrap();
-                                            }
+                }
+                Event::ServerOutput(data) => {
+                    telnet_handler.parse(&data);
+                }
+                Event::ServerInput(msg, check_alias) => {
+                    if let Ok(script) = session.lua_script.lock() {
+                        if !check_alias || !script.check_for_alias_match(&msg) {
+                            screen.print_send(&msg);
+                            if session.connected.load(Ordering::Relaxed) {
+                                if let Ok(mut parser) = session.telnet_parser.lock() {
+                                    if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
+                                        if let Some(transmit_writer) = &transmit_writer {
+                                            transmit_writer.send(Some(buffer)).unwrap();
                                         }
                                     }
-                                } else {
-                                    session
-                                        .main_thread_writer
-                                        .send(Event::Error("No active session".to_string()))
-                                        .unwrap();
-                                }
-                            }
-                        }
-                    }
-                    Event::Output(msg) => {
-                        // Intercept with trigger system
-                        screen.print_output(&msg);
-                    }
-                    Event::UserInputBuffer(input_buffer) => {
-                        let mut prompt_input = session.prompt_input.lock().unwrap();
-                        *prompt_input = input_buffer;
-                        screen.print_prompt_input(&prompt_input);
-                    }
-                    Event::Connect(host, port) => {
-                        session.disconnect();
-                        if session.connect(&host, port) {
-                            let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) =
-                                channel();
-                            spawn_receive_thread(session.clone());
-                            spawn_transmit_thread(session.clone(), reader);
-                            transmit_writer.replace(writer);
-                        } else {
-                            session
-                                .main_thread_writer
-                                .send(Event::Error(
-                                    format!("Failed to connect to {}:{}", host, port).to_string(),
-                                ))
-                                .unwrap();
-                        }
-                    }
-                    Event::Connected => {
-                        debug!("Connected to {}:{}", session.host, session.port);
-                    }
-                    Event::ProtoEnabled(proto) => {
-                        if let opt::GMCP = proto {
-                            let mut parser = session.telnet_parser.lock().unwrap();
-                            if let Some(event) = parser.subnegotiation_text(
-                                opt::GMCP,
-                                "Core.Hello {\"Client\":\"rs-mud\",\"Version\":\"0.1.0\"}",
-                            ) {
-                                if let TelnetEvents::DataSend(data) = event {
-                                    debug!("Sending GMCP Core.Hello");
-                                    session
-                                        .main_thread_writer
-                                        .send(Event::ServerSend(data))
-                                        .unwrap();
                                 }
                             } else {
-                                error!("Failed to send GMCP Core.Hello");
+                                session
+                                    .main_thread_writer
+                                    .send(Event::Error("No active session".to_string()))
+                                    .unwrap();
                             }
                         }
                     }
-                    Event::GMCPReceive(_) => {
-                        //screen.print_output(&format!("[GMCP]: {}", msg));
-                    }
-                    Event::ScrollUp => screen.scroll_up(),
-                    Event::ScrollDown => screen.scroll_down(),
-                    Event::ScrollBottom => screen.reset_scroll(),
-                    Event::Error(msg) => {
-                        screen.print_output(&format!(
-                            "{}[!!]{}{}",
-                            color::Fg(color::Red),
-                            msg,
-                            color::Fg(color::Reset)
-                        ));
-                    }
-                    Event::Info(msg) => {
-                        screen.print_output(&format!("[**]{}", msg));
-                    }
-                    Event::LoadScript(path) => {
-                        info!("Loading script: {}", path);
-                        let mut lua = session.lua_script.lock().unwrap();
-                        lua.load_script(&path);
-                    }
-                    Event::Redraw => {
-                        screen.setup();
-                        screen.reset_scroll();
-                    }
-                    Event::Disconnect => {
-                        session.disconnect();
-                        let msg = format!("Disconnecting from: {}:{}", session.host, session.port)
-                            .to_string();
-                        session.send_event(Event::Info(msg));
-                        if let Some(transmit_writer) = &transmit_writer {
-                            transmit_writer.send(None).unwrap();
+                }
+                Event::MudOutput(msg) => {
+                    if let Ok(script) = session.lua_script.lock() {
+                        if script.check_for_trigger_match(&msg) {
+                            screen.print_output("Trigger match");
                         }
-                        transmit_writer = None;
-                        session.send_event(Event::UserInputBuffer(String::new()));
                     }
-                    Event::Quit => {
-                        session.terminate.store(true, Ordering::Relaxed);
-                        session.disconnect();
-                        break;
+                    screen.print_output(&msg);
+                }
+                Event::Output(msg) => {
+                    screen.print_output(&msg);
+                }
+                Event::UserInputBuffer(input_buffer) => {
+                    let mut prompt_input = session.prompt_input.lock().unwrap();
+                    *prompt_input = input_buffer;
+                    screen.print_prompt_input(&prompt_input);
+                }
+                Event::Connect(host, port) => {
+                    session.disconnect();
+                    if session.connect(&host, port) {
+                        let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) =
+                            channel();
+                        spawn_receive_thread(session.clone());
+                        spawn_transmit_thread(session.clone(), reader);
+                        transmit_writer.replace(writer);
+                    } else {
+                        session
+                            .main_thread_writer
+                            .send(Event::Error(
+                                format!("Failed to connect to {}:{}", host, port).to_string(),
+                            ))
+                            .unwrap();
                     }
-                };
-                screen.flush();
-            }
+                }
+                Event::Connected => {
+                    debug!("Connected to {}:{}", session.host, session.port);
+                }
+                Event::ProtoEnabled(proto) => {
+                    if let opt::GMCP = proto {
+                        let mut parser = session.telnet_parser.lock().unwrap();
+                        if let Some(event) = parser.subnegotiation_text(
+                            opt::GMCP,
+                            "Core.Hello {\"Client\":\"rs-mud\",\"Version\":\"0.1.0\"}",
+                        ) {
+                            if let TelnetEvents::DataSend(data) = event {
+                                debug!("Sending GMCP Core.Hello");
+                                session
+                                    .main_thread_writer
+                                    .send(Event::ServerSend(data))
+                                    .unwrap();
+                            }
+                        } else {
+                            error!("Failed to send GMCP Core.Hello");
+                        }
+                    }
+                }
+                Event::GMCPReceive(_) => {
+                    //screen.print_output(&format!("[GMCP]: {}", msg));
+                }
+                Event::ScrollUp => screen.scroll_up(),
+                Event::ScrollDown => screen.scroll_down(),
+                Event::ScrollBottom => screen.reset_scroll(),
+                Event::Error(msg) => {
+                    screen.print_error(&msg);
+                }
+                Event::Info(msg) => {
+                    screen.print_info(&msg);
+                }
+                Event::LoadScript(path) => {
+                    info!("Loading script: {}", path);
+                    let mut lua = session.lua_script.lock().unwrap();
+                    if let Err(err) = lua.load_script(&path) {
+                        screen.print_error(&format!("Failed to load file: {}", err));
+                    }
+                }
+                Event::Redraw => {
+                    screen.setup();
+                    screen.reset_scroll();
+                }
+                Event::Disconnect => {
+                    session.disconnect();
+                    screen.print_info(&format!(
+                        "Disconnecting from: {}:{}",
+                        session.host, session.port
+                    ));
+                    if let Some(transmit_writer) = &transmit_writer {
+                        transmit_writer.send(None).unwrap();
+                    }
+                    transmit_writer = None;
+                    session.send_event(Event::UserInputBuffer(String::new()));
+                }
+                Event::Quit => {
+                    session.terminate.store(true, Ordering::Relaxed);
+                    session.disconnect();
+                    break;
+                }
+            };
+            screen.flush();
         }
-        screen.reset();
     }
-
-    debug!("Shutting down threads");
+    screen.reset();
     session.close();
-    //debug!("Joining threads");
-    //input_thread.join().unwrap();
-    info!("Shutting down");
 }

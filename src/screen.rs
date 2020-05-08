@@ -129,6 +129,28 @@ impl Screen {
         }
     }
 
+    pub fn print_send(&mut self, send: &str) {
+        self.print_output(&format!(
+            "{}> {}{}",
+            color::Fg(color::LightYellow),
+            send,
+            color::Fg(color::Reset)
+        ));
+    }
+
+    pub fn print_info(&mut self, output: &str) {
+        self.print_output(&format!("[**] {}", output));
+    }
+
+    pub fn print_error(&mut self, output: &str) {
+        self.print_output(&format!(
+            "{}[!!] {}{}",
+            color::Fg(color::Red),
+            output,
+            color::Fg(color::Reset)
+        ));
+    }
+
     pub fn scroll_up(&mut self) {
         let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
         if self.history.len() > output_range as usize {

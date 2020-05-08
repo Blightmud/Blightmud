@@ -4,6 +4,7 @@ pub enum Event {
     Prompt,
     ServerSend(Vec<u8>),
     ServerInput(String, bool),
+    MudOutput(String),
     Output(String),
     Error(String),
     Info(String),

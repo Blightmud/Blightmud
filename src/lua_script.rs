@@ -12,12 +12,16 @@ const PROMPT_TRIGGER_TABLE: &str = "__prompt_trigger_table";
 #[derive(Clone)]
 struct Alias {
     regex: Regex,
+    enabled: bool,
 }
 
 impl Alias {
     fn create(regex: &str) -> Result<Self, String> {
         match Regex::new(regex) {
-            Ok(regex) => Ok(Self { regex }),
+            Ok(regex) => Ok(Self {
+                regex,
+                enabled: true,
+            }),
             Err(msg) => Err(msg.to_string()),
         }
     }
@@ -29,12 +33,17 @@ impl UserData for Alias {}
 struct Trigger {
     regex: Regex,
     gag: bool,
+    enabled: bool,
 }
 
 impl Trigger {
     fn create(regex: &str) -> Result<Self, String> {
         match Regex::new(regex) {
-            Ok(regex) => Ok(Self { regex, gag: false }),
+            Ok(regex) => Ok(Self {
+                regex,
+                gag: false,
+                enabled: true,
+            }),
             Err(msg) => Err(msg.to_string()),
         }
     }
@@ -97,57 +106,58 @@ impl UserData for BlightMud {
         });
         methods.add_method(
             "add_alias",
-            |ctx, this, (regex, callback): (String, rlua::Value)| {
-                if let rlua::Value::Function(func) = callback {
-                    let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE)?;
-                    match Alias::create(&regex) {
-                        Ok(alias) => {
-                            alias_table.set(regex.clone(), alias)?;
-                            let alias_handle: rlua::AnyUserData = alias_table.get(regex.clone())?;
-                            alias_handle.set_user_value(func)?;
-                        }
-                        Err(msg) => {
-                            output_stack_trace(&this.main_thread_writer, &msg);
-                        }
-                    };
-                }
-                Ok(())
+            |ctx, this, (regex, callback): (String, rlua::Function)| {
+                let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE)?;
+                let next_index = alias_table.raw_len() + 1;
+                match Alias::create(&regex) {
+                    Ok(alias) => {
+                        alias_table.set(next_index, alias)?;
+                        let alias_handle: rlua::AnyUserData = alias_table.get(next_index)?;
+                        alias_handle.set_user_value(callback)?;
+                    }
+                    Err(msg) => {
+                        output_stack_trace(&this.main_thread_writer, &msg);
+                    }
+                };
+                Ok(next_index)
             },
         );
         methods.add_method(
             "add_trigger",
             |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
                 let trigger_table: rlua::Table = ctx.globals().get(TRIGGER_TABLE)?;
+                let next_index = trigger_table.raw_len() + 1;
                 match this.create_trigger(&regex, false) {
                     Ok(mut trigger) => {
                         trigger.gag = options.get("gag")?;
-                        trigger_table.set(regex.clone(), trigger)?;
-                        let trigger_handle: rlua::AnyUserData = trigger_table.get(regex.clone())?;
+                        trigger_table.set(next_index, trigger)?;
+                        let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;
                         trigger_handle.set_user_value(callback)?;
                     }
                     Err(msg) => {
                         output_stack_trace(&this.main_thread_writer, &msg);
                     }
                 }
-                Ok(())
+                Ok(next_index)
             },
         );
         methods.add_method(
             "add_prompt_trigger",
             |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
                 let trigger_table: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
+                let next_index = trigger_table.raw_len() + 1;
                 match Trigger::create(&regex) {
                     Ok(mut trigger) => {
                         trigger.gag = options.get("gag")?;
-                        trigger_table.set(regex.clone(), trigger)?;
-                        let trigger_handle: rlua::AnyUserData = trigger_table.get(regex)?;
+                        trigger_table.set(next_index, trigger)?;
+                        let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;
                         trigger_handle.set_user_value(callback)?;
                     }
                     Err(msg) => {
                         output_stack_trace(&this.main_thread_writer, &msg);
                     }
                 };
-                Ok(())
+                Ok(next_index)
             },
         );
     }
@@ -196,10 +206,11 @@ impl LuaScript {
         let mut response = false;
         self.state.context(|ctx| {
             let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE).unwrap();
-            for pair in alias_table.pairs::<String, rlua::AnyUserData>() {
+            for pair in alias_table.pairs::<rlua::Value, rlua::AnyUserData>() {
                 let (_, alias) = pair.unwrap();
-                let regex = &alias.borrow::<Alias>().unwrap().regex;
-                if regex.is_match(input) {
+                let rust_alias = &alias.borrow::<Alias>().unwrap();
+                let regex = &rust_alias.regex;
+                if rust_alias.enabled && regex.is_match(input) {
                     let cb: rlua::Function = alias.get_user_value().unwrap();
                     let captures: Vec<String> = regex
                         .captures(input)
@@ -234,10 +245,10 @@ impl LuaScript {
         let mut response = false;
         self.state.context(|ctx| {
             let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
-            for pair in trigger_table.pairs::<String, rlua::AnyUserData>() {
+            for pair in trigger_table.pairs::<rlua::Value, rlua::AnyUserData>() {
                 let (_, trigger) = pair.unwrap();
                 let rust_trigger = &trigger.borrow::<Trigger>().unwrap();
-                if rust_trigger.regex.is_match(input) {
+                if rust_trigger.enabled && rust_trigger.regex.is_match(input) {
                     let cb: rlua::Function = trigger.get_user_value().unwrap();
                     let captures: Vec<String> = rust_trigger
                         .regex

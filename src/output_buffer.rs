@@ -1,6 +1,17 @@
+use log::error;
+
 pub struct OutputBuffer {
     buffer: Vec<u8>,
     pub prompt: String,
+}
+
+fn read_string_from(buffer: &[u8]) -> String {
+    if let Ok(string) = String::from_utf8(buffer.to_vec()) {
+        string
+    } else {
+        error!("Unparsable bytes: {:?}", buffer);
+        String::from_utf8_lossy(buffer).to_mut().clone()
+    }
 }
 
 impl OutputBuffer {
@@ -13,7 +24,7 @@ impl OutputBuffer {
 
     pub fn buffer_to_prompt(&mut self) {
         if !self.buffer.is_empty() {
-            self.prompt = String::from_utf8_lossy(&self.buffer).to_mut().clone();
+            self.prompt = read_string_from(&self.buffer);
             self.buffer.clear();
         }
     }
@@ -28,9 +39,7 @@ impl OutputBuffer {
                 if i == 0 {
                     last_cut = 2
                 } else {
-                    let line: String = String::from_utf8_lossy(&self.buffer[last_cut..i])
-                        .to_mut()
-                        .clone();
+                    let line: String = read_string_from(&self.buffer[last_cut..i]);
                     lines.push(line);
                     last_cut = i + 2;
                 }

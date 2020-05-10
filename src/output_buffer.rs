@@ -1,8 +1,5 @@
-use std::collections::VecDeque;
-
 pub struct OutputBuffer {
     buffer: Vec<u8>,
-    pub lines: VecDeque<String>,
     pub prompt: String,
 }
 
@@ -10,7 +7,6 @@ impl OutputBuffer {
     pub fn new() -> Self {
         Self {
             buffer: Vec::with_capacity(1024),
-            lines: VecDeque::with_capacity(1024),
             prompt: String::new(),
         }
     }
@@ -26,7 +22,7 @@ impl OutputBuffer {
         self.buffer.append(&mut Vec::from(data));
 
         let mut last_cut: usize = 0;
-        let mut new_lines: Vec<String> = vec![];
+        let mut lines: Vec<String> = vec![];
         for (i, bytes) in self.buffer.windows(2).enumerate() {
             if bytes == b"\r\n" {
                 if i == 0 {
@@ -35,7 +31,7 @@ impl OutputBuffer {
                     let line: String = String::from_utf8_lossy(&self.buffer[last_cut..i])
                         .to_mut()
                         .clone();
-                    new_lines.push(line);
+                    lines.push(line);
                     last_cut = i + 2;
                 }
             }
@@ -46,8 +42,7 @@ impl OutputBuffer {
             } else {
                 self.buffer.clear();
             }
-            self.lines.append(&mut VecDeque::from(new_lines.clone()));
         }
-        new_lines
+        lines
     }
 }

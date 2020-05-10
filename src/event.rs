@@ -13,6 +13,7 @@ pub enum Event {
     Connected,
     ProtoEnabled(u8),
     GMCPReceive(String),
+    GMCPRegister(String),
     LoadScript(String),
     ResetScript,
     ScrollUp,

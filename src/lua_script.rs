@@ -8,6 +8,7 @@ use strip_ansi_escapes::strip as strip_ansi;
 const ALIAS_TABLE: &str = "__alias_table";
 const TRIGGER_TABLE: &str = "__trigger_table";
 const PROMPT_TRIGGER_TABLE: &str = "__prompt_trigger_table";
+const GMCP_LISTENER_TABLE: &str = "__gmcp_listener_table";
 
 #[derive(Clone)]
 struct Alias {
@@ -160,6 +161,17 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
+        methods.add_method(
+            "register_gmcp",
+            |ctx, this, (msg_type, callback): (String, rlua::Function)| {
+                let gmcp_table: rlua::Table = ctx.globals().get(GMCP_LISTENER_TABLE)?;
+                gmcp_table.set(msg_type.clone(), callback).unwrap();
+                this.main_thread_writer
+                    .send(Event::GMCPRegister(msg_type))
+                    .unwrap();
+                Ok(())
+            },
+        );
     }
 }
 
@@ -175,14 +187,16 @@ fn create_default_lua_state(writer: Sender<Event>) -> Lua {
     state
         .context(|ctx| -> LuaResult<()> {
             let globals = ctx.globals();
-            globals.set("blight", blight).unwrap();
+            globals.set("blight", blight)?;
 
-            let alias_table = ctx.create_table().unwrap();
-            globals.set(ALIAS_TABLE, alias_table).unwrap();
-            let trigger_table = ctx.create_table().unwrap();
-            globals.set(TRIGGER_TABLE, trigger_table).unwrap();
-            let prompt_trigger = ctx.create_table().unwrap();
-            globals.set(PROMPT_TRIGGER_TABLE, prompt_trigger).unwrap();
+            let alias_table = ctx.create_table()?;
+            globals.set(ALIAS_TABLE, alias_table)?;
+            let trigger_table = ctx.create_table()?;
+            globals.set(TRIGGER_TABLE, trigger_table)?;
+            let prompt_trigger = ctx.create_table()?;
+            globals.set(PROMPT_TRIGGER_TABLE, prompt_trigger)?;
+            let gmcp_listener_table = ctx.create_table()?;
+            globals.set(GMCP_LISTENER_TABLE, gmcp_listener_table)?;
 
             Ok(())
         })
@@ -268,6 +282,24 @@ impl LuaScript {
             }
         });
         response
+    }
+
+    pub fn receive_gmcp(&mut self, data: &str) {
+        let split = data
+            .splitn(2, ' ')
+            .map(String::from)
+            .collect::<Vec<String>>();
+        let msg_type = &split[0];
+        let content = &split[1];
+        self.state
+            .context(|ctx| {
+                let listener_table: rlua::Table = ctx.globals().get(GMCP_LISTENER_TABLE).unwrap();
+                if let Ok(func) = listener_table.get::<_, rlua::Function>(msg_type.clone()) {
+                    func.call::<_, ()>(content.clone())?;
+                }
+                rlua::Result::Ok(())
+            })
+            .ok();
     }
 
     pub fn load_script(&mut self, path: &str) -> Result<(), Box<dyn Error>> {

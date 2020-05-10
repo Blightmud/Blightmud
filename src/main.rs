@@ -144,6 +144,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                 Event::ServerSend(data) => {
                     if let Some(transmit_writer) = &transmit_writer {
                         transmit_writer.send(Some(data)).unwrap();
+                    } else {
+                        screen.print_error("No active session");
                     }
                 }
                 Event::ServerOutput(data) => {
@@ -153,19 +155,13 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                     if let Ok(script) = session.lua_script.lock() {
                         if !check_alias || !script.check_for_alias_match(&msg) {
                             screen.print_send(&msg);
-                            if session.connected.load(Ordering::Relaxed) {
-                                if let Ok(mut parser) = session.telnet_parser.lock() {
-                                    if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
-                                        if let Some(transmit_writer) = &transmit_writer {
-                                            transmit_writer.send(Some(buffer)).unwrap();
-                                        }
-                                    }
+                            if let Ok(mut parser) = session.telnet_parser.lock() {
+                                if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
+                                    session
+                                        .main_thread_writer
+                                        .send(Event::ServerSend(buffer))
+                                        .unwrap();
                                 }
-                            } else {
-                                session
-                                    .main_thread_writer
-                                    .send(Event::Error("No active session".to_string()))
-                                    .unwrap();
                             }
                         }
                     }
@@ -224,8 +220,21 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         }
                     }
                 }
-                Event::GMCPReceive(_) => {
-                    //screen.print_output(&format!("[GMCP]: {}", msg));
+                Event::GMCPRegister(msg) => {
+                    let mut parser = session.telnet_parser.lock().unwrap();
+                    if let Some(TelnetEvents::DataSend(data)) = parser.subnegotiation_text(
+                        opt::GMCP,
+                        &format!("Core.Supports.Add [\"{} 1\"]", msg),
+                    ) {
+                        session
+                            .main_thread_writer
+                            .send(Event::ServerSend(data))
+                            .unwrap();
+                    }
+                }
+                Event::GMCPReceive(msg) => {
+                    let mut script = session.lua_script.lock().unwrap();
+                    script.receive_gmcp(&msg);
                 }
                 Event::ScrollUp => screen.scroll_up(),
                 Event::ScrollDown => screen.scroll_down(),

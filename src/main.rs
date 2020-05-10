@@ -172,9 +172,10 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                 }
                 Event::MudOutput(msg) => {
                     if let Ok(script) = session.lua_script.lock() {
-                        script.check_for_trigger_match(&msg);
+                        if !script.check_for_trigger_match(&msg) {
+                            screen.print_output(&msg);
+                        }
                     }
-                    screen.print_output(&msg);
                 }
                 Event::Output(msg) => {
                     screen.print_output(&msg);

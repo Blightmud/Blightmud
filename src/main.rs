@@ -255,18 +255,18 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                     } else {
                         screen.print_info(&format!("Loaded script: {}", path));
                         if session.connected.load(Ordering::Relaxed) {
-                            if let Ok(mut script) = session.lua_script.lock() {
-                                script.on_connect();
-                                script.on_gmcp_ready();
-                            }
+                            lua.on_connect();
+                            lua.on_gmcp_ready();
                         }
                     }
                 }
                 Event::ResetScript => {
                     info!("Clearing scripts");
-                    screen.print_info("Clearing scripts");
-                    let mut lua = session.lua_script.lock().unwrap();
-                    lua.reset();
+                    screen.print_info("Clearing scripts...");
+                    if let Ok(mut script) = session.lua_script.lock() {
+                        script.reset();
+                        screen.print_info("Done");
+                    }
                 }
                 Event::Redraw => {
                     screen.setup();

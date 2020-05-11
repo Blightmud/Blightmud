@@ -200,6 +200,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                 }
                 Event::Connected => {
                     debug!("Connected to {}:{}", session.host, session.port);
+                    session.lua_script.lock().unwrap().on_connect();
                 }
                 Event::ProtoEnabled(proto) => {
                     if let opt::GMCP = proto {
@@ -214,6 +215,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                                     .main_thread_writer
                                     .send(Event::ServerSend(data))
                                     .unwrap();
+                                session.lua_script.lock().unwrap().on_gmcp_ready();
                             }
                         } else {
                             error!("Failed to send GMCP Core.Hello");
@@ -252,6 +254,12 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         screen.print_error(&format!("Failed to load file: {}", err));
                     } else {
                         screen.print_info(&format!("Loaded script: {}", path));
+                        if session.connected.load(Ordering::Relaxed) {
+                            if let Ok(mut script) = session.lua_script.lock() {
+                                script.on_connect();
+                                script.on_gmcp_ready();
+                            }
+                        }
                     }
                 }
                 Event::ResetScript => {

@@ -9,6 +9,8 @@ const ALIAS_TABLE: &str = "__alias_table";
 const TRIGGER_TABLE: &str = "__trigger_table";
 const PROMPT_TRIGGER_TABLE: &str = "__prompt_trigger_table";
 const GMCP_LISTENER_TABLE: &str = "__gmcp_listener_table";
+const ON_CONNCTION_CALLBACK: &str = "__connection_callback";
+const ON_GMCP_READY_CALLBACK: &str = "__gmcp_enabled_callback";
 
 #[derive(Clone)]
 struct Alias {
@@ -161,17 +163,28 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
+        methods.add_method("register_gmcp", |_, this, module: String| {
+            this.main_thread_writer
+                .send(Event::GMCPRegister(module))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method(
-            "register_gmcp",
-            |ctx, this, (msg_type, callback): (String, rlua::Function)| {
+            "add_gmcp_receiver",
+            |ctx, _, (msg_type, callback): (String, rlua::Function)| {
                 let gmcp_table: rlua::Table = ctx.globals().get(GMCP_LISTENER_TABLE)?;
-                gmcp_table.set(msg_type.clone(), callback).unwrap();
-                this.main_thread_writer
-                    .send(Event::GMCPRegister(msg_type))
-                    .unwrap();
+                gmcp_table.set(msg_type, callback).unwrap();
                 Ok(())
             },
         );
+        methods.add_method("on_connect", |ctx, _, callback: rlua::Function| {
+            ctx.globals().set(ON_CONNCTION_CALLBACK, callback)?;
+            Ok(())
+        });
+        methods.add_method("on_gmcp_ready", |ctx, _, callback: rlua::Function| {
+            ctx.globals().set(ON_GMCP_READY_CALLBACK, callback)?;
+            Ok(())
+        });
     }
 }
 
@@ -313,6 +326,36 @@ impl LuaScript {
             output_stack_trace(&self.writer, &msg.to_string());
         }
         Ok(())
+    }
+
+    pub fn on_connect(&mut self) {
+        self.state
+            .context(|ctx| -> Result<(), rlua::Error> {
+                if let Ok(callback) = ctx
+                    .globals()
+                    .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
+                {
+                    callback.call::<_, ()>(())
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap();
+    }
+
+    pub fn on_gmcp_ready(&mut self) {
+        self.state
+            .context(|ctx| -> Result<(), rlua::Error> {
+                if let Ok(callback) = ctx
+                    .globals()
+                    .get::<_, rlua::Function>(ON_GMCP_READY_CALLBACK)
+                {
+                    callback.call::<_, ()>(())
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap();
     }
 }
 

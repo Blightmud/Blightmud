@@ -169,7 +169,8 @@ checksum = "99e85c08494b21a9054e7fe1374a732aeadaff3980b6990b94bfd3a70f690005"
 [[package]]
 name = "libtelnet-rs"
 version = "0.3.7"
-source = "git+http://github.com/liquidityc/libtelnet-rs#667c0e7ee09ee320edd77fd909516bb94ac91c91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0376216280c3cf13ffe420cc59e626a35220f6f02dc929bb5bf152fb86bf80b6"
 
 [[package]]
 name = "log"

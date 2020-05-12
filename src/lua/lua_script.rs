@@ -177,3 +177,58 @@ impl LuaScript {
             .unwrap();
     }
 }
+
+#[cfg(test)]
+mod lua_script_tests {
+    use std::sync::mpsc::{Receiver, channel, Sender};
+    use crate::event::Event;
+    use super::LuaScript;
+
+    #[test]
+    fn test_lua_trigger() {
+        let create_trigger_lua = r#"
+        blight:add_trigger("^test$", {gag=true}, function () end)
+        "#;
+
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        let lua = LuaScript::new(writer);
+        lua.state.context(|ctx| {
+            ctx.load(create_trigger_lua).exec().unwrap();
+        });
+
+        assert!(lua.check_for_trigger_match("test"));
+        assert!(!lua.check_for_trigger_match("test test"));
+    }
+
+    #[test]
+    fn test_lua_prompt_trigger() {
+        let create_prompt_trigger_lua = r#"
+        blight:add_prompt_trigger("^test$", {gag=true}, function () end)
+        "#;
+
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        let lua = LuaScript::new(writer);
+        lua.state.context(|ctx| {
+            ctx.load(create_prompt_trigger_lua).exec().unwrap();
+        });
+
+        assert!(lua.check_for_prompt_trigger_match("test"));
+        assert!(!lua.check_for_prompt_trigger_match("test test"));
+    }
+
+    #[test]
+    fn test_lua_alias() {
+        let create_alias_lua = r#"
+        blight:add_alias("^test$", function () end)
+        "#;
+
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        let lua = LuaScript::new(writer);
+        lua.state.context(|ctx| {
+            ctx.load(create_alias_lua).exec().unwrap();
+        });
+
+        assert!(lua.check_for_alias_match("test"));
+        assert!(!lua.check_for_alias_match(" test"));
+    }
+}

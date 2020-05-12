@@ -11,7 +11,7 @@ use std::thread;
 mod ansi;
 mod command;
 mod event;
-mod lua_script;
+mod lua;
 mod output_buffer;
 mod screen;
 mod session;

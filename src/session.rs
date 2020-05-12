@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use crate::{lua_script::LuaScript, output_buffer::OutputBuffer, Event};
+use crate::{lua::LuaScript, output_buffer::OutputBuffer, Event};
 use log::debug;
 
 #[derive(Clone)]

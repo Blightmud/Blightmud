@@ -23,6 +23,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - [x] Low resource and fast
 - [ ] In client help and manuals
 - [ ] Tab completion
+- [ ] MCCP (v1, v2 or v3) support
 
 ## Compiling
 - Install rust

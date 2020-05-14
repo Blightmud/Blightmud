@@ -6,7 +6,7 @@ use termion::{
     raw::{IntoRawMode, RawTerminal},
     screen::AlternateScreen,
 };
-use textwrap::wrap_iter;
+use textwrap;
 
 struct ScrollData(bool, usize);
 const OUTPUT_START_LINE: u16 = 2;
@@ -116,7 +116,7 @@ impl Screen {
     }
 
     pub fn print_output(&mut self, output: &str) {
-        for line in wrap_iter(output, self.width as usize) {
+        for line in textwrap::wrap_iter(output, self.width as usize) {
             self.append_to_history(&line);
             if !self.scroll_data.0 {
                 write!(

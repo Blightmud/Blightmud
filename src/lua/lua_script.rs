@@ -226,7 +226,7 @@ mod lua_script_tests {
     #[test]
     fn test_lua_prompt_trigger() {
         let create_prompt_trigger_lua = r#"
-        blight:add_trigger("^test$", {prompt=true}, function () end)
+        blight:add_trigger("^test$", {prompt=true, gag=true}, function () end)
         "#;
 
         let (writer, _): (Sender<Event>, Receiver<Event>) = channel();

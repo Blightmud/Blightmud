@@ -1,5 +1,6 @@
 use super::{constants::*, util::output_stack_trace};
 use crate::event::Event;
+use chrono::Duration;
 use regex::Regex;
 use rlua::{UserData, UserDataMethods, Variadic};
 use std::sync::mpsc::Sender;
@@ -120,7 +121,11 @@ impl UserData for BlightMud {
         methods.add_method(
             "add_trigger",
             |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
-                let trigger_table: rlua::Table = ctx.globals().get(TRIGGER_TABLE)?;
+                let trigger_table: rlua::Table = if options.contains_key("prompt")? {
+                    ctx.globals().get(PROMPT_TRIGGER_TABLE)?
+                } else {
+                    ctx.globals().get(TRIGGER_TABLE)?
+                };
                 let next_index = trigger_table.raw_len() + 1;
                 match this.create_trigger(&regex, false) {
                     Ok(mut trigger) => {
@@ -137,21 +142,16 @@ impl UserData for BlightMud {
             },
         );
         methods.add_method(
-            "add_prompt_trigger",
-            |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
-                let trigger_table: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
-                let next_index = trigger_table.raw_len() + 1;
-                match Trigger::create(&regex) {
-                    Ok(mut trigger) => {
-                        trigger.gag = options.get("gag")?;
-                        trigger_table.set(next_index, trigger)?;
-                        let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;
-                        trigger_handle.set_user_value(callback)?;
-                    }
-                    Err(msg) => {
-                        output_stack_trace(&this.main_thread_writer, &msg);
-                    }
-                };
+            "add_timer",
+            |ctx, this, (duration, count, callback): (f32, u32, rlua::Function)| {
+                let duration = Duration::milliseconds((duration * 1000.0) as i64);
+                let count = if count > 0 { Some(count) } else { None };
+                let cb_table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+                let next_index = cb_table.raw_len() + 1;
+                cb_table.set(next_index, callback)?;
+                this.main_thread_writer
+                    .send(Event::AddTimedEvent(duration, count, next_index as u32))
+                    .unwrap();
                 Ok(next_index)
             },
         );

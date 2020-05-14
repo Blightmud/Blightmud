@@ -11,7 +11,7 @@ use std::sync::{mpsc::Sender, Arc, Mutex};
 
 pub struct TelnetHandler {
     parser: Arc<Mutex<Parser>>,
-    main_thread_writer: Sender<Event>,
+    main_writer: Sender<Event>,
     output_buffer: Arc<Mutex<OutputBuffer>>,
 }
 
@@ -19,7 +19,7 @@ impl TelnetHandler {
     pub fn new(session: Session) -> Self {
         Self {
             parser: session.telnet_parser,
-            main_thread_writer: session.main_thread_writer,
+            main_writer: session.main_writer,
             output_buffer: session.output_buffer,
         }
     }
@@ -34,7 +34,7 @@ impl TelnetHandler {
                         if iac.command == cmd::GA {
                             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                                 output_buffer.buffer_to_prompt();
-                                self.main_thread_writer.send(Event::Prompt).unwrap();
+                                self.main_writer.send(Event::Prompt).unwrap();
                             }
                         }
                     }
@@ -42,10 +42,8 @@ impl TelnetHandler {
                         debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
                         if neg.option == opt::GMCP && neg.command == cmd::WILL {
                             if let Some(TelnetEvents::DataSend(data)) = parser._will(opt::GMCP) {
-                                self.main_thread_writer
-                                    .send(Event::ServerSend(data))
-                                    .unwrap();
-                                self.main_thread_writer
+                                self.main_writer.send(Event::ServerSend(data)).unwrap();
+                                self.main_writer
                                     .send(Event::ProtoEnabled(opt::GMCP))
                                     .unwrap();
                             }
@@ -53,15 +51,11 @@ impl TelnetHandler {
                     }
                     TelnetEvents::Subnegotiation(data) => {
                         let msg = String::from_utf8_lossy(&data.buffer).to_mut().clone();
-                        self.main_thread_writer
-                            .send(Event::GMCPReceive(msg))
-                            .unwrap();
+                        self.main_writer.send(Event::GMCPReceive(msg)).unwrap();
                     }
                     TelnetEvents::DataSend(msg) => {
                         if !msg.is_empty() {
-                            self.main_thread_writer
-                                .send(Event::ServerSend(msg))
-                                .unwrap();
+                            self.main_writer.send(Event::ServerSend(msg)).unwrap();
                         }
                     }
                     TelnetEvents::DataReceive(msg) => {
@@ -69,9 +63,7 @@ impl TelnetHandler {
                             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                                 let new_lines = output_buffer.receive(msg.as_slice());
                                 for line in new_lines {
-                                    self.main_thread_writer
-                                        .send(Event::MudOutput(line))
-                                        .unwrap();
+                                    self.main_writer.send(Event::MudOutput(line)).unwrap();
                                 }
                             }
                         }

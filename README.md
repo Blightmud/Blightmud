@@ -19,7 +19,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - [x] Prompt triggers
     - [x] Gagging triggers
     - [x] GMCP hooks and sending
-    - [ ] Timers
+    - [x] Timers
 - [x] Low resource and fast
 - [ ] In client help and manuals
 

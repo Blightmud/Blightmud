@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use crate::{lua::LuaScript, output_buffer::OutputBuffer, Event};
+use crate::{lua::LuaScript, output_buffer::OutputBuffer, timer::TimerEvent, Event};
 use log::debug;
 
 #[derive(Clone)]
@@ -17,7 +17,8 @@ pub struct Session {
     pub port: u32,
     pub connected: Arc<AtomicBool>,
     pub stream: Arc<Mutex<Option<TcpStream>>>,
-    pub main_thread_writer: Sender<Event>,
+    pub main_writer: Sender<Event>,
+    pub timer_writer: Sender<TimerEvent>,
     pub terminate: Arc<AtomicBool>,
     pub telnet_parser: Arc<Mutex<Parser>>,
     pub output_buffer: Arc<Mutex<OutputBuffer>>,
@@ -33,7 +34,7 @@ impl Session {
         if let Ok(stream) = TcpStream::connect(format!("{}:{}", host, port)) {
             self.stream.lock().unwrap().replace(stream);
             self.connected.store(true, Ordering::Relaxed);
-            self.main_thread_writer.send(Event::Connected).unwrap();
+            self.main_writer.send(Event::Connected).unwrap();
         }
         self.connected.load(Ordering::Relaxed)
     }
@@ -56,42 +57,53 @@ impl Session {
     }
 
     pub fn send_event(&mut self, event: Event) {
-        self.main_thread_writer.send(event).unwrap();
+        self.main_writer.send(event).unwrap();
     }
 
-    pub fn close(&mut self) {
+    pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         if self.connected.load(Ordering::Relaxed) {
             self.disconnect();
         }
-        self.main_thread_writer.send(Event::Quit).unwrap();
+        self.main_writer.send(Event::Quit)?;
+        self.timer_writer.send(TimerEvent::Quit)?;
+        Ok(())
     }
 }
 
 #[derive(Clone)]
 pub struct SessionBuilder {
-    main_thread_writer: Option<Sender<Event>>,
+    main_writer: Option<Sender<Event>>,
+    timer_writer: Option<Sender<TimerEvent>>,
 }
 
 impl SessionBuilder {
     pub fn new() -> Self {
         Self {
-            main_thread_writer: None,
+            main_writer: None,
+            timer_writer: None,
         }
     }
 
-    pub fn main_thread_writer(mut self, main_thread_writer: Sender<Event>) -> Self {
-        self.main_thread_writer = Some(main_thread_writer);
+    pub fn main_writer(mut self, main_writer: Sender<Event>) -> Self {
+        self.main_writer = Some(main_writer);
+        self
+    }
+
+    pub fn timer_writer(mut self, timer_writer: Sender<TimerEvent>) -> Self {
+        self.timer_writer = Some(timer_writer);
         self
     }
 
     pub fn build(self) -> Session {
-        let main_thread_writer = self.main_thread_writer.unwrap();
+        let main_writer = self.main_writer.unwrap();
+        let timer_writer = self.timer_writer.unwrap();
         Session {
             host: String::new(),
             port: 0,
             connected: Arc::new(AtomicBool::new(false)),
             stream: Arc::new(Mutex::new(None)),
-            main_thread_writer: main_thread_writer.clone(),
+            main_writer: main_writer.clone(),
+            timer_writer,
             terminate: Arc::new(AtomicBool::new(false)),
             telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
                 1024,
@@ -99,7 +111,7 @@ impl SessionBuilder {
             ))),
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
             prompt_input: Arc::new(Mutex::new(String::new())),
-            lua_script: Arc::new(Mutex::new(LuaScript::new(main_thread_writer))),
+            lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer))),
         }
     }
 }

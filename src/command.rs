@@ -76,7 +76,7 @@ impl CommandBuffer {
 pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         debug!("Input stream spawned");
-        let writer = session.main_thread_writer;
+        let writer = session.main_writer;
         let terminate = session.terminate;
         let stdin = stdin();
         let mut buffer = CommandBuffer::default();

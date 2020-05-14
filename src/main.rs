@@ -16,12 +16,14 @@ mod output_buffer;
 mod screen;
 mod session;
 mod telnet;
+mod timer;
 
 use crate::command::spawn_input_thread;
 use crate::event::Event;
 use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
 use crate::telnet::TelnetHandler;
+use crate::timer::{spawn_timer_thread, TimerEvent};
 use dirs;
 
 type TelnetData = Option<Vec<u8>>;
@@ -34,7 +36,7 @@ fn spawn_receive_thread(mut session: Session) -> thread::JoinHandle<()> {
             error!("Failed to spawn receive stream without a live connection");
             panic!("Failed to spawn receive stream");
         };
-        let writer = &session.main_thread_writer;
+        let writer = &session.main_writer;
 
         debug!("Receive stream spawned");
         loop {
@@ -86,7 +88,7 @@ fn spawn_transmit_thread(
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
     let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();
-    let main_thread_writer = session.main_thread_writer;
+    let main_thread_writer = session.main_writer;
     thread::spawn(move || {
         for _ in signals.forever() {
             main_thread_writer.send(Event::Redraw).unwrap();
@@ -107,21 +109,29 @@ fn main() {
     start_logging();
     info!("Starting application");
 
-    let (main_thread_write, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
+    let (main_writer, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
+    let timer_writer = spawn_timer_thread(main_writer.clone());
 
     let session = SessionBuilder::new()
-        .main_thread_writer(main_thread_write)
+        .main_writer(main_writer)
+        .timer_writer(timer_writer)
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
 
-    run(main_thread_read, session);
+    if let Err(error) = run(main_thread_read, session) {
+        println!("[!!] Panic: {}", error.to_string());
+    }
 
     info!("Shutting down");
 }
 
-fn run(main_thread_read: Receiver<Event>, mut session: Session) {
+fn run(
+    // TODO: This function is complex. Perhaps reduce it with some type of event router?
+    main_thread_read: Receiver<Event>,
+    mut session: Session,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut screen = Screen::new();
     screen.setup();
 
@@ -143,7 +153,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                 }
                 Event::ServerSend(data) => {
                     if let Some(transmit_writer) = &transmit_writer {
-                        transmit_writer.send(Some(data)).unwrap();
+                        transmit_writer.send(Some(data))?;
                     } else {
                         screen.print_error("No active session");
                     }
@@ -157,10 +167,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                             screen.print_send(&msg);
                             if let Ok(mut parser) = session.telnet_parser.lock() {
                                 if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
-                                    session
-                                        .main_thread_writer
-                                        .send(Event::ServerSend(buffer))
-                                        .unwrap();
+                                    session.main_writer.send(Event::ServerSend(buffer))?;
                                 }
                             }
                         }
@@ -190,12 +197,9 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         spawn_transmit_thread(session.clone(), reader);
                         transmit_writer.replace(writer);
                     } else {
-                        session
-                            .main_thread_writer
-                            .send(Event::Error(
-                                format!("Failed to connect to {}:{}", host, port).to_string(),
-                            ))
-                            .unwrap();
+                        session.main_writer.send(Event::Error(
+                            format!("Failed to connect to {}:{}", host, port).to_string(),
+                        ))?;
                     }
                 }
                 Event::Connected => {
@@ -211,10 +215,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         ) {
                             if let TelnetEvents::DataSend(data) = event {
                                 debug!("Sending GMCP Core.Hello");
-                                session
-                                    .main_thread_writer
-                                    .send(Event::ServerSend(data))
-                                    .unwrap();
+                                session.main_writer.send(Event::ServerSend(data)).unwrap();
                                 session.lua_script.lock().unwrap().on_gmcp_ready();
                             }
                         } else {
@@ -228,10 +229,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         opt::GMCP,
                         &format!("Core.Supports.Add [\"{} 1\"]", msg),
                     ) {
-                        session
-                            .main_thread_writer
-                            .send(Event::ServerSend(data))
-                            .unwrap();
+                        session.main_writer.send(Event::ServerSend(data))?;
                     }
                 }
                 Event::GMCPReceive(msg) => {
@@ -268,6 +266,17 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         screen.print_info("Done");
                     }
                 }
+                Event::AddTimedEvent(duration, count, id) => {
+                    session
+                        .timer_writer
+                        .send(TimerEvent::Create(duration, count, id))?;
+                }
+                Event::TimedEvent(id) => {
+                    session.lua_script.lock().unwrap().run_timed_function(id);
+                }
+                Event::DropTimedEvent(id) => {
+                    session.lua_script.lock().unwrap().remove_timed_function(id);
+                }
                 Event::Redraw => {
                     screen.setup();
                     screen.reset_scroll();
@@ -279,7 +288,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
                         session.host, session.port
                     ));
                     if let Some(transmit_writer) = &transmit_writer {
-                        transmit_writer.send(None).unwrap();
+                        transmit_writer.send(None)?;
                     }
                     transmit_writer = None;
                     session.send_event(Event::UserInputBuffer(String::new()));
@@ -294,5 +303,6 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) {
         }
     }
     screen.reset();
-    session.close();
+    session.close()?;
+    Ok(())
 }

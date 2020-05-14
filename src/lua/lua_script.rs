@@ -29,6 +29,8 @@ fn create_default_lua_state(writer: Sender<Event>) -> Lua {
             globals.set(PROMPT_TRIGGER_TABLE, prompt_trigger)?;
             let gmcp_listener_table = ctx.create_table()?;
             globals.set(GMCP_LISTENER_TABLE, gmcp_listener_table)?;
+            let timed_func_table = ctx.create_table()?;
+            globals.set(TIMED_FUNCTION_TABLE, timed_func_table)?;
 
             Ok(())
         })
@@ -37,10 +39,10 @@ fn create_default_lua_state(writer: Sender<Event>) -> Lua {
 }
 
 impl LuaScript {
-    pub fn new(main_thread_writer: Sender<Event>) -> Self {
+    pub fn new(main_writer: Sender<Event>) -> Self {
         Self {
-            state: create_default_lua_state(main_thread_writer.clone()),
-            writer: main_thread_writer,
+            state: create_default_lua_state(main_writer.clone()),
+            writer: main_writer,
         }
     }
 
@@ -116,6 +118,27 @@ impl LuaScript {
         response
     }
 
+    pub fn run_timed_function(&mut self, id: u32) {
+        self.state
+            .context(|ctx| -> Result<(), Box<dyn std::error::Error>> {
+                let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+                let func: rlua::Function = table.get(id)?;
+                func.call::<_, ()>(())?;
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    pub fn remove_timed_function(&mut self, id: u32) {
+        self.state
+            .context(|ctx| -> Result<(), Box<dyn std::error::Error>> {
+                let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+                table.set(id, rlua::Nil)?;
+                Ok(())
+            })
+            .unwrap();
+    }
+
     pub fn receive_gmcp(&mut self, data: &str) {
         let split = data
             .splitn(2, ' ')
@@ -180,9 +203,9 @@ impl LuaScript {
 
 #[cfg(test)]
 mod lua_script_tests {
-    use std::sync::mpsc::{Receiver, channel, Sender};
-    use crate::event::Event;
     use super::LuaScript;
+    use crate::event::Event;
+    use std::sync::mpsc::{channel, Receiver, Sender};
 
     #[test]
     fn test_lua_trigger() {
@@ -203,7 +226,7 @@ mod lua_script_tests {
     #[test]
     fn test_lua_prompt_trigger() {
         let create_prompt_trigger_lua = r#"
-        blight:add_prompt_trigger("^test$", {gag=true}, function () end)
+        blight:add_trigger("^test$", {prompt=true}, function () end)
         "#;
 
         let (writer, _): (Sender<Event>, Receiver<Event>) = channel();

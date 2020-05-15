@@ -7,7 +7,7 @@ Blightmud has been a passion project of mine for some time. A big user of the ol
 but great tinyfugue I always wanted to create my own similar mud client. Even
 though I don't play much muds these days.
 
-![screenshot](resources/images/screenshot2.png)
+![screenshot](resources/images/screenshot1.png)
 
 ## The name?
 The client is written in rust. Some navigating throught the thesaurus brought me to the word 'blight' and here we are.

@@ -82,9 +82,6 @@ pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
         loop {
             mud_receiver.check_open_zlib_stream();
             let bytes = mud_receiver.read_bytes();
-            writer
-                .send(Event::Info(format!("Received {} bytes", bytes.len())))
-                .unwrap();
 
             if bytes.is_empty() {
                 writer

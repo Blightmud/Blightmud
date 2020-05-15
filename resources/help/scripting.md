@@ -9,24 +9,24 @@ object to interact with your game.
 
 The following methods exist:
 ---
-=> blight:output(str)
+- *blight:output(str)*
     Prints output to the output screen
     Eg. 'blight:output("A", "nice", "message")'
     Will print "A nice message" on the screen
 
-=> blight:send(str)
+- *blight:send(str)*
     Sends a command to the mud.
     Eg. 'blight:send("kill bat")'
     Will send the command "kill bat" to the server.
 
-=> blight:load(file)
+- *blight:load(file)*
     Loads a script file. You can also use the regular 'require' command
     for this.
 
-=> blight:reset()
+- *blight:reset()*
     Resets the script engine clearing the entire lua env.
 
-=> blight:add_alias(regex, callback)
+- *blight:add_alias(regex, callback)*
     Creates an alias which when triggered runs the provided callback function.
     Eg.
     ```lua
@@ -36,7 +36,7 @@ The following methods exist:
     end)
     ```
 
-=> blight:add_trigger(regex, options, callback)
+- *blight:add_trigger(regex, options, callback)*
     Creates a trigger that when matched on server output fires the callback 
     provided.
     This trigger takes a set of options for certain behaviour:
@@ -59,7 +59,7 @@ The following methods exist:
         )
     ```
 
-=> blight:add_timer(secs, repeat, callback)
+- *blight:add_timer(secs, repeat, callback)*
     Add a timer that calls the provided callback a set number of times with
     the provided duration between each call.
 
@@ -77,18 +77,18 @@ Below is the handling for GMCP. These functions are slightly co-dependent so
 check out the final large example for a complete instruction how it should be
 used.
 
-=> blight:on_gmcp_ready(callback)
+- *blight:on_gmcp_ready(callback)*
     Registers a callback that is triggered when the client and server have agreed
     to use the GMCP protocol.
     You may only register one callback. A secondary callback will
     overwrite the first one.
 
-=> blight:register_gmcp(module)
+- *blight:register_gmcp(module)*
     Instructs the server that our client (you) wants to receive updates for
     the defined module.
     Example: blight:register_gmcp("Room.Info")
 
-=> blight:add_gmcp_receiver(module, callback)
+- *blight:add_gmcp_receiver(module, callback)*
     Registers a callback that is executed and provided with the gmcp data when
     the specified module data is received from the server.
 
@@ -123,7 +123,7 @@ used.
     end)
     ```
 
-=> blight:on_connect(callback)
+- blight:on_connect(callback)
     Registers a callback that is triggered when the client successfully connects
     to a server.
     You may only register one callback. A secondary callback will

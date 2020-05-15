@@ -134,7 +134,7 @@ blight:on_gmcp_ready(function ()
 end)
 ```
 
-- blight:on_connect(callback)
+- **blight:on_connect(callback)**
 
     Registers a callback that is triggered when the client successfully connects
     to a server.

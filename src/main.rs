@@ -6,7 +6,7 @@ use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
-use std::thread;
+use std::{net::TcpStream, thread};
 
 mod ansi;
 mod command;
@@ -25,37 +25,67 @@ use crate::session::{Session, SessionBuilder};
 use crate::telnet::TelnetHandler;
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use dirs;
+use flate2::read::ZlibDecoder;
 
 type TelnetData = Option<Vec<u8>>;
 
-fn spawn_receive_thread(mut session: Session) -> thread::JoinHandle<()> {
+fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let mut read_stream = if let Ok(stream) = &session.stream.lock() {
-            stream.as_ref().unwrap().try_clone().unwrap()
-        } else {
-            error!("Failed to spawn receive stream without a live connection");
-            panic!("Failed to spawn receive stream");
-        };
         let writer = &session.main_writer;
+        let reader = session.stream.clone();
+        let mut telnet_handler = TelnetHandler::new(session.clone());
+        let mut decoder: Option<ZlibDecoder<TcpStream>> = None;
+        let comops = session.comops.clone();
 
         debug!("Receive stream spawned");
         loop {
-            let mut data = vec![0; 1024];
-            if let Ok(bytes_read) = read_stream.read(&mut data) {
-                if bytes_read > 0 {
-                    writer
-                        .send(Event::ServerOutput(Vec::from(data.split_at(bytes_read).0)))
-                        .unwrap();
-                } else {
-                    session.send_event(Event::Error("Connection closed".to_string()));
-                    session.send_event(Event::Disconnect);
-                    break;
+            if decoder.is_none() {
+                if let Ok(comops) = comops.lock() {
+                    if comops.mccp2 {
+                        debug!("Opening Zlib stream");
+                        decoder.replace(ZlibDecoder::new(
+                            reader
+                                .lock()
+                                .unwrap()
+                                .as_ref()
+                                .unwrap()
+                                .try_clone()
+                                .unwrap(),
+                        ));
+                    }
                 }
-            } else {
-                session.send_event(Event::Error("Connection failed".to_string()));
-                session.send_event(Event::Disconnect);
+            }
+
+            let bytes = {
+                let mut data = vec![0; 1024];
+                if let Some(decoder) = &mut decoder {
+                    if let Ok(bytes_read) = decoder.read(&mut data) {
+                        data = data.split_at(bytes_read).0.to_vec();
+                    } else {
+                        data = vec![];
+                    }
+                } else {
+                    let stream = reader.lock().unwrap();
+                    if let Some(read_stream) = &mut stream.as_ref() {
+                        if let Ok(bytes_read) = read_stream.read(&mut data) {
+                            data = data.split_at(bytes_read).0.to_vec();
+                        } else {
+                            data = vec![];
+                        }
+                    }
+                }
+                data
+            };
+
+            if bytes.is_empty() {
+                writer
+                    .send(Event::Info("Connection closed".to_string()))
+                    .unwrap();
+                writer.send(Event::Disconnect).unwrap();
                 break;
             }
+
+            telnet_handler.parse(&bytes);
         }
         debug!("Receive stream closing");
     })
@@ -136,7 +166,6 @@ fn run(
     screen.setup();
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
-    let mut telnet_handler = TelnetHandler::new(session.clone());
 
     loop {
         if session.terminate.load(Ordering::Relaxed) {
@@ -157,9 +186,6 @@ fn run(
                     } else {
                         screen.print_error("No active session");
                     }
-                }
-                Event::ServerOutput(data) => {
-                    telnet_handler.parse(&data);
                 }
                 Event::ServerInput(msg, check_alias) => {
                     if let Ok(script) = session.lua_script.lock() {
@@ -291,7 +317,6 @@ fn run(
                         transmit_writer.send(None)?;
                     }
                     transmit_writer = None;
-                    session.send_event(Event::UserInputBuffer(String::new()));
                 }
                 Event::Quit => {
                     session.terminate.store(true, Ordering::Relaxed);

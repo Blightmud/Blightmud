@@ -12,7 +12,10 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 
 ## Goals
 - [x] Completely terminal based
-- [x] Lua scripting
+- [x] Telnet:
+    - [x] GMCP support
+    - [x] MCCP2 support
+- [x] Lua scripting:
     - [x] Output and sending
     - [x] Aliases
     - [x] Triggers
@@ -23,7 +26,6 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - [x] Low resource and fast
 - [ ] In client help and manuals
 - [ ] Tab completion
-- [ ] MCCP (v1, v2 or v3) support
 
 ## Compiling
 - Install rust

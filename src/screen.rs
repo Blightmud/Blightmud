@@ -115,20 +115,28 @@ impl Screen {
         .unwrap();
     }
 
-    pub fn print_output(&mut self, output: &str) {
-        for line in textwrap::wrap_iter(output, self.width as usize) {
-            self.append_to_history(&line);
-            if !self.scroll_data.0 {
-                write!(
-                    self.screen,
-                    "{}{}{}{}",
-                    termion::cursor::Goto(1, self.output_line),
-                    termion::scroll::Up(1),
-                    &line,
-                    termion::cursor::Goto(1, self.prompt_line)
-                )
-                .unwrap();
+    pub fn print_output(&mut self, line: &str) {
+        if line.trim().is_empty() {
+            self.print_line(&line);
+        } else {
+            for line in textwrap::wrap_iter(line, self.width as usize) {
+                self.print_line(&line);
             }
+        }
+    }
+
+    fn print_line(&mut self, line: &str) {
+        self.append_to_history(&line);
+        if !self.scroll_data.0 {
+            write!(
+                self.screen,
+                "{}{}{}{}",
+                termion::cursor::Goto(1, self.output_line),
+                termion::scroll::Up(1),
+                &line,
+                termion::cursor::Goto(1, self.prompt_line)
+            )
+            .unwrap();
         }
     }
 

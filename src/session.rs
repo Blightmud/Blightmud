@@ -11,6 +11,11 @@ use std::{
 use crate::{lua::LuaScript, output_buffer::OutputBuffer, timer::TimerEvent, Event};
 use log::debug;
 
+#[derive(Default)]
+pub struct CommunicationOptions {
+    pub mccp2: bool,
+}
+
 #[derive(Clone)]
 pub struct Session {
     pub host: String,
@@ -24,6 +29,7 @@ pub struct Session {
     pub output_buffer: Arc<Mutex<OutputBuffer>>,
     pub prompt_input: Arc<Mutex<String>>,
     pub lua_script: Arc<Mutex<LuaScript>>,
+    pub comops: Arc<Mutex<CommunicationOptions>>,
 }
 
 impl Session {
@@ -52,7 +58,10 @@ impl Session {
                 self.connected.store(false, Ordering::Relaxed);
             }
         }
-        self.output_buffer.lock().unwrap().prompt.clear();
+        if let Ok(mut output_buffer) = self.output_buffer.lock() {
+            output_buffer.clear()
+        }
+        self.comops = Arc::new(Mutex::new(CommunicationOptions::default()));
         debug!("Disconnected from {}:{}", self.host, self.port);
     }
 
@@ -112,12 +121,14 @@ impl SessionBuilder {
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
             prompt_input: Arc::new(Mutex::new(String::new())),
             lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer))),
+            comops: Arc::new(Mutex::new(CommunicationOptions::default())),
         }
     }
 }
 
 fn build_compatibility_table() -> CompatibilityTable {
     let mut telnet_compat = CompatibilityTable::default();
+    telnet_compat.support(opt::MCCP2);
     telnet_compat.support(opt::GMCP);
     telnet_compat
 }

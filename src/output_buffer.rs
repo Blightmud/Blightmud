@@ -26,6 +26,8 @@ impl OutputBuffer {
         if !self.buffer.is_empty() {
             self.prompt = read_string_from(&self.buffer);
             self.buffer.clear();
+        } else {
+            self.prompt.clear();
         }
     }
 
@@ -53,5 +55,10 @@ impl OutputBuffer {
             }
         }
         lines
+    }
+
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+        self.prompt.clear();
     }
 }

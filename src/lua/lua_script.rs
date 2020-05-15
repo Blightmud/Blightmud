@@ -21,6 +21,10 @@ fn create_default_lua_state(writer: Sender<Event>) -> Lua {
             let globals = ctx.globals();
             globals.set("blight", blight)?;
 
+            let json = include_str!("../../resources/lua/json.lua");
+            let lua_json = ctx.load(json).call::<_, rlua::Value>(())?;
+            globals.set("json", lua_json)?;
+
             let alias_table = ctx.create_table()?;
             globals.set(ALIAS_TABLE, alias_table)?;
             let trigger_table = ctx.create_table()?;

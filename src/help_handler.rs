@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::mpsc::Sender};
 
 pub struct HelpHandler {
     writer: Sender<Event>,
-    files: HashMap<&'static str, String>,
+    files: HashMap<&'static str, &'static str>,
 }
 
 impl HelpHandler {
@@ -15,7 +15,7 @@ impl HelpHandler {
     pub fn show_help(&self, file: &str) {
         if self.files.contains_key(file) {
             self.writer
-                .send(Event::MudOutput(self.files[file].clone()))
+                .send(Event::MudOutput(self.files[file].to_string()))
                 .unwrap();
         } else {
             self.writer
@@ -25,19 +25,10 @@ impl HelpHandler {
     }
 }
 
-fn load_files() -> HashMap<&'static str, String> {
-    let mut files: HashMap<&str, String> = HashMap::new();
-    files.insert(
-        "help",
-        String::from_utf8(include_bytes!("../resources/help/help.md").to_vec()).unwrap(),
-    );
-    files.insert(
-        "welcome",
-        String::from_utf8(include_bytes!("../resources/help/welcome.md").to_vec()).unwrap(),
-    );
-    files.insert(
-        "scripting",
-        String::from_utf8(include_bytes!("../resources/help/scripting.md").to_vec()).unwrap(),
-    );
+fn load_files() -> HashMap<&'static str, &'static str> {
+    let mut files: HashMap<&str, &str> = HashMap::new();
+    files.insert("help", include_str!("../resources/help/help.md"));
+    files.insert("welcome", include_str!("../resources/help/welcome.md"));
+    files.insert("scripting", include_str!("../resources/help/scripting.md"));
     files
 }

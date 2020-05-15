@@ -1,6 +1,7 @@
 use super::{constants::*, util::output_stack_trace};
 use crate::event::Event;
 use chrono::Duration;
+use log::debug;
 use regex::Regex;
 use rlua::{UserData, UserDataMethods, Variadic};
 use std::sync::mpsc::Sender;
@@ -98,6 +99,10 @@ impl UserData for BlightMud {
             this.main_thread_writer
                 .send(Event::ServerInput(strings.join(" "), false))
                 .unwrap();
+            Ok(())
+        });
+        methods.add_method("debug", |_, _, strings: Variadic<String>| {
+            debug!("{}", strings.join(" "));
             Ok(())
         });
         methods.add_method(

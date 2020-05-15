@@ -104,14 +104,12 @@ used.
 
     Example: blight:add_gmcp_receiver("Room.Info", function (data) blight:output(data) end)
 
-    The data you receive will be the raw data as a string. If this isn't what you
-    would like to work with a suggestion is to require this: https://github.com/rxi/json.lua
-    in your main script file.
+    The data you receive will be the raw data as a string. The 'json' module is readily available
+    within the lua state for you to use. You can read about it here: https://github.com/rxi/json.lua
 
 ### Complete GMCP example: 
 
 ```lua
-local json = require "json" -- From: https://github.com/rxi/json.lua
 blight:on_gmcp_ready(function ()
     blight:output("Registering GMCP")
     blight:register_gmcp("Room")

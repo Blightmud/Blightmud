@@ -109,29 +109,30 @@ used.
     in your main script file.
 
 ### Complete GMCP example: 
-    ```lua
-    local json = require "json" -- From: https://github.com/rxi/json.lua
-    blight:on_gmcp_ready(function ()
-        blight:output("Registering GMCP")
-        blight:register_gmcp("Room")
-        blight:register_gmcp("Char")
-        blight:add_gmcp_receiver("Room.Info", function (data)
-            obj = json.decode(data)
-            blight:output("ROOM NUM: " .. obj["num"])
-            blight:output("ROOM MAP: " .. obj["map"])
-        end)
-        blight:add_gmcp_receiver("Char.Vitals", function (data)
-            blight:output("GMCP: Char.Vitals -> " .. data)
-            obj = json.decode(data)
-            -- Do stuff with data
-        end)
-        blight:add_gmcp_receiver("Char.Status", function (data)
-            blight:output("GMCP: Char.Status -> " .. data)
-            obj = json.decode(data)
-            -- Do stuff with data
-        end)
+
+```lua
+local json = require "json" -- From: https://github.com/rxi/json.lua
+blight:on_gmcp_ready(function ()
+    blight:output("Registering GMCP")
+    blight:register_gmcp("Room")
+    blight:register_gmcp("Char")
+    blight:add_gmcp_receiver("Room.Info", function (data)
+        obj = json.decode(data)
+        blight:output("ROOM NUM: " .. obj["num"])
+        blight:output("ROOM MAP: " .. obj["map"])
     end)
-    ```
+    blight:add_gmcp_receiver("Char.Vitals", function (data)
+        blight:output("GMCP: Char.Vitals -> " .. data)
+        obj = json.decode(data)
+        -- Do stuff with data
+    end)
+    blight:add_gmcp_receiver("Char.Status", function (data)
+        blight:output("GMCP: Char.Status -> " .. data)
+        obj = json.decode(data)
+        -- Do stuff with data
+    end)
+end)
+```
 
 - blight:on_connect(callback)
 

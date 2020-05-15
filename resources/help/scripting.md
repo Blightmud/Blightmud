@@ -56,7 +56,7 @@ The following methods exist:
     Example:
     ```lua
     blight:add_trigger(
-            "^(\w+) enters from the \w+\.$",
+            "^(\\w+) enters from the \\w+\\.$",
             { gag = true },
             function (matches)
                 blight:output("!!! " .. match[2] .. " entered, lets kick")

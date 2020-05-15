@@ -21,6 +21,7 @@ pub enum Event {
     ScrollUp,
     ScrollDown,
     ScrollBottom,
+    ShowHelp(String),
     Disconnect,
     Redraw,
     Quit,

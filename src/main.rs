@@ -11,6 +11,7 @@ use std::{net::TcpStream, thread};
 mod ansi;
 mod command;
 mod event;
+mod help_handler;
 mod lua;
 mod output_buffer;
 mod screen;
@@ -26,6 +27,7 @@ use crate::telnet::TelnetHandler;
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use dirs;
 use flate2::read::ZlibDecoder;
+use help_handler::HelpHandler;
 
 type TelnetData = Option<Vec<u8>>;
 
@@ -166,6 +168,9 @@ fn run(
     screen.setup();
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
+    let help_handler = HelpHandler::new(session.main_writer.clone());
+
+    session.send_event(Event::ShowHelp("welcome".to_string()));
 
     loop {
         if session.terminate.load(Ordering::Relaxed) {
@@ -292,6 +297,9 @@ fn run(
                         screen.print_info("Done");
                     }
                 }
+                Event::ShowHelp(hfile) => {
+                    help_handler.show_help(&hfile);
+                }
                 Event::AddTimedEvent(duration, count, id) => {
                     session
                         .timer_writer
@@ -308,15 +316,19 @@ fn run(
                     screen.reset_scroll();
                 }
                 Event::Disconnect => {
-                    session.disconnect();
-                    screen.print_info(&format!(
-                        "Disconnecting from: {}:{}",
-                        session.host, session.port
-                    ));
-                    if let Some(transmit_writer) = &transmit_writer {
-                        transmit_writer.send(None)?;
+                    if session.connected.load(Ordering::Relaxed) {
+                        session.disconnect();
+                        screen.print_info(&format!(
+                            "Disconnecting from: {}:{}",
+                            session.host, session.port
+                        ));
+                        if let Some(transmit_writer) = &transmit_writer {
+                            transmit_writer.send(None)?;
+                        }
+                        transmit_writer = None;
+                    } else {
+                        screen.print_error("No active session");
                     }
-                    transmit_writer = None;
                 }
                 Event::Quit => {
                     session.terminate.store(true, Ordering::Relaxed);

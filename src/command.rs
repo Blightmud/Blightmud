@@ -153,6 +153,14 @@ fn parse_command(msg: &str) -> Event {
                 Event::LoadScript(p1)
             }
         }
+        Some("/help") => {
+            let p1 = iter.next();
+            if let Some(hfile) = p1 {
+                Event::ShowHelp(hfile.to_string())
+            } else {
+                Event::ShowHelp("help".to_string())
+            }
+        }
         Some("/quit") | Some("/q") => Event::Quit,
         _ => Event::ServerInput(msg, true),
     }

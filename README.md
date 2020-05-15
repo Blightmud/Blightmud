@@ -24,7 +24,8 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - [x] GMCP hooks and sending
     - [x] Timers
 - [x] Low resource and fast
-- [ ] In client help and manuals
+- [x] In client help and manuals
+    - [ ] Markdown support in client
 - [ ] Tab completion
 
 ## Compiling
@@ -33,3 +34,6 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 
 ## Contributing
 - Yes please!
+
+## Side notes
+This is my first rust project that has actually grown a bit. Some things might look silly but thanks to rust they should still be safe. Anywho. If you find some antipattern where you have a better idea I'm more then happy to se the PR and learn some more rustier ways.

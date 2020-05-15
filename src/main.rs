@@ -1,12 +1,13 @@
+use dirs;
+use help_handler::HelpHandler;
 use libtelnet_rs::{events::TelnetEvents, telnet::op_option as opt};
 use log::{debug, error, info};
 use signal_hook;
-use std::io::{Read, Write};
 use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
-use std::{net::TcpStream, thread};
+use std::thread;
 
 mod ansi;
 mod command;
@@ -16,6 +17,7 @@ mod lua;
 mod output_buffer;
 mod screen;
 mod session;
+mod tcp_stream;
 mod telnet;
 mod timer;
 
@@ -23,100 +25,10 @@ use crate::command::spawn_input_thread;
 use crate::event::Event;
 use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
-use crate::telnet::TelnetHandler;
+use crate::tcp_stream::*;
 use crate::timer::{spawn_timer_thread, TimerEvent};
-use dirs;
-use flate2::read::ZlibDecoder;
-use help_handler::HelpHandler;
 
 type TelnetData = Option<Vec<u8>>;
-
-fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        let writer = &session.main_writer;
-        let reader = session.stream.clone();
-        let mut telnet_handler = TelnetHandler::new(session.clone());
-        let mut decoder: Option<ZlibDecoder<TcpStream>> = None;
-        let comops = session.comops.clone();
-
-        debug!("Receive stream spawned");
-        loop {
-            if decoder.is_none() {
-                if let Ok(comops) = comops.lock() {
-                    if comops.mccp2 {
-                        debug!("Opening Zlib stream");
-                        decoder.replace(ZlibDecoder::new(
-                            reader
-                                .lock()
-                                .unwrap()
-                                .as_ref()
-                                .unwrap()
-                                .try_clone()
-                                .unwrap(),
-                        ));
-                    }
-                }
-            }
-
-            let bytes = {
-                let mut data = vec![0; 1024];
-                if let Some(decoder) = &mut decoder {
-                    if let Ok(bytes_read) = decoder.read(&mut data) {
-                        data = data.split_at(bytes_read).0.to_vec();
-                    } else {
-                        data = vec![];
-                    }
-                } else {
-                    let stream = reader.lock().unwrap();
-                    if let Some(read_stream) = &mut stream.as_ref() {
-                        if let Ok(bytes_read) = read_stream.read(&mut data) {
-                            data = data.split_at(bytes_read).0.to_vec();
-                        } else {
-                            data = vec![];
-                        }
-                    }
-                }
-                data
-            };
-
-            if bytes.is_empty() {
-                writer
-                    .send(Event::Info("Connection closed".to_string()))
-                    .unwrap();
-                writer.send(Event::Disconnect).unwrap();
-                break;
-            }
-
-            telnet_handler.parse(&bytes);
-        }
-        debug!("Receive stream closing");
-    })
-}
-
-fn spawn_transmit_thread(
-    mut session: Session,
-    transmit_read: Receiver<Option<Vec<u8>>>,
-) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        let mut write_stream = if let Ok(stream) = &session.stream.lock() {
-            stream.as_ref().unwrap().try_clone().unwrap()
-        } else {
-            error!("Failed to spawn transmit stream without a live connection");
-            panic!("Failed to spawn transmit stream");
-        };
-        let transmit_read = transmit_read;
-        debug!("Transmit stream spawned");
-        while let Ok(Some(data)) = transmit_read.recv() {
-            if let Err(info) = write_stream.write_all(data.as_slice()) {
-                session.disconnect();
-                let error = format!("Failed to write to socket: {}", info).to_string();
-                session.send_event(Event::Error(error));
-                session.send_event(Event::Disconnect);
-            }
-        }
-        debug!("Transmit stream closing");
-    })
-}
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
     let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();

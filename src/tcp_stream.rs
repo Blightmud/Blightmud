@@ -40,7 +40,7 @@ impl MudReceiver {
                 data = vec![];
             }
         } else if let Ok(bytes_read) = self.reader.read(&mut data) {
-                data = data.split_at(bytes_read).0.to_vec();
+            data = data.split_at(bytes_read).0.to_vec();
         } else {
             data = vec![];
         }

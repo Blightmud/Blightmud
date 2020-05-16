@@ -9,11 +9,24 @@ use libtelnet_rs::{
 use log::debug;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
+#[derive(Eq, PartialEq)]
+enum TelnetMode {
+    TerminatedPrompt,
+    UnterminatedPrompt,
+}
+
+impl Default for TelnetMode {
+    fn default() -> Self {
+        TelnetMode::UnterminatedPrompt
+    }
+}
+
 pub struct TelnetHandler {
     parser: Arc<Mutex<Parser>>,
     main_writer: Sender<Event>,
     output_buffer: Arc<Mutex<OutputBuffer>>,
     comops: Arc<Mutex<CommunicationOptions>>,
+    mode: TelnetMode,
 }
 
 impl TelnetHandler {
@@ -23,6 +36,7 @@ impl TelnetHandler {
             main_writer: session.main_writer,
             output_buffer: session.output_buffer,
             comops: session.comops.clone(),
+            mode: TelnetMode::UnterminatedPrompt,
         }
     }
 }
@@ -32,7 +46,19 @@ impl TelnetHandler {
         if let Ok(mut parser) = self.parser.lock() {
             for event in parser.receive(data) {
                 match event {
-                    TelnetEvents::IAC(_) => {}
+                    TelnetEvents::IAC(iac) => {
+                        if iac.command == cmd::GA {
+                            let mut buffer = self.output_buffer.lock().unwrap();
+                            if self.mode == TelnetMode::UnterminatedPrompt {
+                                debug!("Setting telnet mode: TerminatedPrompt");
+                                self.mode = TelnetMode::TerminatedPrompt;
+                                buffer.flush();
+                            } else {
+                                buffer.buffer_to_prompt(true);
+                                self.main_writer.send(Event::Prompt).unwrap();
+                            }
+                        }
+                    }
                     TelnetEvents::Negotiation(neg) => {
                         debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
                         if neg.option == opt::GMCP && neg.command == cmd::WILL {
@@ -74,8 +100,10 @@ impl TelnetHandler {
                                 for line in new_lines {
                                     self.main_writer.send(Event::MudOutput(line)).unwrap();
                                 }
-                                if !output_buffer.is_empty() {
-                                    output_buffer.buffer_to_prompt();
+                                if !output_buffer.is_empty()
+                                    && self.mode == TelnetMode::UnterminatedPrompt
+                                {
+                                    output_buffer.buffer_to_prompt(false);
                                     self.main_writer.send(Event::Prompt).unwrap();
                                 }
                             }

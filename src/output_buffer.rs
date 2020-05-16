@@ -22,10 +22,12 @@ impl OutputBuffer {
         }
     }
 
-    pub fn buffer_to_prompt(&mut self) {
+    pub fn buffer_to_prompt(&mut self, consume_buffer: bool) {
         if !self.buffer.is_empty() {
             self.prompt = read_string_from(&self.buffer);
-            self.buffer.clear();
+            if consume_buffer {
+                self.buffer.clear();
+            }
         } else {
             self.prompt.clear();
         }
@@ -39,6 +41,7 @@ impl OutputBuffer {
         for (i, bytes) in self.buffer.windows(2).enumerate() {
             if bytes == b"\r\n" {
                 if i == 0 {
+                    lines.push("".to_string());
                     last_cut = 2
                 } else {
                     let line: String = read_string_from(&self.buffer[last_cut..i]);
@@ -55,6 +58,10 @@ impl OutputBuffer {
             }
         }
         lines
+    }
+
+    pub fn flush(&mut self) {
+        self.buffer.clear();
     }
 
     pub fn clear(&mut self) {
@@ -79,7 +86,7 @@ mod output_buffer_tests {
         let lines = buffer.receive(b"Some misc output\r\nfollowed by some more output\r\nprompt");
         assert_eq!(lines.len(), 2);
         assert!(!buffer.is_empty());
-        buffer.buffer_to_prompt();
+        buffer.buffer_to_prompt(true);
         assert_eq!(buffer.prompt, "prompt");
         assert!(buffer.is_empty());
     }

@@ -156,7 +156,10 @@ fn run(
                         let mut parser = session.telnet_parser.lock().unwrap();
                         if let Some(event) = parser.subnegotiation_text(
                             opt::GMCP,
-                            "Core.Hello {\"Client\":\"Blightmud\",\"Version\":\"0.1.0\"}",
+                            &format!(
+                                "Core.Hello {{\"Client\":\"Blightmud\",\"Version\":\"{}\"}}",
+                                VERSION
+                            ),
                         ) {
                             if let TelnetEvents::DataSend(data) = event {
                                 debug!("Sending GMCP Core.Hello");

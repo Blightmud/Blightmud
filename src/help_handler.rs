@@ -19,7 +19,7 @@ impl HelpHandler {
     }
 
     pub fn show_help(&self, file: &str) {
-        let output = if self.files.contains_key(file) {
+        let event = if self.files.contains_key(file) {
             let mut md_bytes = vec![];
 
             let file = self.files[file];
@@ -35,18 +35,18 @@ impl HelpHandler {
 
             if mdcat::push_tty(&md_settings(), &mut md_bytes, &base_dir, parser).is_ok() {
                 if let Ok(md_string) = String::from_utf8(md_bytes) {
-                    md_string
+                    Event::Output(md_string)
                 } else {
-                    "Error parsing help file".to_string()
+                    Event::Info("Error parsing help file".to_string())
                 }
             } else {
-                "Error parsing help file".to_string()
+                Event::Info("Error parsing help file".to_string())
             }
         } else {
-            "No such helpfile found".to_string()
+            Event::Info("No such helpfile found".to_string())
         };
 
-        self.writer.send(Event::Info(output)).unwrap();
+        self.writer.send(event).unwrap();
     }
 }
 

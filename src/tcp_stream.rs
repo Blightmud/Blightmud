@@ -13,7 +13,7 @@ use std::{
 };
 
 struct MudReceiver {
-    reader: Arc<Mutex<Option<TcpStream>>>,
+    reader: TcpStream,
     decoder: Option<ZlibDecoder<TcpStream>>,
     comops: Arc<Mutex<CommunicationOptions>>,
 }
@@ -24,15 +24,8 @@ impl MudReceiver {
             if let Ok(comops) = self.comops.lock() {
                 if comops.mccp2 {
                     debug!("Opening Zlib stream");
-                    self.decoder.replace(ZlibDecoder::new(
-                        self.reader
-                            .lock()
-                            .unwrap()
-                            .as_ref()
-                            .unwrap()
-                            .try_clone()
-                            .unwrap(),
-                    ));
+                    self.decoder
+                        .replace(ZlibDecoder::new(self.reader.try_clone().unwrap()));
                 }
             }
         }
@@ -46,17 +39,10 @@ impl MudReceiver {
             } else {
                 data = vec![];
             }
+        } else if let Ok(bytes_read) = self.reader.read(&mut data) {
+                data = data.split_at(bytes_read).0.to_vec();
         } else {
-            let stream = self.reader.lock().unwrap();
-            if let Some(read_stream) = &mut stream.as_ref() {
-                if let Ok(bytes_read) = read_stream.read(&mut data) {
-                    data = data.split_at(bytes_read).0.to_vec();
-                } else {
-                    data = vec![];
-                }
-            } else {
-                data = vec![];
-            }
+            data = vec![];
         }
         data
     }
@@ -65,7 +51,14 @@ impl MudReceiver {
 impl From<&Session> for MudReceiver {
     fn from(session: &Session) -> Self {
         Self {
-            reader: session.stream.clone(),
+            reader: session
+                .stream
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .try_clone()
+                .unwrap(),
             decoder: None,
             comops: session.comops.clone(),
         }

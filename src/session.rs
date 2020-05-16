@@ -46,8 +46,8 @@ impl Session {
     }
 
     pub fn disconnect(&mut self) {
-        debug!("Disconnecting from {}:{}", self.host, self.port);
         if self.connected.load(Ordering::Relaxed) {
+            debug!("Disconnecting from {}:{}", self.host, self.port);
             if let Ok(mut stream) = self.stream.lock() {
                 stream
                     .as_mut()
@@ -57,16 +57,16 @@ impl Session {
                 *stream = None;
                 self.connected.store(false, Ordering::Relaxed);
             }
+            if let Ok(mut output_buffer) = self.output_buffer.lock() {
+                output_buffer.clear()
+            }
+            self.comops = Arc::new(Mutex::new(CommunicationOptions::default()));
+            self.telnet_parser = Arc::new(Mutex::new(Parser::with_support_and_capacity(
+                4096,
+                build_compatibility_table(),
+            )));
+            debug!("Disconnected from {}:{}", self.host, self.port);
         }
-        if let Ok(mut output_buffer) = self.output_buffer.lock() {
-            output_buffer.clear()
-        }
-        self.comops = Arc::new(Mutex::new(CommunicationOptions::default()));
-        self.telnet_parser = Arc::new(Mutex::new(Parser::with_support_and_capacity(
-            4096,
-            build_compatibility_table(),
-        )));
-        debug!("Disconnected from {}:{}", self.host, self.port);
     }
 
     pub fn send_event(&mut self, event: Event) {

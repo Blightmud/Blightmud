@@ -83,4 +83,17 @@ mod output_buffer_tests {
         assert_eq!(buffer.prompt, "prompt");
         assert!(buffer.is_empty());
     }
+
+    #[test]
+    fn test_line_capture() {
+        let mut buffer = OutputBuffer::new();
+        let lines = buffer.receive(b"Some misc output\r\nfollowed by some more output\r\nprompt");
+        let mut iter = lines.iter();
+        assert_eq!(iter.next(), Some(&"Some misc output".to_string()));
+        assert_eq!(
+            iter.next(),
+            Some(&"followed by some more output".to_string())
+        );
+        assert_eq!(iter.next(), None);
+    }
 }

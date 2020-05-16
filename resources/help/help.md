@@ -6,7 +6,7 @@ Available topics:
 
     - scripting
 
-Helpfiles can also be viewed at: https://github.com/LiquidityC/Blightmud/tree/master/resources/help
+Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tree/master/resources/help)
 
 ## Basic commands:
 

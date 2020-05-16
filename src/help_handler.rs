@@ -1,4 +1,4 @@
-use crate::event::Event;
+use crate::{event::Event, VERSION};
 
 use std::path::Path;
 use std::{collections::HashMap, sync::mpsc::Sender};
@@ -26,7 +26,7 @@ impl HelpHandler {
         if self.files.contains_key(file) {
             let mut md_bytes = vec![];
 
-            let file = self.files[file];
+            let file = self.files[file].replace("$VERSION", VERSION);
 
             let mut options = Options::empty();
             options.insert(Options::ENABLE_TASKLISTS);

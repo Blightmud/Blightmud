@@ -61,4 +61,26 @@ impl OutputBuffer {
         self.buffer.clear();
         self.prompt.clear();
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod output_buffer_tests {
+
+    use super::OutputBuffer;
+
+    #[test]
+    fn test_prompt_capture() {
+        let mut buffer = OutputBuffer::new();
+        assert!(buffer.is_empty());
+        let lines = buffer.receive(b"Some misc output\r\nfollowed by some more output\r\nprompt");
+        assert_eq!(lines.len(), 2);
+        assert!(!buffer.is_empty());
+        buffer.buffer_to_prompt();
+        assert_eq!(buffer.prompt, "prompt");
+        assert!(buffer.is_empty());
+    }
 }

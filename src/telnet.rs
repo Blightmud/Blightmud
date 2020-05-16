@@ -32,14 +32,7 @@ impl TelnetHandler {
         if let Ok(mut parser) = self.parser.lock() {
             for event in parser.receive(data) {
                 match event {
-                    TelnetEvents::IAC(iac) => {
-                        if iac.command == cmd::GA {
-                            if let Ok(mut output_buffer) = self.output_buffer.lock() {
-                                output_buffer.buffer_to_prompt();
-                                self.main_writer.send(Event::Prompt).unwrap();
-                            }
-                        }
-                    }
+                    TelnetEvents::IAC(_) => {}
                     TelnetEvents::Negotiation(neg) => {
                         debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
                         if neg.option == opt::GMCP && neg.command == cmd::WILL {
@@ -80,6 +73,10 @@ impl TelnetHandler {
                                 let new_lines = output_buffer.receive(msg.as_slice());
                                 for line in new_lines {
                                     self.main_writer.send(Event::MudOutput(line)).unwrap();
+                                }
+                                if !output_buffer.is_empty() {
+                                    output_buffer.buffer_to_prompt();
+                                    self.main_writer.send(Event::Prompt).unwrap();
                                 }
                             }
                         }

@@ -62,6 +62,10 @@ impl Session {
             output_buffer.clear()
         }
         self.comops = Arc::new(Mutex::new(CommunicationOptions::default()));
+        self.telnet_parser = Arc::new(Mutex::new(Parser::with_support_and_capacity(
+            4096,
+            build_compatibility_table(),
+        )));
         debug!("Disconnected from {}:{}", self.host, self.port);
     }
 
@@ -115,7 +119,7 @@ impl SessionBuilder {
             timer_writer,
             terminate: Arc::new(AtomicBool::new(false)),
             telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
-                1024,
+                4096,
                 build_compatibility_table(),
             ))),
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),

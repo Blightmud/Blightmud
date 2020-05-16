@@ -19,7 +19,11 @@ impl HelpHandler {
     }
 
     pub fn show_help(&self, file: &str) {
-        let event = if self.files.contains_key(file) {
+        self.writer.send(self.parse_helpfile(file)).unwrap();
+    }
+
+    fn parse_helpfile(&self, file: &str) -> Event {
+        if self.files.contains_key(file) {
             let mut md_bytes = vec![];
 
             let file = self.files[file];
@@ -43,10 +47,8 @@ impl HelpHandler {
                 Event::Info("Error parsing help file".to_string())
             }
         } else {
-            Event::Info("No such helpfile found".to_string())
-        };
-
-        self.writer.send(event).unwrap();
+            Event::Info("No such help file found".to_string())
+        }
     }
 }
 
@@ -66,5 +68,38 @@ fn md_settings() -> Settings {
         terminal_size,
         resource_access: ResourceAccess::LocalOnly,
         syntax_set: SyntaxSet::load_defaults_newlines(),
+    }
+}
+
+#[cfg(test)]
+mod help_test {
+
+    use super::HelpHandler;
+    use crate::event::Event;
+    use std::sync::mpsc::{channel, Receiver, Sender};
+
+    fn handler() -> HelpHandler {
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        HelpHandler::new(writer)
+    }
+
+    #[test]
+    fn confirm_markdown_parsing() {
+        let handler = handler();
+        for file in handler.files.keys() {
+            assert!(match handler.parse_helpfile(file) {
+                Event::Output(_) => true,
+                _ => false,
+            });
+        }
+    }
+
+    #[test]
+    fn file_not_present() {
+        let handler = handler();
+        assert_eq!(
+            handler.parse_helpfile("nothing"),
+            Event::Info("No such help file found".to_string())
+        );
     }
 }

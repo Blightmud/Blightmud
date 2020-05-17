@@ -12,10 +12,10 @@ if you get confused.
 ## Data flow
 There are essentially 4 core threads running when the client is running.
 
-    - *main_thread* (main.rs:run())                           : (acts as a router for all [Events](src/event.rs))
-    - *transmit_thread* [tcp_stream.rs](src/tcp_stream.rs)    : Handles sending bytes to server
-    - *receive_thread* [tcp_stream.rs](src/tcp_stream.rs)     : Handles reading bytes from server
-    - *input_thread* [command.rs](rsc/command.rs)             : Reads keyboard input
+- *main_thread* (main.rs:run())                           : (acts as a router for all [Events](src/event.rs))
+- *transmit_thread* [tcp_stream.rs](src/tcp_stream.rs)    : Handles sending bytes to server
+- *receive_thread* [tcp_stream.rs](src/tcp_stream.rs)     : Handles reading bytes from server
+- *input_thread* [command.rs](rsc/command.rs)             : Reads keyboard input
 
 All these threads send [events](src/event.rs) through a channel Sender to the
 *main_thread* that acts as a router distributing the data to the right handler.
@@ -42,7 +42,7 @@ here on github so we have some tracability on features.
 ## Committing
 Before you commit please perform the following tasks:
 
-    - Considder if what you added is testable. If it is then write a test
-    - `cargo fmt`
-    - `cargo clippy` (ignore the complex main.rs:run() warning for now)
-    - `cargo test`
+- Considder if what you added is testable. If it is then write a test
+- `cargo fmt`
+- `cargo clippy` (ignore the complex main.rs:run() warning for now)
+- `cargo test`

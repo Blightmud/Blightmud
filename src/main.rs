@@ -27,8 +27,8 @@ use crate::command::spawn_input_thread;
 use crate::event::Event;
 use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
-use crate::tcp_stream::*;
 use crate::timer::{spawn_timer_thread, TimerEvent};
+use event::EventHandler;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -94,70 +94,26 @@ fn run(
 
     session.send_event(Event::ShowHelp("welcome".to_string()));
 
+    let mut event_handler = EventHandler::from(&session);
+
     loop {
         if session.terminate.load(Ordering::Relaxed) {
             break;
         }
         if let Ok(event) = main_thread_read.recv() {
             match event {
-                Event::Prompt => {
-                    let output_buffer = session.output_buffer.lock().unwrap();
-                    if let Ok(script) = session.lua_script.lock() {
-                        script.check_for_prompt_trigger_match(&output_buffer.prompt);
-                    }
-                    screen.print_prompt(&output_buffer.prompt);
+                Event::ServerSend(_)
+                | Event::ServerInput(_, _)
+                | Event::Connect(_, _)
+                | Event::Connected
+                | Event::Disconnect => {
+                    event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
                 }
-                Event::ServerSend(data) => {
-                    if let Some(transmit_writer) = &transmit_writer {
-                        transmit_writer.send(Some(data))?;
-                    } else {
-                        screen.print_error("No active session");
-                    }
-                }
-                Event::ServerInput(msg, check_alias) => {
-                    if let Ok(script) = session.lua_script.lock() {
-                        if !check_alias || !script.check_for_alias_match(&msg) {
-                            screen.print_send(&msg);
-                            if let Ok(mut parser) = session.telnet_parser.lock() {
-                                if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
-                                    session.main_writer.send(Event::ServerSend(buffer))?;
-                                }
-                            }
-                        }
-                    }
-                }
-                Event::MudOutput(msg) => {
-                    if let Ok(script) = session.lua_script.lock() {
-                        if !script.check_for_trigger_match(&msg) {
-                            screen.print_output(&msg);
-                        }
-                    }
-                }
-                Event::Output(msg) => {
-                    screen.print_output(&msg);
-                }
-                Event::UserInputBuffer(input_buffer) => {
-                    let mut prompt_input = session.prompt_input.lock().unwrap();
-                    *prompt_input = input_buffer;
-                    screen.print_prompt_input(&prompt_input);
-                }
-                Event::Connect(host, port) => {
-                    session.disconnect();
-                    if session.connect(&host, port) {
-                        let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) =
-                            channel();
-                        spawn_receive_thread(session.clone());
-                        spawn_transmit_thread(session.clone(), reader);
-                        transmit_writer.replace(writer);
-                    } else {
-                        session.main_writer.send(Event::Error(
-                            format!("Failed to connect to {}:{}", host, port).to_string(),
-                        ))?;
-                    }
-                }
-                Event::Connected => {
-                    debug!("Connected to {}:{}", session.host, session.port);
-                    session.lua_script.lock().unwrap().on_connect();
+                Event::MudOutput(_)
+                | Event::Output(_)
+                | Event::Prompt
+                | Event::UserInputBuffer(_) => {
+                    event_handler.handle_output_events(event, &mut screen)?;
                 }
                 Event::ProtoEnabled(proto) => {
                     if let opt::GMCP = proto {
@@ -239,21 +195,6 @@ fn run(
                 Event::Redraw => {
                     screen.setup();
                     screen.reset_scroll();
-                }
-                Event::Disconnect => {
-                    if session.connected.load(Ordering::Relaxed) {
-                        session.disconnect();
-                        screen.print_info(&format!(
-                            "Disconnecting from: {}:{}",
-                            session.host, session.port
-                        ));
-                        if let Some(transmit_writer) = &transmit_writer {
-                            transmit_writer.send(None)?;
-                        }
-                        transmit_writer = None;
-                    } else {
-                        screen.print_error("No active session");
-                    }
                 }
                 Event::Quit => {
                     session.terminate.store(true, Ordering::Relaxed);

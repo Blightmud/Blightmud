@@ -1,4 +1,6 @@
+#[cfg(not(debug_assertions))]
 use dirs;
+
 use help_handler::HelpHandler;
 use libtelnet_rs::{events::TelnetEvents, telnet::op_option as opt};
 use log::{debug, error, info};
@@ -42,6 +44,7 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
     })
 }
 
+#[cfg(not(debug_assertions))]
 fn start_logging() {
     if let Some(data_dir) = dirs::data_dir() {
         let logpath = data_dir.join("blightmud/logs");
@@ -49,6 +52,11 @@ fn start_logging() {
         let logfile = logpath.join("log.txt");
         simple_logging::log_to_file(logfile.to_str().unwrap(), log::LevelFilter::Debug).unwrap();
     }
+}
+
+#[cfg(debug_assertions)]
+fn start_logging() {
+    simple_logging::log_to_file("log.txt", log::LevelFilter::Debug).unwrap();
 }
 
 fn main() {

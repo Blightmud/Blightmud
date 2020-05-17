@@ -1,4 +1,4 @@
 /target
-/logs/*.txt
+/log.txt
 /.vimrc
 /*.lua

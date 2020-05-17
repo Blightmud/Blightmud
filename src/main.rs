@@ -28,7 +28,7 @@ use crate::session::{Session, SessionBuilder};
 use crate::tcp_stream::*;
 use crate::timer::{spawn_timer_thread, TimerEvent};
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 type TelnetData = Option<Vec<u8>>;
 

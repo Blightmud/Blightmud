@@ -194,7 +194,6 @@ dependencies = [
  "strip-ansi-escapes",
  "syntect",
  "termion",
- "textwrap",
  "timer",
 ]
 

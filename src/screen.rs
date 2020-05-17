@@ -6,7 +6,6 @@ use termion::{
     raw::{IntoRawMode, RawTerminal},
     screen::AlternateScreen,
 };
-use textwrap;
 
 struct ScrollData(bool, usize);
 const OUTPUT_START_LINE: u16 = 2;
@@ -119,7 +118,7 @@ impl Screen {
         if line.trim().is_empty() {
             self.print_line(&line);
         } else {
-            for line in textwrap::wrap_iter(line, self.width as usize) {
+            for line in wrap_line(&line, self.width as usize) {
                 self.print_line(&line);
             }
         }
@@ -250,4 +249,37 @@ impl Screen {
             self.history.pop_back();
         }
     }
+}
+
+fn wrap_line(line: &str, width: usize) -> Vec<&str> {
+    let mut lines: Vec<&str> = vec![];
+
+    for line in line.lines() {
+        let mut last_cut: usize = 0;
+        let mut last_space: usize = 0;
+        let mut length = 0;
+        let mut in_escape = false;
+        for c in line.chars() {
+            if c == '\x1b' {
+                in_escape = true;
+                continue;
+            }
+
+            if in_escape {
+                in_escape = !c.is_alphabetic();
+                continue;
+            }
+
+            length += 1;
+            if c == ' ' {
+                last_space = length;
+            }
+            if length - last_cut > width {
+                lines.push(&line[last_cut..last_space]);
+                last_cut = last_space;
+            }
+        }
+        lines.push(&line[last_cut..]);
+    }
+    lines
 }

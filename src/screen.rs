@@ -57,16 +57,7 @@ impl Screen {
         )
         .unwrap(); // Set scroll region, non origin mode
         self.redraw_top_bar("", 0);
-        write!(
-            self.screen,
-            "{}{}{}",
-            termion::cursor::Goto(1, self.output_line + 1),
-            termion::clear::CurrentLine,
-            color::Fg(color::Green),
-        )
-        .unwrap();
-        write!(self.screen, "{:━<1$}", "", self.width as usize).unwrap(); // Print separator
-        write!(self.screen, "{}", color::Fg(color::Reset)).unwrap();
+        self.redraw_bottom_bar();
         self.screen.flush().unwrap();
     }
 
@@ -85,6 +76,32 @@ impl Screen {
             "".to_string()
         };
         write!(self.screen, "{:═<1$}", output, self.width as usize).unwrap(); // Print separator
+        write!(
+            self.screen,
+            "{}{}",
+            color::Fg(color::Reset),
+            termion::cursor::Goto(1, self.prompt_line)
+        )
+        .unwrap();
+    }
+
+    fn redraw_bottom_bar(&mut self) {
+        write!(
+            self.screen,
+            "{}{}{}",
+            termion::cursor::Goto(1, self.output_line + 1),
+            termion::clear::CurrentLine,
+            color::Fg(color::Green),
+        )
+        .unwrap();
+
+        let info = if self.scroll_data.0 {
+            "━ (more) ".to_string()
+        } else {
+            "".to_string()
+        };
+
+        write!(self.screen, "{:━<1$}", info, self.width as usize).unwrap(); // Print separator
         write!(
             self.screen,
             "{}{}",
@@ -218,6 +235,7 @@ impl Screen {
             )
             .unwrap();
         }
+        self.redraw_bottom_bar();
     }
 
     pub fn reset_scroll(&mut self) {
@@ -250,6 +268,7 @@ impl Screen {
                 .unwrap();
             }
         }
+        self.redraw_bottom_bar();
     }
 
     pub fn flush(&mut self) {

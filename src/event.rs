@@ -139,9 +139,8 @@ impl EventHandler {
                         transmit_writer.send(None)?;
                     }
                     transmit_writer.take();
-                } else {
-                    screen.print_error("No active session");
                 }
+                screen.redraw_top_bar("", 0);
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

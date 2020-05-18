@@ -281,7 +281,7 @@ impl Screen {
             self.history.push_back(String::from(line));
         }
         while self.history.len() >= self.history.capacity() {
-            self.history.pop_back();
+            self.history.pop_front();
         }
     }
 }

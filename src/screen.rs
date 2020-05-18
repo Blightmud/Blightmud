@@ -56,16 +56,7 @@ impl Screen {
             DisableOriginMode
         )
         .unwrap(); // Set scroll region, non origin mode
-        write!(
-            self.screen,
-            "{}{}{}",
-            termion::cursor::Goto(1, 1),
-            termion::clear::CurrentLine,
-            color::Fg(color::Green),
-        )
-        .unwrap();
-        write!(self.screen, "{:=<1$}", "", self.width as usize).unwrap(); // Print separator
-        write!(self.screen, "{}", color::Fg(color::Reset)).unwrap();
+        self.redraw_top_bar("", 0);
         write!(
             self.screen,
             "{}{}{}",
@@ -74,9 +65,33 @@ impl Screen {
             color::Fg(color::Green),
         )
         .unwrap();
-        write!(self.screen, "{:_<1$}", "", self.width as usize).unwrap(); // Print separator
+        write!(self.screen, "{:━<1$}", "", self.width as usize).unwrap(); // Print separator
         write!(self.screen, "{}", color::Fg(color::Reset)).unwrap();
         self.screen.flush().unwrap();
+    }
+
+    pub fn redraw_top_bar(&mut self, host: &str, port: u32) {
+        write!(
+            self.screen,
+            "{}{}{}",
+            termion::cursor::Goto(1, 1),
+            termion::clear::CurrentLine,
+            color::Fg(color::Green),
+        )
+        .unwrap();
+        let output = if !host.is_empty() {
+            format!("═ {}:{} ═", host, port)
+        } else {
+            "".to_string()
+        };
+        write!(self.screen, "{:═<1$}", output, self.width as usize).unwrap(); // Print separator
+        write!(
+            self.screen,
+            "{}{}",
+            color::Fg(color::Reset),
+            termion::cursor::Goto(1, self.prompt_line)
+        )
+        .unwrap();
     }
 
     pub fn reset(&mut self) {

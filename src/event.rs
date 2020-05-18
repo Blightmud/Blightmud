@@ -124,6 +124,7 @@ impl EventHandler {
             }
             Event::Connected => {
                 debug!("Connected to {}:{}", self.session.host, self.session.port);
+                screen.redraw_top_bar(&self.session.host, self.session.port);
                 self.session.lua_script.lock().unwrap().on_connect();
                 Ok(())
             }

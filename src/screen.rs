@@ -16,6 +16,7 @@ pub struct Screen {
     _height: u16,
     output_line: u16,
     prompt_line: u16,
+    cursor_prompt_pos: u16,
     history: VecDeque<String>,
     scroll_data: ScrollData,
 }
@@ -34,6 +35,7 @@ impl Screen {
             _height: height,
             output_line,
             prompt_line,
+            cursor_prompt_pos: 1,
             history: VecDeque::with_capacity(1024),
             scroll_data: ScrollData(false, 0),
         }
@@ -80,7 +82,7 @@ impl Screen {
             self.screen,
             "{}{}",
             color::Fg(color::Reset),
-            termion::cursor::Goto(1, self.prompt_line)
+            self.goto_prompt(),
         )
         .unwrap();
     }
@@ -106,9 +108,13 @@ impl Screen {
             self.screen,
             "{}{}",
             color::Fg(color::Reset),
-            termion::cursor::Goto(1, self.prompt_line)
+            self.goto_prompt(),
         )
         .unwrap();
+    }
+
+    fn goto_prompt(&self) -> termion::cursor::Goto {
+        termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line)
     }
 
     pub fn reset(&mut self) {
@@ -124,7 +130,7 @@ impl Screen {
                 termion::cursor::Goto(1, self.output_line),
                 termion::scroll::Up(1),
                 prompt.trim_end(),
-                termion::cursor::Goto(1, self.prompt_line),
+                self.goto_prompt(),
             )
             .unwrap();
         }
@@ -136,13 +142,14 @@ impl Screen {
             let (_, last) = input.split_at(self.width as usize);
             input = last;
         }
+        self.cursor_prompt_pos = pos as u16 + 1;
         write!(
             self.screen,
             "{}{}{}{}",
             termion::cursor::Goto(1, self.prompt_line),
             termion::clear::CurrentLine,
             input,
-            termion::cursor::Goto(1 + pos as u16, self.prompt_line),
+            self.goto_prompt(),
         )
         .unwrap();
     }
@@ -166,7 +173,7 @@ impl Screen {
                 termion::cursor::Goto(1, self.output_line),
                 termion::scroll::Up(1),
                 &line,
-                termion::cursor::Goto(1, self.prompt_line)
+                self.goto_prompt(),
             )
             .unwrap();
         }
@@ -292,30 +299,54 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
     for line in line.lines() {
         let mut last_cut: usize = 0;
         let mut last_space: usize = 0;
-        let mut length = 0;
+        let mut print_length = 0;
+        let mut print_length_since_space = 0;
         let mut in_escape = false;
-        for c in line.chars() {
+        for (length, c) in line.chars().enumerate() {
             if c == '\x1b' {
                 in_escape = true;
                 continue;
             }
 
             if in_escape {
-                in_escape = !c.is_alphabetic();
+                in_escape = c != 'm';
                 continue;
             }
 
-            length += 1;
-            let line_length = length - last_cut;
-            if c == ' ' && line_length + 2 < width {
+            print_length += 1;
+            print_length_since_space += 1;
+            if c == ' ' && print_length < width {
                 last_space = length;
+                print_length_since_space = 0;
             }
-            if line_length > width {
-                lines.push(&line[last_cut..last_space]);
-                last_cut = last_space;
+            if print_length >= width {
+                let new_line = &line[last_cut..last_space];
+                if !new_line.is_empty() {
+                    lines.push(new_line);
+                }
+                print_length = print_length_since_space;
+                last_cut = last_space + 1;
             }
         }
         lines.push(&line[last_cut..]);
     }
     lines
+}
+
+#[cfg(test)]
+mod screen_test {
+    use super::*;
+
+    #[test]
+    fn test_wrap_line() {
+        let line: &'static str =
+            "\x1b[34mSomething \x1b[0mthat's pretty \x1b[32mlong and annoying\x1b[0m";
+        let lines = wrap_line(&line, 11);
+        let mut iter = lines.iter();
+        assert_eq!(iter.next(), Some(&"\u{1b}[34mSomething"));
+        assert_eq!(iter.next(), Some(&"\u{1b}[0mthat's"));
+        assert_eq!(iter.next(), Some(&"pretty"));
+        assert_eq!(iter.next(), Some(&"\u{1b}[32mlong and"));
+        assert_eq!(iter.next(), Some(&"annoying\u{1b}[0m"));
+    }
 }

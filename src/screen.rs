@@ -306,10 +306,11 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
             }
 
             length += 1;
-            if c == ' ' {
+            let line_length = length - last_cut;
+            if c == ' ' && line_length + 2 < width {
                 last_space = length;
             }
-            if length - last_cut > width {
+            if line_length > width {
                 lines.push(&line[last_cut..last_space]);
                 last_cut = last_space;
             }

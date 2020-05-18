@@ -112,7 +112,7 @@ fn run(
                 Event::MudOutput(_)
                 | Event::Output(_)
                 | Event::Prompt
-                | Event::UserInputBuffer(_) => {
+                | Event::UserInputBuffer(_, _) => {
                     event_handler.handle_output_events(event, &mut screen)?;
                 }
                 Event::ProtoEnabled(proto) => {

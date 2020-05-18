@@ -98,7 +98,7 @@ impl Screen {
         }
     }
 
-    pub fn print_prompt_input(&mut self, input: &str) {
+    pub fn print_prompt_input(&mut self, input: &str, pos: usize) {
         let mut input = input;
         while input.len() >= self.width as usize {
             let (_, last) = input.split_at(self.width as usize);
@@ -106,10 +106,11 @@ impl Screen {
         }
         write!(
             self.screen,
-            "{}{}{}",
+            "{}{}{}{}",
             termion::cursor::Goto(1, self.prompt_line),
             termion::clear::CurrentLine,
             input,
+            termion::cursor::Goto(1 + pos as u16, self.prompt_line),
         )
         .unwrap();
     }

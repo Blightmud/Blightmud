@@ -24,7 +24,7 @@ pub enum Event {
     Output(String),
     Error(String),
     Info(String),
-    UserInputBuffer(String),
+    UserInputBuffer(String, usize),
     Connect(String, u32),
     Connected,
     ProtoEnabled(u8),
@@ -169,10 +169,10 @@ impl EventHandler {
                 screen.print_prompt(&output_buffer.prompt);
                 Ok(())
             }
-            Event::UserInputBuffer(input_buffer) => {
+            Event::UserInputBuffer(input_buffer, pos) => {
                 let mut prompt_input = self.session.prompt_input.lock().unwrap();
                 *prompt_input = input_buffer;
-                screen.print_prompt_input(&prompt_input);
+                screen.print_prompt_input(&prompt_input, pos);
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

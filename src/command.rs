@@ -12,11 +12,16 @@ struct CommandBuffer {
     cached_buffer: String,
     history: VecDeque<String>,
     current_index: usize,
+    cursor_pos: usize,
 }
 
 impl CommandBuffer {
     fn get_buffer(&self) -> String {
         self.buffer.clone()
+    }
+
+    fn get_pos(&self) -> usize {
+        self.cursor_pos
     }
 
     fn submit(&mut self) -> &str {
@@ -26,15 +31,38 @@ impl CommandBuffer {
         }
         self.current_index = self.history.len();
         self.buffer.clear();
+        self.cursor_pos = 0;
         &self.history[self.current_index - 1]
     }
 
-    fn push_key(&mut self, c: char) {
-        self.buffer.push(c);
+    fn move_left(&mut self) {
+        if self.cursor_pos > 0 {
+            self.cursor_pos -= 1;
+        }
     }
 
-    fn pop_key(&mut self) {
-        self.buffer.pop();
+    fn move_right(&mut self) {
+        if self.cursor_pos < self.buffer.len() {
+            self.cursor_pos += 1;
+        }
+    }
+
+    fn remove(&mut self) {
+        if self.cursor_pos < self.buffer.len() {
+            self.buffer.remove(self.cursor_pos - 1);
+        } else {
+            self.buffer.pop();
+        }
+        self.move_left();
+    }
+
+    fn push_key(&mut self, c: char) {
+        if self.cursor_pos >= self.buffer.len() {
+            self.buffer.push(c);
+        } else {
+            self.buffer.insert(self.cursor_pos, c);
+        }
+        self.move_right();
     }
 
     fn previous(&mut self) {
@@ -50,6 +78,7 @@ impl CommandBuffer {
             }
         };
         self.buffer = self.history[self.current_index].clone();
+        self.cursor_pos = self.buffer.len();
     }
 
     fn next(&mut self) {
@@ -70,6 +99,7 @@ impl CommandBuffer {
                 self.buffer = self.history[self.current_index].clone();
             }
         }
+        self.cursor_pos = self.buffer.len();
     }
 }
 
@@ -105,13 +135,18 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                 Key::Up | Key::Ctrl('p') => buffer.previous(),
                 Key::Down | Key::Ctrl('n') => buffer.next(),
                 Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
+                Key::Left => buffer.move_left(),
+                Key::Right => buffer.move_right(),
                 Key::Backspace => {
-                    buffer.pop_key();
+                    buffer.remove();
                 }
                 _ => {}
             };
             writer
-                .send(Event::UserInputBuffer(buffer.get_buffer()))
+                .send(Event::UserInputBuffer(
+                    buffer.get_buffer(),
+                    buffer.get_pos(),
+                ))
                 .unwrap();
             if terminate.load(Ordering::Relaxed) {
                 break;
@@ -163,5 +198,37 @@ fn parse_command(msg: &str) -> Event {
         }
         Some("/quit") | Some("/q") => Event::Quit,
         _ => Event::ServerInput(msg, true),
+    }
+}
+
+#[cfg(test)]
+mod command_test {
+
+    use super::CommandBuffer;
+
+    fn push_string(buffer: &mut CommandBuffer, msg: &str) {
+        msg.chars().for_each(|c| buffer.push_key(c));
+    }
+
+    #[test]
+    fn test_editing() {
+        let mut buffer = CommandBuffer::default();
+
+        push_string(&mut buffer, "test is test");
+        assert_eq!(buffer.get_buffer(), "test is test");
+        assert_eq!(buffer.get_pos(), 12);
+        buffer.move_left();
+        buffer.move_left();
+        buffer.move_left();
+        buffer.move_left();
+        buffer.remove();
+        buffer.remove();
+        buffer.remove();
+        buffer.remove();
+        assert_eq!(buffer.get_buffer(), "testtest");
+        assert_eq!(buffer.get_pos(), 4);
+        push_string(&mut buffer, " confirm ");
+        assert_eq!(buffer.get_buffer(), "test confirm test");
+        assert_eq!(buffer.get_pos(), 13);
     }
 }

@@ -33,13 +33,16 @@ use event::EventHandler;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 type TelnetData = Option<Vec<u8>>;
+type BlightResult = Result<(), Box<dyn std::error::Error>>;
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
     let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();
     let main_thread_writer = session.main_writer;
     thread::spawn(move || {
         for _ in signals.forever() {
-            main_thread_writer.send(Event::Redraw).unwrap();
+            if let Err(err) = main_thread_writer.send(Event::Redraw) {
+                error!("Reize listener failed: {}", err);
+            }
         }
     })
 }
@@ -50,7 +53,7 @@ fn start_logging() {
         let logpath = data_dir.join("blightmud/logs");
         std::fs::create_dir_all(&logpath).unwrap();
         let logfile = logpath.join("log.txt");
-        simple_logging::log_to_file(logfile.to_str().unwrap(), log::LevelFilter::Debug).unwrap();
+        simple_logging::log_to_file(logfile.to_str().unwrap(), log::LevelFilter::Info).unwrap();
     }
 }
 
@@ -75,19 +78,16 @@ fn main() {
     let _signal_thread = register_terminal_resize_listener(session.clone());
 
     if let Err(error) = run(main_thread_read, session) {
+        error!("Panic: {}", error.to_string());
         println!("[!!] Panic: {}", error.to_string());
     }
 
     info!("Shutting down");
 }
 
-fn run(
-    // TODO: This function is complex. Perhaps reduce it with some type of event router?
-    main_thread_read: Receiver<Event>,
-    mut session: Session,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut screen = Screen::new();
-    screen.setup();
+fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult {
+    let mut screen = Screen::new()?;
+    screen.setup()?;
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
@@ -127,7 +127,7 @@ fn run(
                         ) {
                             if let TelnetEvents::DataSend(data) = event {
                                 debug!("Sending GMCP Core.Hello");
-                                session.main_writer.send(Event::ServerSend(data)).unwrap();
+                                session.main_writer.send(Event::ServerSend(data))?;
                                 session.lua_script.lock().unwrap().on_gmcp_ready();
                             }
                         } else {
@@ -148,9 +148,9 @@ fn run(
                     let mut script = session.lua_script.lock().unwrap();
                     script.receive_gmcp(&msg);
                 }
-                Event::ScrollUp => screen.scroll_up(),
-                Event::ScrollDown => screen.scroll_down(),
-                Event::ScrollBottom => screen.reset_scroll(),
+                Event::ScrollUp => screen.scroll_up()?,
+                Event::ScrollDown => screen.scroll_down()?,
+                Event::ScrollBottom => screen.reset_scroll()?,
                 Event::Error(msg) => {
                     screen.print_error(&msg);
                 }
@@ -179,7 +179,7 @@ fn run(
                     }
                 }
                 Event::ShowHelp(hfile) => {
-                    help_handler.show_help(&hfile);
+                    help_handler.show_help(&hfile)?;
                 }
                 Event::AddTimedEvent(duration, count, id) => {
                     session
@@ -193,8 +193,8 @@ fn run(
                     session.lua_script.lock().unwrap().remove_timed_function(id);
                 }
                 Event::Redraw => {
-                    screen.setup();
-                    screen.reset_scroll();
+                    screen.setup()?;
+                    screen.reset_scroll()?;
                 }
                 Event::Quit => {
                     session.terminate.store(true, Ordering::Relaxed);
@@ -205,7 +205,7 @@ fn run(
             screen.flush();
         }
     }
-    screen.reset();
+    screen.reset()?;
     session.close()?;
     Ok(())
 }

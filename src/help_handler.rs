@@ -3,6 +3,7 @@ use crate::{event::Event, VERSION};
 use std::path::Path;
 use std::{collections::HashMap, sync::mpsc::Sender};
 
+use log::debug;
 use mdcat::{ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
 use pulldown_cmark::{Options, Parser};
 use syntect::parsing::SyntaxSet;
@@ -18,8 +19,10 @@ impl HelpHandler {
         Self { writer, files }
     }
 
-    pub fn show_help(&self, file: &str) {
-        self.writer.send(self.parse_helpfile(file)).unwrap();
+    pub fn show_help(&self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
+        debug!("Drawing helpfile: {}", file);
+        self.writer.send(self.parse_helpfile(file))?;
+        Ok(())
     }
 
     fn parse_helpfile(&self, file: &str) -> Event {

@@ -1,6 +1,7 @@
-use crate::ansi::*;
+use crate::{ansi::*, BlightResult};
 use std::collections::VecDeque;
 use std::io::{stdout, Stdout, Write};
+use std::{error, fmt};
 use termion::{
     color,
     raw::{IntoRawMode, RawTerminal},
@@ -9,6 +10,27 @@ use termion::{
 
 struct ScrollData(bool, usize);
 const OUTPUT_START_LINE: u16 = 2;
+
+#[derive(Debug)]
+struct TerminalSizeError;
+
+impl fmt::Display for TerminalSizeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to retrieve valid dimsensions for terminal")
+    }
+}
+
+impl error::Error for TerminalSizeError {
+    fn description(&self) -> &str {
+        "Failed to retrieve valid dimensions for terminal"
+    }
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+    fn cause(&self) -> Option<&dyn error::Error> {
+        None
+    }
+}
 
 pub struct Screen {
     screen: AlternateScreen<RawTerminal<Stdout>>,
@@ -22,14 +44,14 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new() -> Self {
-        let screen = AlternateScreen::from(stdout().into_raw_mode().unwrap());
-        let (width, height) = termion::terminal_size().unwrap();
+    pub fn new() -> Result<Self, Box<dyn error::Error>> {
+        let screen = AlternateScreen::from(stdout().into_raw_mode()?);
+        let (width, height) = termion::terminal_size()?;
 
         let output_line = height - 2;
         let prompt_line = height;
 
-        Self {
+        Ok(Self {
             screen,
             width,
             _height: height,
@@ -38,64 +60,67 @@ impl Screen {
             cursor_prompt_pos: 1,
             history: VecDeque::with_capacity(1024),
             scroll_data: ScrollData(false, 0),
+        })
+    }
+
+    pub fn setup(&mut self) -> BlightResult {
+        self.reset()?;
+
+        // Get params in case screen resized
+        let (width, height) = termion::terminal_size()?;
+        if width > 0 && height > 0 {
+            self.width = width;
+            self._height = height;
+            self.output_line = height - 2;
+            self.prompt_line = height;
+
+            write!(
+                self.screen,
+                "{}{}",
+                ScrollRegion(OUTPUT_START_LINE, self.output_line),
+                DisableOriginMode
+            )
+            .unwrap(); // Set scroll region, non origin mode
+            self.redraw_top_bar("", 0)?;
+            self.redraw_bottom_bar()?;
+            self.screen.flush()?;
+            Ok(())
+        } else {
+            Err(TerminalSizeError.into())
         }
     }
 
-    pub fn setup(&mut self) {
-        self.reset();
-
-        // Get params in case screen resized
-        let (width, height) = termion::terminal_size().unwrap();
-        self.width = width;
-        self._height = height;
-        self.output_line = height - 2;
-        self.prompt_line = height;
-
-        write!(
-            self.screen,
-            "{}{}",
-            ScrollRegion(OUTPUT_START_LINE, self.output_line),
-            DisableOriginMode
-        )
-        .unwrap(); // Set scroll region, non origin mode
-        self.redraw_top_bar("", 0);
-        self.redraw_bottom_bar();
-        self.screen.flush().unwrap();
-    }
-
-    pub fn redraw_top_bar(&mut self, host: &str, port: u32) {
+    pub fn redraw_top_bar(&mut self, host: &str, port: u32) -> BlightResult {
         write!(
             self.screen,
             "{}{}{}",
             termion::cursor::Goto(1, 1),
             termion::clear::CurrentLine,
             color::Fg(color::Green),
-        )
-        .unwrap();
+        )?;
         let output = if !host.is_empty() {
             format!("═ {}:{} ═", host, port)
         } else {
             "".to_string()
         };
-        write!(self.screen, "{:═<1$}", output, self.width as usize).unwrap(); // Print separator
+        write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
         write!(
             self.screen,
             "{}{}",
             color::Fg(color::Reset),
             self.goto_prompt(),
-        )
-        .unwrap();
+        )?;
+        Ok(())
     }
 
-    fn redraw_bottom_bar(&mut self) {
+    fn redraw_bottom_bar(&mut self) -> BlightResult {
         write!(
             self.screen,
             "{}{}{}",
             termion::cursor::Goto(1, self.output_line + 1),
             termion::clear::CurrentLine,
             color::Fg(color::Green),
-        )
-        .unwrap();
+        )?;
 
         let info = if self.scroll_data.0 {
             "━ (more) ".to_string()
@@ -103,22 +128,23 @@ impl Screen {
             "".to_string()
         };
 
-        write!(self.screen, "{:━<1$}", info, self.width as usize).unwrap(); // Print separator
+        write!(self.screen, "{:━<1$}", info, self.width as usize)?; // Print separator
         write!(
             self.screen,
             "{}{}",
             color::Fg(color::Reset),
             self.goto_prompt(),
-        )
-        .unwrap();
+        )?;
+        Ok(())
     }
 
     fn goto_prompt(&self) -> termion::cursor::Goto {
         termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line)
     }
 
-    pub fn reset(&mut self) {
-        write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion).unwrap();
+    pub fn reset(&mut self) -> BlightResult {
+        write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion)?;
+        Ok(())
     }
 
     pub fn print_prompt(&mut self, prompt: &str) {
@@ -201,7 +227,7 @@ impl Screen {
         ));
     }
 
-    pub fn scroll_up(&mut self) {
+    pub fn scroll_up(&mut self) -> BlightResult {
         let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
         if self.history.len() > output_range as usize {
             if !self.scroll_data.0 {
@@ -210,25 +236,27 @@ impl Screen {
             }
             self.scroll_data.0 = true;
             self.scroll_data.1 -= self.scroll_data.1.min(5);
-            self.draw_scroll();
+            self.draw_scroll()?;
         }
+        Ok(())
     }
 
-    pub fn scroll_down(&mut self) {
+    pub fn scroll_down(&mut self) -> BlightResult {
         if self.scroll_data.0 {
             let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
             let max_start_index: i32 = self.history.len() as i32 - output_range;
             let new_start_index = self.scroll_data.1 + 5;
             if new_start_index >= max_start_index as usize {
-                self.reset_scroll();
+                self.reset_scroll()?;
             } else {
                 self.scroll_data.1 = new_start_index;
-                self.draw_scroll();
+                self.draw_scroll()?;
             }
         }
+        Ok(())
     }
 
-    fn draw_scroll(&mut self) {
+    fn draw_scroll(&mut self) -> BlightResult {
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         for i in 0..output_range {
             let index = self.scroll_data.1 + i as usize;
@@ -239,13 +267,13 @@ impl Screen {
                 termion::cursor::Goto(1, line_no),
                 termion::clear::CurrentLine,
                 self.history[index],
-            )
-            .unwrap();
+            )?;
         }
-        self.redraw_bottom_bar();
+        self.redraw_bottom_bar()?;
+        Ok(())
     }
 
-    pub fn reset_scroll(&mut self) {
+    pub fn reset_scroll(&mut self) -> BlightResult {
         self.scroll_data.0 = false;
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         let output_start_index = self.history.len() as i32 - output_range as i32;
@@ -260,8 +288,7 @@ impl Screen {
                     termion::cursor::Goto(1, line_no),
                     termion::clear::CurrentLine,
                     self.history[index],
-                )
-                .unwrap();
+                )?;
             }
         } else {
             for line in &self.history {
@@ -271,11 +298,11 @@ impl Screen {
                     termion::cursor::Goto(1, self.output_line),
                     termion::scroll::Up(1),
                     line,
-                )
-                .unwrap();
+                )?;
             }
         }
-        self.redraw_bottom_bar();
+        self.redraw_bottom_bar()?;
+        Ok(())
     }
 
     pub fn flush(&mut self) {
@@ -331,7 +358,7 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
                 }
             }
         }
-        if last_cut < line.len() - 1 {
+        if last_cut + 1 < line.len() {
             lines.push(&line[last_cut..]);
         }
     }

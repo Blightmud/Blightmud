@@ -124,7 +124,7 @@ impl EventHandler {
             }
             Event::Connected => {
                 debug!("Connected to {}:{}", self.session.host, self.session.port);
-                screen.redraw_top_bar(&self.session.host, self.session.port);
+                screen.redraw_top_bar(&self.session.host, self.session.port)?;
                 self.session.lua_script.lock().unwrap().on_connect();
                 Ok(())
             }
@@ -140,7 +140,7 @@ impl EventHandler {
                     }
                     transmit_writer.take();
                 }
-                screen.redraw_top_bar("", 0);
+                screen.redraw_top_bar("", 0)?;
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

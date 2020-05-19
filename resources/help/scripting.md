@@ -11,13 +11,13 @@ object to interact with your game.
 ***blight:output(str)***
 
 Prints output to the output screen
-Eg. 'blight:output("A", "nice", "message")'
+Eg. `blight:output("A", "nice", "message")`
 Will print "A nice message" on the screen
 
 ***blight:send(str)***
 
 Sends a command to the mud.
-Eg. 'blight:send("kill bat")'
+Eg. `blight:send("kill bat")`
 Will send the command "kill bat" to the server.
 
 ***blight:load(file)***
@@ -94,14 +94,14 @@ overwrite the first one.
 
 Instructs the server that our client (you) wants to receive updates for
 the defined module.
-Example: blight:register_gmcp("Room.Info")
+Example: `blight:register_gmcp("Room.Info")`
 
 ***blight:add_gmcp_receiver(module, callback)***
 
 Registers a callback that is executed and provided with the gmcp data when
 the specified module data is received from the server.
 
-Example: blight:add_gmcp_receiver("Room.Info", function (data) blight:output(data) end)
+Example: `blight:add_gmcp_receiver("Room.Info", function (data) blight:output(data) end)`
 
 The data you receive will be the raw data as a string. The 'json' module is readily available
 within the lua state for you to use. You can read about it here: https://github.com/rxi/json.lua

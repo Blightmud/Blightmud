@@ -324,29 +324,44 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
     let mut lines: Vec<&str> = vec![];
 
     for line in line.lines() {
+        // If the line is empty just push and continue
+        if line.trim().is_empty() {
+            lines.push(&line);
+            continue;
+        }
+
         let mut last_cut: usize = 0;
         let mut last_space: usize = 0;
         let mut print_length = 0;
         let mut print_length_since_space = 0;
         let mut in_escape = false;
         for (length, c) in line.chars().enumerate() {
+            // Check for escape sequences
             if c == '\x1b' {
                 in_escape = true;
                 continue;
             }
 
+            // Check for escape sequence endings
             if in_escape {
                 in_escape = c != 'm';
                 continue;
             }
 
+            // Keep track of printable line length
             print_length += 1;
+
+            // Keep track of last occurence of <space> and how many printable
+            // characters followed it
             print_length_since_space += 1;
             if c == ' ' && print_length < width {
                 last_space = length;
                 print_length_since_space = 0;
             }
+
+            // Split the line if it's print length reaches screen width
             if print_length >= width {
+                // Cut from last space if there is any. Otherwise just cut.
                 if last_cut < last_space {
                     lines.push(&line[last_cut..last_space]);
                     print_length = print_length_since_space;
@@ -358,6 +373,8 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
                 }
             }
         }
+
+        // Push the rest of the line if there is anything left
         if last_cut + 1 < line.len() {
             lines.push(&line[last_cut..]);
         }

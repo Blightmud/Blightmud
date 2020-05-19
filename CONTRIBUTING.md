@@ -34,12 +34,20 @@ The session object is often the argument passed into `new()` methods on
 structs. I did not utilize the `From` trait, which I probably should have. Feel
 free to change this where you see fit.
 
-# Writing code
-Not much to say here. Just pick something up or think up something new and
-implement it. If you want to add new features then please add a matching issue
-here on github so we have some tracability on features.
+## Where do i start?
+There should be a bunch of issues listed on the project. Things labeled
+[good first issue](https://github.com/LiquidityC/Blightmud/labels/good%20first%20issue)
+should generally be rather simple tasks to get into the project.
 
-## Committing
+### Have an idea for something new?
+Is there something you are missing in the client that would be nice to have or
+you feel is an essential feature?  Create an issue and start working. We'll get
+back to you regarding suggestions or ideas.
+
+### Found a bug?
+Create an issue. Already got a PR? Then create the issue and submit your PR.
+
+### Committing
 Before you commit please perform the following tasks:
 
 - Considder if what you added is testable. If it is then write a test

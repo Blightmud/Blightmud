@@ -66,19 +66,21 @@ impl CommandBuffer {
     }
 
     fn previous(&mut self) {
-        if self.current_index == self.history.len() {
-            self.cached_buffer = self.buffer.clone()
-        }
-
-        self.current_index = {
-            if self.current_index > 0 {
-                self.current_index - 1
-            } else {
-                self.current_index
+        if !self.history.is_empty() {
+            if self.current_index == self.history.len() {
+                self.cached_buffer = self.buffer.clone()
             }
-        };
-        self.buffer = self.history[self.current_index].clone();
-        self.cursor_pos = self.buffer.len();
+
+            self.current_index = {
+                if self.current_index > 0 {
+                    self.current_index - 1
+                } else {
+                    self.current_index
+                }
+            };
+            self.buffer = self.history[self.current_index].clone();
+            self.cursor_pos = self.buffer.len();
+        }
     }
 
     fn next(&mut self) {

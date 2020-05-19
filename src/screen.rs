@@ -320,15 +320,20 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
                 print_length_since_space = 0;
             }
             if print_length >= width {
-                let new_line = &line[last_cut..last_space];
-                if !new_line.is_empty() {
-                    lines.push(new_line);
+                if last_cut < last_space {
+                    lines.push(&line[last_cut..last_space]);
+                    print_length = print_length_since_space;
+                    last_cut = last_space + 1;
+                } else {
+                    lines.push(&line[last_cut..length + 1]);
+                    print_length = 0;
+                    last_cut = length + 1;
                 }
-                print_length = print_length_since_space;
-                last_cut = last_space + 1;
             }
         }
-        lines.push(&line[last_cut..]);
+        if last_cut < line.len() - 1 {
+            lines.push(&line[last_cut..]);
+        }
     }
     lines
 }
@@ -348,5 +353,27 @@ mod screen_test {
         assert_eq!(iter.next(), Some(&"pretty"));
         assert_eq!(iter.next(), Some(&"\u{1b}[32mlong and"));
         assert_eq!(iter.next(), Some(&"annoying\u{1b}[0m"));
+    }
+
+    #[test]
+    fn test_long_line_no_space() {
+        let mut line = String::new();
+        for _ in 0..1000 {
+            for i in 0..10 {
+                let num = format!("{}", i);
+                line = format!(
+                    "{}{}",
+                    line,
+                    std::iter::repeat(num).take(15).collect::<String>()
+                );
+            }
+        }
+        for (i, line) in wrap_line(&line, 15).iter().enumerate() {
+            let num = format!("{}", i % 10);
+            assert_eq!(
+                line,
+                &format!("{}", std::iter::repeat(num).take(15).collect::<String>())
+            );
+        }
     }
 }

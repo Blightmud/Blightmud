@@ -1,4 +1,5 @@
 use super::{constants::*, util::output_stack_trace};
+use crate::connection::Connection;
 use crate::event::Event;
 use chrono::Duration;
 use log::debug;
@@ -73,9 +74,9 @@ impl BlightMud {
 
 impl UserData for BlightMud {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_method("connect", |_, this, (host, port): (String, u32)| {
+        methods.add_method("connect", |_, this, (host, port): (String, u16)| {
             this.main_thread_writer
-                .send(Event::Connect(host, port))
+                .send(Event::Connect(Connection { host, port }))
                 .unwrap();
             Ok(())
         });

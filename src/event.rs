@@ -1,4 +1,6 @@
 use crate::{
+    connection::{Connection, Servers},
+    save::SaveData,
     screen::Screen,
     session::Session,
     tcp_stream::{spawn_receive_thread, spawn_transmit_thread},
@@ -25,8 +27,12 @@ pub enum Event {
     Error(String),
     Info(String),
     UserInputBuffer(String, usize),
-    Connect(String, u32),
+    Connect(Connection),
     Connected,
+    AddServer(String, Connection),
+    RemoveServer(String),
+    LoadServer(String),
+    ListServers,
     ProtoEnabled(u8),
     GMCPReceive(String),
     GMCPRegister(String),
@@ -84,6 +90,7 @@ impl EventHandler {
         event: Event,
         screen: &mut Screen,
         transmit_writer: &mut Option<Sender<TelnetData>>,
+        saved_servers: &mut Servers,
     ) -> Result {
         match event {
             Event::ServerSend(data) => {
@@ -107,7 +114,7 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::Connect(host, port) => {
+            Event::Connect(Connection { host, port }) => {
                 self.session.disconnect();
                 if self.session.connect(&host, port) {
                     let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
@@ -141,6 +148,72 @@ impl EventHandler {
                     transmit_writer.take();
                 }
                 screen.redraw_top_bar("", 0)?;
+                Ok(())
+            }
+            Event::AddServer(name, connection) => {
+                if saved_servers.contains_key(&name) {
+                    self.session.main_writer.send(Event::Error(format!(
+                        "Saved server already exists for {}",
+                        name
+                    )))?;
+                    return Ok(());
+                }
+
+                saved_servers.insert(name.clone(), connection);
+                saved_servers.save()?;
+
+                self.session
+                    .main_writer
+                    .send(Event::Info(format!("Server added: {}", name)))?;
+
+                Ok(())
+            }
+            Event::RemoveServer(name) => {
+                if saved_servers.contains_key(&name) {
+                    saved_servers.remove(&name);
+                    saved_servers.save()?;
+
+                    self.session
+                        .main_writer
+                        .send(Event::Info(format!("Server removed: {}", name)))?;
+                } else {
+                    self.session.main_writer.send(Event::Error(format!(
+                        "Saved server does not exist: {}",
+                        name
+                    )))?;
+                }
+
+                Ok(())
+            }
+            Event::LoadServer(name) => {
+                if saved_servers.contains_key(&name) {
+                    let connection = saved_servers.get(&name).cloned().unwrap();
+
+                    self.session.main_writer.send(Event::Connect(connection))?;
+                } else {
+                    self.session.main_writer.send(Event::Error(format!(
+                        "Saved server does not exist: {}",
+                        name
+                    )))?;
+                }
+
+                Ok(())
+            }
+            Event::ListServers => {
+                if saved_servers.is_empty() {
+                    self.session
+                        .main_writer
+                        .send(Event::Info("There are no saved servers.".to_string()))?;
+                } else {
+                    let mut output = String::from("Saved servers:\n\n");
+
+                    for server in saved_servers {
+                        output.push_str(&format!("- Name: {}, {}\n", server.0, server.1));
+                    }
+
+                    self.session.main_writer.send(Event::Output(output))?;
+                }
+
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

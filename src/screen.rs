@@ -90,7 +90,7 @@ impl Screen {
         }
     }
 
-    pub fn redraw_top_bar(&mut self, host: &str, port: u32) -> BlightResult {
+    pub fn redraw_top_bar(&mut self, host: &str, port: u16) -> BlightResult {
         write!(
             self.screen,
             "{}{}{}",

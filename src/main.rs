@@ -13,10 +13,12 @@ use std::thread;
 
 mod ansi;
 mod command;
+mod connection;
 mod event;
 mod help_handler;
 mod lua;
 mod output_buffer;
+mod save;
 mod screen;
 mod session;
 mod tcp_stream;
@@ -24,7 +26,9 @@ mod telnet;
 mod timer;
 
 use crate::command::spawn_input_thread;
+use crate::connection::Servers;
 use crate::event::Event;
+use crate::save::SaveData;
 use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
@@ -96,6 +100,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
 
     let mut event_handler = EventHandler::from(&session);
 
+    let mut saved_servers = Servers::load()?;
+
     loop {
         if session.terminate.load(Ordering::Relaxed) {
             break;
@@ -104,10 +110,19 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
             match event {
                 Event::ServerSend(_)
                 | Event::ServerInput(_, _)
-                | Event::Connect(_, _)
+                | Event::Connect(_)
                 | Event::Connected
-                | Event::Disconnect => {
-                    event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
+                | Event::Disconnect
+                | Event::AddServer(_, _)
+                | Event::RemoveServer(_)
+                | Event::LoadServer(_)
+                | Event::ListServers => {
+                    event_handler.handle_server_events(
+                        event,
+                        &mut screen,
+                        &mut transmit_writer,
+                        &mut saved_servers,
+                    )?;
                 }
                 Event::MudOutput(_)
                 | Event::Output(_)

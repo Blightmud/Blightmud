@@ -1,4 +1,4 @@
-use crate::save::SaveData;
+use crate::io::SaveData;
 
 use serde::{Deserialize, Serialize};
 

@@ -1,5 +1,5 @@
-use crate::connection::Connection;
 use crate::event::Event;
+use crate::model::Connection;
 use crate::session::Session;
 use log::debug;
 use std::collections::VecDeque;

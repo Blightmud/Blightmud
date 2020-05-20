@@ -1,6 +1,6 @@
 use super::{constants::*, util::output_stack_trace};
-use crate::connection::Connection;
 use crate::event::Event;
+use crate::model::Connection;
 use chrono::Duration;
 use log::debug;
 use regex::Regex;

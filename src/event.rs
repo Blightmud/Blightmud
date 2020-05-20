@@ -1,6 +1,6 @@
 use crate::{
-    connection::{Connection, Servers},
-    save::SaveData,
+    io::SaveData,
+    model::{Connection, Servers},
     screen::Screen,
     session::Session,
     tcp_stream::{spawn_receive_thread, spawn_transmit_thread},

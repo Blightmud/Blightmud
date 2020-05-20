@@ -13,12 +13,12 @@ use std::thread;
 
 mod ansi;
 mod command;
-mod connection;
 mod event;
 mod help_handler;
+mod io;
 mod lua;
+mod model;
 mod output_buffer;
-mod save;
 mod screen;
 mod session;
 mod tcp_stream;
@@ -26,9 +26,9 @@ mod telnet;
 mod timer;
 
 use crate::command::spawn_input_thread;
-use crate::connection::Servers;
 use crate::event::Event;
-use crate::save::SaveData;
+use crate::io::SaveData;
+use crate::model::Servers;
 use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};

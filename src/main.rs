@@ -112,17 +112,14 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                 | Event::ServerInput(_, _)
                 | Event::Connect(_)
                 | Event::Connected
-                | Event::Disconnect
-                | Event::AddServer(_, _)
+                | Event::Disconnect => {
+                    event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
+                }
+                Event::AddServer(_, _)
                 | Event::RemoveServer(_)
                 | Event::LoadServer(_)
                 | Event::ListServers => {
-                    event_handler.handle_server_events(
-                        event,
-                        &mut screen,
-                        &mut transmit_writer,
-                        &mut saved_servers,
-                    )?;
+                    event_handler.handle_store_events(event, &mut saved_servers)?;
                 }
                 Event::MudOutput(_)
                 | Event::Output(_)

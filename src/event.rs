@@ -90,7 +90,6 @@ impl EventHandler {
         event: Event,
         screen: &mut Screen,
         transmit_writer: &mut Option<Sender<TelnetData>>,
-        saved_servers: &mut Servers,
     ) -> Result {
         match event {
             Event::ServerSend(data) => {
@@ -150,6 +149,44 @@ impl EventHandler {
                 screen.redraw_top_bar("", 0)?;
                 Ok(())
             }
+            _ => Err(BadEventRoutingError.into()),
+        }
+    }
+
+    pub fn handle_output_events(&self, event: Event, screen: &mut Screen) -> Result {
+        match event {
+            Event::MudOutput(msg) => {
+                if let Ok(script) = self.session.lua_script.lock() {
+                    if !script.check_for_trigger_match(&msg) {
+                        screen.print_output(&msg);
+                    }
+                }
+                Ok(())
+            }
+            Event::Output(msg) => {
+                screen.print_output(&msg);
+                Ok(())
+            }
+            Event::Prompt => {
+                let output_buffer = self.session.output_buffer.lock().unwrap();
+                if let Ok(script) = self.session.lua_script.lock() {
+                    script.check_for_prompt_trigger_match(&output_buffer.prompt);
+                }
+                screen.print_prompt(&output_buffer.prompt);
+                Ok(())
+            }
+            Event::UserInputBuffer(input_buffer, pos) => {
+                let mut prompt_input = self.session.prompt_input.lock().unwrap();
+                *prompt_input = input_buffer;
+                screen.print_prompt_input(&prompt_input, pos);
+                Ok(())
+            }
+            _ => Err(BadEventRoutingError.into()),
+        }
+    }
+
+    pub fn handle_store_events(&mut self, event: Event, saved_servers: &mut Servers) -> Result {
+        match event {
             Event::AddServer(name, connection) => {
                 if saved_servers.contains_key(&name) {
                     self.session.main_writer.send(Event::Error(format!(
@@ -214,38 +251,6 @@ impl EventHandler {
                     self.session.main_writer.send(Event::Output(output))?;
                 }
 
-                Ok(())
-            }
-            _ => Err(BadEventRoutingError.into()),
-        }
-    }
-
-    pub fn handle_output_events(&self, event: Event, screen: &mut Screen) -> Result {
-        match event {
-            Event::MudOutput(msg) => {
-                if let Ok(script) = self.session.lua_script.lock() {
-                    if !script.check_for_trigger_match(&msg) {
-                        screen.print_output(&msg);
-                    }
-                }
-                Ok(())
-            }
-            Event::Output(msg) => {
-                screen.print_output(&msg);
-                Ok(())
-            }
-            Event::Prompt => {
-                let output_buffer = self.session.output_buffer.lock().unwrap();
-                if let Ok(script) = self.session.lua_script.lock() {
-                    script.check_for_prompt_trigger_match(&output_buffer.prompt);
-                }
-                screen.print_prompt(&output_buffer.prompt);
-                Ok(())
-            }
-            Event::UserInputBuffer(input_buffer, pos) => {
-                let mut prompt_input = self.session.prompt_input.lock().unwrap();
-                *prompt_input = input_buffer;
-                screen.print_prompt_input(&prompt_input, pos);
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

@@ -2,3 +2,5 @@
 /log.txt
 /.vimrc
 /*.lua
+/data/
+/logs/

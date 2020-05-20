@@ -190,6 +190,7 @@ dependencies = [
  "chrono",
  "dirs",
  "flate2",
+ "lazy_static",
  "libtelnet-rs",
  "log",
  "mdcat",

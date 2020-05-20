@@ -1,4 +1,6 @@
-use anyhow::{format_err, Result};
+use crate::DATA_DIR;
+
+use anyhow::Result;
 use serde::{de::DeserializeOwned, Serialize};
 
 use std::fs;
@@ -8,24 +10,20 @@ pub trait SaveData: DeserializeOwned + Serialize + Default {
     fn relative_path() -> PathBuf;
 
     fn path() -> Result<PathBuf> {
-        let mut data_dir =
-            dirs::data_dir().ok_or_else(|| format_err!("Could not get data directory"))?;
-        data_dir.push("blightmud");
+        let path = DATA_DIR.join(Self::relative_path());
 
-        let save_path = data_dir.join(Self::relative_path());
-
-        if let Some(save_dir) = save_path.parent() {
-            std::fs::create_dir_all(save_dir)?;
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
         }
 
-        Ok(save_path)
+        Ok(path)
     }
 
     fn load() -> Result<Self> {
-        let save_path = Self::path()?;
+        let path = Self::path()?;
 
-        if save_path.exists() {
-            let file = fs::File::open(&save_path)?;
+        if path.exists() {
+            let file = fs::File::open(&path)?;
 
             Ok(ron::de::from_reader(&file)?)
         } else {

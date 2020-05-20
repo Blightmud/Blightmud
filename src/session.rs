@@ -19,7 +19,7 @@ pub struct CommunicationOptions {
 #[derive(Clone)]
 pub struct Session {
     pub host: String,
-    pub port: u32,
+    pub port: u16,
     pub connected: Arc<AtomicBool>,
     pub stream: Arc<Mutex<Option<TcpStream>>>,
     pub main_writer: Sender<Event>,
@@ -33,7 +33,7 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn connect(&mut self, host: &str, port: u32) -> bool {
+    pub fn connect(&mut self, host: &str, port: u16) -> bool {
         self.host = host.to_string();
         self.port = port;
         debug!("Connecting to {}:{}", self.host, self.port);

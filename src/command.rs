@@ -1,4 +1,5 @@
 use crate::event::Event;
+use crate::model::Connection;
 use crate::session::Session;
 use log::debug;
 use std::collections::VecDeque;
@@ -167,12 +168,16 @@ fn parse_command(msg: &str) -> Event {
             let p1 = iter.next();
             let p2 = iter.next();
 
-            if p1 == None || p2 == None {
+            if p1 == None && p2 == None {
                 Event::Info("USAGE: /connect <host> <port>".to_string())
+            } else if p2 == None {
+                let name = p1.unwrap().to_string();
+
+                Event::LoadServer(name)
             } else {
-                let p1 = p1.unwrap().to_string();
-                if let Ok(p2) = p2.unwrap().parse::<u32>() {
-                    Event::Connect(p1, p2)
+                let host = p1.unwrap().to_string();
+                if let Ok(port) = p2.unwrap().parse::<u16>() {
+                    Event::Connect(Connection { host, port })
                 } else {
                     Event::Error(
                         "USAGE: /connect <host: String> <port: Positive number>".to_string(),
@@ -180,6 +185,40 @@ fn parse_command(msg: &str) -> Event {
                 }
             }
         }
+        Some("/add_server") => {
+            let p1 = iter.next();
+            let p2 = iter.next();
+            let p3 = iter.next();
+
+            if p1 == None || p2 == None || p3 == None {
+                Event::Info(
+                    "USAGE: /add_server <name: String> <host: String> <port: Positive number>"
+                        .to_string(),
+                )
+            } else {
+                let name = p1.unwrap().to_string();
+                let host = p2.unwrap().to_string();
+
+                if let Ok(port) = p3.unwrap().parse::<u16>() {
+                    Event::AddServer(name, Connection { host, port })
+                } else {
+                    Event::Error(
+                        "USAGE: /add_server <name: String> <host: String> <port: Positive number>"
+                            .to_string(),
+                    )
+                }
+            }
+        }
+        Some("/remove_server") => {
+            let p1 = iter.next();
+
+            if let Some(name) = p1 {
+                Event::RemoveServer(name.to_string())
+            } else {
+                Event::Info("USAGE: /remove_server <name: String>".to_string())
+            }
+        }
+        Some("/list_servers") | Some("/ls") => Event::ListServers,
         Some("/disconnect") | Some("/dc") => Event::Disconnect,
         Some("/load") => {
             let p1 = iter.next();

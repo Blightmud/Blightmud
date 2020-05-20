@@ -2,9 +2,11 @@
 use dirs;
 
 use help_handler::HelpHandler;
+use lazy_static::lazy_static;
 use libtelnet_rs::{events::TelnetEvents, telnet::op_option as opt};
 use log::{debug, error, info};
 use signal_hook;
+use std::path::PathBuf;
 use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
@@ -15,7 +17,9 @@ mod ansi;
 mod command;
 mod event;
 mod help_handler;
+mod io;
 mod lua;
+mod model;
 mod output_buffer;
 mod screen;
 mod session;
@@ -25,6 +29,8 @@ mod timer;
 
 use crate::command::spawn_input_thread;
 use crate::event::Event;
+use crate::io::SaveData;
+use crate::model::Servers;
 use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
@@ -34,6 +40,21 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 type TelnetData = Option<Vec<u8>>;
 type BlightResult = Result<(), Box<dyn std::error::Error>>;
+
+lazy_static! {
+    static ref DATA_DIR: PathBuf = {
+        #[cfg(not(debug_assertions))]
+        {
+            let mut data_dir = dirs::data_dir().unwrap();
+            data_dir.push("blightmud");
+            let _ = std::fs::create_dir(&data_dir);
+            data_dir
+        }
+
+        #[cfg(debug_assertions)]
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    };
+}
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
     let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();
@@ -47,19 +68,19 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
     })
 }
 
-#[cfg(not(debug_assertions))]
 fn start_logging() {
-    if let Some(data_dir) = dirs::data_dir() {
-        let logpath = data_dir.join("blightmud/logs");
-        std::fs::create_dir_all(&logpath).unwrap();
-        let logfile = logpath.join("log.txt");
-        simple_logging::log_to_file(logfile.to_str().unwrap(), log::LevelFilter::Info).unwrap();
-    }
-}
+    #[cfg(not(debug_assertions))]
+    let log_level = log::LevelFilter::Info;
 
-#[cfg(debug_assertions)]
-fn start_logging() {
-    simple_logging::log_to_file("log.txt", log::LevelFilter::Debug).unwrap();
+    #[cfg(debug_assertions)]
+    let log_level = log::LevelFilter::Debug;
+
+    let logpath = DATA_DIR.clone().join("logs");
+    let _ = std::fs::create_dir(&logpath);
+
+    let logfile = logpath.join("log.txt");
+
+    simple_logging::log_to_file(logfile.to_str().unwrap(), log_level).unwrap();
 }
 
 fn main() {
@@ -96,6 +117,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
 
     let mut event_handler = EventHandler::from(&session);
 
+    let mut saved_servers = Servers::load()?;
+
     loop {
         if session.terminate.load(Ordering::Relaxed) {
             break;
@@ -104,10 +127,16 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
             match event {
                 Event::ServerSend(_)
                 | Event::ServerInput(_, _)
-                | Event::Connect(_, _)
+                | Event::Connect(_)
                 | Event::Connected
                 | Event::Disconnect => {
                     event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
+                }
+                Event::AddServer(_, _)
+                | Event::RemoveServer(_)
+                | Event::LoadServer(_)
+                | Event::ListServers => {
+                    event_handler.handle_store_events(event, &mut saved_servers)?;
                 }
                 Event::MudOutput(_)
                 | Event::Output(_)

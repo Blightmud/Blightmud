@@ -28,7 +28,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - [x] Low resource and fast
 - [x] In client help and manuals
     - [x] Markdown support in client
-- [ ] Tab completion
+- [x] Tab completion
 
 ## Compiling
 - Install rust

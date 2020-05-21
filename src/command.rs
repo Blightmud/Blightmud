@@ -2,18 +2,67 @@ use crate::event::Event;
 use crate::model::Connection;
 use crate::session::Session;
 use log::debug;
+use rs_completion::CompletionTree;
 use std::collections::VecDeque;
 use std::thread;
 use std::{io::stdin, sync::atomic::Ordering};
 use termion::{event::Key, input::TermRead};
 
 #[derive(Default)]
-struct CommandBuffer {
+struct CompletionStepData {
+    options: Vec<String>,
+    index: usize,
+    base: String,
+}
+
+impl CompletionStepData {
+    fn is_empty(&self) -> bool {
+        self.options.is_empty()
+    }
+
+    fn set_options(&mut self, base: &str, options: Vec<String>) {
+        self.options = options;
+        self.base = base.to_string();
+    }
+
+    fn clear(&mut self) {
+        self.options.clear();
+        self.index = 0;
+    }
+
+    fn next(&mut self) -> Option<&String> {
+        if !self.is_empty() {
+            let last_index = self.index;
+            self.index = (self.index + 1) % (self.options.len() + 1);
+            self.options.get(last_index).or(Some(&self.base))
+        } else {
+            None
+        }
+    }
+}
+
+pub struct CommandBuffer {
     buffer: String,
     cached_buffer: String,
     history: VecDeque<String>,
     current_index: usize,
     cursor_pos: usize,
+    completion_tree: CompletionTree,
+    completion: CompletionStepData,
+}
+
+impl Default for CommandBuffer {
+    fn default() -> Self {
+        Self {
+            buffer: String::default(),
+            cached_buffer: String::default(),
+            history: VecDeque::default(),
+            current_index: 0,
+            cursor_pos: 0,
+            completion_tree: CompletionTree::with_inclusions(&['/', '_']),
+            completion: CompletionStepData::default(),
+        }
+    }
 }
 
 impl CommandBuffer {
@@ -26,6 +75,7 @@ impl CommandBuffer {
     }
 
     fn submit(&mut self) -> &str {
+        self.completion_tree.insert(&self.buffer.to_lowercase());
         self.history.push_back(self.buffer.clone());
         while self.history.len() > 100 {
             self.history.pop_front();
@@ -63,7 +113,22 @@ impl CommandBuffer {
         } else {
             self.buffer.insert(self.cursor_pos, c);
         }
+        self.completion.clear();
         self.move_right();
+    }
+
+    fn tab_complete(&mut self) {
+        if self.buffer.len() > 1 {
+            if self.completion.is_empty() {
+                if let Some(options) = self.completion_tree.complete(&self.buffer) {
+                    self.completion.set_options(&self.buffer, options);
+                }
+            }
+            if let Some(comp) = self.completion.next() {
+                self.buffer = comp.clone();
+                self.cursor_pos = comp.len();
+            }
+        }
     }
 
     fn previous(&mut self) {
@@ -113,12 +178,14 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         let terminate = session.terminate;
         let stdin = stdin();
         let mut buffer = CommandBuffer::default();
+        buffer.completion_tree.insert("/connect /quit /disconnect /add_server /remove_server /list_servers /load /help scripting");
 
         for c in stdin.keys() {
             match c.unwrap() {
                 Key::Char('\n') => {
                     writer.send(parse_command(buffer.submit())).unwrap();
                 }
+                Key::Char('\t') => buffer.tab_complete(),
                 Key::Char(c) => buffer.push_key(c),
                 Key::Ctrl('c') => {
                     debug!("Caught ctrl-c, terminating");

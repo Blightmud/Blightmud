@@ -413,7 +413,7 @@ mod screen_test {
             }
         }
         let lines = wrap_line(&line, 15);
-        assert_eq!(lines.len(), 1000*10);
+        assert_eq!(lines.len(), 1000 * 10);
         for (i, line) in lines.iter().enumerate() {
             let num = format!("{}", i % 10);
             assert_eq!(

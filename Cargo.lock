@@ -198,6 +198,7 @@ dependencies = [
  "regex",
  "rlua",
  "ron",
+ "rs-completion",
  "serde",
  "signal-hook",
  "simple-logging",
@@ -993,6 +994,13 @@ dependencies = [
  "base64 0.10.1",
  "bitflags",
  "serde",
+]
+
+[[package]]
+name = "rs-completion"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]

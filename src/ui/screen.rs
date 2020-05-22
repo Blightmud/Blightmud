@@ -1,4 +1,4 @@
-use crate::{ansi::*, BlightResult};
+use crate::{ui::ansi::*, BlightResult};
 use std::collections::VecDeque;
 use std::io::{stdout, Stdout, Write};
 use std::{error, fmt};

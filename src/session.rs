@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use crate::{lua::LuaScript, output_buffer::OutputBuffer, timer::TimerEvent, Event};
+use crate::{lua::LuaScript, net::OutputBuffer, timer::TimerEvent, Event};
 use log::debug;
 
 #[derive(Default)]

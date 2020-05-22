@@ -1,7 +1,7 @@
 use crate::{
     event::Event,
+    net::TelnetHandler,
     session::{CommunicationOptions, Session},
-    telnet::TelnetHandler,
 };
 use flate2::read::ZlibDecoder;
 use log::{debug, error};

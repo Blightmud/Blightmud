@@ -57,9 +57,12 @@ impl HelpHandler {
 
 fn load_files() -> HashMap<&'static str, &'static str> {
     let mut files: HashMap<&str, &str> = HashMap::new();
-    files.insert("help", include_str!("../resources/help/help.md"));
-    files.insert("welcome", include_str!("../resources/help/welcome.md"));
-    files.insert("scripting", include_str!("../resources/help/scripting.md"));
+    files.insert("help", include_str!("../../resources/help/help.md"));
+    files.insert("welcome", include_str!("../../resources/help/welcome.md"));
+    files.insert(
+        "scripting",
+        include_str!("../../resources/help/scripting.md"),
+    );
     files
 }
 

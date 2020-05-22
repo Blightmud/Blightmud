@@ -1,9 +1,9 @@
 use crate::{
     io::SaveData,
     model::{Connection, Servers},
-    screen::Screen,
+    net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
-    tcp_stream::{spawn_receive_thread, spawn_transmit_thread},
+    ui::Screen,
     TelnetData,
 };
 use libtelnet_rs::events::TelnetEvents;

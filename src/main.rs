@@ -1,7 +1,6 @@
 #[cfg(not(debug_assertions))]
 use dirs;
 
-use help_handler::HelpHandler;
 use lazy_static::lazy_static;
 use libtelnet_rs::{events::TelnetEvents, telnet::op_option as opt};
 use log::{debug, error, info};
@@ -12,28 +11,23 @@ use std::sync::{
     mpsc::{channel, Receiver, Sender},
 };
 use std::thread;
+use ui::HelpHandler;
 
-mod ansi;
-mod command;
 mod event;
-mod help_handler;
 mod io;
 mod lua;
 mod model;
-mod output_buffer;
-mod screen;
+mod net;
 mod session;
-mod tcp_stream;
-mod telnet;
 mod timer;
+mod ui;
 
-use crate::command::spawn_input_thread;
 use crate::event::Event;
 use crate::io::SaveData;
 use crate::model::Servers;
-use crate::screen::Screen;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
+use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");

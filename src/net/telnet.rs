@@ -1,5 +1,5 @@
 use crate::event::Event;
-use crate::output_buffer::OutputBuffer;
+use crate::net::OutputBuffer;
 use crate::session::{CommunicationOptions, Session};
 use libtelnet_rs::{
     events::TelnetEvents,

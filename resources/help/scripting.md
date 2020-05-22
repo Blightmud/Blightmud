@@ -131,6 +131,15 @@ end)
 end)
 ```
 
+***blight:send_gmcp(msg)***
+
+Sends the provided msg string as GMCP to the mud.
+Example:
+```lua
+data = { char = { hp = "1234" } }
+blight:send_gmcp("Char.Health " .. json.encode(data))
+```
+
 ***blight:on_connect(callback)***
 
 Registers a callback that is triggered when the client successfully connects

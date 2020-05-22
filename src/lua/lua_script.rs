@@ -258,4 +258,19 @@ mod lua_script_tests {
         assert!(lua.check_for_alias_match("test"));
         assert!(!lua.check_for_alias_match(" test"));
     }
+
+    #[test]
+    fn test_send_gmcp() {
+        let send_gmcp_lua = r#"
+        blight:send_gmcp("Core.Hello")
+        "#;
+
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let lua = LuaScript::new(writer);
+        lua.state.context(|ctx| {
+            ctx.load(send_gmcp_lua).exec().unwrap();
+        });
+
+        assert_eq!(reader.recv(), Ok(Event::GMCPSend("Core.Hello".to_string())));
+    }
 }

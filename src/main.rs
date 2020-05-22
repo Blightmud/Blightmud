@@ -171,6 +171,14 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                     let mut script = session.lua_script.lock().unwrap();
                     script.receive_gmcp(&msg);
                 }
+                Event::GMCPSend(msg) => {
+                    let mut parser = session.telnet_parser.lock().unwrap();
+                    if let Some(TelnetEvents::DataSend(data)) =
+                        parser.subnegotiation_text(opt::GMCP, &msg)
+                    {
+                        session.main_writer.send(Event::ServerSend(data))?;
+                    }
+                }
                 Event::ScrollUp => screen.scroll_up()?,
                 Event::ScrollDown => screen.scroll_down()?,
                 Event::ScrollBottom => screen.reset_scroll()?,

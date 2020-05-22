@@ -36,6 +36,7 @@ pub enum Event {
     ProtoEnabled(u8),
     GMCPReceive(String),
     GMCPRegister(String),
+    GMCPSend(String),
     AddTimedEvent(chrono::Duration, Option<u32>, u32),
     TimedEvent(u32),
     DropTimedEvent(u32),

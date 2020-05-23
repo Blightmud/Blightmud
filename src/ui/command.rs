@@ -99,12 +99,14 @@ impl CommandBuffer {
     }
 
     fn remove(&mut self) {
-        if self.cursor_pos < self.buffer.len() {
-            self.buffer.remove(self.cursor_pos - 1);
-        } else {
-            self.buffer.pop();
+        if self.cursor_pos > 0 {
+            if self.cursor_pos < self.buffer.len() {
+                self.buffer.remove(self.cursor_pos - 1);
+            } else {
+                self.buffer.pop();
+            }
+            self.move_left();
         }
-        self.move_left();
     }
 
     fn push_key(&mut self, c: char) {
@@ -338,5 +340,15 @@ mod command_test {
         push_string(&mut buffer, " confirm ");
         assert_eq!(buffer.get_buffer(), "test confirm test");
         assert_eq!(buffer.get_pos(), 13);
+    }
+
+    #[test]
+    fn test_no_zero_index_remove_crash() {
+        let mut buffer = CommandBuffer::default();
+        buffer.push_key('t');
+        buffer.move_left();
+        assert_eq!(buffer.get_pos(), 0);
+        buffer.remove();
+        assert_eq!(buffer.get_pos(), 0);
     }
 }

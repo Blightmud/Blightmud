@@ -74,16 +74,32 @@ impl CommandBuffer {
         self.cursor_pos
     }
 
-    fn submit(&mut self) -> &str {
+    fn submit(&mut self) -> String {
         self.completion_tree.insert(&self.buffer.to_lowercase());
-        self.history.push_back(self.buffer.clone());
-        while self.history.len() > 100 {
-            self.history.pop_front();
-        }
+
+        // Insert history
+        let cmd = if !self.buffer.is_empty() {
+            if let Some(last_cmd) = self.history.iter().last() {
+                if &self.buffer != last_cmd {
+                    self.history.push_back(self.buffer.clone());
+                }
+            } else {
+                self.history.push_back(self.buffer.clone());
+            }
+
+            while self.history.len() > 100 {
+                self.history.pop_front();
+            }
+
+            self.buffer.clone()
+        } else {
+            String::new()
+        };
+
         self.current_index = self.history.len();
         self.buffer.clear();
         self.cursor_pos = 0;
-        &self.history[self.current_index - 1]
+        cmd
     }
 
     fn move_left(&mut self) {
@@ -185,7 +201,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         for c in stdin.keys() {
             match c.unwrap() {
                 Key::Char('\n') => {
-                    writer.send(parse_command(buffer.submit())).unwrap();
+                    writer.send(parse_command(&buffer.submit())).unwrap();
                 }
                 Key::Char('\t') => buffer.tab_complete(),
                 Key::Char(c) => buffer.push_key(c),
@@ -350,5 +366,42 @@ mod command_test {
         assert_eq!(buffer.get_pos(), 0);
         buffer.remove();
         assert_eq!(buffer.get_pos(), 0);
+    }
+
+    #[test]
+    fn test_no_history_empty_input() {
+        let mut buffer = CommandBuffer::default();
+        buffer.submit();
+        assert!(buffer.history.is_empty());
+    }
+
+    #[test]
+    fn no_duplicate_commands_in_history() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "test");
+        buffer.submit();
+        push_string(&mut buffer, "test");
+        buffer.submit();
+        push_string(&mut buffer, "test");
+        buffer.submit();
+        push_string(&mut buffer, "test");
+        buffer.submit();
+        push_string(&mut buffer, "random");
+        buffer.submit();
+        push_string(&mut buffer, "random");
+        buffer.submit();
+        push_string(&mut buffer, "random");
+        buffer.submit();
+        push_string(&mut buffer, "test");
+        buffer.submit();
+        push_string(&mut buffer, "random");
+        buffer.submit();
+
+        assert_eq!(buffer.history.len(), 4);
+        let mut it = buffer.history.iter();
+        assert_eq!(it.next(), Some(&"test".to_string()));
+        assert_eq!(it.next(), Some(&"random".to_string()));
+        assert_eq!(it.next(), Some(&"test".to_string()));
+        assert_eq!(it.next(), Some(&"random".to_string()));
     }
 }

@@ -54,6 +54,17 @@ impl LuaScript {
         self.state = create_default_lua_state(self.writer.clone());
     }
 
+    pub fn get_output_lines(&self) -> Vec<String> {
+        self.state
+            .context(|ctx| -> LuaResult<Vec<String>> {
+                let mut blight: BlightMud = ctx.globals().get("blight")?;
+                let lines = blight.get_output_lines();
+                ctx.globals().set("blight", blight)?;
+                Ok(lines)
+            })
+            .unwrap()
+    }
+
     pub fn check_for_alias_match(&self, input: &str) -> bool {
         let mut response = false;
         self.state.context(|ctx| {

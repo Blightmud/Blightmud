@@ -218,7 +218,9 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                         .send(TimerEvent::Create(duration, count, id))?;
                 }
                 Event::TimedEvent(id) => {
-                    session.lua_script.lock().unwrap().run_timed_function(id);
+                    if let Ok(mut script) = session.lua_script.lock() {
+                        script.run_timed_function(id);
+                    }
                 }
                 Event::DropTimedEvent(id) => {
                     session.lua_script.lock().unwrap().remove_timed_function(id);

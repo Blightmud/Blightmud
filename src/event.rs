@@ -110,6 +110,10 @@ impl EventHandler {
                                 self.session.main_writer.send(Event::ServerSend(buffer))?;
                             }
                         }
+                    } else {
+                        for line in script.get_output_lines() {
+                            screen.print_output(&line);
+                        }
                     }
                 }
                 Ok(())
@@ -161,6 +165,9 @@ impl EventHandler {
                     if !script.check_for_trigger_match(&msg) {
                         screen.print_output(&msg);
                     }
+                    for line in script.get_output_lines() {
+                        screen.print_output(&line);
+                    }
                 }
                 Ok(())
             }
@@ -172,6 +179,9 @@ impl EventHandler {
                 let output_buffer = self.session.output_buffer.lock().unwrap();
                 if let Ok(script) = self.session.lua_script.lock() {
                     script.check_for_prompt_trigger_match(&output_buffer.prompt);
+                    for line in script.get_output_lines() {
+                        screen.print_output(&line);
+                    }
                 }
                 screen.print_prompt(&output_buffer.prompt);
                 Ok(())

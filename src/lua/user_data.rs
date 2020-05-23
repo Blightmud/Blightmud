@@ -53,13 +53,21 @@ impl UserData for Trigger {}
 #[derive(Clone)]
 pub struct BlightMud {
     main_writer: Sender<Event>,
+    output_lines: Vec<String>,
 }
 
 impl BlightMud {
     pub fn new(writer: Sender<Event>) -> Self {
         Self {
             main_writer: writer,
+            output_lines: vec![],
         }
+    }
+
+    pub fn get_output_lines(&mut self) -> Vec<String> {
+        let return_lines = self.output_lines.clone();
+        self.output_lines.clear();
+        return_lines
     }
 
     fn create_trigger(&self, regex: &str, gag: bool) -> Result<Trigger, String> {
@@ -89,10 +97,8 @@ impl UserData for BlightMud {
             this.main_writer.send(Event::LoadScript(path)).unwrap();
             Ok(())
         });
-        methods.add_method("output", |_, this, strings: Variadic<String>| {
-            this.main_writer
-                .send(Event::Output(strings.join(" ")))
-                .unwrap();
+        methods.add_method_mut("output", |_, this, strings: Variadic<String>| {
+            this.output_lines.push(strings.join(" "));
             Ok(())
         });
         methods.add_method("send", |_, this, strings: Variadic<String>| {

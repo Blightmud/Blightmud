@@ -375,7 +375,7 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
         }
 
         // Push the rest of the line if there is anything left
-        if last_cut + 1 < line.len() {
+        if last_cut < line.len() && !line[last_cut..].trim().is_empty() {
             lines.push(&line[last_cut..]);
         }
     }

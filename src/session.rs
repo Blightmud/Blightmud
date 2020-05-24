@@ -41,12 +41,24 @@ impl Session {
         if let Ok(stream) = TcpStream::connect(format!("{}:{}", host, port)) {
             self.stream.lock().unwrap().replace(stream);
             self.connected.store(true, Ordering::Relaxed);
+            self.main_writer
+                .send(Event::StartLogging(host.to_string(), false))
+                .unwrap();
             self.main_writer.send(Event::Connected).unwrap();
-            if let Ok(mut logger) = self.logger.lock() {
-                logger.start_logging(host).ok();
-            }
         }
         self.connected.load(Ordering::Relaxed)
+    }
+
+    pub fn start_logging(&self, host: &str) {
+        if let Ok(mut logger) = self.logger.lock() {
+            logger.start_logging(host).ok();
+        }
+    }
+
+    pub fn stop_logging(&self) {
+        if let Ok(mut logger) = self.logger.lock() {
+            logger.stop_logging().ok();
+        }
     }
 
     pub fn disconnect(&mut self) {
@@ -60,9 +72,6 @@ impl Session {
                     .ok();
                 *stream = None;
                 self.connected.store(false, Ordering::Relaxed);
-                if let Ok(mut logger) = self.logger.lock() {
-                    logger.stop_logging().ok();
-                }
             }
             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                 output_buffer.clear()
@@ -81,6 +90,7 @@ impl Session {
     }
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.stop_logging();
         if self.connected.load(Ordering::Relaxed) {
             self.disconnect();
         }

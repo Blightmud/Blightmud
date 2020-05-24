@@ -196,7 +196,9 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         let terminate = session.terminate;
         let stdin = stdin();
         let mut buffer = CommandBuffer::default();
-        buffer.completion_tree.insert("/connect /quit /disconnect /add_server /remove_server /list_servers /load /help scripting");
+        buffer
+            .completion_tree
+            .insert(include_str!("../../resources/completions.txt"));
 
         for c in stdin.keys() {
             match c.unwrap() {
@@ -320,6 +322,27 @@ fn parse_command(msg: &str) -> Event {
                 Event::ShowHelp(hfile.to_string())
             } else {
                 Event::ShowHelp("help".to_string())
+            }
+        }
+        Some("/start_log") => {
+            let p1 = iter.next();
+            if let Some(world) = p1 {
+                Event::StartLogging(world.to_string(), true)
+            } else {
+                Event::Info("USAGE: /start_log <name>".to_string())
+            }
+        }
+        Some("/stop_log") => Event::StopLogging,
+        Some("/set") => {
+            let p1 = iter.next();
+            let p2 = iter.next();
+
+            if p1 == None && p2 == None {
+                Event::Info("USAGE: /set <setting> or /set <setting> <new_value>".to_string())
+            } else if p2.is_some() && p1.is_some() {
+                Event::ToggleSetting(p1.unwrap().to_string(), p2.unwrap().to_string())
+            } else {
+                Event::ShowSetting(p1.unwrap().to_string())
             }
         }
         Some("/quit") | Some("/q") => Event::Quit,

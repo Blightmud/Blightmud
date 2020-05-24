@@ -13,11 +13,13 @@ pub struct Logger {
 
 impl Logger {
     pub fn start_logging(&mut self, host: &str) -> Result<()> {
-        let path = crate::DATA_DIR.clone().join("logs").join(host);
-        let _ = std::fs::create_dir(&path);
+        if self.file.is_none() {
+            let path = crate::DATA_DIR.clone().join("logs").join(host);
+            let _ = std::fs::create_dir(&path);
 
-        let logfile = path.join(format!("{}.log", Local::now().format("%Y%m%d.%H:%M:%S")));
-        self.file = Some(BufWriter::new(StripWriter::new(File::create(logfile)?)));
+            let logfile = path.join(format!("{}.log", Local::now().format("%Y%m%d.%H:%M:%S")));
+            self.file = Some(BufWriter::new(StripWriter::new(File::create(logfile)?)));
+        }
         Ok(())
     }
 

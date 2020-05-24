@@ -27,3 +27,4 @@ ron = "0.5"
 anyhow = "1.0.31"
 lazy_static = "1.4.0"
 rs-completion = { path = "lib/rs-completion" }
+simple-error = "0.2.1"

@@ -29,6 +29,7 @@ use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
+use model::{Settings, LOGGING_ENABLED};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -106,6 +107,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
+    let mut settings = Settings::load().unwrap();
 
     session.send_event(Event::ShowHelp("welcome".to_string()));
 
@@ -139,6 +141,33 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                 | Event::Info(_)
                 | Event::UserInputBuffer(_, _) => {
                     event_handler.handle_output_events(event, &mut screen)?;
+                }
+                Event::ShowSetting(setting) => match settings.get(&setting) {
+                    Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
+                    Err(error) => screen.print_error(&error.to_string()),
+                },
+                Event::ToggleSetting(setting, toggle) => {
+                    if let Err(error) = settings.set(
+                        &setting,
+                        match toggle.as_str() {
+                            "on" => true,
+                            "true" => true,
+                            "enabled" => true,
+                            _ => false,
+                        },
+                    ) {
+                        screen.print_error(&error.to_string());
+                    } else {
+                        screen.print_info(&format!("Setting: {} => {}", setting, toggle));
+                    }
+                }
+                Event::StartLogging(world, force) => {
+                    if settings.get(LOGGING_ENABLED)? || force {
+                        session.start_logging(&world)
+                    }
+                }
+                Event::StopLogging => {
+                    session.stop_logging();
                 }
                 Event::ProtoEnabled(proto) => {
                     if let opt::GMCP = proto {
@@ -235,6 +264,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
         }
     }
     screen.reset()?;
+    settings.save()?;
     session.close()?;
     Ok(())
 }

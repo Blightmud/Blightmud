@@ -17,7 +17,7 @@ use std::{
 };
 
 #[allow(dead_code)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Event {
     Prompt,
     ServerSend(Vec<u8>),
@@ -105,6 +105,9 @@ impl EventHandler {
                 if let Ok(script) = self.session.lua_script.lock() {
                     if !check_alias || !script.check_for_alias_match(&msg) {
                         screen.print_send(&msg);
+                        if let Ok(mut logger) = self.session.logger.lock() {
+                            logger.log_line(&format!("> {}", &msg))?;
+                        }
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
                             if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
                                 self.session.main_writer.send(Event::ServerSend(buffer))?;
@@ -158,7 +161,30 @@ impl EventHandler {
         }
     }
 
+    fn log_line(&self, line: &str) -> Result {
+        if let Ok(mut logger) = self.session.logger.lock() {
+            logger.log_line(line)?;
+        }
+        Ok(())
+    }
+
+    fn handle_logging(&self, event: Event) -> Result {
+        match event {
+            Event::MudOutput(line) | Event::Output(line) => self.log_line(&line),
+            Event::Error(line) => self.log_line(&format!("[!!] {}", &line)),
+            Event::Info(line) => self.log_line(&format!("[**] {}", &line)),
+            Event::Prompt => {
+                if let Ok(output_buffer) = self.session.output_buffer.lock() {
+                    self.log_line(&output_buffer.prompt)?;
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
     pub fn handle_output_events(&self, event: Event, screen: &mut Screen) -> Result {
+        self.handle_logging(event.clone())?;
         match event {
             Event::MudOutput(msg) => {
                 if let Ok(script) = self.session.lua_script.lock() {
@@ -190,6 +216,14 @@ impl EventHandler {
                 let mut prompt_input = self.session.prompt_input.lock().unwrap();
                 *prompt_input = input_buffer;
                 screen.print_prompt_input(&prompt_input, pos);
+                Ok(())
+            }
+            Event::Error(msg) => {
+                screen.print_error(&msg);
+                Ok(())
+            }
+            Event::Info(msg) => {
+                screen.print_info(&msg);
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

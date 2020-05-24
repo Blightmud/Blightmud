@@ -36,7 +36,7 @@ type TelnetData = Option<Vec<u8>>;
 type BlightResult = Result<(), Box<dyn std::error::Error>>;
 
 lazy_static! {
-    static ref DATA_DIR: PathBuf = {
+    pub static ref DATA_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
             let mut data_dir = dirs::data_dir().unwrap();
@@ -135,6 +135,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                 Event::MudOutput(_)
                 | Event::Output(_)
                 | Event::Prompt
+                | Event::Error(_)
+                | Event::Info(_)
                 | Event::UserInputBuffer(_, _) => {
                     event_handler.handle_output_events(event, &mut screen)?;
                 }
@@ -182,12 +184,6 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                 Event::ScrollUp => screen.scroll_up()?,
                 Event::ScrollDown => screen.scroll_down()?,
                 Event::ScrollBottom => screen.reset_scroll()?,
-                Event::Error(msg) => {
-                    screen.print_error(&msg);
-                }
-                Event::Info(msg) => {
-                    screen.print_info(&msg);
-                }
                 Event::LoadScript(path) => {
                     info!("Loading script: {}", path);
                     let mut lua = session.lua_script.lock().unwrap();

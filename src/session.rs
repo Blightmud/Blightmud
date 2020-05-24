@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use crate::{lua::LuaScript, net::OutputBuffer, timer::TimerEvent, Event};
+use crate::{io::Logger, lua::LuaScript, net::OutputBuffer, timer::TimerEvent, Event};
 use log::debug;
 
 #[derive(Default)]
@@ -30,6 +30,7 @@ pub struct Session {
     pub prompt_input: Arc<Mutex<String>>,
     pub lua_script: Arc<Mutex<LuaScript>>,
     pub comops: Arc<Mutex<CommunicationOptions>>,
+    pub logger: Arc<Mutex<Logger>>,
 }
 
 impl Session {
@@ -41,6 +42,9 @@ impl Session {
             self.stream.lock().unwrap().replace(stream);
             self.connected.store(true, Ordering::Relaxed);
             self.main_writer.send(Event::Connected).unwrap();
+            if let Ok(mut logger) = self.logger.lock() {
+                logger.start_logging(host).ok();
+            }
         }
         self.connected.load(Ordering::Relaxed)
     }
@@ -56,6 +60,9 @@ impl Session {
                     .ok();
                 *stream = None;
                 self.connected.store(false, Ordering::Relaxed);
+                if let Ok(mut logger) = self.logger.lock() {
+                    logger.stop_logging().ok();
+                }
             }
             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                 output_buffer.clear()
@@ -126,6 +133,7 @@ impl SessionBuilder {
             prompt_input: Arc::new(Mutex::new(String::new())),
             lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer))),
             comops: Arc::new(Mutex::new(CommunicationOptions::default())),
+            logger: Arc::new(Mutex::new(Logger::default())),
         }
     }
 }

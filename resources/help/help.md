@@ -5,6 +5,7 @@
 Available topics:
 
 - `scripting`
+- `logging`
 
 Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tree/master/resources/help)
 
@@ -16,14 +17,14 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `/remove_server <name>`            : Remove a saved server
 - `/list_servers, /ls`               : List all saved servers
 - `/load <path/to/luafile>`          : Load a script file
-- `/disconnect`, `/dc`                 : Disconnect from server
-- `/quit`, `/q`                        : Exit program
+- `/disconnect`, `/dc`               : Disconnect from server
+- `/quit`, `/q`                      : Exit program
 - `/help`                            : Help information
 
 ## Basic operations:
 
 - `PgUp`/`PgDn`      : Scroll output view
 - `End`              : Go to bottom of output view
-- `Up`/`Ctrl-P`       : Previous command
+- `Up`/`Ctrl-P`      : Previous command
 - `Down`/`Ctrl-N`    : Next command
 - `Ctrl-C`           : Quit program

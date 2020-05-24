@@ -29,20 +29,29 @@ impl HelpHandler {
         if self.files.contains_key(file) {
             let mut md_bytes = vec![];
 
-            let file = self.files[file].replace("$VERSION", VERSION);
+            let log_path = crate::DATA_DIR.join("logs");
+            let logdir = if let Some(str_path) = log_path.to_str() {
+                str_path
+            } else {
+                "$USER_DATA_DIR/logs"
+            };
+
+            let file_content = self.files[file]
+                .replace("$VERSION", VERSION)
+                .replace("$LOGDIR", logdir);
 
             let mut options = Options::empty();
             options.insert(Options::ENABLE_TASKLISTS);
             options.insert(Options::ENABLE_STRIKETHROUGH);
 
-            let parser = Parser::new_ext(&file, options);
+            let parser = Parser::new_ext(&file_content, options);
 
             // Useless as files are embedded into binary.
             let base_dir = Path::new("resources/help/");
 
             if mdcat::push_tty(&md_settings(), &mut md_bytes, &base_dir, parser).is_ok() {
                 if let Ok(md_string) = String::from_utf8(md_bytes) {
-                    Event::Output(md_string)
+                    Event::Output(format!("\n\n{}", md_string))
                 } else {
                     Event::Info("Error parsing help file".to_string())
                 }
@@ -59,6 +68,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
     let mut files: HashMap<&str, &str> = HashMap::new();
     files.insert("help", include_str!("../../resources/help/help.md"));
     files.insert("welcome", include_str!("../../resources/help/welcome.md"));
+    files.insert("logging", include_str!("../../resources/help/logging.md"));
     files.insert(
         "scripting",
         include_str!("../../resources/help/scripting.md"),

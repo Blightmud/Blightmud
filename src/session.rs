@@ -81,6 +81,7 @@ impl Session {
                 4096,
                 build_compatibility_table(),
             )));
+            self.stop_logging();
             debug!("Disconnected from {}:{}", self.host, self.port);
         }
     }
@@ -90,7 +91,6 @@ impl Session {
     }
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.stop_logging();
         if self.connected.load(Ordering::Relaxed) {
             self.disconnect();
         }

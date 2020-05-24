@@ -29,6 +29,8 @@ pub enum Event {
     UserInputBuffer(String, usize),
     Connect(Connection),
     Connected,
+    Disconnect(u16),
+    Reconnect,
     AddServer(String, Connection),
     RemoveServer(String),
     LoadServer(String),
@@ -50,7 +52,6 @@ pub enum Event {
     ScrollDown,
     ScrollBottom,
     ShowHelp(String),
-    Disconnect,
     Redraw,
     Quit,
 }
@@ -133,10 +134,7 @@ impl EventHandler {
                     spawn_transmit_thread(self.session.clone(), reader);
                     transmit_writer.replace(writer);
                 } else {
-                    self.session.main_writer.send(Event::Error(format!(
-                        "Failed to connect to {}:{}",
-                        host, port
-                    )))?;
+                    screen.print_error(&format!("Failed to connect to {}:{}", host, port));
                 }
                 Ok(())
             }
@@ -146,8 +144,9 @@ impl EventHandler {
                 self.session.lua_script.lock().unwrap().on_connect();
                 Ok(())
             }
-            Event::Disconnect => {
-                if self.session.connected.load(Ordering::Relaxed) {
+            Event::Disconnect(id) => {
+                let disconnect = id == 0 || self.session.connection_id == id;
+                if disconnect && self.session.connected.load(Ordering::Relaxed) {
                     self.session.disconnect();
                     screen.print_info(&format!(
                         "Disconnecting from: {}:{}",
@@ -157,8 +156,19 @@ impl EventHandler {
                         transmit_writer.send(None)?;
                     }
                     transmit_writer.take();
+                    screen.redraw_top_bar("", 0)?;
                 }
-                screen.redraw_top_bar("", 0)?;
+                Ok(())
+            }
+            Event::Reconnect => {
+                if !self.session.host.is_empty() && !self.session.port > 0 {
+                    self.session.main_writer.send(Event::Connect(Connection {
+                        host: self.session.host.clone(),
+                        port: self.session.port,
+                    }))?;
+                } else {
+                    screen.print_error("Reconnect to what?");
+                }
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

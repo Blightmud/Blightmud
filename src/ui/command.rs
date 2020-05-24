@@ -272,6 +272,8 @@ fn parse_command(msg: &str) -> Event {
                 }
             }
         }
+        Some("/disconnect") | Some("/dc") => Event::Disconnect(0),
+        Some("/reconnect") | Some("/rc") => Event::Reconnect,
         Some("/add_server") => {
             let p1 = iter.next();
             let p2 = iter.next();
@@ -306,7 +308,6 @@ fn parse_command(msg: &str) -> Event {
             }
         }
         Some("/list_servers") | Some("/ls") => Event::ListServers,
-        Some("/disconnect") | Some("/dc") => Event::Disconnect,
         Some("/load") => {
             let p1 = iter.next();
             if p1 == None {

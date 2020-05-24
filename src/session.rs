@@ -18,6 +18,7 @@ pub struct CommunicationOptions {
 
 #[derive(Clone)]
 pub struct Session {
+    pub connection_id: u16,
     pub host: String,
     pub port: u16,
     pub connected: Arc<AtomicBool>,
@@ -35,6 +36,7 @@ pub struct Session {
 
 impl Session {
     pub fn connect(&mut self, host: &str, port: u16) -> bool {
+        self.connection_id += 1;
         self.host = host.to_string();
         self.port = port;
         debug!("Connecting to {}:{}", self.host, self.port);
@@ -47,18 +49,6 @@ impl Session {
             self.main_writer.send(Event::Connected).unwrap();
         }
         self.connected.load(Ordering::Relaxed)
-    }
-
-    pub fn start_logging(&self, host: &str) {
-        if let Ok(mut logger) = self.logger.lock() {
-            logger.start_logging(host).ok();
-        }
-    }
-
-    pub fn stop_logging(&self) {
-        if let Ok(mut logger) = self.logger.lock() {
-            logger.stop_logging().ok();
-        }
     }
 
     pub fn disconnect(&mut self) {
@@ -83,6 +73,18 @@ impl Session {
             )));
             self.stop_logging();
             debug!("Disconnected from {}:{}", self.host, self.port);
+        }
+    }
+
+    pub fn start_logging(&self, host: &str) {
+        if let Ok(mut logger) = self.logger.lock() {
+            logger.start_logging(host).ok();
+        }
+    }
+
+    pub fn stop_logging(&self) {
+        if let Ok(mut logger) = self.logger.lock() {
+            logger.stop_logging().ok();
         }
     }
 
@@ -128,6 +130,7 @@ impl SessionBuilder {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
         Session {
+            connection_id: 0,
             host: String::new(),
             port: 0,
             connected: Arc::new(AtomicBool::new(false)),

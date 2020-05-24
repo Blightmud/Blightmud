@@ -125,7 +125,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                 | Event::ServerInput(_, _)
                 | Event::Connect(_)
                 | Event::Connected
-                | Event::Disconnect => {
+                | Event::Reconnect
+                | Event::Disconnect(_) => {
                     event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
                 }
                 Event::AddServer(_, _)

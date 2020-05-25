@@ -2,7 +2,7 @@ use crate::event::Event;
 use crate::net::OutputBuffer;
 use crate::session::{CommunicationOptions, Session};
 use libtelnet_rs::{
-    events::TelnetEvents,
+    events::{TelnetEvents, TelnetNegotiation as Neg},
     telnet::{op_command as cmd, op_option as opt},
     Parser,
 };
@@ -61,17 +61,35 @@ impl TelnetHandler {
                     }
                     TelnetEvents::Negotiation(neg) => {
                         debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
-                        if neg.option == opt::GMCP && neg.command == cmd::WILL {
-                            parser._will(opt::GMCP);
-                            self.main_writer
-                                .send(Event::ProtoEnabled(opt::GMCP))
-                                .unwrap();
-                        }
-                        if neg.option == opt::MCCP2 && neg.command == cmd::WILL {
-                            parser._will(opt::MCCP2);
-                            self.main_writer
-                                .send(Event::ProtoEnabled(opt::MCCP2))
-                                .unwrap();
+                        match neg {
+                            Neg {
+                                option: opt::GMCP,
+                                command: cmd::WILL,
+                            } => {
+                                parser._will(opt::GMCP);
+                                self.main_writer
+                                    .send(Event::ProtoEnabled(opt::GMCP))
+                                    .unwrap();
+                            }
+                            Neg {
+                                option: opt::MCCP2,
+                                command: cmd::WILL,
+                            } => {
+                                parser._will(opt::MCCP2);
+                                self.main_writer
+                                    .send(Event::ProtoEnabled(opt::MCCP2))
+                                    .unwrap();
+                            }
+                            Neg {
+                                option: opt::TTYPE,
+                                command: cmd::DO,
+                            } => {
+                                parser._will(opt::TTYPE);
+                                self.main_writer
+                                    .send(Event::ProtoEnabled(opt::TTYPE))
+                                    .unwrap();
+                            }
+                            _ => {}
                         }
                     }
                     TelnetEvents::Subnegotiation(data) => match data.option {
@@ -83,6 +101,17 @@ impl TelnetHandler {
                             debug!("Initiated MCCP2 compression");
                             if let Ok(mut comops) = self.comops.lock() {
                                 comops.mccp2 = true;
+                            }
+                        }
+                        opt::TTYPE => {
+                            if !data.buffer.is_empty() && data.buffer[0] == 1 {
+                                debug!("TTYPE requested, responding");
+                                if let Some(TelnetEvents::DataSend(data)) = parser.subnegotiation(
+                                    opt::TTYPE,
+                                    [&[cmd::IS][..], b"BLIGHTMUD"].concat(),
+                                ) {
+                                    self.main_writer.send(Event::ServerSend(data)).unwrap();
+                                }
                             }
                         }
                         _ => {}

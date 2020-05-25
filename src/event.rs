@@ -119,9 +119,9 @@ impl EventHandler {
                             }
                         }
                     } else {
-                        for line in script.get_output_lines() {
-                            screen.print_output(&line);
-                        }
+                        script.get_output_lines().iter().for_each(|l| {
+                            screen.print_output(l);
+                        });
                     }
                 }
                 Ok(())
@@ -139,13 +139,15 @@ impl EventHandler {
                 Ok(())
             }
             Event::Connected => {
-                debug!("Connected to {}:{}", self.session.host, self.session.port);
-                screen.redraw_top_bar(&self.session.host, self.session.port)?;
+                let host = self.session.host.lock().unwrap();
+                let port = self.session.port.load(Ordering::Relaxed);
+                debug!("Connected to {}:{}", host, port);
+                screen.redraw_top_bar(&host, port)?;
                 self.session
                     .lua_script
                     .lock()
                     .unwrap()
-                    .on_connect(&self.session.host, self.session.port);
+                    .on_connect(&host, port);
                 Ok(())
             }
             Event::Disconnect(id) => {
@@ -154,7 +156,8 @@ impl EventHandler {
                     self.session.disconnect();
                     screen.print_info(&format!(
                         "Disconnecting from: {}:{}",
-                        self.session.host, self.session.port
+                        self.session.host.lock().unwrap(),
+                        self.session.port.load(Ordering::Relaxed)
                     ));
                     if let Some(transmit_writer) = &transmit_writer {
                         transmit_writer.send(None)?;
@@ -165,11 +168,12 @@ impl EventHandler {
                 Ok(())
             }
             Event::Reconnect => {
-                if !self.session.host.is_empty() && !self.session.port > 0 {
-                    self.session.main_writer.send(Event::Connect(Connection {
-                        host: self.session.host.clone(),
-                        port: self.session.port,
-                    }))?;
+                let host = self.session.host.lock().unwrap().clone();
+                let port = self.session.port.load(Ordering::Relaxed);
+                if !host.is_empty() && !port > 0 {
+                    self.session
+                        .main_writer
+                        .send(Event::Connect(Connection { host, port }))?;
                 } else {
                     screen.print_error("Reconnect to what?");
                 }
@@ -209,9 +213,9 @@ impl EventHandler {
                     if !script.check_for_trigger_match(&msg) {
                         screen.print_output(&msg);
                     }
-                    for line in script.get_output_lines() {
-                        screen.print_output(&line);
-                    }
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
                 Ok(())
             }
@@ -223,9 +227,9 @@ impl EventHandler {
                 let output_buffer = self.session.output_buffer.lock().unwrap();
                 if let Ok(script) = self.session.lua_script.lock() {
                     script.check_for_prompt_trigger_match(&output_buffer.prompt);
-                    for line in script.get_output_lines() {
-                        screen.print_output(&line);
-                    }
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
                 screen.print_prompt(&output_buffer.prompt);
                 Ok(())

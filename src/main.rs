@@ -224,7 +224,12 @@ fn run(
                             if let TelnetEvents::DataSend(data) = event {
                                 debug!("Sending GMCP Core.Hello");
                                 session.main_writer.send(Event::ServerSend(data))?;
-                                session.lua_script.lock().unwrap().on_gmcp_ready();
+                                if let Ok(mut lua) = session.lua_script.lock() {
+                                    lua.on_gmcp_ready();
+                                    lua.get_output_lines().iter().for_each(|l| {
+                                        screen.print_output(l);
+                                    });
+                                }
                             }
                         } else {
                             error!("Failed to send GMCP Core.Hello");
@@ -243,6 +248,9 @@ fn run(
                 Event::GMCPReceive(msg) => {
                     let mut script = session.lua_script.lock().unwrap();
                     script.receive_gmcp(&msg);
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
                 Event::GMCPSend(msg) => {
                     let mut parser = session.telnet_parser.lock().unwrap();
@@ -263,9 +271,15 @@ fn run(
                     } else {
                         screen.print_info(&format!("Loaded script: {}", path));
                         if session.connected.load(Ordering::Relaxed) {
-                            lua.on_connect(&session.host, session.port);
+                            lua.on_connect(
+                                &session.host.lock().unwrap(),
+                                session.port.load(Ordering::Relaxed),
+                            );
                             lua.on_gmcp_ready();
                         }
+                        lua.get_output_lines().iter().for_each(|l| {
+                            screen.print_output(l);
+                        });
                     }
                 }
                 Event::ResetScript => {
@@ -288,9 +302,9 @@ fn run(
                 Event::TimedEvent(id) => {
                     if let Ok(mut script) = session.lua_script.lock() {
                         script.run_timed_function(id);
-                        for line in script.get_output_lines() {
-                            screen.print_output(&line);
-                        }
+                        script.get_output_lines().iter().for_each(|l| {
+                            screen.print_output(l);
+                        });
                     }
                 }
                 Event::DropTimedEvent(id) => {

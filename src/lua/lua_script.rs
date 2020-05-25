@@ -10,6 +10,7 @@ use strip_ansi_escapes::strip as strip_ansi;
 pub struct LuaScript {
     state: Lua,
     writer: Sender<Event>,
+    on_connect_triggered: bool,
 }
 
 fn create_default_lua_state(writer: Sender<Event>) -> Lua {
@@ -47,10 +48,12 @@ impl LuaScript {
         Self {
             state: create_default_lua_state(main_writer.clone()),
             writer: main_writer,
+            on_connect_triggered: false,
         }
     }
 
     pub fn reset(&mut self) {
+        self.on_connect_triggered = false;
         self.state = create_default_lua_state(self.writer.clone());
     }
 
@@ -186,18 +189,21 @@ impl LuaScript {
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16) {
-        self.state
-            .context(|ctx| -> Result<(), rlua::Error> {
-                if let Ok(callback) = ctx
-                    .globals()
-                    .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
-                {
-                    callback.call::<_, ()>((host, port))
-                } else {
-                    Ok(())
-                }
-            })
-            .unwrap();
+        if !self.on_connect_triggered {
+            self.on_connect_triggered = true;
+            self.state
+                .context(|ctx| -> Result<(), rlua::Error> {
+                    if let Ok(callback) = ctx
+                        .globals()
+                        .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
+                    {
+                        callback.call::<_, ()>((host, port))
+                    } else {
+                        Ok(())
+                    }
+                })
+                .unwrap();
+        }
     }
 
     pub fn on_gmcp_ready(&mut self) {

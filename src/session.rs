@@ -2,7 +2,7 @@ use libtelnet_rs::{compatibility::CompatibilityTable, telnet::op_option as opt, 
 use std::{
     net::TcpStream,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU16, Ordering},
         mpsc::Sender,
         Arc, Mutex,
     },
@@ -19,8 +19,8 @@ pub struct CommunicationOptions {
 #[derive(Clone)]
 pub struct Session {
     pub connection_id: u16,
-    pub host: String,
-    pub port: u16,
+    pub host: Arc<Mutex<String>>,
+    pub port: Arc<AtomicU16>,
     pub connected: Arc<AtomicBool>,
     pub stream: Arc<Mutex<Option<TcpStream>>>,
     pub main_writer: Sender<Event>,
@@ -37,9 +37,12 @@ pub struct Session {
 impl Session {
     pub fn connect(&mut self, host: &str, port: u16) -> bool {
         self.connection_id += 1;
-        self.host = host.to_string();
-        self.port = port;
-        debug!("Connecting to {}:{}", self.host, self.port);
+        if let Ok(mut m_host) = self.host.lock() {
+            *m_host = host.to_string();
+        }
+        self.port.store(port, Ordering::Relaxed);
+
+        debug!("Connecting to {}:{}", host, port);
         if let Ok(stream) = TcpStream::connect(format!("{}:{}", host, port)) {
             self.stream.lock().unwrap().replace(stream);
             self.connected.store(true, Ordering::Relaxed);
@@ -53,7 +56,9 @@ impl Session {
 
     pub fn disconnect(&mut self) {
         if self.connected.load(Ordering::Relaxed) {
-            debug!("Disconnecting from {}:{}", self.host, self.port);
+            let host = self.host.lock().unwrap();
+            let port = self.port.load(Ordering::Relaxed);
+            debug!("Disconnecting from {}:{}", host, port);
             if let Ok(mut stream) = self.stream.lock() {
                 stream
                     .as_mut()
@@ -72,7 +77,7 @@ impl Session {
                 build_compatibility_table(),
             )));
             self.stop_logging();
-            debug!("Disconnected from {}:{}", self.host, self.port);
+            debug!("Disconnected from {}:{}", host, port);
         }
     }
 
@@ -134,8 +139,8 @@ impl SessionBuilder {
         let timer_writer = self.timer_writer.unwrap();
         Session {
             connection_id: 0,
-            host: String::new(),
-            port: 0,
+            host: Arc::new(Mutex::new(String::new())),
+            port: Arc::new(AtomicU16::new(0)),
             connected: Arc::new(AtomicBool::new(false)),
             stream: Arc::new(Mutex::new(None)),
             main_writer: main_writer.clone(),

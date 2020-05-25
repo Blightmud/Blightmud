@@ -100,9 +100,9 @@ impl TelnetHandler {
                                 for line in new_lines {
                                     self.main_writer.send(Event::MudOutput(line)).unwrap();
                                 }
-                                if !output_buffer.is_empty()
+                                if self.mode == TelnetMode::UnterminatedPrompt
+                                    && !output_buffer.is_empty()
                                     && output_buffer.len() < 80
-                                    && self.mode == TelnetMode::UnterminatedPrompt
                                 {
                                     output_buffer.buffer_to_prompt(false);
                                     self.main_writer.send(Event::Prompt).unwrap();

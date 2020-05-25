@@ -29,4 +29,5 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `End`              : Go to bottom of output view
 - `Up`/`Ctrl-P`      : Previous command
 - `Down`/`Ctrl-N`    : Next command
+- `Ctrl-L`           : Redraw screen (good when muds mess stuff up)
 - `Ctrl-C`           : Quit program

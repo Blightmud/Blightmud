@@ -11,6 +11,7 @@ use timer::{Guard, MessageTimer};
 pub enum TimerEvent {
     Create(Duration, Option<u32>, u32),
     Trigger(u32),
+    Clear,
     Quit,
 }
 
@@ -40,6 +41,10 @@ impl Schedule {
                 count,
             },
         );
+    }
+
+    fn clear_jobs(&mut self) {
+        self.jobs.clear();
     }
 
     fn run_job(&mut self, callback_id: u32) {
@@ -82,6 +87,9 @@ pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEven
                     }
                     TimerEvent::Trigger(cbid) => {
                         schedule.run_job(cbid);
+                    }
+                    TimerEvent::Clear => {
+                        schedule.clear_jobs();
                     }
                     TimerEvent::Quit => break,
                 }

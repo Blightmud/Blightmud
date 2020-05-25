@@ -234,6 +234,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                         script.reset();
                         screen.print_info("Done");
                     }
+                    session.timer_writer.send(TimerEvent::Clear)?;
                 }
                 Event::ShowHelp(hfile) => {
                     help_handler.show_help(&hfile)?;
@@ -246,6 +247,9 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                 Event::TimedEvent(id) => {
                     if let Ok(mut script) = session.lua_script.lock() {
                         script.run_timed_function(id);
+                        for line in script.get_output_lines() {
+                            screen.print_output(&line);
+                        }
                     }
                 }
                 Event::DropTimedEvent(id) => {

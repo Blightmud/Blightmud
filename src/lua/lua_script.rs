@@ -185,14 +185,14 @@ impl LuaScript {
         Ok(())
     }
 
-    pub fn on_connect(&mut self) {
+    pub fn on_connect(&mut self, host: &str, port: u16) {
         self.state
             .context(|ctx| -> Result<(), rlua::Error> {
                 if let Ok(callback) = ctx
                     .globals()
                     .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
                 {
-                    callback.call::<_, ()>(())
+                    callback.call::<_, ()>((host, port))
                 } else {
                     Ok(())
                 }

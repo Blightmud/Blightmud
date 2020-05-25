@@ -35,10 +35,17 @@ impl HelpHandler {
             } else {
                 "$USER_DATA_DIR/logs"
             };
+            let config_path = crate::CONFIG_DIR.to_path_buf();
+            let config_dir = if let Some(str_path) = config_path.to_str() {
+                str_path
+            } else {
+                "$USER_CONFIG_DIR"
+            };
 
             let file_content = self.files[file]
                 .replace("$VERSION", VERSION)
-                .replace("$LOGDIR", logdir);
+                .replace("$LOGDIR", logdir)
+                .replace("$CONFIGDIR", config_dir);
 
             let mut options = Options::empty();
             options.insert(Options::ENABLE_TASKLISTS);
@@ -69,6 +76,10 @@ fn load_files() -> HashMap<&'static str, &'static str> {
     files.insert("help", include_str!("../../resources/help/help.md"));
     files.insert("welcome", include_str!("../../resources/help/welcome.md"));
     files.insert("logging", include_str!("../../resources/help/logging.md"));
+    files.insert(
+        "config_scripts",
+        include_str!("../../resources/help/config_scripts.md"),
+    );
     files.insert(
         "scripting",
         include_str!("../../resources/help/scripting.md"),

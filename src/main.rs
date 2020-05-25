@@ -10,7 +10,7 @@ use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
-use std::thread;
+use std::{fs, thread};
 use ui::HelpHandler;
 
 mod event;
@@ -34,7 +34,6 @@ use model::{Settings, LOGGING_ENABLED};
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 type TelnetData = Option<Vec<u8>>;
-type BlightResult = Result<(), Box<dyn std::error::Error>>;
 
 lazy_static! {
     pub static ref DATA_DIR: PathBuf = {
@@ -44,6 +43,18 @@ lazy_static! {
             data_dir.push("blightmud");
             let _ = std::fs::create_dir(&data_dir);
             data_dir
+        }
+
+        #[cfg(debug_assertions)]
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    };
+    pub static ref CONFIG_DIR: PathBuf = {
+        #[cfg(not(debug_assertions))]
+        {
+            let mut config_dir = dirs::config_dir().unwrap();
+            config_dir.push("blightmud");
+            let _ = std::fs::create_dir(&config_dir);
+            config_dir
         }
 
         #[cfg(debug_assertions)]
@@ -101,13 +112,41 @@ fn main() {
     info!("Shutting down");
 }
 
-fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult {
+fn run(
+    main_thread_read: Receiver<Event>,
+    mut session: Session,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut screen = Screen::new()?;
     screen.setup()?;
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut settings = Settings::load().unwrap();
+
+    let lua_scripts = {
+        fs::read_dir(CONFIG_DIR.as_path())?
+            .filter_map(|entry| match entry {
+                Ok(file) => {
+                    if let Ok(filename) = file.file_name().into_string() {
+                        if filename.ends_with(".lua") {
+                            Some(file.path())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect::<Vec<PathBuf>>()
+    };
+
+    for script in lua_scripts {
+        session
+            .main_writer
+            .send(Event::LoadScript(script.to_str().unwrap().to_string()))?;
+    }
 
     session.send_event(Event::ShowHelp("welcome".to_string()));
 
@@ -224,7 +263,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                     } else {
                         screen.print_info(&format!("Loaded script: {}", path));
                         if session.connected.load(Ordering::Relaxed) {
-                            lua.on_connect();
+                            lua.on_connect(&session.host, session.port);
                             lua.on_gmcp_ready();
                         }
                     }

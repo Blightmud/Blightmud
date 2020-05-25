@@ -4,6 +4,7 @@
 
 Available topics:
 
+- `config_scripts`
 - `scripting`
 - `logging`
 

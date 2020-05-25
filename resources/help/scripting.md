@@ -68,6 +68,7 @@ blight:add_trigger(
 
 Add a timer that calls the provided callback a set number of times with
 the provided duration between each call.
+Sending a count of 0 will run the timer indefinitely.
 
 Example:
 ```lua
@@ -142,7 +143,12 @@ blight:send_gmcp("Char.Health " .. json.encode(data))
 
 ***blight:on_connect(callback)***
 
-Registers a callback that is triggered when the client successfully connects
-to a server.
-You may only register one callback. A secondary callback will
-overwrite the first one.
+Registers a callback that is triggered when the client successfully connects to a server.
+You may only register one callback. A secondary callback will overwrite the first one.
+The callback may take two arguments `host` and `port`.
+Example:
+```lua
+blight:on_connect(function (host, port)
+    blight:output("Connected to:", host, port)
+end)
+```

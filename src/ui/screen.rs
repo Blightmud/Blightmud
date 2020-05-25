@@ -1,4 +1,5 @@
-use crate::{ui::ansi::*, BlightResult};
+use crate::ui::ansi::*;
+use anyhow::Result;
 use std::collections::VecDeque;
 use std::io::{stdout, Stdout, Write};
 use std::{error, fmt};
@@ -63,7 +64,7 @@ impl Screen {
         })
     }
 
-    pub fn setup(&mut self) -> BlightResult {
+    pub fn setup(&mut self) -> Result<()> {
         self.reset()?;
 
         // Get params in case screen resized
@@ -90,7 +91,7 @@ impl Screen {
         }
     }
 
-    pub fn redraw_top_bar(&mut self, host: &str, port: u16) -> BlightResult {
+    pub fn redraw_top_bar(&mut self, host: &str, port: u16) -> Result<()> {
         write!(
             self.screen,
             "{}{}{}",
@@ -113,7 +114,7 @@ impl Screen {
         Ok(())
     }
 
-    fn redraw_bottom_bar(&mut self) -> BlightResult {
+    fn redraw_bottom_bar(&mut self) -> Result<()> {
         write!(
             self.screen,
             "{}{}{}",
@@ -142,7 +143,7 @@ impl Screen {
         termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line)
     }
 
-    pub fn reset(&mut self) -> BlightResult {
+    pub fn reset(&mut self) -> Result<()> {
         write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion)?;
         Ok(())
     }
@@ -227,7 +228,7 @@ impl Screen {
         ));
     }
 
-    pub fn scroll_up(&mut self) -> BlightResult {
+    pub fn scroll_up(&mut self) -> Result<()> {
         let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
         if self.history.len() > output_range as usize {
             if !self.scroll_data.0 {
@@ -241,7 +242,7 @@ impl Screen {
         Ok(())
     }
 
-    pub fn scroll_down(&mut self) -> BlightResult {
+    pub fn scroll_down(&mut self) -> Result<()> {
         if self.scroll_data.0 {
             let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
             let max_start_index: i32 = self.history.len() as i32 - output_range;
@@ -256,7 +257,7 @@ impl Screen {
         Ok(())
     }
 
-    fn draw_scroll(&mut self) -> BlightResult {
+    fn draw_scroll(&mut self) -> Result<()> {
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         for i in 0..output_range {
             let index = self.scroll_data.1 + i as usize;
@@ -273,7 +274,7 @@ impl Screen {
         Ok(())
     }
 
-    pub fn reset_scroll(&mut self) -> BlightResult {
+    pub fn reset_scroll(&mut self) -> Result<()> {
         self.scroll_data.0 = false;
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         let output_start_index = self.history.len() as i32 - output_range as i32;

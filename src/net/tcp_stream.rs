@@ -31,30 +31,20 @@ impl MudReceiver {
         }
     }
 
-    fn read(&mut self) -> Vec<u8> {
+    fn read_bytes(&mut self) -> Vec<u8> {
         let mut data = vec![0; 4096];
         if let Some(decoder) = &mut self.decoder {
             if let Ok(bytes_read) = decoder.read(&mut data) {
                 data = data.split_at(bytes_read).0.to_vec();
+            } else {
+                data = vec![];
             }
         } else if let Ok(bytes_read) = self.reader.read(&mut data) {
             data = data.split_at(bytes_read).0.to_vec();
+        } else {
+            data = vec![];
         }
         data
-    }
-
-    fn read_bytes(&mut self) -> Vec<u8> {
-        let mut all_data: Vec<u8> = vec![];
-
-        loop {
-            let mut data = self.read();
-            let len = data.len();
-            all_data.append(&mut data);
-            if len < 4096 {
-                break;
-            }
-        }
-        all_data
     }
 }
 

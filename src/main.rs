@@ -164,10 +164,12 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session) -> BlightResult 
                 }
                 Event::StartLogging(world, force) => {
                     if settings.get(LOGGING_ENABLED)? || force {
+                        screen.print_info(&format!("Started logging for: {}", world));
                         session.start_logging(&world)
                     }
                 }
                 Event::StopLogging => {
+                    screen.print_info("Logging stopped");
                     session.stop_logging();
                 }
                 Event::ProtoEnabled(proto) => {

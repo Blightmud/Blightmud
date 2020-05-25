@@ -84,6 +84,7 @@ impl Session {
 
     pub fn stop_logging(&self) {
         if let Ok(mut logger) = self.logger.lock() {
+            self.main_writer.send(Event::Info("Logging stopped".to_string())).unwrap();
             logger.stop_logging().ok();
         }
     }

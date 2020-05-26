@@ -112,7 +112,9 @@ impl EventHandler {
                     if !script.check_for_alias_match(&line) {
                         screen.print_send(&line);
                         if let Ok(mut logger) = self.session.logger.lock() {
-                            logger.log_line(&format!("> {}", &line))?;
+                            if let Some(log_line) = line.log_line() {
+                                logger.log_line(&format!("> {}", &log_line))?;
+                            }
                         }
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
                             if let TelnetEvents::DataSend(buffer) = parser.send_text(&line.line()) {
@@ -184,21 +186,30 @@ impl EventHandler {
         }
     }
 
-    fn log_line(&self, line: &str) -> Result {
+    fn log_line(&self, prefix: &str, line: &Line) -> Result {
         if let Ok(mut logger) = self.session.logger.lock() {
-            logger.log_line(line)?;
+            if let Some(log_line) = line.log_line() {
+                logger.log_line(&format!("{}{}", prefix, log_line))?;
+            }
+        }
+        Ok(())
+    }
+
+    fn log_str(&self, prefix: &str, line: &str) -> Result {
+        if let Ok(mut logger) = self.session.logger.lock() {
+            logger.log_line(&format!("{}{}", prefix, line))?;
         }
         Ok(())
     }
 
     fn handle_logging(&self, event: Event) -> Result {
         match event {
-            Event::MudOutput(line) | Event::Output(line) => self.log_line(&line.clean_line()),
-            Event::Error(line) => self.log_line(&format!("[!!] {}", &line)),
-            Event::Info(line) => self.log_line(&format!("[**] {}", &line)),
+            Event::MudOutput(line) | Event::Output(line) => self.log_line("", &line),
+            Event::Error(line) => self.log_str("[!!] ", &line),
+            Event::Info(line) => self.log_str("[**] ", &line),
             Event::Prompt => {
                 if let Ok(output_buffer) = self.session.output_buffer.lock() {
-                    self.log_line(&output_buffer.prompt.clean_line())?;
+                    self.log_line("", &output_buffer.prompt)?;
                 }
                 Ok(())
             }

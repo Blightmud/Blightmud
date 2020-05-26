@@ -4,6 +4,7 @@ use strip_ansi_escapes::strip as strip_ansi;
 #[derive(Debug, Default, Clone)]
 pub struct Flags {
     pub gag: bool,
+    pub skip_log: bool,
     pub replace_last: bool,
     pub prompt: bool,
     pub bypass_script: bool,
@@ -117,6 +118,14 @@ impl Line {
     pub fn print_line(&self) -> Option<&str> {
         if !self.flags.gag {
             Some(self.content.as_str())
+        } else {
+            None
+        }
+    }
+
+    pub fn log_line(&self) -> Option<&str> {
+        if !self.flags.skip_log {
+            Some(self.clean_content.as_str())
         } else {
             None
         }

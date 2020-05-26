@@ -1,5 +1,5 @@
 use crate::event::Event;
-use crate::model::{Line, Connection};
+use crate::model::{Connection, Line};
 use crate::session::Session;
 use log::debug;
 use rs_completion::CompletionTree;

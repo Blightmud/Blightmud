@@ -1,4 +1,4 @@
-use crate::{event::Event, VERSION, model::Line};
+use crate::{event::Event, model::Line, VERSION};
 
 use std::path::Path;
 use std::{collections::HashMap, sync::mpsc::Sender};

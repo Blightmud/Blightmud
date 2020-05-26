@@ -1,6 +1,6 @@
 use crate::{
     io::SaveData,
-    model::{Connection, Servers, Line},
+    model::{Connection, Line, Servers},
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
     ui::Screen,
@@ -252,7 +252,12 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_store_events(&mut self, event: Event, saved_servers: &mut Servers, screen: &mut Screen) -> Result {
+    pub fn handle_store_events(
+        &mut self,
+        event: Event,
+        saved_servers: &mut Servers,
+        screen: &mut Screen,
+    ) -> Result {
         match event {
             Event::AddServer(name, connection) => {
                 if saved_servers.contains_key(&name) {

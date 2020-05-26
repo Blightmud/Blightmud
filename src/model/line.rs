@@ -1,5 +1,5 @@
-use strip_ansi_escapes::strip as strip_ansi;
 use std::fmt;
+use strip_ansi_escapes::strip as strip_ansi;
 
 #[derive(Debug, Default, Clone)]
 pub struct Flags {
@@ -7,6 +7,7 @@ pub struct Flags {
     pub replace_last: bool,
     pub prompt: bool,
     pub bypass_script: bool,
+    pub matched: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -16,7 +17,7 @@ pub struct Line {
     pub flags: Flags,
 }
 
-impl Eq for Line { }
+impl Eq for Line {}
 
 impl PartialEq for Line {
     fn eq(&self, other: &Self) -> bool {

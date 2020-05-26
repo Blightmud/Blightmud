@@ -1,6 +1,6 @@
 use super::{constants::*, util::output_stack_trace};
 use crate::event::Event;
-use crate::model::{Line, Connection};
+use crate::model::{Connection, Line};
 use anyhow::Result;
 use chrono::Duration;
 use log::debug;
@@ -105,9 +105,7 @@ impl UserData for BlightMud {
             let mut line = Line::from(strings.join(" "));
             line.flags.bypass_script = true;
 
-            this.main_writer
-                .send(Event::ServerInput(line))
-                .unwrap();
+            this.main_writer.send(Event::ServerInput(line)).unwrap();
             Ok(())
         });
         methods.add_method("debug", |_, _, strings: Variadic<String>| {

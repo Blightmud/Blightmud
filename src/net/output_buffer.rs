@@ -1,5 +1,5 @@
-use log::error;
 use crate::model::Line;
+use log::error;
 
 pub struct OutputBuffer {
     buffer: Vec<u8>,

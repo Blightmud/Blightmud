@@ -1,7 +1,7 @@
 use super::constants::*;
 use super::user_data::*;
 use super::util::*;
-use crate::{model::Line, event::Event};
+use crate::{event::Event, model::Line};
 use rlua::{Lua, Result as LuaResult};
 use std::io::prelude::*;
 use std::{error::Error, fs::File, result::Result, sync::mpsc::Sender};
@@ -86,7 +86,7 @@ impl LuaScript {
                                 Some(m) => m.as_str().to_string(),
                                 None => String::new(),
                             })
-                        .collect();
+                            .collect();
                         if let Err(msg) = cb.call::<_, ()>(captures) {
                             output_stack_trace(&self.writer, &msg.to_string());
                         }
@@ -130,6 +130,7 @@ impl LuaScript {
                     if let Err(msg) = cb.call::<_, ()>(captures) {
                         output_stack_trace(&self.writer, &msg.to_string());
                     }
+                    line.flags.matched = true;
                     line.flags.gag = rust_trigger.gag;
                 }
             }
@@ -225,7 +226,7 @@ impl LuaScript {
 #[cfg(test)]
 mod lua_script_tests {
     use super::LuaScript;
-    use crate::event::Event;
+    use crate::{event::Event, model::Line};
     use std::sync::mpsc::{channel, Receiver, Sender};
 
     #[test]
@@ -240,8 +241,12 @@ mod lua_script_tests {
             ctx.load(create_trigger_lua).exec().unwrap();
         });
 
-        assert!(lua.check_for_trigger_match("test"));
-        assert!(!lua.check_for_trigger_match("test test"));
+        let mut test_line = Line::from("test");
+        lua.check_for_trigger_match(&mut test_line);
+        assert!(test_line.flags.matched);
+        test_line = Line::from("test test");
+        lua.check_for_trigger_match(&mut test_line);
+        assert!(!test_line.flags.matched);
     }
 
     #[test]
@@ -256,8 +261,12 @@ mod lua_script_tests {
             ctx.load(create_prompt_trigger_lua).exec().unwrap();
         });
 
-        assert!(lua.check_for_prompt_trigger_match("test"));
-        assert!(!lua.check_for_prompt_trigger_match("test test"));
+        let mut test_line = Line::from("test");
+        lua.check_for_prompt_trigger_match(&mut test_line);
+        assert!(test_line.flags.matched);
+        test_line = Line::from("test test");
+        lua.check_for_prompt_trigger_match(&mut test_line);
+        assert!(!test_line.flags.matched);
     }
 
     #[test]
@@ -272,8 +281,8 @@ mod lua_script_tests {
             ctx.load(create_alias_lua).exec().unwrap();
         });
 
-        assert!(lua.check_for_alias_match("test"));
-        assert!(!lua.check_for_alias_match(" test"));
+        assert!(lua.check_for_alias_match(&Line::from("test")));
+        assert!(!lua.check_for_alias_match(&Line::from(" test")));
     }
 
     #[test]

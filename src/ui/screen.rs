@@ -160,7 +160,7 @@ impl Screen {
                     prompt_line,
                     self.goto_prompt(),
                 )
-                    .unwrap();
+                .unwrap();
             }
         }
     }
@@ -215,17 +215,17 @@ impl Screen {
                 &line,
                 self.goto_prompt(),
             )
-                .unwrap();
+            .unwrap();
         }
     }
 
     pub fn print_send(&mut self, send: &Line) {
         if let Some(line) = send.print_line() {
             self.print_line(&format!(
-                    "{}> {}{}",
-                    color::Fg(color::LightYellow),
-                    line,
-                    color::Fg(color::Reset)
+                "{}> {}{}",
+                color::Fg(color::LightYellow),
+                line,
+                color::Fg(color::Reset)
             ));
         }
     }

@@ -164,10 +164,19 @@ impl Screen {
     }
 
     pub fn print_prompt_input(&mut self, input: &str, pos: usize) {
+        // Sanity check
+        debug_assert!(pos <= input.len());
+
         let mut input = input;
-        while input.len() >= self.width as usize {
+        let mut pos = pos;
+        let width = self.width as usize;
+        while input.len() >= width && pos >= width {
             let (_, last) = input.split_at(self.width as usize);
             input = last;
+            pos -= width;
+        }
+        if input.len() >= width {
+            input = input.split_at(width).0;
         }
         self.cursor_prompt_pos = pos as u16 + 1;
         write!(

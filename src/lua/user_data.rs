@@ -1,6 +1,6 @@
 use super::{constants::*, util::output_stack_trace};
 use crate::event::Event;
-use crate::model::Connection;
+use crate::model::{Line, Connection};
 use anyhow::Result;
 use chrono::Duration;
 use log::debug;
@@ -53,7 +53,7 @@ impl UserData for Trigger {}
 #[derive(Clone)]
 pub struct BlightMud {
     main_writer: Sender<Event>,
-    output_lines: Vec<String>,
+    output_lines: Vec<Line>,
 }
 
 impl BlightMud {
@@ -64,7 +64,7 @@ impl BlightMud {
         }
     }
 
-    pub fn get_output_lines(&mut self) -> Vec<String> {
+    pub fn get_output_lines(&mut self) -> Vec<Line> {
         let return_lines = self.output_lines.clone();
         self.output_lines.clear();
         return_lines
@@ -98,12 +98,15 @@ impl UserData for BlightMud {
             Ok(())
         });
         methods.add_method_mut("output", |_, this, strings: Variadic<String>| {
-            this.output_lines.push(strings.join(" "));
+            this.output_lines.push(Line::from(strings.join(" ")));
             Ok(())
         });
         methods.add_method("send", |_, this, strings: Variadic<String>| {
+            let mut line = Line::from(strings.join(" "));
+            line.flags.bypass_script = true;
+
             this.main_writer
-                .send(Event::ServerInput(strings.join(" "), false))
+                .send(Event::ServerInput(line))
                 .unwrap();
             Ok(())
         });

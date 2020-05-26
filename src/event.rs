@@ -21,9 +21,9 @@ use std::{
 pub enum Event {
     Prompt,
     ServerSend(Vec<u8>),
-    ServerInput(String, bool),
+    ServerInput(Line),
     MudOutput(Line),
-    Output(String),
+    Output(Line),
     Error(String),
     Info(String),
     UserInputBuffer(String, usize),
@@ -99,6 +99,7 @@ impl EventHandler {
     ) -> Result {
         match event {
             Event::ServerSend(data) => {
+                debug!("Sending: {:?}", data);
                 if let Some(transmit_writer) = &transmit_writer {
                     transmit_writer.send(Some(data))?;
                 } else {
@@ -106,15 +107,15 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::ServerInput(msg, check_alias) => {
+            Event::ServerInput(line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
-                    if !check_alias || !script.check_for_alias_match(&msg) {
-                        screen.print_send(&msg);
+                    if !script.check_for_alias_match(&line) {
+                        screen.print_send(&line);
                         if let Ok(mut logger) = self.session.logger.lock() {
-                            logger.log_line(&format!("> {}", &msg))?;
+                            logger.log_line(&format!("> {}", &line))?;
                         }
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
-                            if let TelnetEvents::DataSend(buffer) = parser.send_text(&msg) {
+                            if let TelnetEvents::DataSend(buffer) = parser.send_text(&line.line()) {
                                 self.session.main_writer.send(Event::ServerSend(buffer))?;
                             }
                         }
@@ -192,12 +193,12 @@ impl EventHandler {
 
     fn handle_logging(&self, event: Event) -> Result {
         match event {
-            Event::MudOutput(line) | Event::Output(line) => self.log_line(&line),
+            Event::MudOutput(line) | Event::Output(line) => self.log_line(&line.clean_line()),
             Event::Error(line) => self.log_line(&format!("[!!] {}", &line)),
             Event::Info(line) => self.log_line(&format!("[**] {}", &line)),
             Event::Prompt => {
                 if let Ok(output_buffer) = self.session.output_buffer.lock() {
-                    self.log_line(&output_buffer.prompt)?;
+                    self.log_line(&output_buffer.prompt.clean_line())?;
                 }
                 Ok(())
             }
@@ -208,25 +209,24 @@ impl EventHandler {
     pub fn handle_output_events(&self, event: Event, screen: &mut Screen) -> Result {
         self.handle_logging(event.clone())?;
         match event {
-            Event::MudOutput(msg) => {
+            Event::MudOutput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
-                    if !script.check_for_trigger_match(&msg) {
-                        screen.print_output(&msg);
-                    }
+                    script.check_for_trigger_match(&mut line);
+                    screen.print_output(&line);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });
                 }
                 Ok(())
             }
-            Event::Output(msg) => {
-                screen.print_output(&msg);
+            Event::Output(line) => {
+                screen.print_output(&line);
                 Ok(())
             }
             Event::Prompt => {
-                let output_buffer = self.session.output_buffer.lock().unwrap();
+                let mut output_buffer = self.session.output_buffer.lock().unwrap();
                 if let Ok(script) = self.session.lua_script.lock() {
-                    script.check_for_prompt_trigger_match(&output_buffer.prompt);
+                    script.check_for_prompt_trigger_match(&mut output_buffer.prompt);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });
@@ -252,7 +252,7 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_store_events(&mut self, event: Event, saved_servers: &mut Servers) -> Result {
+    pub fn handle_store_events(&mut self, event: Event, saved_servers: &mut Servers, screen: &mut Screen) -> Result {
         match event {
             Event::AddServer(name, connection) => {
                 if saved_servers.contains_key(&name) {
@@ -292,30 +292,22 @@ impl EventHandler {
             Event::LoadServer(name) => {
                 if saved_servers.contains_key(&name) {
                     let connection = saved_servers.get(&name).cloned().unwrap();
-
                     self.session.main_writer.send(Event::Connect(connection))?;
                 } else {
-                    self.session.main_writer.send(Event::Error(format!(
-                        "Saved server does not exist: {}",
-                        name
-                    )))?;
+                    screen.print_error(&format!("Saved server does not exist: {}", name));
                 }
 
                 Ok(())
             }
             Event::ListServers => {
                 if saved_servers.is_empty() {
-                    self.session
-                        .main_writer
-                        .send(Event::Info("There are no saved servers.".to_string()))?;
+                    screen.print_info("There are no saved servers.");
                 } else {
-                    let mut output = String::from("Saved servers:\n\n");
-
+                    screen.print_info("Saved servers:");
+                    screen.print_info("");
                     for server in saved_servers {
-                        output.push_str(&format!("- Name: {}, {}\n", server.0, server.1));
+                        screen.print_info(&format!(" - Name: {}, {}", server.0, server.1));
                     }
-
-                    self.session.main_writer.send(Event::Output(output))?;
                 }
 
                 Ok(())

@@ -161,7 +161,7 @@ fn run(
         if let Ok(event) = main_thread_read.recv() {
             match event {
                 Event::ServerSend(_)
-                | Event::ServerInput(_, _)
+                | Event::ServerInput(_)
                 | Event::Connect(_)
                 | Event::Connected
                 | Event::Reconnect
@@ -172,7 +172,7 @@ fn run(
                 | Event::RemoveServer(_)
                 | Event::LoadServer(_)
                 | Event::ListServers => {
-                    event_handler.handle_store_events(event, &mut saved_servers)?;
+                    event_handler.handle_store_events(event, &mut saved_servers, &mut screen)?;
                 }
                 Event::MudOutput(_)
                 | Event::Output(_)

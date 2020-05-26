@@ -1,4 +1,5 @@
 use log::error;
+use crate::model::Line;
 
 pub struct OutputBuffer {
     buffer: Vec<u8>,
@@ -33,19 +34,19 @@ impl OutputBuffer {
         }
     }
 
-    pub fn receive(&mut self, data: &[u8]) -> Vec<String> {
+    pub fn receive(&mut self, data: &[u8]) -> Vec<Line> {
         self.buffer.append(&mut Vec::from(data));
 
         let mut last_cut: usize = 0;
-        let mut lines: Vec<String> = vec![];
+        let mut lines: Vec<Line> = vec![];
         for (i, bytes) in self.buffer.windows(2).enumerate() {
             if bytes == b"\r\n" {
                 if i == 0 {
-                    lines.push("".to_string());
+                    lines.push(Line::from("".to_string()));
                     last_cut = 2
                 } else {
                     let line: String = read_string_from(&self.buffer[last_cut..i]);
-                    lines.push(line);
+                    lines.push(Line::from(line));
                     last_cut = i + 2;
                 }
             }

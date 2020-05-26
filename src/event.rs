@@ -1,6 +1,6 @@
 use crate::{
     io::SaveData,
-    model::{Connection, Servers},
+    model::{Connection, Servers, Line},
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
     ui::Screen,
@@ -22,7 +22,7 @@ pub enum Event {
     Prompt,
     ServerSend(Vec<u8>),
     ServerInput(String, bool),
-    MudOutput(String),
+    MudOutput(Line),
     Output(String),
     Error(String),
     Info(String),

@@ -32,7 +32,8 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 
 ## Compiling
 - Install rust
-- Run 'cargo build'
+- Run `cargo build` to compile
+- Run `cargo run` to run
 
 ## Contributing
 All contributions are welcome. Check out [contributing guidelines](CONTRIBUTING.md).

@@ -80,15 +80,6 @@ impl TelnetHandler {
                                     .send(Event::ProtoEnabled(opt::MCCP2))
                                     .unwrap();
                             }
-                            Neg {
-                                option: opt::TTYPE,
-                                command: cmd::DO,
-                            } => {
-                                parser._will(opt::TTYPE);
-                                self.main_writer
-                                    .send(Event::ProtoEnabled(opt::TTYPE))
-                                    .unwrap();
-                            }
                             _ => {}
                         }
                     }
@@ -101,17 +92,6 @@ impl TelnetHandler {
                             debug!("Initiated MCCP2 compression");
                             if let Ok(mut comops) = self.comops.lock() {
                                 comops.mccp2 = true;
-                            }
-                        }
-                        opt::TTYPE => {
-                            if !data.buffer.is_empty() && data.buffer[0] == 1 {
-                                debug!("TTYPE requested, responding");
-                                if let Some(TelnetEvents::DataSend(data)) = parser.subnegotiation(
-                                    opt::TTYPE,
-                                    [&[cmd::IS][..], b"BLIGHTMUD"].concat(),
-                                ) {
-                                    self.main_writer.send(Event::ServerSend(data)).unwrap();
-                                }
                             }
                         }
                         _ => {}

@@ -34,10 +34,18 @@ impl MudReceiver {
     fn read_bytes(&mut self) -> Vec<u8> {
         let mut data = vec![0; 4096];
         if let Some(decoder) = &mut self.decoder {
-            if let Ok(bytes_read) = decoder.read(&mut data) {
-                data = data.split_at(bytes_read).0.to_vec();
-            } else {
-                data = vec![];
+            match decoder.read(&mut data) {
+                Ok(bytes_read) => {
+                    if bytes_read > 0 {
+                        data = data.split_at(bytes_read).0.to_vec();
+                    } else {
+                        data = vec![];
+                    }
+                }
+                Err(err) => {
+                    error!("Error: {}", err.to_string());
+                    data = vec![];
+                }
             }
         } else if let Ok(bytes_read) = self.reader.read(&mut data) {
             data = data.split_at(bytes_read).0.to_vec();

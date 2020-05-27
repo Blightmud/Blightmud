@@ -1,4 +1,4 @@
-use crate::ui::ansi::*;
+use crate::{model::Line, ui::ansi::*};
 use anyhow::Result;
 use std::collections::VecDeque;
 use std::io::{stdout, Stdout, Write};
@@ -148,18 +148,20 @@ impl Screen {
         Ok(())
     }
 
-    pub fn print_prompt(&mut self, prompt: &str) {
-        self.append_to_history(prompt);
-        if !self.scroll_data.0 {
-            write!(
-                self.screen,
-                "{}{}{}{}",
-                termion::cursor::Goto(1, self.output_line),
-                termion::scroll::Up(1),
-                prompt.trim_end(),
-                self.goto_prompt(),
-            )
-            .unwrap();
+    pub fn print_prompt(&mut self, prompt: &Line) {
+        if let Some(prompt_line) = prompt.print_line() {
+            self.append_to_history(prompt_line);
+            if !self.scroll_data.0 {
+                write!(
+                    self.screen,
+                    "{}{}{}{}",
+                    termion::cursor::Goto(1, self.output_line),
+                    termion::scroll::Up(1),
+                    prompt_line,
+                    self.goto_prompt(),
+                )
+                .unwrap();
+            }
         }
     }
 
@@ -190,12 +192,14 @@ impl Screen {
         .unwrap();
     }
 
-    pub fn print_output(&mut self, line: &str) {
-        if line.trim().is_empty() {
-            self.print_line(&line);
-        } else {
-            for line in wrap_line(&line, self.width as usize) {
-                self.print_line(&line);
+    pub fn print_output(&mut self, line: &Line) {
+        if let Some(print_line) = line.print_line() {
+            if print_line.trim().is_empty() {
+                self.print_line(&print_line);
+            } else {
+                for line in wrap_line(&print_line, self.width as usize) {
+                    self.print_line(&line);
+                }
             }
         }
     }
@@ -215,21 +219,23 @@ impl Screen {
         }
     }
 
-    pub fn print_send(&mut self, send: &str) {
-        self.print_output(&format!(
-            "{}> {}{}",
-            color::Fg(color::LightYellow),
-            send,
-            color::Fg(color::Reset)
-        ));
+    pub fn print_send(&mut self, send: &Line) {
+        if let Some(line) = send.print_line() {
+            self.print_line(&format!(
+                "{}> {}{}",
+                color::Fg(color::LightYellow),
+                line,
+                color::Fg(color::Reset)
+            ));
+        }
     }
 
     pub fn print_info(&mut self, output: &str) {
-        self.print_output(&format!("[**] {}", output));
+        self.print_line(&format!("[**] {}", output));
     }
 
     pub fn print_error(&mut self, output: &str) {
-        self.print_output(&format!(
+        self.print_line(&format!(
             "{}[!!] {}{}",
             color::Fg(color::Red),
             output,
@@ -320,8 +326,7 @@ impl Screen {
     }
 
     fn append_to_history(&mut self, line: &str) {
-        let lines = line.split("\r\n");
-        for line in lines {
+        for line in line.lines() {
             self.history.push_back(String::from(line));
         }
         while self.history.len() >= self.history.capacity() {

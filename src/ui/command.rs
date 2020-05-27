@@ -1,5 +1,5 @@
 use crate::event::Event;
-use crate::model::Connection;
+use crate::model::{Connection, Line};
 use crate::session::Session;
 use log::debug;
 use rs_completion::CompletionTree;
@@ -347,7 +347,7 @@ fn parse_command(msg: &str) -> Event {
             }
         }
         Some("/quit") | Some("/q") => Event::Quit,
-        _ => Event::ServerInput(msg, true),
+        _ => Event::ServerInput(Line::from(msg)),
     }
 }
 

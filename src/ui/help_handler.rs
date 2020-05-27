@@ -1,4 +1,4 @@
-use crate::{event::Event, VERSION};
+use crate::{event::Event, model::Line, VERSION};
 
 use std::path::Path;
 use std::{collections::HashMap, sync::mpsc::Sender};
@@ -58,7 +58,7 @@ impl HelpHandler {
 
             if mdcat::push_tty(&md_settings(), &mut md_bytes, &base_dir, parser).is_ok() {
                 if let Ok(md_string) = String::from_utf8(md_bytes) {
-                    Event::Output(format!("\n\n{}", md_string))
+                    Event::Output(Line::from(format!("\n\n{}", md_string)))
                 } else {
                     Event::Info("Error parsing help file".to_string())
                 }

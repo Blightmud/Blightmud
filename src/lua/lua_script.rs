@@ -1,11 +1,10 @@
 use super::constants::*;
 use super::user_data::*;
 use super::util::*;
-use crate::event::Event;
+use crate::{event::Event, model::Line};
 use rlua::{Lua, Result as LuaResult};
 use std::io::prelude::*;
 use std::{error::Error, fs::File, result::Result, sync::mpsc::Sender};
-use strip_ansi_escapes::strip as strip_ansi;
 
 pub struct LuaScript {
     state: Lua,
@@ -57,9 +56,9 @@ impl LuaScript {
         self.state = create_default_lua_state(self.writer.clone());
     }
 
-    pub fn get_output_lines(&self) -> Vec<String> {
+    pub fn get_output_lines(&self) -> Vec<Line> {
         self.state
-            .context(|ctx| -> LuaResult<Vec<String>> {
+            .context(|ctx| -> LuaResult<Vec<Line>> {
                 let mut blight: BlightMud = ctx.globals().get("blight")?;
                 let lines = blight.get_output_lines();
                 ctx.globals().set("blight", blight)?;
@@ -68,57 +67,59 @@ impl LuaScript {
             .unwrap()
     }
 
-    pub fn check_for_alias_match(&self, input: &str) -> bool {
-        let mut response = false;
-        self.state.context(|ctx| {
-            let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE).unwrap();
-            for pair in alias_table.pairs::<rlua::Value, rlua::AnyUserData>() {
-                let (_, alias) = pair.unwrap();
-                let rust_alias = &alias.borrow::<Alias>().unwrap();
-                let regex = &rust_alias.regex;
-                if rust_alias.enabled && regex.is_match(input) {
-                    let cb: rlua::Function = alias.get_user_value().unwrap();
-                    let captures: Vec<String> = regex
-                        .captures(input)
-                        .unwrap()
-                        .iter()
-                        .map(|c| match c {
-                            Some(m) => m.as_str().to_string(),
-                            None => String::new(),
-                        })
-                        .collect();
-                    if let Err(msg) = cb.call::<_, ()>(captures) {
-                        output_stack_trace(&self.writer, &msg.to_string());
+    pub fn check_for_alias_match(&self, input: &Line) -> bool {
+        if !input.flags.bypass_script {
+            let mut response = false;
+            self.state.context(|ctx| {
+                let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE).unwrap();
+                for pair in alias_table.pairs::<rlua::Value, rlua::AnyUserData>() {
+                    let (_, alias) = pair.unwrap();
+                    let rust_alias = &alias.borrow::<Alias>().unwrap();
+                    let regex = &rust_alias.regex;
+                    if rust_alias.enabled && regex.is_match(input.clean_line()) {
+                        let cb: rlua::Function = alias.get_user_value().unwrap();
+                        let captures: Vec<String> = regex
+                            .captures(input.clean_line())
+                            .unwrap()
+                            .iter()
+                            .map(|c| match c {
+                                Some(m) => m.as_str().to_string(),
+                                None => String::new(),
+                            })
+                            .collect();
+                        if let Err(msg) = cb.call::<_, ()>(captures) {
+                            output_stack_trace(&self.writer, &msg.to_string());
+                        }
+                        response = true;
                     }
-                    response = true;
                 }
-            }
-        });
-        response
+            });
+            response
+        } else {
+            false
+        }
     }
 
-    pub fn check_for_trigger_match(&self, input: &str) -> bool {
-        self.check_trigger_match(input, TRIGGER_TABLE)
+    pub fn check_for_trigger_match(&self, line: &mut Line) {
+        self.check_trigger_match(line, TRIGGER_TABLE);
     }
 
-    pub fn check_for_prompt_trigger_match(&self, input: &str) -> bool {
-        self.check_trigger_match(input, PROMPT_TRIGGER_TABLE)
+    pub fn check_for_prompt_trigger_match(&self, line: &mut Line) {
+        self.check_trigger_match(line, PROMPT_TRIGGER_TABLE);
     }
 
-    fn check_trigger_match(&self, input: &str, table: &str) -> bool {
-        let clean_bytes = strip_ansi(input.as_bytes()).unwrap();
-        let input = &String::from_utf8_lossy(&clean_bytes);
-        let mut response = false;
+    fn check_trigger_match(&self, line: &mut Line, table: &str) {
+        let input = line.clean_line().to_string();
         self.state.context(|ctx| {
             let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
             for pair in trigger_table.pairs::<rlua::Value, rlua::AnyUserData>() {
                 let (_, trigger) = pair.unwrap();
                 let rust_trigger = &trigger.borrow::<Trigger>().unwrap();
-                if rust_trigger.enabled && rust_trigger.regex.is_match(input) {
+                if rust_trigger.enabled && rust_trigger.regex.is_match(&input) {
                     let cb: rlua::Function = trigger.get_user_value().unwrap();
                     let captures: Vec<String> = rust_trigger
                         .regex
-                        .captures(input)
+                        .captures(&input)
                         .unwrap()
                         .iter()
                         .map(|c| match c {
@@ -129,11 +130,11 @@ impl LuaScript {
                     if let Err(msg) = cb.call::<_, ()>(captures) {
                         output_stack_trace(&self.writer, &msg.to_string());
                     }
-                    response = rust_trigger.gag;
+                    line.flags.matched = true;
+                    line.flags.gag = rust_trigger.gag;
                 }
             }
         });
-        response
     }
 
     pub fn run_timed_function(&mut self, id: u32) {
@@ -225,7 +226,7 @@ impl LuaScript {
 #[cfg(test)]
 mod lua_script_tests {
     use super::LuaScript;
-    use crate::event::Event;
+    use crate::{event::Event, model::Line};
     use std::sync::mpsc::{channel, Receiver, Sender};
 
     #[test]
@@ -240,8 +241,12 @@ mod lua_script_tests {
             ctx.load(create_trigger_lua).exec().unwrap();
         });
 
-        assert!(lua.check_for_trigger_match("test"));
-        assert!(!lua.check_for_trigger_match("test test"));
+        let mut test_line = Line::from("test");
+        lua.check_for_trigger_match(&mut test_line);
+        assert!(test_line.flags.matched);
+        test_line = Line::from("test test");
+        lua.check_for_trigger_match(&mut test_line);
+        assert!(!test_line.flags.matched);
     }
 
     #[test]
@@ -256,8 +261,12 @@ mod lua_script_tests {
             ctx.load(create_prompt_trigger_lua).exec().unwrap();
         });
 
-        assert!(lua.check_for_prompt_trigger_match("test"));
-        assert!(!lua.check_for_prompt_trigger_match("test test"));
+        let mut test_line = Line::from("test");
+        lua.check_for_prompt_trigger_match(&mut test_line);
+        assert!(test_line.flags.matched);
+        test_line = Line::from("test test");
+        lua.check_for_prompt_trigger_match(&mut test_line);
+        assert!(!test_line.flags.matched);
     }
 
     #[test]
@@ -272,8 +281,8 @@ mod lua_script_tests {
             ctx.load(create_alias_lua).exec().unwrap();
         });
 
-        assert!(lua.check_for_alias_match("test"));
-        assert!(!lua.check_for_alias_match(" test"));
+        assert!(lua.check_for_alias_match(&Line::from("test")));
+        assert!(!lua.check_for_alias_match(&Line::from(" test")));
     }
 
     #[test]

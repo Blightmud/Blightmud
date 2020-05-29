@@ -77,8 +77,14 @@ fn load_files() -> HashMap<&'static str, &'static str> {
     files.insert("welcome", include_str!("../../resources/help/welcome.md"));
     files.insert("logging", include_str!("../../resources/help/logging.md"));
     files.insert("blight", include_str!("../../resources/help/lua_blight.md"));
-    files.insert("aliases", include_str!("../../resources/help/lua_aliases.md"));
-    files.insert("triggers", include_str!("../../resources/help/lua_triggers.md"));
+    files.insert(
+        "aliases",
+        include_str!("../../resources/help/lua_aliases.md"),
+    );
+    files.insert(
+        "triggers",
+        include_str!("../../resources/help/lua_triggers.md"),
+    );
     files.insert("timers", include_str!("../../resources/help/lua_timers.md"));
     files.insert("gmcp", include_str!("../../resources/help/lua_gmcp.md"));
     files.insert(

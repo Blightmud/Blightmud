@@ -5,10 +5,9 @@ filter: covered
 output-type: lcov
 output-path: ./lcov.info
 prefix-dir: /home/user/build/
-#ignore:
-#- "/*"
-#- "C:/*"
-#- "../*"
+ignore:
+  - "lib/*"
+  - "../*"
 #path-mapping:
 #- "/path1"
 #- "/path2"

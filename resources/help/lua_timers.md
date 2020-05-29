@@ -9,7 +9,7 @@ provided duration between each call.
 
 - `secs`       The number of seconds to wait between calls to the callback function.
 - `repeat`     The number of times to repeat the timer. A repeat of 0 will run the timer indefinitely.
-- `callback`   The Lua function to run when the time have elapsed.
+- `callback`   The Lua function to run when the time has elapsed.
 
 ```lua
 local count = 0

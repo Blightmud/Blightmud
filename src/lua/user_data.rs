@@ -101,13 +101,21 @@ impl UserData for BlightMud {
             this.output_lines.push(Line::from(strings.join(" ")));
             Ok(())
         });
-        methods.add_method("send", |_, this, strings: Variadic<String>| {
-            let mut line = Line::from(strings.join(" "));
-            line.flags.bypass_script = true;
+        methods.add_method(
+            "send",
+            |_, this, (msg, options): (String, Option<rlua::Table>)| {
+                let mut line = Line::from(msg);
+                line.flags.bypass_script = true;
 
-            this.main_writer.send(Event::ServerInput(line)).unwrap();
-            Ok(())
-        });
+                if let Some(table) = options {
+                    line.flags.gag = table.get("gag")?;
+                    line.flags.skip_log = table.get("skip_log")?;
+                }
+
+                this.main_writer.send(Event::ServerInput(line)).unwrap();
+                Ok(())
+            },
+        );
         methods.add_method("debug", |_, _, strings: Variadic<String>| {
             debug!("{}", strings.join(" "));
             Ok(())

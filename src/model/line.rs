@@ -148,3 +148,29 @@ impl Line {
         self.content.lines()
     }
 }
+
+#[cfg(test)]
+mod test_line {
+
+    use super::Line;
+
+    #[test]
+    fn test_gag_flag() {
+        let mut line = Line::from("testline");
+        assert_eq!(line.log_line(), Some("testline"));
+        assert_eq!(line.print_line(), Some("testline"));
+        line.flags.gag = true;
+        assert_eq!(line.log_line(), Some("testline"));
+        assert_eq!(line.print_line(), None);
+    }
+
+    #[test]
+    fn test_skip_log_flag() {
+        let mut line = Line::from("testline");
+        assert_eq!(line.log_line(), Some("testline"));
+        assert_eq!(line.print_line(), Some("testline"));
+        line.flags.skip_log = true;
+        assert_eq!(line.print_line(), Some("testline"));
+        assert_eq!(line.log_line(), None);
+    }
+}

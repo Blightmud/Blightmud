@@ -138,6 +138,10 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
+        methods.add_method("remove_alias", |ctx, _, alias_idx: i32| {
+            let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE)?;
+            alias_table.set(alias_idx, rlua::Nil)
+        });
         methods.add_method(
             "add_trigger",
             |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
@@ -146,7 +150,13 @@ impl UserData for BlightMud {
                 } else {
                     ctx.globals().get(TRIGGER_TABLE)?
                 };
-                let next_index = trigger_table.raw_len() + 1;
+
+                let next_index = {
+                    let triggers: rlua::Table = ctx.globals().get(TRIGGER_TABLE)?;
+                    let prompts: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
+                    prompts.raw_len().max(triggers.raw_len()) + 1
+                };
+
                 match this.create_trigger(&regex, false) {
                     Ok(mut trigger) => {
                         trigger.gag = options.get("gag")?;
@@ -161,6 +171,18 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
+        methods.add_method("remove_trigger", |ctx, _, trigger_idx: i32| {
+            let trigger_table: rlua::Table = {
+                let triggers: rlua::Table = ctx.globals().get(TRIGGER_TABLE)?;
+                let prompts: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
+                if triggers.contains_key(trigger_idx)? {
+                    triggers
+                } else {
+                    prompts
+                }
+            };
+            trigger_table.set(trigger_idx, rlua::Nil)
+        });
         methods.add_method(
             "add_timer",
             |ctx, this, (duration, count, callback): (f32, u32, rlua::Function)| {

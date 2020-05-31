@@ -227,7 +227,20 @@ impl LuaScript {
 mod lua_script_tests {
     use super::LuaScript;
     use crate::{event::Event, model::Line};
+    use rlua::Result as LuaResult;
     use std::sync::mpsc::{channel, Receiver, Sender};
+
+    fn test_trigger(line: &str, lua: &LuaScript) -> bool {
+        let mut line = Line::from(line);
+        lua.check_for_trigger_match(&mut line);
+        line.flags.matched
+    }
+
+    fn test_prompt_trigger(line: &str, lua: &LuaScript) -> bool {
+        let mut line = Line::from(line);
+        lua.check_for_prompt_trigger_match(&mut line);
+        line.flags.matched
+    }
 
     #[test]
     fn test_lua_trigger() {
@@ -241,12 +254,8 @@ mod lua_script_tests {
             ctx.load(create_trigger_lua).exec().unwrap();
         });
 
-        let mut test_line = Line::from("test");
-        lua.check_for_trigger_match(&mut test_line);
-        assert!(test_line.flags.matched);
-        test_line = Line::from("test test");
-        lua.check_for_trigger_match(&mut test_line);
-        assert!(!test_line.flags.matched);
+        assert!(test_trigger("test", &lua));
+        assert!(!test_trigger("test test", &lua));
     }
 
     #[test]
@@ -261,12 +270,49 @@ mod lua_script_tests {
             ctx.load(create_prompt_trigger_lua).exec().unwrap();
         });
 
-        let mut test_line = Line::from("test");
-        lua.check_for_prompt_trigger_match(&mut test_line);
-        assert!(test_line.flags.matched);
-        test_line = Line::from("test test");
-        lua.check_for_prompt_trigger_match(&mut test_line);
-        assert!(!test_line.flags.matched);
+        assert!(test_prompt_trigger("test", &lua));
+        assert!(!test_prompt_trigger("test test", &lua));
+    }
+
+    #[test]
+    fn test_remove_trigger() {
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        let lua = LuaScript::new(writer);
+        let (ttrig, ptrig) = lua
+            .state
+            .context(|ctx| -> LuaResult<(u32, u32)> {
+                let ttrig: u32 = ctx
+                    .load(r#"return blight:add_trigger("^test$", {}, function () end)"#)
+                    .call(())
+                    .unwrap();
+                let ptrig: u32 = ctx
+                    .load(r#"return blight:add_trigger("^test$", {prompt=true}, function () end)"#)
+                    .call(())
+                    .unwrap();
+                Ok((ttrig, ptrig))
+            })
+            .unwrap();
+
+        assert!(test_trigger("test", &lua));
+        assert!(test_prompt_trigger("test", &lua));
+
+        lua.state.context(|ctx| {
+            ctx.load(&format!("blight:remove_trigger({})", ttrig))
+                .exec()
+                .unwrap();
+        });
+
+        assert!(test_prompt_trigger("test", &lua));
+        assert!(!test_trigger("test", &lua));
+
+        lua.state.context(|ctx| {
+            ctx.load(&format!("blight:remove_trigger({})", ptrig))
+                .exec()
+                .unwrap();
+        });
+
+        assert!(!test_trigger("test", &lua));
+        assert!(!test_prompt_trigger("test", &lua));
     }
 
     #[test]
@@ -283,6 +329,28 @@ mod lua_script_tests {
 
         assert!(lua.check_for_alias_match(&Line::from("test")));
         assert!(!lua.check_for_alias_match(&Line::from(" test")));
+    }
+
+    #[test]
+    fn test_lua_remove_alias() {
+        let create_alias_lua = r#"
+        return blight:add_alias("^test$", function () end)
+        "#;
+
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        let lua = LuaScript::new(writer);
+        let index: i32 = lua
+            .state
+            .context(|ctx| ctx.load(create_alias_lua).call(()))
+            .unwrap();
+
+        assert!(lua.check_for_alias_match(&Line::from("test")));
+
+        let delete_alias = format!("blight:remove_alias({})", index);
+        lua.state.context(|ctx| {
+            ctx.load(&delete_alias).exec().unwrap();
+        });
+        assert!(!lua.check_for_alias_match(&Line::from("test")));
     }
 
     #[test]

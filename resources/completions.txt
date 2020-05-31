@@ -1,1 +1,1 @@
-/connect /quit /disconnect /add_server /remove_server /list_servers /load /help scripting /logging /start_log /stop_log /set logging_enabled logging config_scripts
+/connect /quit /disconnect /add_server /remove_server /list_servers /load /help scripting /logging /start_log /stop_log /set logging_enabled logging config_scripts aliases triggers timers gmcp

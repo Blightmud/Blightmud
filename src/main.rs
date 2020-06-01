@@ -10,7 +10,7 @@ use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
-use std::{fs, thread};
+use std::{env, fs, thread};
 use ui::HelpHandler;
 
 mod event;
@@ -29,7 +29,8 @@ use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
-use model::{Settings, LOGGING_ENABLED};
+use getopts::Options;
+use model::{Connection, Settings, LOGGING_ENABLED};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROJECT_NAME: &str = "Blightmud";
@@ -90,12 +91,62 @@ fn start_logging() {
     simple_logging::log_to_file(logfile.to_str().unwrap(), log_level).unwrap();
 }
 
+fn print_help(program: &str, opts: Options) {
+    let brief = format!(
+        "USAGE: {} [options]\n\n{} {}",
+        program, PROJECT_NAME, VERSION
+    );
+    print!("{}", opts.usage(&brief));
+}
+
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let mut opts = Options::new();
+    let program = &args[0];
+    opts.optopt("c", "connect", "Connect to server", "HOST:PORT");
+    opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
+    opts.optflag("h", "help", "Print help menu");
+
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(f) => panic!(f.to_string()),
+    };
+
+    if matches.opt_present("h") {
+        print_help(program, opts);
+        return;
+    }
+
     start_logging();
     info!("Starting application");
 
     let (main_writer, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
     let timer_writer = spawn_timer_thread(main_writer.clone());
+
+    if let Ok(Some(connect)) = matches.opt_get::<String>("c") {
+        if connect.contains(':') {
+            let split: Vec<&str> = connect.split(':').collect();
+            let host = split[0].to_string();
+            let port: u16 = split[1].parse().unwrap();
+            main_writer
+                .send(Event::Connect(Connection { host, port }))
+                .unwrap();
+        } else {
+            print_help(program, opts);
+            return;
+        }
+    } else if let Ok(Some(world)) = matches.opt_get::<String>("w") {
+        let servers = Servers::load().unwrap();
+        if servers.contains_key(&world) {
+            main_writer
+                .send(Event::Connect(servers.get(&world).unwrap().clone()))
+                .unwrap();
+        }
+    } else {
+        main_writer
+            .send(Event::ShowHelp("welcome".to_string()))
+            .unwrap();
+    }
 
     let session = SessionBuilder::new()
         .main_writer(main_writer)
@@ -148,8 +199,6 @@ fn run(
             .main_writer
             .send(Event::LoadScript(script.to_str().unwrap().to_string()))?;
     }
-
-    session.send_event(Event::ShowHelp("welcome".to_string()));
 
     let mut event_handler = EventHandler::from(&session);
 

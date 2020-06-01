@@ -226,7 +226,7 @@ impl LuaScript {
 #[cfg(test)]
 mod lua_script_tests {
     use super::LuaScript;
-    use crate::{event::Event, model::Line};
+    use crate::{event::Event, model::Line, PROJECT_NAME, VERSION};
     use rlua::Result as LuaResult;
     use std::sync::mpsc::{channel, Receiver, Sender};
 
@@ -366,5 +366,20 @@ mod lua_script_tests {
         });
 
         assert_eq!(reader.recv(), Ok(Event::GMCPSend("Core.Hello".to_string())));
+    }
+
+    #[test]
+    fn test_version() {
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        let lua = LuaScript::new(writer);
+        let (name, version): (String, String) = lua
+            .state
+            .context(|ctx| -> LuaResult<(String, String)> {
+                ctx.load("return blight:version()")
+                    .call::<(), (String, String)>(())
+            })
+            .unwrap();
+        assert_eq!(version, VERSION);
+        assert_eq!(name, PROJECT_NAME);
     }
 }

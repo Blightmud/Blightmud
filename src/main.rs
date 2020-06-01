@@ -32,6 +32,7 @@ use event::EventHandler;
 use model::{Settings, LOGGING_ENABLED};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const PROJECT_NAME: &str = "Blightmud";
 
 type TelnetData = Option<Vec<u8>>;
 

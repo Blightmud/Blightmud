@@ -1,11 +1,14 @@
 use super::{constants::*, util::output_stack_trace};
 use crate::event::Event;
-use crate::model::{Connection, Line};
+use crate::{
+    model::{Connection, Line},
+    PROJECT_NAME, VERSION,
+};
 use anyhow::Result;
 use chrono::Duration;
 use log::debug;
 use regex::Regex;
-use rlua::{UserData, UserDataMethods, Variadic};
+use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
 use std::sync::mpsc::Sender;
 
 #[derive(Clone)]
@@ -220,6 +223,9 @@ impl UserData for BlightMud {
         methods.add_method("on_gmcp_ready", |ctx, _, callback: rlua::Function| {
             ctx.globals().set(ON_GMCP_READY_CALLBACK, callback)?;
             Ok(())
+        });
+        methods.add_method("version", |_, _, _: ()| -> LuaResult<(&str, &str)> {
+            Ok((PROJECT_NAME, VERSION))
         });
     }
 }

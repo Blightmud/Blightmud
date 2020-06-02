@@ -2,9 +2,10 @@ use super::constants::*;
 use super::user_data::*;
 use super::util::*;
 use crate::{event::Event, model::Line};
+use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
 use std::io::prelude::*;
-use std::{error::Error, fs::File, result::Result, sync::mpsc::Sender};
+use std::{fs::File, sync::mpsc::Sender};
 
 pub struct LuaScript {
     state: Lua,
@@ -12,10 +13,11 @@ pub struct LuaScript {
     on_connect_triggered: bool,
 }
 
-fn create_default_lua_state(writer: Sender<Event>) -> Lua {
+fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lua {
     let state = Lua::new();
 
-    let blight = BlightMud::new(writer);
+    let mut blight = BlightMud::new(writer);
+    blight.screen_dimensions = dimensions;
     state
         .context(|ctx| -> LuaResult<()> {
             let globals = ctx.globals();
@@ -43,17 +45,17 @@ fn create_default_lua_state(writer: Sender<Event>) -> Lua {
 }
 
 impl LuaScript {
-    pub fn new(main_writer: Sender<Event>) -> Self {
+    pub fn new(main_writer: Sender<Event>, dimensions: (u16, u16)) -> Self {
         Self {
-            state: create_default_lua_state(main_writer.clone()),
+            state: create_default_lua_state(main_writer.clone(), dimensions),
             writer: main_writer,
             on_connect_triggered: false,
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, dimensions: (u16, u16)) {
         self.on_connect_triggered = false;
-        self.state = create_default_lua_state(self.writer.clone());
+        self.state = create_default_lua_state(self.writer.clone(), dimensions);
     }
 
     pub fn get_output_lines(&self) -> Vec<Line> {
@@ -139,7 +141,7 @@ impl LuaScript {
 
     pub fn run_timed_function(&mut self, id: u32) {
         self.state
-            .context(|ctx| -> Result<(), Box<dyn std::error::Error>> {
+            .context(|ctx| -> Result<()> {
                 let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
                 let func: rlua::Function = table.get(id)?;
                 func.call::<_, ()>(())?;
@@ -150,7 +152,7 @@ impl LuaScript {
 
     pub fn remove_timed_function(&mut self, id: u32) {
         self.state
-            .context(|ctx| -> Result<(), Box<dyn std::error::Error>> {
+            .context(|ctx| -> Result<()> {
                 let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
                 table.set(id, rlua::Nil)?;
                 Ok(())
@@ -176,7 +178,7 @@ impl LuaScript {
             .ok();
     }
 
-    pub fn load_script(&mut self, path: &str) -> Result<(), Box<dyn Error>> {
+    pub fn load_script(&mut self, path: &str) -> Result<()> {
         let mut file = File::open(path)?;
         let mut content = String::new();
         file.read_to_string(&mut content)?;
@@ -193,7 +195,7 @@ impl LuaScript {
         if !self.on_connect_triggered {
             self.on_connect_triggered = true;
             self.state
-                .context(|ctx| -> Result<(), rlua::Error> {
+                .context(|ctx| -> LuaResult<()> {
                     if let Ok(callback) = ctx
                         .globals()
                         .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
@@ -205,6 +207,15 @@ impl LuaScript {
                 })
                 .unwrap();
         }
+    }
+
+    pub fn set_dimensions(&mut self, dim: (u16, u16)) -> LuaResult<()> {
+        self.state.context(|ctx| -> LuaResult<()> {
+            let mut blight: BlightMud = ctx.globals().get("blight")?;
+            blight.screen_dimensions = dim;
+            ctx.globals().set("blight", blight)?;
+            Ok(())
+        })
     }
 
     pub fn on_gmcp_ready(&mut self) {
@@ -242,14 +253,18 @@ mod lua_script_tests {
         line.flags.matched
     }
 
+    fn get_lua() -> LuaScript {
+        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
+        LuaScript::new(writer, (80, 80))
+    }
+
     #[test]
     fn test_lua_trigger() {
         let create_trigger_lua = r#"
         blight:add_trigger("^test$", {gag=true}, function () end)
         "#;
 
-        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer);
+        let lua = get_lua();
         lua.state.context(|ctx| {
             ctx.load(create_trigger_lua).exec().unwrap();
         });
@@ -264,8 +279,7 @@ mod lua_script_tests {
         blight:add_trigger("^test$", {prompt=true, gag=true}, function () end)
         "#;
 
-        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer);
+        let lua = get_lua();
         lua.state.context(|ctx| {
             ctx.load(create_prompt_trigger_lua).exec().unwrap();
         });
@@ -276,8 +290,7 @@ mod lua_script_tests {
 
     #[test]
     fn test_remove_trigger() {
-        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer);
+        let lua = get_lua();
         let (ttrig, ptrig) = lua
             .state
             .context(|ctx| -> LuaResult<(u32, u32)> {
@@ -321,8 +334,7 @@ mod lua_script_tests {
         blight:add_alias("^test$", function () end)
         "#;
 
-        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer);
+        let lua = get_lua();
         lua.state.context(|ctx| {
             ctx.load(create_alias_lua).exec().unwrap();
         });
@@ -337,8 +349,7 @@ mod lua_script_tests {
         return blight:add_alias("^test$", function () end)
         "#;
 
-        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer);
+        let lua = get_lua();
         let index: i32 = lua
             .state
             .context(|ctx| ctx.load(create_alias_lua).call(()))
@@ -354,13 +365,29 @@ mod lua_script_tests {
     }
 
     #[test]
+    fn test_dimensions() {
+        let mut lua = get_lua();
+        let dim: (u16, u16) = lua
+            .state
+            .context(|ctx| ctx.load("return blight:terminal_dimensions()").call(()))
+            .unwrap();
+        assert_eq!(dim, (80, 80));
+        lua.set_dimensions((70, 70)).unwrap();
+        let dim: (u16, u16) = lua
+            .state
+            .context(|ctx| ctx.load("return blight:terminal_dimensions()").call(()))
+            .unwrap();
+        assert_eq!(dim, (70, 70));
+    }
+
+    #[test]
     fn test_send_gmcp() {
         let send_gmcp_lua = r#"
         blight:send_gmcp("Core.Hello")
         "#;
 
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer);
+        let lua = LuaScript::new(writer, (80, 80));
         lua.state.context(|ctx| {
             ctx.load(send_gmcp_lua).exec().unwrap();
         });
@@ -370,8 +397,7 @@ mod lua_script_tests {
 
     #[test]
     fn test_version() {
-        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer);
+        let lua = get_lua();
         let (name, version): (String, String) = lua
             .state
             .context(|ctx| -> LuaResult<(String, String)> {

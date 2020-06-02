@@ -114,6 +114,7 @@ impl Session {
 pub struct SessionBuilder {
     main_writer: Option<Sender<Event>>,
     timer_writer: Option<Sender<TimerEvent>>,
+    screen_dimensions: Option<(u16, u16)>,
 }
 
 impl SessionBuilder {
@@ -121,6 +122,7 @@ impl SessionBuilder {
         Self {
             main_writer: None,
             timer_writer: None,
+            screen_dimensions: None,
         }
     }
 
@@ -134,9 +136,15 @@ impl SessionBuilder {
         self
     }
 
+    pub fn screen_dimensions(mut self, dimensions: (u16, u16)) -> Self {
+        self.screen_dimensions = Some(dimensions);
+        self
+    }
+
     pub fn build(self) -> Session {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
+        let dimensions = self.screen_dimensions.unwrap();
         Session {
             connection_id: 0,
             host: Arc::new(Mutex::new(String::new())),
@@ -152,7 +160,7 @@ impl SessionBuilder {
             ))),
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
             prompt_input: Arc::new(Mutex::new(String::new())),
-            lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer))),
+            lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer, dimensions))),
             comops: Arc::new(Mutex::new(CommunicationOptions::default())),
             logger: Arc::new(Mutex::new(Logger::default())),
         }

@@ -35,8 +35,8 @@ impl error::Error for TerminalSizeError {
 
 pub struct Screen {
     screen: AlternateScreen<RawTerminal<Stdout>>,
-    width: u16,
-    _height: u16,
+    pub width: u16,
+    pub height: u16,
     output_line: u16,
     prompt_line: u16,
     cursor_prompt_pos: u16,
@@ -55,7 +55,7 @@ impl Screen {
         Ok(Self {
             screen,
             width,
-            _height: height,
+            height,
             output_line,
             prompt_line,
             cursor_prompt_pos: 1,
@@ -71,7 +71,7 @@ impl Screen {
         let (width, height) = termion::terminal_size()?;
         if width > 0 && height > 0 {
             self.width = width;
-            self._height = height;
+            self.height = height;
             self.output_line = height - 2;
             self.prompt_line = height;
 

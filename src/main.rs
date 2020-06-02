@@ -148,9 +148,11 @@ fn main() {
             .unwrap();
     }
 
+    let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)
         .timer_writer(timer_writer)
+        .screen_dimensions(dimensions)
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
@@ -336,7 +338,7 @@ fn run(
                     info!("Clearing scripts");
                     screen.print_info("Clearing scripts...");
                     if let Ok(mut script) = session.lua_script.lock() {
-                        script.reset();
+                        script.reset((screen.width, screen.height));
                         screen.print_info("Done");
                     }
                     session.timer_writer.send(TimerEvent::Clear)?;
@@ -363,6 +365,9 @@ fn run(
                 Event::Redraw => {
                     screen.setup()?;
                     screen.reset_scroll()?;
+                    if let Ok(mut script) = session.lua_script.lock() {
+                        script.set_dimensions((screen.width, screen.height))?;
+                    }
                 }
                 Event::Quit => {
                     session.terminate.store(true, Ordering::Relaxed);

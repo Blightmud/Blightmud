@@ -40,6 +40,14 @@ Resets the script engine, clearing the entire Lua environment.
 
 ##
 
+***blight:terminal_dimensions() -> width, height***
+Gets the current terminal dimensions (these can change on window resize).
+```lua
+width, height = blight:terminal_dimensions()
+```
+
+##
+
 ***blight:on_connect(callback)***
 Registers a callback that is triggered when the client successfully connects to
 a server. You may only register one callback. A secondary callback will overwrite

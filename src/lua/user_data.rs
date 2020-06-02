@@ -57,6 +57,7 @@ impl UserData for Trigger {}
 pub struct BlightMud {
     main_writer: Sender<Event>,
     output_lines: Vec<Line>,
+    pub screen_dimensions: (u16, u16),
 }
 
 impl BlightMud {
@@ -64,6 +65,7 @@ impl BlightMud {
         Self {
             main_writer: writer,
             output_lines: vec![],
+            screen_dimensions: (0, 0),
         }
     }
 
@@ -86,6 +88,9 @@ impl BlightMud {
 
 impl UserData for BlightMud {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_method("terminal_dimensions", |_, this, _: ()| {
+            Ok(this.screen_dimensions)
+        });
         methods.add_method("connect", |_, this, (host, port): (String, u16)| {
             this.main_writer
                 .send(Event::Connect(Connection { host, port }))

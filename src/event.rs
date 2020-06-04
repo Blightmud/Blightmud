@@ -51,6 +51,8 @@ pub enum Event {
     ScrollUp,
     ScrollDown,
     ScrollBottom,
+    StatusAreaHeight(u16),
+    StatusLine(usize, String),
     ShowHelp(String),
     Redraw,
     Quit,

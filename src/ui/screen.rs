@@ -33,12 +33,136 @@ impl error::Error for TerminalSizeError {
     }
 }
 
+struct StatusArea {
+    start_line: u16,
+    end_line: u16,
+    width: u16,
+    status_lines: Vec<Option<String>>,
+}
+
+type ScreenHandle = AlternateScreen<RawTerminal<Stdout>>;
+
+impl StatusArea {
+    fn new(height: u16, start_line: u16, width: u16) -> Self {
+        let height = height.min(5).max(1);
+        let end_line = start_line + height - 1;
+        Self {
+            start_line,
+            end_line,
+            width,
+            status_lines: vec![None; height as usize],
+        }
+    }
+
+    fn set_height(&mut self, height: u16, start_line: u16) {
+        self.clear();
+        self.status_lines
+            .resize(height.min(5).max(1) as usize, None);
+        self.start_line = start_line;
+    }
+
+    fn set_status_line(&mut self, index: usize, line: String) {
+        let index = index.max(0).min(self.status_lines.len() - 1);
+        if !line.trim().is_empty() {
+            self.status_lines[index] = Some(line);
+        } else {
+            self.status_lines[index] = None;
+        }
+    }
+
+    fn clear(&mut self) {
+        self.status_lines = vec![None; self.status_lines.len()];
+    }
+
+    fn redraw(&mut self, screen: &mut ScreenHandle, scrolled: bool) -> Result<()> {
+        for line in self.start_line..self.end_line + 1 {
+            write!(
+                screen,
+                "{}{}",
+                termion::cursor::Goto(1, line),
+                termion::clear::CurrentLine,
+            )?;
+        }
+
+        let mut info = if scrolled {
+            "(more) ".to_string()
+        } else {
+            "".to_string()
+        };
+
+        if let Some(Some(custom_info)) = self.status_lines.get(0) {
+            if info.is_empty() {
+                info = custom_info.to_string();
+            } else {
+                info = format!("{}━ {} ", info, custom_info);
+            }
+        }
+
+        self.draw_bar(self.start_line, screen, &info)?;
+        if self.start_line != self.end_line {
+            let height = self.status_lines.len() as u16;
+            for line_no in 1..height {
+                let line_no = line_no as u16;
+                let info = if let Some(info) = &self.status_lines[line_no as usize] {
+                    &info
+                } else {
+                    ""
+                };
+
+                if line_no == height - 1 {
+                    self.draw_bar(self.start_line + line_no, screen, &info)?;
+                } else {
+                    self.draw_line(self.start_line + line_no, screen, &info)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn draw_bar(&self, line: u16, screen: &mut ScreenHandle, custom_info: &str) -> Result<()> {
+        write!(
+            screen,
+            "{}{}{}",
+            termion::cursor::Goto(1, line),
+            termion::clear::CurrentLine,
+            color::Fg(color::Green),
+        )?;
+
+        let custom_info = if !custom_info.trim().is_empty() {
+            format!("━ {} ", custom_info.trim())
+        } else {
+            "".to_string()
+        };
+
+        write!(screen, "{:━<1$}", custom_info, self.width as usize)?; // Print separator
+        write!(screen, "{}", color::Fg(color::Reset))?;
+        Ok(())
+    }
+
+    fn draw_line(&self, line: u16, screen: &mut ScreenHandle, info: &str) -> Result<()> {
+        write!(
+            screen,
+            "{}{}",
+            termion::cursor::Goto(1, line),
+            termion::clear::CurrentLine,
+        )?;
+
+        write!(screen, "{}", info)?; // Print separator
+        Ok(())
+    }
+
+    fn height(&self) -> u16 {
+        self.status_lines.len() as u16
+    }
+}
+
 pub struct Screen {
-    screen: AlternateScreen<RawTerminal<Stdout>>,
+    screen: ScreenHandle,
     pub width: u16,
     pub height: u16,
     output_line: u16,
     prompt_line: u16,
+    status_area: StatusArea,
     cursor_prompt_pos: u16,
     history: VecDeque<String>,
     scroll_data: ScrollData,
@@ -49,14 +173,18 @@ impl Screen {
         let screen = AlternateScreen::from(stdout().into_raw_mode()?);
         let (width, height) = termion::terminal_size()?;
 
-        let output_line = height - 2;
+        let status_area_height = 1;
+        let output_line = height - status_area_height - 1;
         let prompt_line = height;
+
+        let status_area = StatusArea::new(status_area_height, output_line + 1, width);
 
         Ok(Self {
             screen,
             width,
             height,
             output_line,
+            status_area,
             prompt_line,
             cursor_prompt_pos: 1,
             history: VecDeque::with_capacity(1024),
@@ -72,7 +200,7 @@ impl Screen {
         if width > 0 && height > 0 {
             self.width = width;
             self.height = height;
-            self.output_line = height - 2;
+            self.output_line = height - self.status_area.height() - 1;
             self.prompt_line = height;
 
             write!(
@@ -83,12 +211,26 @@ impl Screen {
             )
             .unwrap(); // Set scroll region, non origin mode
             self.redraw_top_bar("", 0)?;
-            self.redraw_bottom_bar()?;
+            self.reset_scroll()?;
             self.screen.flush()?;
             Ok(())
         } else {
             Err(TerminalSizeError.into())
         }
+    }
+
+    pub fn set_status_area_height(&mut self, height: u16) -> Result<()> {
+        let height = height.max(1).min(5);
+        self.status_area.set_height(height, self.height - height);
+        self.setup()?;
+        Ok(())
+    }
+
+    pub fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
+        self.status_area.set_status_line(line, info);
+        self.status_area
+            .redraw(&mut self.screen, self.scroll_data.0)?;
+        Ok(())
     }
 
     pub fn redraw_top_bar(&mut self, host: &str, port: u16) -> Result<()> {
@@ -114,28 +256,10 @@ impl Screen {
         Ok(())
     }
 
-    fn redraw_bottom_bar(&mut self) -> Result<()> {
-        write!(
-            self.screen,
-            "{}{}{}",
-            termion::cursor::Goto(1, self.output_line + 1),
-            termion::clear::CurrentLine,
-            color::Fg(color::Green),
-        )?;
-
-        let info = if self.scroll_data.0 {
-            "━ (more) ".to_string()
-        } else {
-            "".to_string()
-        };
-
-        write!(self.screen, "{:━<1$}", info, self.width as usize)?; // Print separator
-        write!(
-            self.screen,
-            "{}{}",
-            color::Fg(color::Reset),
-            self.goto_prompt(),
-        )?;
+    fn redraw_status_area(&mut self) -> Result<()> {
+        self.status_area
+            .redraw(&mut self.screen, self.scroll_data.0)?;
+        write!(self.screen, "{}", self.goto_prompt(),)?;
         Ok(())
     }
 
@@ -285,7 +409,7 @@ impl Screen {
                 self.history[index],
             )?;
         }
-        self.redraw_bottom_bar()?;
+        self.redraw_status_area()?;
         Ok(())
     }
 
@@ -317,7 +441,7 @@ impl Screen {
                 )?;
             }
         }
-        self.redraw_bottom_bar()?;
+        self.redraw_status_area()?;
         Ok(())
     }
 

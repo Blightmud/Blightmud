@@ -217,6 +217,18 @@ impl UserData for BlightMud {
                 Ok(())
             },
         );
+        methods.add_method("status_height", |_, this, height: u16| {
+            this.main_writer
+                .send(Event::StatusAreaHeight(height))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_method("status_line", |_, this, (index, line): (usize, String)| {
+            this.main_writer
+                .send(Event::StatusLine(index, line))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method("send_gmcp", |_, this, msg: String| {
             this.main_writer.send(Event::GMCPSend(msg)).unwrap();
             Ok(())

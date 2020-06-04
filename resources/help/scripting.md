@@ -12,8 +12,9 @@ categories, show below. You can view the full list of methods for each category
 by typing `/help <category>`.
 
 ## The following categories of methods exist:
-- `blight`    Methods for input, output, and general client and script manipulation.
-- `aliases`   Custom commands that trigger callback functions.
-- `triggers`  Functions triggered in response to incoming text.
-- `timers`    Functions that execute on a timed delay.
-- `gmcp`      Methods for interacting with the Generic MUD Communication Protocol.
+- `blight`      Methods for input, output, and general client and script manipulation.
+- `aliases`     Custom commands that trigger callback functions.
+- `triggers`    Functions triggered in response to incoming text.
+- `timers`      Functions that execute on a timed delay.
+- `gmcp`        Methods for interacting with the Generic MUD Communication Protocol.
+- `status_area` Methods for controlling and printing to the status bar

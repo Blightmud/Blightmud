@@ -78,6 +78,10 @@ fn load_files() -> HashMap<&'static str, &'static str> {
     files.insert("logging", include_str!("../../resources/help/logging.md"));
     files.insert("blight", include_str!("../../resources/help/lua_blight.md"));
     files.insert(
+        "status_area",
+        include_str!("../../resources/help/lua_status_area.md"),
+    );
+    files.insert(
         "aliases",
         include_str!("../../resources/help/lua_aliases.md"),
     );

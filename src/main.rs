@@ -315,6 +315,8 @@ fn run(
                 Event::ScrollUp => screen.scroll_up()?,
                 Event::ScrollDown => screen.scroll_down()?,
                 Event::ScrollBottom => screen.reset_scroll()?,
+                Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
+                Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
                 Event::LoadScript(path) => {
                     info!("Loading script: {}", path);
                     let mut lua = session.lua_script.lock().unwrap();

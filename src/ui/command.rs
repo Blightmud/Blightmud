@@ -114,6 +114,32 @@ impl CommandBuffer {
         }
     }
 
+    fn move_to_start(&mut self) {
+        self.cursor_pos = 0;
+    }
+
+    fn move_to_end(&mut self) {
+        self.cursor_pos = self.buffer.len();
+    }
+
+    fn move_word_right(&mut self) {
+        let origin = (self.cursor_pos + 1).min(self.buffer.len());
+        self.cursor_pos = if let Some(pos) = self.buffer[origin..].find(' ') {
+            origin + pos
+        } else {
+            self.buffer.len()
+        }
+    }
+
+    fn move_word_left(&mut self) {
+        let origin = self.cursor_pos.max(1) - 1;
+        self.cursor_pos = if let Some(pos) = self.buffer[0..origin].rfind(' ') {
+            pos + 1
+        } else {
+            0
+        }
+    }
+
     fn remove(&mut self) {
         if self.cursor_pos > 0 {
             if self.cursor_pos < self.buffer.len() {
@@ -222,14 +248,21 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                 Key::End => {
                     writer.send(Event::ScrollBottom).unwrap();
                 }
+
+                // Input navigation
                 Key::Up | Key::Ctrl('p') => buffer.previous(),
                 Key::Down | Key::Ctrl('n') => buffer.next(),
-                Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
                 Key::Left => buffer.move_left(),
                 Key::Right => buffer.move_right(),
                 Key::Backspace => {
                     buffer.remove();
                 }
+                Key::Ctrl('a') => buffer.move_to_start(),
+                Key::Ctrl('e') => buffer.move_to_end(),
+                Key::Alt('b') => buffer.move_word_left(),
+                Key::Alt('f') => buffer.move_word_right(),
+
+                Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
                 _ => {}
             };
             writer
@@ -427,5 +460,41 @@ mod command_test {
         assert_eq!(it.next(), Some(&"random".to_string()));
         assert_eq!(it.next(), Some(&"test".to_string()));
         assert_eq!(it.next(), Some(&"random".to_string()));
+    }
+
+    #[test]
+    fn test_input_navigation() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_word_left();
+        assert_eq!(buffer.cursor_pos, 12);
+        buffer.move_word_left();
+        assert_eq!(buffer.cursor_pos, 5);
+        buffer.move_word_left();
+        assert_eq!(buffer.cursor_pos, 0);
+        buffer.move_word_left();
+        assert_eq!(buffer.cursor_pos, 0);
+        buffer.move_word_right();
+        assert_eq!(buffer.cursor_pos, 4);
+        buffer.move_word_right();
+        assert_eq!(buffer.cursor_pos, 11);
+        buffer.move_word_right();
+        assert_eq!(buffer.cursor_pos, 17);
+        buffer.move_word_right();
+        assert_eq!(buffer.cursor_pos, 17);
+    }
+
+    #[test]
+    fn test_end_start_navigation() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        assert_eq!(buffer.cursor_pos, 0);
+        buffer.move_to_start();
+        assert_eq!(buffer.cursor_pos, 0);
+        buffer.move_to_end();
+        assert_eq!(buffer.cursor_pos, 17);
+        buffer.move_to_end();
+        assert_eq!(buffer.cursor_pos, 17);
     }
 }

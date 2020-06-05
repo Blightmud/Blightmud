@@ -148,11 +148,12 @@ impl EventHandler {
                 let port = self.session.port.load(Ordering::Relaxed);
                 debug!("Connected to {}:{}", host, port);
                 screen.redraw_top_bar(&host, port)?;
-                self.session
-                    .lua_script
-                    .lock()
-                    .unwrap()
-                    .on_connect(&host, port);
+                if let Ok(mut script) = self.session.lua_script.lock() {
+                    script.on_connect(&host, port);
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
+                }
                 Ok(())
             }
             Event::Disconnect(id) => {
@@ -166,6 +167,12 @@ impl EventHandler {
                     ));
                     if let Some(transmit_writer) = &transmit_writer {
                         transmit_writer.send(None)?;
+                    }
+                    if let Ok(mut script) = self.session.lua_script.lock() {
+                        script.on_disconnect();
+                        script.get_output_lines().iter().for_each(|l| {
+                            screen.print_output(l);
+                        });
                     }
                     transmit_writer.take();
                     screen.redraw_top_bar("", 0)?;

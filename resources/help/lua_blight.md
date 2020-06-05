@@ -59,3 +59,15 @@ blight:on_connect(function (host, port)
     blight:output("Connected to:", host, port)
 end)
 ```
+
+##
+
+***blight:on_disconnect(callback)***
+Registers a callback that is triggered upon disconnecting from a server. You
+may only register one callback. Subsequent calls to this method will overwrite
+previously registered callbacks.
+```lua
+blight:on_disconnect(function ()
+    blight:output("Disconnected from server")
+end)
+```

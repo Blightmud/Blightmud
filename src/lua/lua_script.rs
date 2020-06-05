@@ -209,6 +209,21 @@ impl LuaScript {
         }
     }
 
+    pub fn on_disconnect(&mut self) {
+        self.state
+            .context(|ctx| -> LuaResult<()> {
+                if let Ok(callback) = ctx
+                    .globals()
+                    .get::<_, rlua::Function>(ON_DISCONNECT_CALLBACK)
+                {
+                    callback.call::<_, ()>(())
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap();
+    }
+
     pub fn set_dimensions(&mut self, dim: (u16, u16)) -> LuaResult<()> {
         self.state.context(|ctx| -> LuaResult<()> {
             let mut blight: BlightMud = ctx.globals().get("blight")?;

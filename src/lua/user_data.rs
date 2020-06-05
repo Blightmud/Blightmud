@@ -234,12 +234,13 @@ impl UserData for BlightMud {
             Ok(())
         });
         methods.add_method("on_connect", |ctx, _, callback: rlua::Function| {
-            ctx.globals().set(ON_CONNCTION_CALLBACK, callback)?;
-            Ok(())
+            ctx.globals().set(ON_CONNCTION_CALLBACK, callback)
+        });
+        methods.add_method("on_disconnect", |ctx, _, callback: rlua::Function| {
+            ctx.globals().set(ON_DISCONNECT_CALLBACK, callback)
         });
         methods.add_method("on_gmcp_ready", |ctx, _, callback: rlua::Function| {
-            ctx.globals().set(ON_GMCP_READY_CALLBACK, callback)?;
-            Ok(())
+            ctx.globals().set(ON_GMCP_READY_CALLBACK, callback)
         });
         methods.add_method("version", |_, _, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))

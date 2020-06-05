@@ -13,23 +13,21 @@ though I don't play much muds these days.
 ## The name?
 The client is written in rust. Some navigating throught the thesaurus brought me to the word 'blight' and here we are.
 
-## Goals
-- [x] Completely terminal based
-- [x] Telnet:
-    - [x] GMCP support
-    - [x] MCCP2 support
-- [x] Lua scripting:
-    - [x] Output and sending
-    - [x] Aliases
-    - [x] Triggers
-    - [x] Prompt triggers
-    - [x] Gagging triggers
-    - [x] GMCP hooks and sending
-    - [x] Timers
-- [x] Low resource and fast
-- [x] In client help and manuals
-    - [x] Markdown support in client
-- [x] Tab completion
+## Features
+- Completely terminal based (mac and linux)
+- Telnet:
+    - GMCP support
+    - MCCP2 support (compress2)
+- Lua scripting:
+    - Output and sending
+    - Aliases
+    - Triggers
+    - GMCP hooks and sending
+    - Timers
+    - Customizing status bar
+- Low resource and fast
+- In client help and manuals
+- Tab completion
 
 ## Compiling
 - Install rust

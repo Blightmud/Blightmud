@@ -4,7 +4,6 @@ use dirs;
 use lazy_static::lazy_static;
 use libtelnet_rs::{events::TelnetEvents, telnet::op_option as opt};
 use log::{debug, error, info};
-use signal_hook;
 use std::path::PathBuf;
 use std::sync::{
     atomic::Ordering,

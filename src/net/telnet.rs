@@ -37,7 +37,7 @@ impl TelnetHandler {
             parser: session.telnet_parser,
             main_writer: session.main_writer,
             output_buffer: session.output_buffer,
-            comops: session.comops.clone(),
+            comops: session.comops,
             mode: TelnetMode::Undefined,
         }
     }

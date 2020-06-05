@@ -61,6 +61,10 @@ impl StatusArea {
         self.start_line = start_line;
     }
 
+    fn set_width(&mut self, width: u16) {
+        self.width = width;
+    }
+
     fn set_status_line(&mut self, index: usize, line: String) {
         let index = index.max(0).min(self.status_lines.len() - 1);
         if !line.trim().is_empty() {
@@ -257,6 +261,7 @@ impl Screen {
     }
 
     fn redraw_status_area(&mut self) -> Result<()> {
+        self.status_area.set_width(self.width);
         self.status_area
             .redraw(&mut self.screen, self.scroll_data.0)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;

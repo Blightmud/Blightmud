@@ -29,7 +29,7 @@ use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, LOGGING_ENABLED};
+use model::{Connection, Settings, ECHO_GMCP, LOGGING_ENABLED};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROJECT_NAME: &str = "Blightmud";
@@ -298,6 +298,9 @@ fn run(
                 }
                 Event::GMCPReceive(msg) => {
                     let mut script = session.lua_script.lock().unwrap();
+                    if let Ok(true) = settings.get(ECHO_GMCP) {
+                        screen.print_info(&format!("[GMCP][RECEIVE]: {}", &msg));
+                    }
                     script.receive_gmcp(&msg);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);

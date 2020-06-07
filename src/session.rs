@@ -14,6 +14,7 @@ use log::debug;
 #[derive(Default)]
 pub struct CommunicationOptions {
     pub mccp2: bool,
+    pub debug_gmcp: bool,
 }
 
 #[derive(Clone)]

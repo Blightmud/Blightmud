@@ -7,6 +7,7 @@ Available topics:
 - `config_scripts`
 - `scripting`
 - `logging`
+- `settings`
 
 Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tree/master/resources/help)
 

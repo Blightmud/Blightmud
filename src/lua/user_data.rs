@@ -147,7 +147,7 @@ impl UserData for BlightMud {
             }?;
 
             let mut store_data = StoreData::load().unwrap();
-            store_data.data.insert(id, data);
+            store_data.insert(id, data);
 
             store_data.save().unwrap();
             Ok(())
@@ -156,7 +156,7 @@ impl UserData for BlightMud {
             "read",
             |_, _, id: String| -> LuaResult<Option<BTreeMap<String, String>>> {
                 let data = StoreData::load().unwrap();
-                Ok(match data.data.get(&id) {
+                Ok(match data.get(&id) {
                     Some(data) => Some(data.clone()),
                     _ => None,
                 })

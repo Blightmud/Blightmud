@@ -18,3 +18,4 @@ by typing `/help <category>`.
 - `timers`      Functions that execute on a timed delay.
 - `gmcp`        Methods for interacting with the Generic MUD Communication Protocol.
 - `status_area` Methods for controlling and printing to the status bar
+- `storage`     Methods for persisting data between sessions

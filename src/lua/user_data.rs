@@ -1,6 +1,7 @@
-use super::{constants::*, util::output_stack_trace};
+use super::{constants::*, store_data::StoreData, util::output_stack_trace};
 use crate::event::Event;
 use crate::{
+    io::SaveData,
     model::{Connection, Line},
     PROJECT_NAME, VERSION,
 };
@@ -9,7 +10,7 @@ use chrono::Duration;
 use log::debug;
 use regex::Regex;
 use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
-use std::sync::mpsc::Sender;
+use std::{collections::BTreeMap, sync::mpsc::Sender};
 
 #[derive(Clone)]
 pub struct Alias {
@@ -128,6 +129,39 @@ impl UserData for BlightMud {
             debug!("{}", strings.join(" "));
             Ok(())
         });
+        methods.add_method("store", |_, _, (id, data): (String, rlua::Value)| {
+            let data = match data {
+                rlua::Value::Table(table) => {
+                    let mut map: BTreeMap<String, String> = BTreeMap::new();
+                    let iter = table.pairs();
+                    for entry in iter {
+                        if let Ok((key, value)) = entry {
+                            map.insert(key, value);
+                        }
+                    }
+                    Ok(map)
+                }
+                _ => Err(rlua::Error::RuntimeError(
+                    "Bad data! You may only store tables".to_string(),
+                )),
+            }?;
+
+            let mut store_data = StoreData::load().unwrap();
+            store_data.data.insert(id, data);
+
+            store_data.save().unwrap();
+            Ok(())
+        });
+        methods.add_method(
+            "read",
+            |_, _, id: String| -> LuaResult<Option<BTreeMap<String, String>>> {
+                let data = StoreData::load().unwrap();
+                Ok(match data.data.get(&id) {
+                    Some(data) => Some(data.clone()),
+                    _ => None,
+                })
+            },
+        );
         methods.add_method(
             "add_alias",
             |ctx, this, (regex, callback): (String, rlua::Function)| {

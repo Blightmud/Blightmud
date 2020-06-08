@@ -100,6 +100,10 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         include_str!("../../resources/help/scripting.md"),
     );
     files.insert("settings", include_str!("../../resources/help/settings.md"));
+    files.insert(
+        "storage",
+        include_str!("../../resources/help/lua_storage.md"),
+    );
     files
 }
 

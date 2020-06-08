@@ -172,6 +172,6 @@ fn build_compatibility_table() -> CompatibilityTable {
     let mut telnet_compat = CompatibilityTable::default();
     telnet_compat.support(opt::MCCP2);
     telnet_compat.support(opt::GMCP);
-    //telnet_compat.support(opt::TTYPE);
+    telnet_compat.support(opt::EOR);
     telnet_compat
 }

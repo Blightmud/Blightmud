@@ -53,16 +53,20 @@ impl TelnetHandler {
         for event in events {
             match event {
                 TelnetEvents::IAC(iac) => {
-                    if iac.command == cmd::GA {
-                        let mut buffer = self.output_buffer.lock().unwrap();
-                        if self.mode != TelnetMode::TerminatedPrompt {
-                            debug!("Setting telnet mode: TerminatedPrompt");
-                            self.mode = TelnetMode::TerminatedPrompt;
-                            buffer.flush();
-                        } else {
-                            buffer.buffer_to_prompt(true);
-                            self.main_writer.send(Event::Prompt).unwrap();
+                    debug!("IAC: {}", iac.command);
+                    match iac.command {
+                        cmd::GA | 239 => {
+                            let mut buffer = self.output_buffer.lock().unwrap();
+                            if self.mode != TelnetMode::TerminatedPrompt {
+                                debug!("Setting telnet mode: TerminatedPrompt");
+                                self.mode = TelnetMode::TerminatedPrompt;
+                                buffer.flush();
+                            } else {
+                                buffer.buffer_to_prompt(true);
+                                self.main_writer.send(Event::Prompt).unwrap();
+                            }
                         }
+                        _ => {}
                     }
                 }
                 TelnetEvents::Negotiation(neg) => {

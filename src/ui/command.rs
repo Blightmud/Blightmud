@@ -2,7 +2,7 @@ use crate::event::Event;
 use crate::model::{Connection, Line};
 use crate::session::Session;
 use log::debug;
-use rs_completion::CompletionTree;
+use rs_complete::CompletionTree;
 use std::collections::VecDeque;
 use std::thread;
 use std::{io::stdin, sync::atomic::Ordering};

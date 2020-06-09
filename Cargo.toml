@@ -26,6 +26,6 @@ serde = { version = "1.0", features = ['derive'] }
 ron = "0.5"
 anyhow = "1.0.31"
 lazy_static = "1.4.0"
-rs-completion = { path = "lib/rs-completion" }
+rs-complete = "0.1.1"
 simple-error = "0.2.1"
 getopts = "0.2.21"

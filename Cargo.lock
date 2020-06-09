@@ -154,7 +154,7 @@ dependencies = [
  "regex",
  "rlua",
  "ron",
- "rs-completion",
+ "rs-complete",
  "serde",
  "signal-hook",
  "simple-error",
@@ -821,8 +821,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "rs-completion"
-version = "0.1.0"
+name = "rs-complete"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb196f5c985606e1ffd3b9f35c599627e0b6236ae9455130ef8bf37c29d84dce"
 dependencies = [
  "anyhow",
 ]

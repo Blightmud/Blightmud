@@ -488,8 +488,9 @@ checksum = "9457b06509d27052635f90d6466700c65095fdf75409b3fbdd903e988b886f49"
 
 [[package]]
 name = "libtelnet-rs"
-version = "0.3.8"
-source = "git+https://github.com/liquidityc/libtelnet-rs?branch=add_eor_cmd#4f5ff2db120d61089815197d5288d1e12a079c47"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20c2a12cf31cd030b5e1b3d9f48c5e7f451fda87ae4a39010d355cbbc9d18394"
 
 [[package]]
 name = "line-wrap"

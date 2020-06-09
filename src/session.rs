@@ -173,5 +173,6 @@ fn build_compatibility_table() -> CompatibilityTable {
     telnet_compat.support(opt::MCCP2);
     telnet_compat.support(opt::GMCP);
     telnet_compat.support(opt::EOR);
+    telnet_compat.support(opt::ECHO);
     telnet_compat
 }

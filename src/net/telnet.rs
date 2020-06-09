@@ -55,7 +55,7 @@ impl TelnetHandler {
                 TelnetEvents::IAC(iac) => {
                     debug!("IAC: {}", iac.command);
                     match iac.command {
-                        cmd::GA | 239 => {
+                        cmd::GA | cmd::EOR => {
                             let mut buffer = self.output_buffer.lock().unwrap();
                             if self.mode != TelnetMode::TerminatedPrompt {
                                 debug!("Setting telnet mode: TerminatedPrompt");

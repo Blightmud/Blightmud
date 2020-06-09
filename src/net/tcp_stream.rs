@@ -24,20 +24,22 @@ impl MudReceiver {
             if let Ok(comops) = self.comops.lock() {
                 if comops.mccp2 {
                     debug!("Opening Zlib stream");
-                    self.decoder
-                        .replace(ZlibDecoder::new(self.reader.try_clone().unwrap()));
+                    let decoder = ZlibDecoder::new(self.reader.try_clone().unwrap());
+                    self.decoder.replace(decoder);
                 }
             }
         }
     }
 
     fn read_bytes(&mut self) -> Vec<u8> {
-        let mut data = vec![0; 4096];
+        let mut data = vec![0; 32 * 1024];
         if let Some(decoder) = &mut self.decoder {
             match decoder.read(&mut data) {
                 Ok(bytes_read) => {
+                    debug!("Read {} bytes from stream", bytes_read);
                     if bytes_read > 0 {
                         data = data.split_at(bytes_read).0.to_vec();
+                        debug!("Bytes: {:?}", data);
                     } else {
                         data = vec![];
                     }
@@ -48,7 +50,9 @@ impl MudReceiver {
                 }
             }
         } else if let Ok(bytes_read) = self.reader.read(&mut data) {
+            debug!("Read {} bytes from stream", bytes_read);
             data = data.split_at(bytes_read).0.to_vec();
+            debug!("Bytes: {:?}", data);
         } else {
             data = vec![];
         }

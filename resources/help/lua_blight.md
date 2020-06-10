@@ -71,3 +71,17 @@ blight:on_disconnect(function ()
     blight:output("Disconnected from server")
 end)
 ```
+
+##
+
+***blight:start_logging(worldname)***
+Start logging to a specified "world" name.
+
+If a log is already started then this command has no effect. So if you choose to use this manual logging then make
+sure automatic logging is disabled. See `/help logging` for more information.
+
+##
+
+***blight:stop_logging()***
+Stop logging
+

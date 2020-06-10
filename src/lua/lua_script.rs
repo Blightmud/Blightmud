@@ -252,7 +252,11 @@ impl LuaScript {
 #[cfg(test)]
 mod lua_script_tests {
     use super::LuaScript;
-    use crate::{event::Event, model::Line, PROJECT_NAME, VERSION};
+    use crate::{
+        event::Event,
+        model::{Connection, Line},
+        PROJECT_NAME, VERSION,
+    };
     use rlua::Result as LuaResult;
     use std::sync::mpsc::{channel, Receiver, Sender};
 
@@ -268,9 +272,9 @@ mod lua_script_tests {
         line.flags.matched
     }
 
-    fn get_lua() -> LuaScript {
-        let (writer, _): (Sender<Event>, Receiver<Event>) = channel();
-        LuaScript::new(writer, (80, 80))
+    fn get_lua() -> (LuaScript, Receiver<Event>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        (LuaScript::new(writer, (80, 80)), reader)
     }
 
     #[test]
@@ -279,7 +283,7 @@ mod lua_script_tests {
         blight:add_trigger("^test$", {gag=true}, function () end)
         "#;
 
-        let lua = get_lua();
+        let lua = get_lua().0;
         lua.state.context(|ctx| {
             ctx.load(create_trigger_lua).exec().unwrap();
         });
@@ -294,7 +298,7 @@ mod lua_script_tests {
         blight:add_trigger("^test$", {prompt=true, gag=true}, function () end)
         "#;
 
-        let lua = get_lua();
+        let lua = get_lua().0;
         lua.state.context(|ctx| {
             ctx.load(create_prompt_trigger_lua).exec().unwrap();
         });
@@ -305,7 +309,7 @@ mod lua_script_tests {
 
     #[test]
     fn test_remove_trigger() {
-        let lua = get_lua();
+        let lua = get_lua().0;
         let (ttrig, ptrig) = lua
             .state
             .context(|ctx| -> LuaResult<(u32, u32)> {
@@ -349,7 +353,7 @@ mod lua_script_tests {
         blight:add_alias("^test$", function () end)
         "#;
 
-        let lua = get_lua();
+        let lua = get_lua().0;
         lua.state.context(|ctx| {
             ctx.load(create_alias_lua).exec().unwrap();
         });
@@ -364,7 +368,7 @@ mod lua_script_tests {
         return blight:add_alias("^test$", function () end)
         "#;
 
-        let lua = get_lua();
+        let lua = get_lua().0;
         let index: i32 = lua
             .state
             .context(|ctx| ctx.load(create_alias_lua).call(()))
@@ -381,7 +385,7 @@ mod lua_script_tests {
 
     #[test]
     fn test_dimensions() {
-        let mut lua = get_lua();
+        let mut lua = get_lua().0;
         let dim: (u16, u16) = lua
             .state
             .context(|ctx| ctx.load("return blight:terminal_dimensions()").call(()))
@@ -401,8 +405,7 @@ mod lua_script_tests {
         blight:send_gmcp("Core.Hello")
         "#;
 
-        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer, (80, 80));
+        let (lua, reader) = get_lua();
         lua.state.context(|ctx| {
             ctx.load(send_gmcp_lua).exec().unwrap();
         });
@@ -412,7 +415,7 @@ mod lua_script_tests {
 
     #[test]
     fn test_version() {
-        let lua = get_lua();
+        let lua = get_lua().0;
         let (name, version): (String, String) = lua
             .state
             .context(|ctx| -> LuaResult<(String, String)> {
@@ -422,5 +425,72 @@ mod lua_script_tests {
             .unwrap();
         assert_eq!(version, VERSION);
         assert_eq!(name, PROJECT_NAME);
+    }
+
+    fn assert_event(lua_code: &str, event: Event) {
+        let (lua, reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+
+        assert_eq!(reader.recv(), Ok(event));
+    }
+
+    #[test]
+    fn test_connect() {
+        assert_event(
+            "blight:connect(\"hostname\", 99)",
+            Event::Connect(Connection {
+                host: "hostname".to_string(),
+                port: 99,
+            }),
+        );
+    }
+
+    #[test]
+    fn test_output() {
+        let (lua, _) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load("blight:output(\"test\", \"test\")")
+                .exec()
+                .unwrap();
+        });
+        assert_eq!(lua.get_output_lines(), vec![Line::from("test test")]);
+    }
+
+    #[test]
+    fn test_load() {
+        assert_event(
+            "blight:load(\"/some/fancy/path\")",
+            Event::LoadScript("/some/fancy/path".to_string()),
+        );
+    }
+
+    #[test]
+    fn test_reset() {
+        assert_event("blight:reset()", Event::ResetScript);
+    }
+
+    #[test]
+    fn test_sending() {
+        assert_event(
+            "blight:send(\"message\")",
+            Event::ServerInput(Line::from("message")),
+        );
+    }
+
+    #[test]
+    fn test_logging() {
+        let (lua, reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load("blight:start_log(\"testworld\")").exec().unwrap();
+            ctx.load("blight:stop_log()").exec().unwrap();
+        });
+
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::StartLogging("testworld".to_string(), true))
+        );
+        assert_eq!(reader.recv(), Ok(Event::StopLogging));
     }
 }

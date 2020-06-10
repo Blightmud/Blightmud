@@ -40,4 +40,25 @@ impl Logger {
         }
         Ok(())
     }
+
+    #[cfg(test)]
+    pub fn is_logging(&self) -> bool {
+        self.file.is_some()
+    }
+}
+
+#[cfg(test)]
+mod logger_tests {
+
+    use super::Logger;
+
+    #[test]
+    fn test_logger() {
+        let mut logger = Logger::default();
+        assert!(!logger.is_logging());
+        logger.start_logging("hostname").unwrap();
+        assert!(logger.is_logging());
+        logger.stop_logging().unwrap();
+        assert!(!logger.is_logging());
+    }
 }

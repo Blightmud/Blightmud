@@ -7,7 +7,7 @@ use std::{
 };
 use timer::{Guard, MessageTimer};
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TimerEvent {
     Create(Duration, Option<u32>, u32),
     Trigger(u32),

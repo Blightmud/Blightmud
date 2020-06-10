@@ -102,9 +102,7 @@ impl Session {
     }
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        if self.connected.load(Ordering::Relaxed) {
-            self.disconnect();
-        }
+        self.disconnect();
         self.main_writer.send(Event::Quit)?;
         self.timer_writer.send(TimerEvent::Quit)?;
         Ok(())
@@ -175,4 +173,58 @@ fn build_compatibility_table() -> CompatibilityTable {
     telnet_compat.support(opt::EOR);
     telnet_compat.support(opt::ECHO);
     telnet_compat
+}
+
+#[cfg(test)]
+mod session_test {
+
+    use super::{Session, SessionBuilder};
+    use crate::{event::Event, model::Line, timer::TimerEvent};
+    use std::sync::mpsc::{channel, Receiver, Sender};
+
+    fn build_session() -> (Session, Receiver<Event>, Receiver<TimerEvent>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let (timer_writer, timer_reader): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
+        let session = SessionBuilder::new()
+            .main_writer(writer.clone())
+            .timer_writer(timer_writer.clone())
+            .screen_dimensions((80, 80))
+            .build();
+
+        (session, reader, timer_reader)
+    }
+
+    #[test]
+    fn test_session_build() {
+        let _ = build_session();
+    }
+
+    #[test]
+    fn test_session_send_event() {
+        let (mut session, reader, _timer_reader) = build_session();
+        session.send_event(Event::Output(Line::from("test test")));
+        assert_eq!(reader.recv(), Ok(Event::Output(Line::from("test test"))));
+    }
+
+    #[test]
+    fn test_logging() {
+        let (session, reader, _timer_reader) = build_session();
+        assert!(!session.logger.lock().unwrap().is_logging());
+        session.start_logging("mysteryhost");
+        assert!(session.logger.lock().unwrap().is_logging());
+        session.stop_logging();
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::Info("Logging stopped".to_string()))
+        );
+        assert!(!session.logger.lock().unwrap().is_logging());
+    }
+
+    #[test]
+    fn test_close() {
+        let (mut session, reader, timer_reader) = build_session();
+        session.close().unwrap();
+        assert_eq!(reader.recv(), Ok(Event::Quit));
+        assert_eq!(timer_reader.recv(), Ok(TimerEvent::Quit));
+    }
 }

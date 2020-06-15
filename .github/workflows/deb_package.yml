@@ -51,12 +51,10 @@ jobs:
           prerelease: false
 
       - name: Upload deb
-        id: upload-deb
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: svenstaro/upload-release-action@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: $(shell /bin/ls -1 target/debian/*.deb)
-          asset_name: $(shell /bin/ls -1 ./target/debian/*.deb | /usr/bin/xargs /usr/bin/basename)
-          asset_content_type: application/deb
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: "target/debian/*.deb"
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true

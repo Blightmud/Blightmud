@@ -1,6 +1,10 @@
 name: DEB Package
 
 on:
+  push: 
+    branches:
+      - master
+      - dev
   release:
     types:
       - created

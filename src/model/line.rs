@@ -147,6 +147,10 @@ impl Line {
     pub fn lines(&self) -> std::str::Lines {
         self.content.lines()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty()
+    }
 }
 
 #[cfg(test)]

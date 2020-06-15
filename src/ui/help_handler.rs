@@ -149,4 +149,23 @@ mod help_test {
             Event::Info("No such help file found".to_string())
         );
     }
+
+    #[test]
+    fn confirm_help_render() {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let handler = HelpHandler::new(writer);
+        handler.show_help("nothing").unwrap();
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::Info("No such help file found".to_string()))
+        );
+        handler.show_help("help").unwrap();
+        let line = if let Ok(Event::Output(line)) = reader.recv() {
+            Some(line)
+        } else {
+            None
+        };
+        assert_ne!(line, None);
+        assert!(!line.unwrap().is_empty());
+    }
 }

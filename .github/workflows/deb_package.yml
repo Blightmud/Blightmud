@@ -1,0 +1,46 @@
+name: DEB Package
+
+on:
+  release:
+    types:
+      - created
+      - edited
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-deb-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-deb-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-deb-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install libasound2-dev libudev-dev pkg-config
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb
+
+      - name: Package
+        run: cargo deb
+
+      - uses: AButler/upload-release-assets@v2.0
+        with:
+          files: "target/debian/*.deb"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}

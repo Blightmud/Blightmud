@@ -98,3 +98,37 @@ pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEven
     });
     sender
 }
+
+#[cfg(test)]
+mod timer_tests {
+
+    use super::{Schedule, TimerEvent};
+    use crate::event::Event;
+    use chrono::Duration;
+    use std::sync::mpsc::{channel, Receiver, Sender};
+    use timer::MessageTimer;
+
+    #[test]
+    fn test_schedule() {
+        let (sender, receiver): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
+        let (writer, _reader): (Sender<Event>, Receiver<Event>) = channel();
+        let timer = MessageTimer::new(sender);
+        let mut schedule = Schedule::new(writer);
+        let duration = Duration::milliseconds(0);
+        let guard = timer.schedule_repeating(duration, TimerEvent::Trigger(1));
+        schedule.add_job(guard, Some(1), 1);
+        if let Ok(event) = receiver.recv() {
+            assert_eq!(event, TimerEvent::Trigger(1));
+        }
+        schedule.run_job(1);
+        assert_eq!(schedule.jobs.len(), 1);
+        schedule.run_job(1);
+        assert!(schedule.jobs.is_empty());
+
+        let guard = timer.schedule_repeating(duration, TimerEvent::Trigger(1));
+        schedule.add_job(guard, Some(1), 1);
+        assert_eq!(schedule.jobs.len(), 1);
+        schedule.clear_jobs();
+        assert!(schedule.jobs.is_empty());
+    }
+}

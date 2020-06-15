@@ -1,6 +1,9 @@
 name: DEB Package
 
-on: [push]
+on:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -36,7 +39,24 @@ jobs:
       - name: Package
         run: cargo deb
 
-      - uses: AButler/upload-release-assets@v2.0
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: "target/debian/*.deb"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload deb
+        id: upload-deb
+        uses: actions/upload-release-asset@v1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: $(shell /bin/ls -1 target/debian/*.deb)
+          asset_name: $(shell /bin/ls -1 ./target/debian/*.deb | /usr/bin/xargs /usr/bin/basename)
+          asset_content_type: application/deb

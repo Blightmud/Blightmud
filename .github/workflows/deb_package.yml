@@ -51,7 +51,7 @@ jobs:
           prerelease: false
 
       - name: Upload deb
-        uses: svenstaro/upload-release-action@v1
+        uses: svenstaro/upload-release-action@1.0.1
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: "target/debian/*.deb"

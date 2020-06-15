@@ -1,16 +1,6 @@
 name: DEB Package
 
-on:
-  push: 
-    branches:
-      - master
-      - dev
-  release:
-    types:
-      - created
-      - edited
-      - released
-      - published
+on: [push]
 
 jobs:
   build:

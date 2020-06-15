@@ -1,6 +1,7 @@
 name: Rust
 
-on: [push, pull_request]
+on:
+  create
 
 jobs:
   build:

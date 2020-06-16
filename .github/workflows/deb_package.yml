@@ -56,11 +56,21 @@ jobs:
           draft: false
           prerelease: false
 
+      - name: Set .deb path
+        id: deb_path
+        run: |
+          ls -1 target/debian/*.deb | awk '{print "::set-output name=deb_path::"$1}'
+
+      - name: Set .deb fname
+        id: deb_fname
+        run: |
+          ls -1 target/debian/*.deb | xargs basename | awk '{print "::set-output name=deb_fname::"$1}'
+
       - name: Upload deb
-        uses: svenstaro/upload-release-action@1.0.0
+        uses: svenstaro/upload-release-action@1.0.1
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/debian/*.deb
+          file: ${{ steps.deb_path.outputs.deb_path }}
+          asset_name: ${{ steps.deb_fname.outputs.deb_fname }}
           tag: ${{ github.ref }}
           overwrite: true
-          file_glob: true

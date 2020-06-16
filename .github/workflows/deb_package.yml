@@ -40,7 +40,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install libasound2-dev libudev-dev pkg-config
 
       - name: Install cargo-deb
-        run: cargo install cargo-deb
+        run: cargo install cargo-deb || true
 
       - name: Package
         run: cargo deb

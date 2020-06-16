@@ -30,6 +30,7 @@ use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
 use model::{Connection, Settings, ECHO_GMCP, LOGGING_ENABLED};
+use net::check_latest_version;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROJECT_NAME: &str = "Blightmud";
@@ -204,6 +205,8 @@ fn run(
     let mut event_handler = EventHandler::from(&session);
 
     let mut saved_servers = Servers::load()?;
+
+    check_latest_version(session.main_writer.clone());
 
     loop {
         if session.terminate.load(Ordering::Relaxed) {

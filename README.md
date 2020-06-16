@@ -35,6 +35,11 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - Run `cargo build` to compile
 - Run `cargo run` to run
 
+## Installation
+- **Ubuntu/Debian**      : Deb packages can be found on the releases page
+- **Archlinux/Manjaro**  : Packages are available on AUR
+- **Other/Alternative**  : Download source and run `cargo install --path .` from the project root
+
 ## Contributing
 All contributions are welcome. Check out [contributing guidelines](CONTRIBUTING.md).
 

@@ -38,6 +38,43 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             let timed_func_table = ctx.create_table()?;
             globals.set(TIMED_FUNCTION_TABLE, timed_func_table)?;
 
+            globals.set("C_RESET", "\x1b[0m")?;
+            globals.set("C_BLACK", "\x1b[30m")?;
+            globals.set("C_RED", "\x1b[31m")?;
+            globals.set("C_GREEN", "\x1b[32m")?;
+            globals.set("C_YELLOW", "\x1b[33m")?;
+            globals.set("C_BLUE", "\x1b[34m")?;
+            globals.set("C_MAGENTA", "\x1b[35m")?;
+            globals.set("C_CYAN", "\x1b[36m")?;
+            globals.set("C_WHITE", "\x1b[37m")?;
+
+            globals.set("BG_BLACK", "\x1b[40m")?;
+            globals.set("BG_RED", "\x1b[41m")?;
+            globals.set("BG_GREEN", "\x1b[42m")?;
+            globals.set("BG_YELLOW", "\x1b[43m")?;
+            globals.set("BG_BLUE", "\x1b[44m")?;
+            globals.set("BG_MAGENTA", "\x1b[45m")?;
+            globals.set("BG_CYAN", "\x1b[46m")?;
+            globals.set("BG_WHITE", "\x1b[47m")?;
+
+            globals.set("C_BBLACK", "\x1b[90m")?;
+            globals.set("C_BRED", "\x1b[91m")?;
+            globals.set("C_BGREEN", "\x1b[92m")?;
+            globals.set("C_BYELLOW", "\x1b[93m")?;
+            globals.set("C_BBLUE", "\x1b[94m")?;
+            globals.set("C_BMAGENTA", "\x1b[95m")?;
+            globals.set("C_BCYAN", "\x1b[96m")?;
+            globals.set("C_BWHITE", "\x1b[97m")?;
+
+            globals.set("BG_BBLACK", "\x1b[100m")?;
+            globals.set("BG_BRED", "\x1b[101m")?;
+            globals.set("BG_BGREEN", "\x1b[102m")?;
+            globals.set("BG_BYELLOW", "\x1b[103m")?;
+            globals.set("BG_BBLUE", "\x1b[104m")?;
+            globals.set("BG_BMAGENTA", "\x1b[105m")?;
+            globals.set("BG_BCYAN", "\x1b[106m")?;
+            globals.set("BG_BWHITE", "\x1b[107m")?;
+
             Ok(())
         })
         .unwrap();

@@ -104,6 +104,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "storage",
         include_str!("../../resources/help/lua_storage.md"),
     );
+    files.insert("colors", include_str!("../../resources/help/lua_colors.md"));
     files
 }
 

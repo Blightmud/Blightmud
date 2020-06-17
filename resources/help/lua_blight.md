@@ -9,8 +9,14 @@ Blightmud's scripting engine.
 Prints output to the screen.
 - `str`  The string to output.
 ```lua
+-- Standard printing
 blight:output("A", "nice", "message")
+
+-- Color printing
+blight:output(C_RED .. "Red message" .. C_RESET);
+blight:output(C_BWHITE .. BG_BLUE .. "White text with blue background" .. C_RESET);
 ```
+For a list of available colors se `/help colors`
 
 ##
 

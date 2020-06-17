@@ -113,9 +113,9 @@ impl LuaScript {
     fn check_trigger_match(&self, line: &mut Line, table: &str) {
         if !line.flags.raw {
             let input = line.clean_line().to_string();
-        else {
+        } else {
             let input = line.to_string();
-        }
+        };
         self.state.context(|ctx| {
             let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
             for pair in trigger_table.pairs::<rlua::Value, rlua::AnyUserData>() {

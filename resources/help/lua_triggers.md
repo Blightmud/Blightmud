@@ -20,8 +20,8 @@ local trigger_id = blight:add_trigger(
         "^(\\w+) enters from the \\w+\\.$",
         { gag = true },
         function (matches)
-            blight:output("!!! " .. match[2] .. " entered, lets kick")
-            blight:send("kick " .. match[2])
+            blight:output("!!! " .. matches[2] .. " entered, lets kick")
+            blight:send("kick " .. matches[2])
         end
     )
 

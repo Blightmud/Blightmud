@@ -1,4 +1,13 @@
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
+
 name: Code Coverage
 jobs:
   lint:

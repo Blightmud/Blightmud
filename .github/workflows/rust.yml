@@ -36,8 +36,8 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Install deps
-      run: sudo apt-get update && sudo apt-get install libasound2-dev libudev-dev pkg-config
+    - name: Check formatting
+      run: cargo fmt -- --check
 
     - name: Build
       run: cargo build --verbose

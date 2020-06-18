@@ -38,6 +38,8 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             let timed_func_table = ctx.create_table()?;
             globals.set(TIMED_FUNCTION_TABLE, timed_func_table)?;
 
+            globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
+
             globals.set("C_RESET", "\x1b[0m")?;
             globals.set("C_BLACK", "\x1b[30m")?;
             globals.set("C_RED", "\x1b[31m")?;
@@ -170,7 +172,11 @@ impl LuaScript {
                         output_stack_trace(&self.writer, &msg.to_string());
                     }
                     line.flags.matched = true;
-                    line.flags.gag = rust_trigger.gag;
+                    line.flags.gag =
+                        rust_trigger.gag || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
+
+                    // Reset the gag flag
+                    ctx.globals().set(GAG_NEXT_TRIGGER_LINE, false).unwrap();
                 }
             }
         });
@@ -529,5 +535,29 @@ mod lua_script_tests {
             Ok(Event::StartLogging("testworld".to_string(), true))
         );
         assert_eq!(reader.recv(), Ok(Event::StopLogging));
+    }
+
+    #[test]
+    fn test_conditional_gag() {
+        let trigger = r#"
+        blight:add_trigger("^Health (\\d+)$", {}, function (matches)
+            if matches[2] == "100" then
+                blight:gag()
+            end
+        end)
+        "#;
+
+        let (lua, _) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(trigger).exec().unwrap();
+        });
+
+        let mut line = Line::from("Health 100");
+        lua.check_for_trigger_match(&mut line);
+        assert!(line.flags.gag);
+
+        let mut line = Line::from("Health 10");
+        lua.check_for_trigger_match(&mut line);
+        assert!(!line.flags.gag);
     }
 }

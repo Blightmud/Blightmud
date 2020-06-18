@@ -235,6 +235,9 @@ impl UserData for BlightMud {
             };
             trigger_table.set(trigger_idx, rlua::Nil)
         });
+        methods.add_method("gag", |ctx, _, _: ()| {
+            ctx.globals().set(GAG_NEXT_TRIGGER_LINE, true)
+        });
         methods.add_method(
             "add_timer",
             |ctx, this, (duration, count, callback): (f32, u32, rlua::Function)| {

@@ -11,6 +11,12 @@ from the connected server.
 - `callback` The Lua function that gets called when a match is found.
 - Returns a trigger id (used for removing the trigger)
 
+## Trigger Options
+Options allow you to fine-tune how the trigger is matched or displayed.
+
+- `gag`      Gag (don't print) the matched line.
+- `prompt`   Match against the prompt instead of regular output lines.
+
 ***blight:remove_trigger(trigger_id)***
 
 - `trigger_id` An id returned when creating the trigger
@@ -28,8 +34,15 @@ local trigger_id = blight:add_trigger(
 blight:remove_trigger(trigger_id)
 ```
 
-## Trigger Options
-Options allow you to fine-tune how the trigger is matched or displayed.
+***blight:gag()***
 
-- `gag`      Gag (don't print) the matched line.
-- `prompt`   Match against the prompt instead of regular output lines.
+This method will gag the next trigger matched line from output. It's best used within a triggers
+callback method in order to conditionally gag the output.
+
+```lua
+blight:add_trigger("^Health (\\d+)$", {}, function (matches)
+    if matches[2] == "100" then
+        blight:gag()
+    end
+end)
+```

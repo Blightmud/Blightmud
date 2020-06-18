@@ -151,32 +151,42 @@ impl LuaScript {
 
     fn check_trigger_match(&self, line: &mut Line, table: &str) {
         let input = line.clean_line().to_string();
+        let raw_input = line.line().to_string();
+
         self.state.context(|ctx| {
             let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
             for pair in trigger_table.pairs::<rlua::Value, rlua::AnyUserData>() {
                 let (_, trigger) = pair.unwrap();
                 let rust_trigger = &trigger.borrow::<Trigger>().unwrap();
-                if rust_trigger.enabled && rust_trigger.regex.is_match(&input) {
-                    let cb: rlua::Function = trigger.get_user_value().unwrap();
-                    let captures: Vec<String> = rust_trigger
-                        .regex
-                        .captures(&input)
-                        .unwrap()
-                        .iter()
-                        .map(|c| match c {
-                            Some(m) => m.as_str().to_string(),
-                            None => String::new(),
-                        })
-                        .collect();
-                    if let Err(msg) = cb.call::<_, ()>(captures) {
-                        output_stack_trace(&self.writer, &msg.to_string());
-                    }
-                    line.flags.matched = true;
-                    line.flags.gag =
-                        rust_trigger.gag || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
 
-                    // Reset the gag flag
-                    ctx.globals().set(GAG_NEXT_TRIGGER_LINE, false).unwrap();
+                let trigger_captures = if rust_trigger.raw {
+                    rust_trigger.regex.captures(&raw_input)
+                } else {
+                    rust_trigger.regex.captures(&input)
+                };
+
+                if rust_trigger.enabled {
+                    if let Some(caps) = trigger_captures {
+                        let captures: Vec<String> = caps
+                            .iter()
+                            .map(|c| match c {
+                                Some(m) => m.as_str().to_string(),
+                                None => String::new(),
+                            })
+                            .collect();
+
+                        let cb: rlua::Function = trigger.get_user_value().unwrap();
+                        if let Err(msg) = cb.call::<_, ()>(captures) {
+                            output_stack_trace(&self.writer, &msg.to_string());
+                        }
+
+                        line.flags.matched = true;
+                        line.flags.gag =
+                            rust_trigger.gag || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
+
+                        // Reset the gag flag
+                        ctx.globals().set(GAG_NEXT_TRIGGER_LINE, false).unwrap();
+                    }
                 }
             }
         });
@@ -348,6 +358,21 @@ mod lua_script_tests {
 
         assert!(test_prompt_trigger("test", &lua));
         assert!(!test_prompt_trigger("test test", &lua));
+    }
+
+    #[test]
+    fn test_lua_raw_trigger() {
+        let create_trigger_lua = r#"
+        blight:add_trigger("^\\x1b\\[31mtest\\x1b\\[0m$", {raw=true}, function () end)
+        "#;
+
+        let (lua, _reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(create_trigger_lua).exec().unwrap();
+        });
+
+        assert!(test_trigger("\x1b[31mtest\x1b[0m", &lua));
+        assert!(!test_trigger("test", &lua));
     }
 
     #[test]

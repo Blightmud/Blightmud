@@ -6,6 +6,10 @@ from the connected server.
 ## Creating a Trigger
 ***blight:add_trigger(regex, options, callback) -> id***
 
+Triggers will by default match against a clean line of text (ansi escapes
+removed) so you don't have to account for this when you are writing
+regexps.
+
 - `regex`    The regular expression to match the server output against.
 - `options`  A table of options (see `Trigger Options` below)
 - `callback` The Lua function that gets called when a match is found.
@@ -15,6 +19,7 @@ from the connected server.
 Options allow you to fine-tune how the trigger is matched or displayed.
 
 - `gag`      Gag (don't print) the matched line.
+- `raw`      Match on the raw mud line (ANSI escapes intact)
 - `prompt`   Match against the prompt instead of regular output lines.
 
 ***blight:remove_trigger(trigger_id)***
@@ -32,6 +37,10 @@ local trigger_id = blight:add_trigger(
     )
 
 blight:remove_trigger(trigger_id)
+
+blight:add_trigger("^\\x1b\\[31mHello\\x1b\\[0m$", {raw=true}, function ()
+    blight:output(C_BLUE .. "((( Red Hello )))" .. C_RESET)
+end)
 ```
 
 ***blight:gag()***

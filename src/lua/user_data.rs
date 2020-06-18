@@ -36,6 +36,7 @@ impl UserData for Alias {}
 pub struct Trigger {
     pub regex: Regex,
     pub gag: bool,
+    pub raw: bool,
     pub enabled: bool,
 }
 
@@ -45,6 +46,7 @@ impl Trigger {
             Ok(regex) => Ok(Self {
                 regex,
                 gag: false,
+                raw: false,
                 enabled: true,
             }),
             Err(msg) => Err(msg.to_string()),
@@ -212,6 +214,7 @@ impl UserData for BlightMud {
                 match this.create_trigger(&regex, false) {
                     Ok(mut trigger) => {
                         trigger.gag = options.get("gag")?;
+                        trigger.raw = options.get("raw")?;
                         trigger_table.set(next_index, trigger)?;
                         let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;
                         trigger_handle.set_user_value(callback)?;

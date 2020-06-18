@@ -1,7 +1,14 @@
 name: Rust
 
 on:
-  create
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
 
 jobs:
   build:

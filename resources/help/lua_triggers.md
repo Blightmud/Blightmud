@@ -28,6 +28,19 @@ local trigger_id = blight:add_trigger(
 blight:remove_trigger(trigger_id)
 ```
 
+***blight:gag()***
+
+This method will gag the next trigger matched line from output. It's best used within a triggers
+callback method in order to conditionally gag the output.
+
+```lua
+blight:add_trigger("^Health: (\\d+%)$", {}, function (matches)
+    if matches[2] == "100" then
+        blight:gag()
+    end
+end)
+```
+
 ## Trigger Options
 Options allow you to fine-tune how the trigger is matched or displayed.
 

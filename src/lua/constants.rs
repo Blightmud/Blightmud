@@ -6,3 +6,4 @@ pub const ON_CONNCTION_CALLBACK: &str = "__connection_callback";
 pub const ON_DISCONNECT_CALLBACK: &str = "__disconnect_callback";
 pub const ON_GMCP_READY_CALLBACK: &str = "__gmcp_enabled_callback";
 pub const TIMED_FUNCTION_TABLE: &str = "__timed_functions";
+pub const GAG_NEXT_TRIGGER_LINE: &str = "__gag_next";

@@ -76,7 +76,7 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
     })
 }
 
-fn start_logging() {
+fn start_logging() -> std::io::Result<()> {
     #[cfg(not(debug_assertions))]
     let log_level = log::LevelFilter::Info;
 
@@ -84,11 +84,13 @@ fn start_logging() {
     let log_level = log::LevelFilter::Debug;
 
     let logpath = DATA_DIR.clone().join("logs");
-    let _ = std::fs::create_dir(&logpath);
-
+    std::fs::create_dir_all(&logpath)?;
+    
     let logfile = logpath.join("log.txt");
-
-    simple_logging::log_to_file(logfile.to_str().unwrap(), log_level).unwrap();
+    
+    simple_logging::log_to_file(logfile.to_str().unwrap(), log_level)?;
+    
+    Ok(())
 }
 
 fn print_help(program: &str, opts: Options) {
@@ -117,7 +119,11 @@ fn main() {
         return;
     }
 
-    start_logging();
+    if let Err(e) = start_logging() {
+        error!("Logging failed to start: {:?}", e);
+        println!("[!!] Logging failed to start: {:?}", e);
+    }
+    
     info!("Starting application");
 
     let (main_writer, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();

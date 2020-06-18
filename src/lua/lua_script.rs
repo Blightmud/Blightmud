@@ -572,7 +572,7 @@ mod lua_script_tests {
         end)
         "#;
 
-        let (lua, _) = get_lua();
+        let (lua, _reader) = get_lua();
         lua.state.context(|ctx| {
             ctx.load(trigger).exec().unwrap();
         });

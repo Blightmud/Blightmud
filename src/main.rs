@@ -120,8 +120,7 @@ fn main() {
     }
 
     if let Err(e) = start_logging() {
-        error!("Logging failed to start: {:?}", e);
-        println!("[!!] Logging failed to start: {:?}", e);
+	panic!("[!!] Logging failed to start: {:?}", e);
     }
     
     info!("Starting application");

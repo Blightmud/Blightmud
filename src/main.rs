@@ -85,11 +85,11 @@ fn start_logging() -> std::io::Result<()> {
 
     let logpath = DATA_DIR.clone().join("logs");
     std::fs::create_dir_all(&logpath)?;
-    
+
     let logfile = logpath.join("log.txt");
-    
+
     simple_logging::log_to_file(logfile.to_str().unwrap(), log_level)?;
-    
+
     Ok(())
 }
 
@@ -120,9 +120,9 @@ fn main() {
     }
 
     if let Err(e) = start_logging() {
-	panic!("[!!] Logging failed to start: {:?}", e);
+        panic!("[!!] Logging failed to start: {:?}", e);
     }
-    
+
     info!("Starting application");
 
     let (main_writer, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();

@@ -548,6 +548,14 @@ mod lua_script_tests {
     }
 
     #[test]
+    fn test_send_bytes() {
+        assert_event(
+            "blight:send_bytes({ 0xff, 0xf1 })",
+            Event::ServerInput(Line::from(&vec![0xff, 0xf1])),
+        );
+    }
+
+    #[test]
     fn test_logging() {
         let (lua, reader) = get_lua();
         lua.state.context(|ctx| {

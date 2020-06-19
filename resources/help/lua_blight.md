@@ -24,14 +24,21 @@ For a list of available colors se `/help colors`
 Sends a command to the MUD.
 - `str`     The command to send.
 - `options` An optional table of options (see `Options` below)
-```lua
-blight:send("kill bat")
-blight:send("password", {gag=true, skip_log=true})
-```
+
+***blight:send_bytes(bytes, options)***
+Sends bytes to the MUD
+- `str`     The command to send.
+- `options` An optional table of options (see `Options` below)
 
 **Options**
 - `gag`         Gag echoing of what was sent in the client
 - `skip_log`    Don't print the send command in the log
+
+```lua
+blight:send("kill bat")
+blight:send("password", {gag=true, skip_log=true})
+blight:send_bytes({ 0xff, 0xf1 })
+```
 
 ##
 

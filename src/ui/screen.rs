@@ -455,8 +455,12 @@ impl Screen {
     }
 
     fn append_to_history(&mut self, line: &str) {
-        for line in line.lines() {
-            self.history.push_back(String::from(line));
+        if !line.trim().is_empty() {
+            for line in line.lines() {
+                self.history.push_back(String::from(line));
+            }
+        } else {
+            self.history.push_back("".to_string());
         }
         while self.history.len() >= self.history.capacity() {
             self.history.pop_front();

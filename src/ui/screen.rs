@@ -160,6 +160,31 @@ impl StatusArea {
     }
 }
 
+struct History {
+    inner: VecDeque<String>,
+}
+
+impl History {
+    fn new() -> Self {
+        Self {
+            inner: VecDeque::with_capacity(32 * 1024),
+        }
+    }
+
+    fn append(&mut self, line: &str) {
+        if !line.trim().is_empty() {
+            for line in line.lines() {
+                self.inner.push_back(String::from(line));
+            }
+        } else {
+            self.inner.push_back("".to_string());
+        }
+        while self.inner.len() >= self.inner.capacity() {
+            self.inner.pop_front();
+        }
+    }
+}
+
 pub struct Screen {
     screen: ScreenHandle,
     pub width: u16,
@@ -168,7 +193,7 @@ pub struct Screen {
     prompt_line: u16,
     status_area: StatusArea,
     cursor_prompt_pos: u16,
-    history: VecDeque<String>,
+    history: History,
     scroll_data: ScrollData,
 }
 
@@ -191,7 +216,7 @@ impl Screen {
             status_area,
             prompt_line,
             cursor_prompt_pos: 1,
-            history: VecDeque::with_capacity(1024),
+            history: History::new(),
             scroll_data: ScrollData(false, 0),
         })
     }
@@ -279,7 +304,7 @@ impl Screen {
 
     pub fn print_prompt(&mut self, prompt: &Line) {
         if let Some(prompt_line) = prompt.print_line() {
-            self.append_to_history(prompt_line);
+            self.history.append(prompt_line);
             if !self.scroll_data.0 {
                 write!(
                     self.screen,
@@ -334,7 +359,7 @@ impl Screen {
     }
 
     fn print_line(&mut self, line: &str) {
-        self.append_to_history(&line);
+        self.history.append(&line);
         if !self.scroll_data.0 {
             write!(
                 self.screen,
@@ -374,10 +399,11 @@ impl Screen {
 
     pub fn scroll_up(&mut self) -> Result<()> {
         let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
-        if self.history.len() > output_range as usize {
+        let history = &self.history.inner;
+        if history.len() > output_range as usize {
             if !self.scroll_data.0 {
                 self.scroll_data.0 = true;
-                self.scroll_data.1 = self.history.len() - output_range;
+                self.scroll_data.1 = history.len() - output_range;
             }
             self.scroll_data.0 = true;
             self.scroll_data.1 -= self.scroll_data.1.min(5);
@@ -389,7 +415,7 @@ impl Screen {
     pub fn scroll_down(&mut self) -> Result<()> {
         if self.scroll_data.0 {
             let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
-            let max_start_index: i32 = self.history.len() as i32 - output_range;
+            let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
             let new_start_index = self.scroll_data.1 + 5;
             if new_start_index >= max_start_index as usize {
                 self.reset_scroll()?;
@@ -411,7 +437,7 @@ impl Screen {
                 "{}{}{}",
                 termion::cursor::Goto(1, line_no),
                 termion::clear::CurrentLine,
-                self.history[index],
+                self.history.inner[index],
             )?;
         }
         self.redraw_status_area()?;
@@ -421,7 +447,7 @@ impl Screen {
     pub fn reset_scroll(&mut self) -> Result<()> {
         self.scroll_data.0 = false;
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
-        let output_start_index = self.history.len() as i32 - output_range as i32;
+        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
             for i in 0..output_range {
@@ -432,11 +458,11 @@ impl Screen {
                     "{}{}{}",
                     termion::cursor::Goto(1, line_no),
                     termion::clear::CurrentLine,
-                    self.history[index],
+                    self.history.inner[index],
                 )?;
             }
         } else {
-            for line in &self.history {
+            for line in &self.history.inner {
                 write!(
                     self.screen,
                     "{}{}{}",
@@ -452,19 +478,6 @@ impl Screen {
 
     pub fn flush(&mut self) {
         self.screen.flush().unwrap();
-    }
-
-    fn append_to_history(&mut self, line: &str) {
-        if !line.trim().is_empty() {
-            for line in line.lines() {
-                self.history.push_back(String::from(line));
-            }
-        } else {
-            self.history.push_back("".to_string());
-        }
-        while self.history.len() >= self.history.capacity() {
-            self.history.pop_front();
-        }
     }
 }
 
@@ -569,5 +582,24 @@ mod screen_test {
                 &format!("{}", std::iter::repeat(num).take(15).collect::<String>())
             );
         }
+    }
+
+    #[test]
+    fn test_append_history() {
+        let line = "a nice line\n\nwith a blank line\nand lines\nc\ntest\n";
+
+        let mut history = History::new();
+        history.append(line);
+        assert_eq!(
+            history.inner,
+            vec![
+                "a nice line",
+                "",
+                "with a blank line",
+                "and lines",
+                "c",
+                "test",
+            ]
+        );
     }
 }

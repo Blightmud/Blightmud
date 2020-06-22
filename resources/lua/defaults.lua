@@ -1,0 +1,40 @@
+-- Colors
+C_RESET = "\x1b[0m"
+C_BLACK = "\x1b[30m"
+C_RED = "\x1b[31m"
+C_GREEN = "\x1b[32m"
+C_YELLOW = "\x1b[33m"
+C_BLUE = "\x1b[34m"
+C_MAGENTA = "\x1b[35m"
+C_CYAN = "\x1b[36m"
+C_WHITE = "\x1b[37m"
+
+-- Background colors
+BG_BLACK = "\x1b[40m"
+BG_RED = "\x1b[41m"
+BG_GREEN = "\x1b[42m"
+BG_YELLOW = "\x1b[43m"
+BG_BLUE = "\x1b[44m"
+BG_MAGENTA = "\x1b[45m"
+BG_CYAN = "\x1b[46m"
+BG_WHITE = "\x1b[47m"
+
+-- Bright colors
+C_BBLACK = "\x1b[90m"
+C_BRED = "\x1b[91m"
+C_BGREEN = "\x1b[92m"
+C_BYELLOW = "\x1b[93m"
+C_BBLUE = "\x1b[94m"
+C_BMAGENTA = "\x1b[95m"
+C_BCYAN = "\x1b[96m"
+C_BWHITE = "\x1b[97m"
+
+-- Background bright colors
+BG_BBLACK = "\x1b[100m"
+BG_BRED = "\x1b[101m"
+BG_BGREEN = "\x1b[102m"
+BG_BYELLOW = "\x1b[103m"
+BG_BBLUE = "\x1b[104m"
+BG_BMAGENTA = "\x1b[105m"
+BG_BCYAN = "\x1b[106m"
+BG_BWHITE = "\x1b[107m"

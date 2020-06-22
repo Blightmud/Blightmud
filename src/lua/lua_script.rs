@@ -27,6 +27,9 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             let lua_json = ctx.load(json).call::<_, rlua::Value>(())?;
             globals.set("json", lua_json)?;
 
+            let defaults = include_str!("../../resources/lua/defaults.lua");
+            ctx.load(defaults).exec()?;
+
             let alias_table = ctx.create_table()?;
             globals.set(ALIAS_TABLE, alias_table)?;
             let trigger_table = ctx.create_table()?;
@@ -39,43 +42,6 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             globals.set(TIMED_FUNCTION_TABLE, timed_func_table)?;
 
             globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
-
-            globals.set("C_RESET", "\x1b[0m")?;
-            globals.set("C_BLACK", "\x1b[30m")?;
-            globals.set("C_RED", "\x1b[31m")?;
-            globals.set("C_GREEN", "\x1b[32m")?;
-            globals.set("C_YELLOW", "\x1b[33m")?;
-            globals.set("C_BLUE", "\x1b[34m")?;
-            globals.set("C_MAGENTA", "\x1b[35m")?;
-            globals.set("C_CYAN", "\x1b[36m")?;
-            globals.set("C_WHITE", "\x1b[37m")?;
-
-            globals.set("BG_BLACK", "\x1b[40m")?;
-            globals.set("BG_RED", "\x1b[41m")?;
-            globals.set("BG_GREEN", "\x1b[42m")?;
-            globals.set("BG_YELLOW", "\x1b[43m")?;
-            globals.set("BG_BLUE", "\x1b[44m")?;
-            globals.set("BG_MAGENTA", "\x1b[45m")?;
-            globals.set("BG_CYAN", "\x1b[46m")?;
-            globals.set("BG_WHITE", "\x1b[47m")?;
-
-            globals.set("C_BBLACK", "\x1b[90m")?;
-            globals.set("C_BRED", "\x1b[91m")?;
-            globals.set("C_BGREEN", "\x1b[92m")?;
-            globals.set("C_BYELLOW", "\x1b[93m")?;
-            globals.set("C_BBLUE", "\x1b[94m")?;
-            globals.set("C_BMAGENTA", "\x1b[95m")?;
-            globals.set("C_BCYAN", "\x1b[96m")?;
-            globals.set("C_BWHITE", "\x1b[97m")?;
-
-            globals.set("BG_BBLACK", "\x1b[100m")?;
-            globals.set("BG_BRED", "\x1b[101m")?;
-            globals.set("BG_BGREEN", "\x1b[102m")?;
-            globals.set("BG_BYELLOW", "\x1b[103m")?;
-            globals.set("BG_BBLUE", "\x1b[104m")?;
-            globals.set("BG_BMAGENTA", "\x1b[105m")?;
-            globals.set("BG_BCYAN", "\x1b[106m")?;
-            globals.set("BG_BWHITE", "\x1b[107m")?;
 
             Ok(())
         })
@@ -592,5 +558,54 @@ mod lua_script_tests {
         let mut line = Line::from("Health 10");
         lua.check_for_trigger_match(&mut line);
         assert!(!line.flags.gag);
+    }
+
+    fn check_color(lua: &LuaScript, output: &str, result: &str) {
+        lua.state.context(|ctx| {
+            ctx.load(&format!("blight:output({})", output))
+                .exec()
+                .unwrap();
+        });
+        assert_eq!(lua.get_output_lines()[0], Line::from(result));
+    }
+
+    #[test]
+    fn test_color_output() {
+        let (lua, _reader) = get_lua();
+        check_color(
+            &lua,
+            "C_RED .. \"COLOR\" .. C_RESET",
+            "\x1b[31mCOLOR\x1b[0m",
+        );
+        check_color(
+            &lua,
+            "C_GREEN .. \"COLOR\" .. C_RESET",
+            "\x1b[32mCOLOR\x1b[0m",
+        );
+        check_color(
+            &lua,
+            "C_YELLOW .. \"COLOR\" .. C_RESET",
+            "\x1b[33mCOLOR\x1b[0m",
+        );
+        check_color(
+            &lua,
+            "C_BLUE .. \"COLOR\" .. C_RESET",
+            "\x1b[34mCOLOR\x1b[0m",
+        );
+        check_color(
+            &lua,
+            "C_MAGENTA .. \"COLOR\" .. C_RESET",
+            "\x1b[35mCOLOR\x1b[0m",
+        );
+        check_color(
+            &lua,
+            "C_CYAN .. \"COLOR\" .. C_RESET",
+            "\x1b[36mCOLOR\x1b[0m",
+        );
+        check_color(
+            &lua,
+            "C_WHITE .. \"COLOR\" .. C_RESET",
+            "\x1b[37mCOLOR\x1b[0m",
+        );
     }
 }

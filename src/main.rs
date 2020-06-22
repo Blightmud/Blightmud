@@ -19,6 +19,7 @@ mod model;
 mod net;
 mod session;
 mod timer;
+mod tools;
 mod ui;
 
 use crate::event::Event;
@@ -31,6 +32,7 @@ use event::EventHandler;
 use getopts::Options;
 use model::{Connection, Settings, ECHO_GMCP, LOGGING_ENABLED};
 use net::check_latest_version;
+use tools::register_panic_hook;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROJECT_NAME: &str = "Blightmud";
@@ -102,6 +104,8 @@ fn print_help(program: &str, opts: Options) {
 }
 
 fn main() {
+    register_panic_hook();
+
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     let program = &args[0];
@@ -165,7 +169,7 @@ fn main() {
 
     if let Err(error) = run(main_thread_read, session) {
         error!("Panic: {}", error.to_string());
-        println!("[!!] Panic: {}", error.to_string());
+        panic!("[!!] Panic: {}", error.to_string());
     }
 
     info!("Shutting down");

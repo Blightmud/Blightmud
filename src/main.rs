@@ -45,7 +45,7 @@ lazy_static! {
         {
             let mut data_dir = dirs::data_dir().unwrap();
             data_dir.push("blightmud");
-            let _ = std::fs::create_dir(&data_dir);
+            let _ = std::fs::create_dir_all(&data_dir);
             data_dir
         }
 
@@ -57,7 +57,7 @@ lazy_static! {
         {
             let mut config_dir = dirs::config_dir().unwrap();
             config_dir.push("blightmud");
-            let _ = std::fs::create_dir(&config_dir);
+            let _ = std::fs::create_dir_all(&config_dir);
             config_dir
         }
 
@@ -104,8 +104,6 @@ fn print_help(program: &str, opts: Options) {
 }
 
 fn main() {
-    register_panic_hook();
-
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
     let program = &args[0];
@@ -123,6 +121,7 @@ fn main() {
         return;
     }
 
+    register_panic_hook();
     if let Err(e) = start_logging() {
         panic!("[!!] Logging failed to start: {:?}", e);
     }
@@ -169,7 +168,7 @@ fn main() {
 
     if let Err(error) = run(main_thread_read, session) {
         error!("Panic: {}", error.to_string());
-        panic!("[!!] Panic: {}", error.to_string());
+        panic!("[!!] Panic: {:?}", error);
     }
 
     info!("Shutting down");

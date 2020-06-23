@@ -140,6 +140,15 @@ impl CommandBuffer {
         }
     }
 
+    fn delete_to_end(&mut self) {
+        self.buffer = self.buffer[..self.cursor_pos].to_string();
+    }
+
+    fn delete_from_start(&mut self) {
+        self.buffer = self.buffer[self.cursor_pos..].to_string();
+        self.cursor_pos = 0;
+    }
+
     fn remove(&mut self) {
         if self.cursor_pos > 0 {
             if self.cursor_pos < self.buffer.len() {
@@ -259,6 +268,8 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                 }
                 Key::Ctrl('a') => buffer.move_to_start(),
                 Key::Ctrl('e') => buffer.move_to_end(),
+                Key::Ctrl('k') => buffer.delete_to_end(),
+                Key::Ctrl('u') => buffer.delete_from_start(),
                 Key::Alt('b') => buffer.move_word_left(),
                 Key::Alt('f') => buffer.move_word_right(),
 
@@ -496,5 +507,26 @@ mod command_test {
         assert_eq!(buffer.cursor_pos, 17);
         buffer.move_to_end();
         assert_eq!(buffer.cursor_pos, 17);
+    }
+
+    #[test]
+    fn test_delete_rest_of_line() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.delete_from_start();
+        assert_eq!(buffer.get_buffer(), " random words");
+    }
+
+    #[test]
+    fn test_delete_from_start_of_line() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.move_word_right();
+        buffer.delete_to_end();
+        assert_eq!(buffer.get_buffer(), "some random");
     }
 }

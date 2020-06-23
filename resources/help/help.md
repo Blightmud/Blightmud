@@ -34,5 +34,7 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `Ctrl-E`           : Jump to end of input
 - `Alt-B`            : Step back one word
 - `Alt-F`            : Step forward one word
+- `Ctrl-K`           : Delete the remainder of the input line from cursor
+- `Ctrl-U`           : Delete from start of input line to cursor
 - `Ctrl-L`           : Redraw screen (good when muds mess stuff up)
 - `Ctrl-C`           : Quit program

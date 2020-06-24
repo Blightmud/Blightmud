@@ -26,6 +26,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - Timers
     - Customizing status bar
     - Persistent storage
+    - Keybindings
 - Low resource and fast
 - In client help and manuals
 - Tab completion

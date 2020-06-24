@@ -1,4 +1,4 @@
-use super::{constants::*, store_data::StoreData, util::output_stack_trace};
+use super::{constants::*, store_data::StoreData, util::output_stack_trace, UiEvent};
 use crate::event::Event;
 use crate::{
     io::SaveData,
@@ -11,6 +11,27 @@ use log::debug;
 use regex::Regex;
 use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
 use std::{collections::BTreeMap, sync::mpsc::Sender};
+
+fn cursor_event_from_str(event: &str) -> Option<UiEvent> {
+    match event {
+        "step_left" => Some(UiEvent::StepLeft),
+        "step_right" => Some(UiEvent::StepRight),
+        "step_to_start" => Some(UiEvent::StepToStart),
+        "step_to_end" => Some(UiEvent::StepToEnd),
+        "step_word_left" => Some(UiEvent::StepWordLeft),
+        "step_word_right" => Some(UiEvent::StepWordRight),
+        "delete" => Some(UiEvent::Remove),
+        "delete_to_end" => Some(UiEvent::DeleteToEnd),
+        "delete_from_start" => Some(UiEvent::DeleteFromStart),
+        "previous_command" => Some(UiEvent::PreviousCommand),
+        "next_command" => Some(UiEvent::NextCommand),
+        "scroll_up" => Some(UiEvent::ScrollUp),
+        "scroll_down" => Some(UiEvent::ScrollDown),
+        "scroll_bottom" => Some(UiEvent::ScrollBottom),
+        "complete" => Some(UiEvent::Complete),
+        _ => None,
+    }
+}
 
 #[derive(Clone)]
 pub struct Alias {
@@ -60,6 +81,7 @@ impl UserData for Trigger {}
 pub struct BlightMud {
     main_writer: Sender<Event>,
     output_lines: Vec<Line>,
+    ui_events: Vec<UiEvent>,
     pub screen_dimensions: (u16, u16),
 }
 
@@ -68,6 +90,7 @@ impl BlightMud {
         Self {
             main_writer: writer,
             output_lines: vec![],
+            ui_events: vec![],
             screen_dimensions: (0, 0),
         }
     }
@@ -76,6 +99,12 @@ impl BlightMud {
         let return_lines = self.output_lines.clone();
         self.output_lines.clear();
         return_lines
+    }
+
+    pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
+        let events = self.ui_events.clone();
+        self.ui_events.clear();
+        events
     }
 
     fn create_trigger(&self, regex: &str, gag: bool) -> Result<Trigger, String> {
@@ -110,6 +139,29 @@ impl UserData for BlightMud {
         });
         methods.add_method_mut("output", |_, this, strings: Variadic<String>| {
             this.output_lines.push(Line::from(strings.join(" ")));
+            Ok(())
+        });
+        methods.add_method(
+            "bind",
+            |ctx, _, (cmd, callback): (String, rlua::Function)| {
+                let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+                bind_table.set(cmd.to_lowercase(), callback)?;
+                Ok(())
+            },
+        );
+        methods.add_method("unbind", |ctx, _, cmd: String| {
+            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            bind_table.set(cmd, rlua::Nil)?;
+            Ok(())
+        });
+        methods.add_method_mut("ui", |_, this, cmd: String| {
+            if let Some(cmd) = cursor_event_from_str(&cmd) {
+                this.ui_events.push(cmd);
+            } else {
+                this.main_writer
+                    .send(Event::Error(format!("Invalid ui command: {}", cmd)))
+                    .unwrap();
+            }
             Ok(())
         });
         methods.add_method(

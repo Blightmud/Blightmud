@@ -24,7 +24,7 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `/quit`, `/q`                      : Exit program
 - `/help`                            : Help information
 
-## Basic operations:
+## Default keybindings:
 
 - `PgUp`/`PgDn`      : Scroll output view
 - `End`              : Go to bottom of output view
@@ -38,3 +38,5 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `Ctrl-U`           : Delete from start of input line to cursor
 - `Ctrl-L`           : Redraw screen (good when muds mess stuff up)
 - `Ctrl-C`           : Quit program
+
+To change keybindings see `/help scripting` and `/help bindings`

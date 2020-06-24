@@ -19,3 +19,4 @@ by typing `/help <category>`.
 - `gmcp`        Methods for interacting with the Generic MUD Communication Protocol.
 - `status_area` Methods for controlling and printing to the status bar
 - `storage`     Methods for persisting data between sessions
+- `bindings`    Methods for configuring keybindings and adding new ones

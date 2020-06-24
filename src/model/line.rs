@@ -46,6 +46,16 @@ impl fmt::Display for Line {
     }
 }
 
+impl From<&Line> for Line {
+    fn from(line: &Line) -> Self {
+        Self {
+            content: line.content.clone(),
+            clean_content: line.clean_content.clone(),
+            flags: line.flags.clone(),
+        }
+    }
+}
+
 impl From<&str> for Line {
     fn from(line: &str) -> Self {
         let (content, clean_content) = get_content_from(line);

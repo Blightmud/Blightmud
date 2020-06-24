@@ -1,6 +1,6 @@
 use super::constants::*;
 use super::user_data::*;
-use super::util::*;
+use super::{util::*, UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
@@ -23,13 +23,6 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             let globals = ctx.globals();
             globals.set("blight", blight)?;
 
-            let json = include_str!("../../resources/lua/json.lua");
-            let lua_json = ctx.load(json).call::<_, rlua::Value>(())?;
-            globals.set("json", lua_json)?;
-
-            let defaults = include_str!("../../resources/lua/defaults.lua");
-            ctx.load(defaults).exec()?;
-
             let alias_table = ctx.create_table()?;
             globals.set(ALIAS_TABLE, alias_table)?;
             let trigger_table = ctx.create_table()?;
@@ -40,8 +33,18 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             globals.set(GMCP_LISTENER_TABLE, gmcp_listener_table)?;
             let timed_func_table = ctx.create_table()?;
             globals.set(TIMED_FUNCTION_TABLE, timed_func_table)?;
+            let command_bind_table = ctx.create_table()?;
+            globals.set(COMMAND_BINDING_TABLE, command_bind_table)?;
 
             globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
+
+            let json = include_str!("../../resources/lua/json.lua");
+            let lua_json = ctx.load(json).call::<_, rlua::Value>(())?;
+            globals.set("json", lua_json)?;
+            let bindings = include_str!("../../resources/lua/bindings.lua");
+            ctx.load(bindings).exec()?;
+            let defaults = include_str!("../../resources/lua/defaults.lua");
+            ctx.load(defaults).exec()?;
 
             Ok(())
         })
@@ -265,6 +268,30 @@ impl LuaScript {
                 }
             })
             .unwrap();
+    }
+
+    pub fn check_bindings(&mut self, cmd: &str) {
+        self.state
+            .context(|ctx| -> Result<(), rlua::Error> {
+                let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+                if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
+                    callback.call::<_, ()>(())
+                } else {
+                    Ok(())
+                }
+            })
+            .unwrap();
+    }
+
+    pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
+        self.state
+            .context(|ctx| -> Result<Vec<UiEvent>, rlua::Error> {
+                let mut blight: BlightMud = ctx.globals().get("blight")?;
+                let events = blight.get_ui_events();
+                ctx.globals().set("blight", blight)?;
+                Ok(events)
+            })
+            .unwrap()
     }
 }
 
@@ -607,5 +634,32 @@ mod lua_script_tests {
             "C_WHITE .. \"COLOR\" .. C_RESET",
             "\x1b[37mCOLOR\x1b[0m",
         );
+    }
+
+    #[test]
+    fn test_bindings() {
+        let lua_code = r#"
+        blight:bind("ctrl-a", function ()
+            blight:output("ctrl-a")
+        end)
+        blight:bind("f1", function ()
+            blight:output("f1")
+        end)
+        blight:bind("alt-1", function ()
+            blight:output("alt-1")
+        end)
+        "#;
+
+        let (mut lua, _reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+
+        lua.check_bindings("ctrl-a");
+        assert_eq!(lua.get_output_lines(), [Line::from("ctrl-a")]);
+        lua.check_bindings("alt-1");
+        assert_eq!(lua.get_output_lines(), [Line::from("alt-1")]);
+        lua.check_bindings("f1");
+        assert_eq!(lua.get_output_lines(), [Line::from("f1")]);
     }
 }

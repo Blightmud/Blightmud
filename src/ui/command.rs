@@ -1,11 +1,18 @@
 use crate::event::Event;
 use crate::model::{Connection, Line};
-use crate::session::Session;
+use crate::{lua::LuaScript, lua::UiEvent, session::Session};
 use log::debug;
 use rs_complete::CompletionTree;
 use std::collections::VecDeque;
 use std::thread;
-use std::{io::stdin, sync::atomic::Ordering};
+use std::{
+    io::stdin,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc::Sender,
+        Arc, Mutex,
+    },
+};
 use termion::{event::Key, input::TermRead};
 
 #[derive(Default)]
@@ -224,64 +231,109 @@ impl CommandBuffer {
     }
 }
 
+fn parse_key_event(
+    key: &termion::event::Key,
+    buffer: &mut CommandBuffer,
+    writer: &Sender<Event>,
+    terminate: &Arc<AtomicBool>,
+) {
+    match key {
+        Key::Char('\n') => writer.send(parse_command(&buffer.submit())).unwrap(),
+        Key::Char('\t') => buffer.tab_complete(),
+        Key::Char(c) => buffer.push_key(*c),
+        Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
+        Key::Ctrl('c') => {
+            debug!("Caught ctrl-c, terminating");
+            terminate.store(true, Ordering::Relaxed);
+            writer.send(Event::Quit).unwrap();
+        }
+        Key::PageUp => writer.send(Event::ScrollUp).unwrap(),
+        Key::PageDown => writer.send(Event::ScrollDown).unwrap(),
+        Key::End => writer.send(Event::ScrollBottom).unwrap(),
+
+        // Input navigation
+        Key::Left => buffer.move_left(),
+        Key::Right => buffer.move_right(),
+        Key::Backspace => buffer.remove(),
+        Key::Up => buffer.previous(),
+        Key::Down => buffer.next(),
+        _ => {}
+    };
+}
+
+fn check_command_binds(
+    cmd: &termion::event::Key,
+    buffer: &mut CommandBuffer,
+    script: &Arc<Mutex<LuaScript>>,
+    writer: &Sender<Event>,
+) {
+    if let Ok(mut script) = script.lock() {
+        match cmd {
+            Key::Ctrl(c) => {
+                script.check_bindings(&format!("ctrl-{}", c));
+            }
+            Key::Alt(c) => {
+                script.check_bindings(&format!("alt-{}", c));
+            }
+            Key::F(n) => {
+                script.check_bindings(&format!("f{}", n));
+            }
+            _ => {}
+        }
+        script.get_ui_events().iter().for_each(|event| match event {
+            UiEvent::StepLeft => buffer.move_left(),
+            UiEvent::StepRight => buffer.move_right(),
+            UiEvent::StepToStart => buffer.move_to_start(),
+            UiEvent::StepToEnd => buffer.move_to_end(),
+            UiEvent::StepWordLeft => buffer.move_word_left(),
+            UiEvent::StepWordRight => buffer.move_word_right(),
+            UiEvent::Remove => buffer.remove(),
+            UiEvent::DeleteToEnd => buffer.delete_to_end(),
+            UiEvent::DeleteFromStart => buffer.delete_from_start(),
+            UiEvent::PreviousCommand => buffer.previous(),
+            UiEvent::NextCommand => buffer.next(),
+            UiEvent::ScrollDown => writer.send(Event::ScrollDown).unwrap(),
+            UiEvent::ScrollUp => writer.send(Event::ScrollUp).unwrap(),
+            UiEvent::ScrollBottom => writer.send(Event::ScrollBottom).unwrap(),
+            UiEvent::Complete => buffer.tab_complete(),
+        });
+        script.get_output_lines().iter().for_each(|l| {
+            writer.send(Event::Output(Line::from(l))).unwrap();
+        });
+    }
+}
+
 pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         debug!("Input stream spawned");
         let writer = session.main_writer;
         let terminate = session.terminate;
+        let script = session.lua_script;
         let stdin = stdin();
         let mut buffer = CommandBuffer::default();
         buffer
             .completion_tree
             .insert(include_str!("../../resources/completions.txt"));
 
-        for c in stdin.keys() {
-            match c.unwrap() {
-                Key::Char('\n') => {
-                    writer.send(parse_command(&buffer.submit())).unwrap();
+        for e in stdin.events() {
+            match e.unwrap() {
+                termion::event::Event::Key(key) => {
+                    parse_key_event(&key, &mut buffer, &writer, &terminate);
+                    check_command_binds(&key, &mut buffer, &script, &writer);
+                    writer
+                        .send(Event::UserInputBuffer(
+                            buffer.get_buffer(),
+                            buffer.get_pos(),
+                        ))
+                        .unwrap();
                 }
-                Key::Char('\t') => buffer.tab_complete(),
-                Key::Char(c) => buffer.push_key(c),
-                Key::Ctrl('c') => {
-                    debug!("Caught ctrl-c, terminating");
-                    terminate.store(true, Ordering::Relaxed);
-                    writer.send(Event::Quit).unwrap();
-                    break;
+                termion::event::Event::Unsupported(_bytes) => {
+                    writer
+                        .send(Event::Info(format!("Unknown command: {:?}", _bytes)))
+                        .unwrap();
                 }
-                Key::PageUp => {
-                    writer.send(Event::ScrollUp).unwrap();
-                }
-                Key::PageDown => {
-                    writer.send(Event::ScrollDown).unwrap();
-                }
-                Key::End => {
-                    writer.send(Event::ScrollBottom).unwrap();
-                }
-
-                // Input navigation
-                Key::Up | Key::Ctrl('p') => buffer.previous(),
-                Key::Down | Key::Ctrl('n') => buffer.next(),
-                Key::Left => buffer.move_left(),
-                Key::Right => buffer.move_right(),
-                Key::Backspace => {
-                    buffer.remove();
-                }
-                Key::Ctrl('a') => buffer.move_to_start(),
-                Key::Ctrl('e') => buffer.move_to_end(),
-                Key::Ctrl('k') => buffer.delete_to_end(),
-                Key::Ctrl('u') => buffer.delete_from_start(),
-                Key::Alt('b') => buffer.move_word_left(),
-                Key::Alt('f') => buffer.move_word_right(),
-
-                Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
                 _ => {}
-            };
-            writer
-                .send(Event::UserInputBuffer(
-                    buffer.get_buffer(),
-                    buffer.get_pos(),
-                ))
-                .unwrap();
+            }
             if terminate.load(Ordering::Relaxed) {
                 break;
             }

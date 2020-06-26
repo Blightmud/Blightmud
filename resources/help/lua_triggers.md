@@ -31,8 +31,8 @@ local trigger_id = blight:add_trigger(
         "^(\\w+) enters from the \\w+\\.$",
         { gag = true },
         function (matches)
-            blight:output("!!! " .. match[2] .. " entered, lets kick")
-            blight:send("kick " .. match[2])
+            blight:output("!!! " .. matches[2] .. " entered, lets kick")
+            blight:send("kick " .. matches[2])
         end
     )
 
@@ -41,6 +41,16 @@ blight:remove_trigger(trigger_id)
 blight:add_trigger("^\\x1b\\[31mHello\\x1b\\[0m$", {raw=true}, function ()
     blight:output(C_BLUE .. "((( Red Hello )))" .. C_RESET)
 end)
+```
+Please note that you can use Lua's long bracket system if you find Lua string escaping tedious when creating regex patterns.
+```lua
+local trigger_id = blight:add_trigger(
+        [=[^(\w+) enters from the \w+\.$]=],
+        { gag = false },
+        function (matches)
+            blight:output("!!! Looks like " .. matches[2] .. " just arrived!")
+        end
+    )
 ```
 
 ***blight:gag()***

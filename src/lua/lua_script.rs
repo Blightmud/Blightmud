@@ -661,5 +661,7 @@ mod lua_script_tests {
         assert_eq!(lua.get_output_lines(), [Line::from("alt-1")]);
         lua.check_bindings("f1");
         assert_eq!(lua.get_output_lines(), [Line::from("f1")]);
+        lua.check_bindings("ctrl-0");
+        assert_eq!(lua.get_output_lines(), []);
     }
 }

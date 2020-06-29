@@ -1,5 +1,20 @@
 use std::collections::BTreeMap;
 
+#[derive(PartialEq, Eq, Debug)]
+#[allow(dead_code)]
+enum Direction {
+    Up,
+    Down,
+    East,
+    West,
+    North,
+    South,
+    SouthEast,
+    NorthEast,
+    SouthWest,
+    NorthWest,
+}
+
 #[derive(Debug, Default)]
 pub struct Map {
     rooms: Vec<Room>,
@@ -31,9 +46,17 @@ impl Map {
     }
 }
 
+#[derive(Default, Debug)]
+struct Coordinate {
+    x: i64,
+    y: i64,
+    z: i64,
+}
+
 #[derive(Debug, Default)]
 struct Room {
     id: u64,
+    coord: Coordinate,
     name: String,
     exits: BTreeMap<String, u64>,
 }
@@ -43,6 +66,7 @@ impl Room {
     fn create(id: u64) -> Self {
         Self {
             id,
+            coord: Coordinate::default(),
             name: String::new(),
             exits: BTreeMap::new(),
         }

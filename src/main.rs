@@ -15,6 +15,7 @@ use ui::HelpHandler;
 mod event;
 mod io;
 mod lua;
+mod mapper;
 mod model;
 mod net;
 mod session;

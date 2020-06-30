@@ -5,10 +5,12 @@ on:
     branches:
       - master
       - dev
+      - mapper
   pull_request:
     branches:
       - master
       - dev
+      - mapper
 
 jobs:
   clippy_check:

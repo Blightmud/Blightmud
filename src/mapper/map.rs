@@ -214,4 +214,26 @@ mod map_tests {
         assert!(check_exit(&map.rooms[2], "sw", 1));
         assert!(check_exit(&map.rooms[1], "n", 0));
     }
+
+    #[test]
+    fn test_travel() {
+        let mut map = Map::new();
+        assert_eq!(map.rooms.len(), 1);
+        map.travel("s");
+        assert_eq!(map.rooms.len(), 2);
+        map.travel("ne");
+        assert_eq!(map.rooms.len(), 3);
+        map.travel("w");
+        assert_eq!(map.rooms.len(), 3);
+
+        assert_eq!(map.current_room, Some(0));
+        map.travel("s");
+        assert_eq!(map.current_room, Some(1));
+        map.travel("ne");
+        assert_eq!(map.current_room, Some(2));
+        map.travel("w");
+        assert_eq!(map.current_room, Some(0));
+        map.travel("w");
+        assert_eq!(map.current_room, Some(3));
+    }
 }

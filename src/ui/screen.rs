@@ -133,12 +133,25 @@ impl StatusArea {
         )?;
 
         let custom_info = if !custom_info.trim().is_empty() {
-            format!("━ {} ", custom_info.trim())
+            format!(
+                "━ {}{}{} ",
+                custom_info.trim(),
+                color::Fg(color::Reset),
+                color::Fg(color::Green)
+            )
         } else {
             "".to_string()
         };
 
-        write!(screen, "{:━<1$}", custom_info, self.width as usize)?; // Print separator
+        let info_line = Line::from(&custom_info);
+        let stripped_chars = info_line.line().len() - info_line.clean_line().len();
+
+        write!(
+            screen,
+            "{:━<1$}",
+            &custom_info,
+            self.width as usize + stripped_chars
+        )?; // Print separator
         write!(screen, "{}", color::Fg(color::Reset))?;
         Ok(())
     }
@@ -259,6 +272,7 @@ impl Screen {
         self.status_area.set_status_line(line, info);
         self.status_area
             .redraw(&mut self.screen, self.scroll_data.0)?;
+        write!(self.screen, "{}", self.goto_prompt())?;
         Ok(())
     }
 

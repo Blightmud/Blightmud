@@ -193,11 +193,13 @@ impl LuaScript {
             .context(|ctx| {
                 let listener_table: rlua::Table = ctx.globals().get(GMCP_LISTENER_TABLE).unwrap();
                 if let Ok(func) = listener_table.get::<_, rlua::Function>(msg_type.clone()) {
-                    func.call::<_, ()>(content.clone())?;
+                    if let Err(msg) = func.call::<_, ()>(content.clone()) {
+                        output_stack_trace(&self.writer, &msg.to_string());
+                    }
                 }
                 rlua::Result::Ok(())
             })
-            .ok();
+            .unwrap()
     }
 
     pub fn load_script(&mut self, path: &str) -> Result<()> {

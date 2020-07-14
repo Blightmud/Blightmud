@@ -213,6 +213,42 @@ impl LuaScript {
         Ok(())
     }
 
+    pub fn eval(&mut self, code: &str) -> Result<Vec<String>> {
+        self.state
+            .context(|ctx| -> LuaResult<Vec<String>> {
+                let value: LuaResult<rlua::MultiValue> = ctx.load(code).set_name("cmdline")?.eval();
+                match &value {
+                    Ok(vals) => {
+                        use rlua::Value::*;
+                        Ok(vals
+                            .clone()
+                            .into_vec()
+                            .iter()
+                            .map(|val| match val {
+                                Nil => "nil".to_string(),
+                                Boolean(true) => "true".to_string(),
+                                Boolean(false) => "false".to_string(),
+                                LightUserData(_) => "userdata".to_string(),
+                                Integer(i) => format!("{}", i),
+                                Number(n) => format!("{}", n),
+                                String(s) => format!("\"{}\"", s.to_str().unwrap_or("")),
+                                Table(_) => "table".to_string(),
+                                Function(_) => "function".to_string(),
+                                Thread(_) => "thread".to_string(),
+                                UserData(_) => "userdata".to_string(),
+                                Error(_) => "error".to_string(),
+                            })
+                            .collect())
+                    }
+                    Err(err) => Err(err.clone()),
+                }
+            })
+            .or_else(|err| {
+                output_stack_trace(&self.writer, &err.to_string());
+                Ok(Vec::new())
+            })
+    }
+
     pub fn on_connect(&mut self, host: &str, port: u16) {
         if !self.on_connect_triggered {
             self.on_connect_triggered = true;
@@ -524,6 +560,27 @@ mod lua_script_tests {
         assert_event(
             "blight:load(\"/some/fancy/path\")",
             Event::LoadScript("/some/fancy/path".to_string()),
+        );
+    }
+
+    #[test]
+    fn test_eval() {
+        let (mut lua, _) = get_lua();
+        // Basic values
+        assert_eq!(lua.eval("5").unwrap(), vec!["5"]);
+        assert_eq!(lua.eval("\"test\"").unwrap(), vec!["\"test\""]);
+        assert_eq!(lua.eval("tostring").unwrap(), vec!["function"]);
+        assert_eq!(lua.eval("blight").unwrap(), vec!["userdata"]);
+        assert_eq!(lua.eval("{}").unwrap(), vec!["table"]);
+        assert_eq!(lua.eval("true").unwrap(), vec!["true"]);
+        assert_eq!(lua.eval("false").unwrap(), vec!["false"]);
+
+        // Multiple values
+        assert_eq!(lua.eval("5, 5").unwrap(), vec!["5", "5"]);
+        assert_eq!(
+            lua.eval("string.find(\"a test string\", \"test\")")
+                .unwrap(),
+            vec!["3", "6"]
         );
     }
 

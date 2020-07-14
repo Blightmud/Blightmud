@@ -6,6 +6,8 @@ You can manually load your script files with the `/load` command or you can
 auto-load them as configuration scripts. 
 See `/help config_scripts` for more information on auto-loading scripts.
 
+Alternatively, you can execute Lua directly with the `/lua` command.
+
 In Lua you have access to the 'blight' object. Methods are available on this
 object to interact with your game. These methods can be broken down into several
 categories, show below. You can view the full list of methods for each category

@@ -43,6 +43,7 @@ pub enum Event {
     TimedEvent(u32),
     DropTimedEvent(u32),
     LoadScript(String),
+    RunLua(String),
     ResetScript,
     StartLogging(String, bool),
     StopLogging,

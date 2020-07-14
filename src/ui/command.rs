@@ -232,7 +232,7 @@ impl CommandBuffer {
 }
 
 fn parse_key_event(
-    key: &termion::event::Key,
+    key: termion::event::Key,
     buffer: &mut CommandBuffer,
     writer: &Sender<Event>,
     terminate: &Arc<AtomicBool>,
@@ -240,7 +240,7 @@ fn parse_key_event(
     match key {
         Key::Char('\n') => writer.send(parse_command(&buffer.submit())).unwrap(),
         Key::Char('\t') => buffer.tab_complete(),
-        Key::Char(c) => buffer.push_key(*c),
+        Key::Char(c) => buffer.push_key(c),
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
         Key::Ctrl('c') => {
             debug!("Caught ctrl-c, terminating");
@@ -262,7 +262,7 @@ fn parse_key_event(
 }
 
 fn check_command_binds(
-    cmd: &termion::event::Key,
+    cmd: termion::event::Key,
     buffer: &mut CommandBuffer,
     script: &Arc<Mutex<LuaScript>>,
     writer: &Sender<Event>,
@@ -318,8 +318,8 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         for e in stdin.events() {
             match e.unwrap() {
                 termion::event::Event::Key(key) => {
-                    parse_key_event(&key, &mut buffer, &writer, &terminate);
-                    check_command_binds(&key, &mut buffer, &script, &writer);
+                    parse_key_event(key, &mut buffer, &writer, &terminate);
+                    check_command_binds(key, &mut buffer, &script, &writer);
                     writer
                         .send(Event::UserInputBuffer(
                             buffer.get_buffer(),

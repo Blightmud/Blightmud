@@ -1,15 +1,16 @@
-use crate::{model::Line, ui::ansi::*};
-use anyhow::Result;
-use std::collections::VecDeque;
-use std::io::{stdout, Stdout, Write};
-use std::{error, fmt};
-use termion::{
-    color,
-    raw::{IntoRawMode, RawTerminal},
-    screen::AlternateScreen,
+use crate::{
+    model::Line,
+    ui::window::{ScreenWriter, Window},
 };
 
-struct ScrollData(bool, usize);
+use anyhow::Result;
+
+use std::cell::RefCell;
+use std::io::{stdout, Write};
+use std::rc::Rc;
+use std::{error, fmt};
+use termion::{color, raw::IntoRawMode, screen::AlternateScreen};
+
 const OUTPUT_START_LINE: u16 = 2;
 
 #[derive(Debug)]
@@ -39,8 +40,6 @@ struct StatusArea {
     width: u16,
     status_lines: Vec<Option<String>>,
 }
-
-type ScreenHandle = AlternateScreen<RawTerminal<Stdout>>;
 
 impl StatusArea {
     fn new(height: u16, start_line: u16, width: u16) -> Self {
@@ -78,7 +77,7 @@ impl StatusArea {
         self.status_lines = vec![None; self.status_lines.len()];
     }
 
-    fn redraw(&mut self, screen: &mut ScreenHandle, scrolled: bool) -> Result<()> {
+    fn redraw(&mut self, screen: &mut ScreenWriter, scrolled: bool) -> Result<()> {
         for line in self.start_line..self.end_line + 1 {
             write!(
                 screen,
@@ -123,7 +122,7 @@ impl StatusArea {
         Ok(())
     }
 
-    fn draw_bar(&self, line: u16, screen: &mut ScreenHandle, custom_info: &str) -> Result<()> {
+    fn draw_bar(&self, line: u16, screen: &mut ScreenWriter, custom_info: &str) -> Result<()> {
         write!(
             screen,
             "{}{}{}",
@@ -156,7 +155,7 @@ impl StatusArea {
         Ok(())
     }
 
-    fn draw_line(&self, line: u16, screen: &mut ScreenHandle, info: &str) -> Result<()> {
+    fn draw_line(&self, line: u16, screen: &mut ScreenWriter, info: &str) -> Result<()> {
         write!(
             screen,
             "{}{}",
@@ -173,46 +172,22 @@ impl StatusArea {
     }
 }
 
-struct History {
-    inner: VecDeque<String>,
-}
-
-impl History {
-    fn new() -> Self {
-        Self {
-            inner: VecDeque::with_capacity(32 * 1024),
-        }
-    }
-
-    fn append(&mut self, line: &str) {
-        if !line.trim().is_empty() {
-            for line in line.lines() {
-                self.inner.push_back(String::from(line));
-            }
-        } else {
-            self.inner.push_back("".to_string());
-        }
-        while self.inner.len() >= self.inner.capacity() {
-            self.inner.pop_front();
-        }
-    }
-}
-
 pub struct Screen {
-    screen: ScreenHandle,
+    screen: ScreenWriter,
     pub width: u16,
     pub height: u16,
     output_line: u16,
     prompt_line: u16,
     status_area: StatusArea,
     cursor_prompt_pos: u16,
-    history: History,
-    scroll_data: ScrollData,
+    main_window: Rc<RefCell<Window>>,
+    active_window: Rc<RefCell<Window>>,
 }
 
 impl Screen {
     pub fn new() -> Result<Self, Box<dyn error::Error>> {
         let screen = AlternateScreen::from(stdout().into_raw_mode()?);
+        let screen_writer = ScreenWriter::new(screen);
         let (width, height) = termion::terminal_size()?;
 
         let status_area_height = 1;
@@ -221,16 +196,25 @@ impl Screen {
 
         let status_area = StatusArea::new(status_area_height, output_line + 1, width);
 
+        let main_window = Window::new(
+            screen_writer.clone(),
+            1,
+            2,
+            width,
+            height - status_area_height - 2,
+        );
+        let main_window_ref = Rc::new(RefCell::new(main_window));
+
         Ok(Self {
-            screen,
+            screen: screen_writer,
             width,
             height,
             output_line,
             status_area,
             prompt_line,
             cursor_prompt_pos: 1,
-            history: History::new(),
-            scroll_data: ScrollData(false, 0),
+            main_window: main_window_ref.clone(),
+            active_window: main_window_ref,
         })
     }
 
@@ -245,15 +229,10 @@ impl Screen {
             self.output_line = height - self.status_area.height() - 1;
             self.prompt_line = height;
 
-            write!(
-                self.screen,
-                "{}{}",
-                ScrollRegion(OUTPUT_START_LINE, self.output_line),
-                DisableOriginMode
-            )
-            .unwrap(); // Set scroll region, non origin mode
             self.redraw_top_bar("", 0)?;
-            self.reset_scroll()?;
+            self.status_area
+                .redraw(&mut self.screen, self.active_window.borrow().is_scrolled())?;
+            self.reset_scroll();
             self.screen.flush()?;
             Ok(())
         } else {
@@ -271,8 +250,7 @@ impl Screen {
     pub fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
         self.status_area
-            .redraw(&mut self.screen, self.scroll_data.0)?;
-        write!(self.screen, "{}", self.goto_prompt())?;
+            .redraw(&mut self.screen, self.active_window.borrow().is_scrolled())?;
         Ok(())
     }
 
@@ -290,47 +268,24 @@ impl Screen {
             "".to_string()
         };
         write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
-        write!(
+        Ok(())
+    }
+
+    pub fn goto_prompt(&mut self) {
+        let _ = write!(
             self.screen,
-            "{}{}",
-            color::Fg(color::Reset),
-            self.goto_prompt(),
-        )?;
-        Ok(())
-    }
-
-    fn redraw_status_area(&mut self) -> Result<()> {
-        self.status_area.set_width(self.width);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.0)?;
-        write!(self.screen, "{}", self.goto_prompt(),)?;
-        Ok(())
-    }
-
-    fn goto_prompt(&self) -> termion::cursor::Goto {
-        termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line)
+            "{}",
+            termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line)
+        );
     }
 
     pub fn reset(&mut self) -> Result<()> {
-        write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion)?;
+        write!(self.screen, "{}", termion::clear::All)?;
         Ok(())
     }
 
     pub fn print_prompt(&mut self, prompt: &Line) {
-        if let Some(prompt_line) = prompt.print_line() {
-            self.history.append(prompt_line);
-            if !self.scroll_data.0 {
-                write!(
-                    self.screen,
-                    "{}{}{}{}",
-                    termion::cursor::Goto(1, self.output_line),
-                    termion::scroll::Up(1),
-                    prompt_line,
-                    self.goto_prompt(),
-                )
-                .unwrap();
-            }
-        }
+        self.main_window.borrow_mut().print_prompt(prompt);
     }
 
     pub fn print_prompt_input(&mut self, input: &str, pos: usize) {
@@ -351,45 +306,21 @@ impl Screen {
         self.cursor_prompt_pos = pos as u16 + 1;
         write!(
             self.screen,
-            "{}{}{}{}",
+            "{}{}{}",
             termion::cursor::Goto(1, self.prompt_line),
             termion::clear::CurrentLine,
-            input,
-            self.goto_prompt(),
+            input
         )
         .unwrap();
     }
 
     pub fn print_output(&mut self, line: &Line) {
-        if let Some(print_line) = line.print_line() {
-            if print_line.trim().is_empty() {
-                self.print_line(&print_line);
-            } else {
-                for line in wrap_line(&print_line, self.width as usize) {
-                    self.print_line(&line);
-                }
-            }
-        }
-    }
-
-    fn print_line(&mut self, line: &str) {
-        self.history.append(&line);
-        if !self.scroll_data.0 {
-            write!(
-                self.screen,
-                "{}{}{}{}",
-                termion::cursor::Goto(1, self.output_line),
-                termion::scroll::Up(1),
-                &line,
-                self.goto_prompt(),
-            )
-            .unwrap();
-        }
+        self.main_window.borrow_mut().print_output(line)
     }
 
     pub fn print_send(&mut self, send: &Line) {
         if let Some(line) = send.print_line() {
-            self.print_line(&format!(
+            self.main_window.borrow_mut().print_line(&format!(
                 "{}> {}{}",
                 color::Fg(color::LightYellow),
                 line,
@@ -399,11 +330,13 @@ impl Screen {
     }
 
     pub fn print_info(&mut self, output: &str) {
-        self.print_line(&format!("[**] {}", output));
+        self.main_window
+            .borrow_mut()
+            .print_line(&format!("[**] {}", output));
     }
 
     pub fn print_error(&mut self, output: &str) {
-        self.print_line(&format!(
+        self.main_window.borrow_mut().print_line(&format!(
             "{}[!!] {}{}",
             color::Fg(color::Red),
             output,
@@ -411,209 +344,19 @@ impl Screen {
         ));
     }
 
-    pub fn scroll_up(&mut self) -> Result<()> {
-        let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
-        let history = &self.history.inner;
-        if history.len() > output_range as usize {
-            if !self.scroll_data.0 {
-                self.scroll_data.0 = true;
-                self.scroll_data.1 = history.len() - output_range;
-            }
-            self.scroll_data.0 = true;
-            self.scroll_data.1 -= self.scroll_data.1.min(5);
-            self.draw_scroll()?;
-        }
-        Ok(())
+    pub fn scroll_up(&mut self) {
+        self.active_window.borrow_mut().scroll_up();
     }
 
-    pub fn scroll_down(&mut self) -> Result<()> {
-        if self.scroll_data.0 {
-            let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
-            let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
-            let new_start_index = self.scroll_data.1 + 5;
-            if new_start_index >= max_start_index as usize {
-                self.reset_scroll()?;
-            } else {
-                self.scroll_data.1 = new_start_index;
-                self.draw_scroll()?;
-            }
-        }
-        Ok(())
+    pub fn scroll_down(&mut self) {
+        self.active_window.borrow_mut().scroll_down();
     }
 
-    fn draw_scroll(&mut self) -> Result<()> {
-        let output_range = self.output_line - OUTPUT_START_LINE + 1;
-        for i in 0..output_range {
-            let index = self.scroll_data.1 + i as usize;
-            let line_no = OUTPUT_START_LINE + i;
-            write!(
-                self.screen,
-                "{}{}{}",
-                termion::cursor::Goto(1, line_no),
-                termion::clear::CurrentLine,
-                self.history.inner[index],
-            )?;
-        }
-        self.redraw_status_area()?;
-        Ok(())
-    }
-
-    pub fn reset_scroll(&mut self) -> Result<()> {
-        self.scroll_data.0 = false;
-        let output_range = self.output_line - OUTPUT_START_LINE + 1;
-        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
-        if output_start_index >= 0 {
-            let output_start_index = output_start_index as usize;
-            for i in 0..output_range {
-                let index = output_start_index + i as usize;
-                let line_no = OUTPUT_START_LINE + i;
-                write!(
-                    self.screen,
-                    "{}{}{}",
-                    termion::cursor::Goto(1, line_no),
-                    termion::clear::CurrentLine,
-                    self.history.inner[index],
-                )?;
-            }
-        } else {
-            for line in &self.history.inner {
-                write!(
-                    self.screen,
-                    "{}{}{}",
-                    termion::cursor::Goto(1, self.output_line),
-                    termion::scroll::Up(1),
-                    line,
-                )?;
-            }
-        }
-        self.redraw_status_area()?;
-        Ok(())
+    pub fn reset_scroll(&mut self) {
+        self.active_window.borrow_mut().reset_scroll();
     }
 
     pub fn flush(&mut self) {
         self.screen.flush().unwrap();
-    }
-}
-
-fn wrap_line(line: &str, width: usize) -> Vec<&str> {
-    let mut lines: Vec<&str> = vec![];
-
-    for line in line.lines() {
-        // If the line is empty just push and continue
-        if line.trim().is_empty() {
-            lines.push(&line);
-            continue;
-        }
-
-        let mut last_cut: usize = 0;
-        let mut last_space: usize = 0;
-        let mut print_length = 0;
-        let mut print_length_since_space = 0;
-        let mut in_escape = false;
-        for (length, c) in line.chars().enumerate() {
-            // Check for escape sequences
-            if c == '\x1b' {
-                in_escape = true;
-                continue;
-            }
-
-            // Check for escape sequence endings
-            if in_escape {
-                in_escape = c != 'm';
-                continue;
-            }
-
-            // Keep track of printable line length
-            print_length += 1;
-
-            // Keep track of last occurence of <space> and how many printable
-            // characters followed it
-            print_length_since_space += 1;
-            if c == ' ' && print_length < width {
-                last_space = length;
-                print_length_since_space = 0;
-            }
-
-            // Split the line if it's print length reaches screen width
-            if print_length >= width {
-                // Cut from last space if there is any. Otherwise just cut.
-                if last_cut < last_space {
-                    lines.push(&line[last_cut..last_space]);
-                    print_length = print_length_since_space;
-                    last_cut = last_space + 1;
-                } else {
-                    lines.push(&line[last_cut..length + 1]);
-                    print_length = 0;
-                    last_cut = length + 1;
-                }
-            }
-        }
-
-        // Push the rest of the line if there is anything left
-        if last_cut < line.len() && !line[last_cut..].trim().is_empty() {
-            lines.push(&line[last_cut..]);
-        }
-    }
-    lines
-}
-
-#[cfg(test)]
-mod screen_test {
-    use super::*;
-
-    #[test]
-    fn test_wrap_line() {
-        let line: &'static str =
-            "\x1b[34mSomething \x1b[0mthat's pretty \x1b[32mlong and annoying\x1b[0m";
-        let lines = wrap_line(&line, 11);
-        let mut iter = lines.iter();
-        assert_eq!(iter.next(), Some(&"\u{1b}[34mSomething"));
-        assert_eq!(iter.next(), Some(&"\u{1b}[0mthat's"));
-        assert_eq!(iter.next(), Some(&"pretty"));
-        assert_eq!(iter.next(), Some(&"\u{1b}[32mlong and"));
-        assert_eq!(iter.next(), Some(&"annoying\u{1b}[0m"));
-    }
-
-    #[test]
-    fn test_long_line_no_space() {
-        let mut line = String::new();
-        for _ in 0..1000 {
-            for i in 0..10 {
-                let num = format!("{}", i);
-                line = format!(
-                    "{}{}",
-                    line,
-                    std::iter::repeat(num).take(15).collect::<String>()
-                );
-            }
-        }
-        let lines = wrap_line(&line, 15);
-        assert_eq!(lines.len(), 1000 * 10);
-        for (i, line) in lines.iter().enumerate() {
-            let num = format!("{}", i % 10);
-            assert_eq!(
-                line,
-                &format!("{}", std::iter::repeat(num).take(15).collect::<String>())
-            );
-        }
-    }
-
-    #[test]
-    fn test_append_history() {
-        let line = "a nice line\n\nwith a blank line\nand lines\nc\ntest\n";
-
-        let mut history = History::new();
-        history.append(line);
-        assert_eq!(
-            history.inner,
-            vec![
-                "a nice line",
-                "",
-                "with a blank line",
-                "and lines",
-                "c",
-                "test",
-            ]
-        );
     }
 }

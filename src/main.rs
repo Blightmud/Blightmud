@@ -325,9 +325,9 @@ fn run(
                         session.main_writer.send(Event::ServerSend(data))?;
                     }
                 }
-                Event::ScrollUp => screen.scroll_up()?,
-                Event::ScrollDown => screen.scroll_down()?,
-                Event::ScrollBottom => screen.reset_scroll()?,
+                Event::ScrollUp => screen.scroll_up(),
+                Event::ScrollDown => screen.scroll_down(),
+                Event::ScrollBottom => screen.reset_scroll(),
                 Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
                 Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
                 Event::LoadScript(path) => {
@@ -391,7 +391,7 @@ fn run(
                 }
                 Event::Redraw => {
                     screen.setup()?;
-                    screen.reset_scroll()?;
+                    screen.reset_scroll();
                     if let Ok(mut script) = session.lua_script.lock() {
                         script.set_dimensions((screen.width, screen.height))?;
                     }
@@ -402,6 +402,7 @@ fn run(
                     break;
                 }
             };
+            screen.goto_prompt();
             screen.flush();
         }
     }

@@ -4,3 +4,4 @@ mod ansi;
 mod command;
 mod help_handler;
 mod screen;
+mod window;

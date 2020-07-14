@@ -224,10 +224,11 @@ impl LuaScript {
                         .globals()
                         .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
                     {
-                        callback.call::<_, ()>((host, port))
-                    } else {
-                        Ok(())
+                        if let Err(msg) = callback.call::<_, ()>((host, port)) {
+                            output_stack_trace(&self.writer, &msg.to_string());
+                        }
                     }
+                    Ok(())
                 })
                 .unwrap();
         }
@@ -240,10 +241,11 @@ impl LuaScript {
                     .globals()
                     .get::<_, rlua::Function>(ON_DISCONNECT_CALLBACK)
                 {
-                    callback.call::<_, ()>(())
-                } else {
-                    Ok(())
+                    if let Err(msg) = callback.call::<_, ()>(()) {
+                        output_stack_trace(&self.writer, &msg.to_string());
+                    }
                 }
+                Ok(())
             })
             .unwrap();
     }

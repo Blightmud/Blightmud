@@ -391,10 +391,11 @@ fn run(
                 }
                 Event::Redraw => {
                     screen.setup()?;
-                    screen.reset_scroll()?;
                     if let Ok(mut script) = session.lua_script.lock() {
                         script.set_dimensions((screen.width, screen.height))?;
                     }
+                    let prompt_input = session.prompt_input.lock().unwrap();
+                    screen.print_prompt_input(&prompt_input, prompt_input.len());
                 }
                 Event::Quit => {
                     session.terminate.store(true, Ordering::Relaxed);

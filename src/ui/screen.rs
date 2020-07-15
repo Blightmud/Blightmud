@@ -58,6 +58,10 @@ impl StatusArea {
         self.clear();
         self.status_lines
             .resize(height.min(5).max(1) as usize, None);
+        self.update_pos(start_line);
+    }
+
+    fn update_pos(&mut self, start_line: u16) {
         self.start_line = start_line;
     }
 
@@ -236,6 +240,7 @@ impl Screen {
 
     pub fn setup(&mut self) -> Result<()> {
         self.reset()?;
+        write!(self.screen, "{}", termion::clear::All)?;
 
         // Get params in case screen resized
         let (width, height) = termion::terminal_size()?;
@@ -301,6 +306,7 @@ impl Screen {
 
     fn redraw_status_area(&mut self) -> Result<()> {
         self.status_area.set_width(self.width);
+        self.status_area.update_pos(self.height - 1);
         self.status_area
             .redraw(&mut self.screen, self.scroll_data.0)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;

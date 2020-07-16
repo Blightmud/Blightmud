@@ -443,14 +443,6 @@ fn parse_command(msg: &str) -> Event {
             }
         }
         Some("/quit") | Some("/q") => Event::Quit,
-        Some("/lua") => {
-            let p = lc_msg[4..].trim();
-            if !p.is_empty() {
-                Event::RunLua(p.to_string())
-            } else {
-                Event::Info("USAGE: /lua <code>".to_string())
-            }
-        }
         _ => Event::ServerInput(Line::from(msg)),
     }
 }

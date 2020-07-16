@@ -38,13 +38,17 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
 
             globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
 
-            let json = include_str!("../../resources/lua/json.lua");
-            let lua_json = ctx.load(json).call::<_, rlua::Value>(())?;
+            let lua_json = ctx
+                .load(include_str!("../../resources/lua/json.lua"))
+                .call::<_, rlua::Value>(())?;
             globals.set("json", lua_json)?;
-            let bindings = include_str!("../../resources/lua/bindings.lua");
-            ctx.load(bindings).exec()?;
-            let defaults = include_str!("../../resources/lua/defaults.lua");
-            ctx.load(defaults).exec()?;
+
+            ctx.load(include_str!("../../resources/lua/bindings.lua"))
+                .exec()?;
+            ctx.load(include_str!("../../resources/lua/defaults.lua"))
+                .exec()?;
+            ctx.load(include_str!("../../resources/lua/lua_command.lua"))
+                .exec()?;
 
             Ok(())
         })
@@ -213,42 +217,6 @@ impl LuaScript {
             output_stack_trace(&self.writer, &msg.to_string());
         }
         Ok(())
-    }
-
-    pub fn eval(&mut self, code: &str) -> Result<Vec<String>> {
-        self.state
-            .context(|ctx| -> LuaResult<Vec<String>> {
-                let value: LuaResult<rlua::MultiValue> = ctx.load(code).set_name("cmdline")?.eval();
-                match &value {
-                    Ok(vals) => {
-                        use rlua::Value::*;
-                        Ok(vals
-                            .clone()
-                            .into_vec()
-                            .iter()
-                            .map(|val| match val {
-                                Nil => "nil".to_string(),
-                                Boolean(true) => "true".to_string(),
-                                Boolean(false) => "false".to_string(),
-                                LightUserData(_) => "userdata".to_string(),
-                                Integer(i) => format!("{}", i),
-                                Number(n) => format!("{}", n),
-                                String(s) => format!("\"{}\"", s.to_str().unwrap_or("")),
-                                Table(_) => "table".to_string(),
-                                Function(_) => "function".to_string(),
-                                Thread(_) => "thread".to_string(),
-                                UserData(_) => "userdata".to_string(),
-                                Error(_) => "error".to_string(),
-                            })
-                            .collect())
-                    }
-                    Err(err) => Err(err.clone()),
-                }
-            })
-            .or_else(|err| {
-                output_stack_trace(&self.writer, &err.to_string());
-                Ok(Vec::new())
-            })
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16) {
@@ -564,27 +532,6 @@ mod lua_script_tests {
         assert_event(
             "blight:load(\"/some/fancy/path\")",
             Event::LoadScript("/some/fancy/path".to_string()),
-        );
-    }
-
-    #[test]
-    fn test_eval() {
-        let (mut lua, _) = get_lua();
-        // Basic values
-        assert_eq!(lua.eval("5").unwrap(), vec!["5"]);
-        assert_eq!(lua.eval("\"test\"").unwrap(), vec!["\"test\""]);
-        assert_eq!(lua.eval("tostring").unwrap(), vec!["function"]);
-        assert_eq!(lua.eval("blight").unwrap(), vec!["userdata"]);
-        assert_eq!(lua.eval("{}").unwrap(), vec!["table"]);
-        assert_eq!(lua.eval("true").unwrap(), vec!["true"]);
-        assert_eq!(lua.eval("false").unwrap(), vec!["false"]);
-
-        // Multiple values
-        assert_eq!(lua.eval("5, 5").unwrap(), vec!["5", "5"]);
-        assert_eq!(
-            lua.eval("string.find(\"a test string\", \"test\")")
-                .unwrap(),
-            vec!["3", "6"]
         );
     }
 

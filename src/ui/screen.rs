@@ -268,7 +268,7 @@ impl Screen {
 
     pub fn set_status_area_height(&mut self, height: u16) -> Result<()> {
         let height = height.max(1).min(5);
-        self.status_area.set_height(height, self.height - height);
+        self.status_area.set_height(height, self.height);
         self.setup()?;
         Ok(())
     }
@@ -306,7 +306,7 @@ impl Screen {
 
     fn redraw_status_area(&mut self) -> Result<()> {
         self.status_area.set_width(self.width);
-        self.status_area.update_pos(self.height - 1);
+        self.status_area.update_pos(self.output_line + 1);
         self.status_area
             .redraw(&mut self.screen, self.scroll_data.0)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;

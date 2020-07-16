@@ -349,18 +349,6 @@ fn run(
                         });
                     }
                 }
-                Event::RunLua(code) => {
-                    let mut lua = session.lua_script.lock().unwrap();
-                    match lua.eval(&code) {
-                        Ok(values) => {
-                            screen.print_output(&model::Line::from(values.join(" ")));
-                            lua.get_output_lines().iter().for_each(|l| {
-                                screen.print_output(l);
-                            });
-                        }
-                        Err(err) => screen.print_error(&format!("Error in code: {}", err)),
-                    }
-                }
                 Event::ResetScript => {
                     info!("Clearing scripts");
                     screen.print_info("Clearing scripts...");

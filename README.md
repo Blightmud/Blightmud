@@ -41,6 +41,9 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - **Archlinux/Manjaro**  : Packages are available on AUR
 - **Other/Alternative**  : Download source and run `cargo install --path .` from the project root
 
+## Support, questions and help
+Join our [discord](https://discord.gg/qnxgUC5)
+
 ## Contributing
 All contributions are welcome. Check out [contributing guidelines](CONTRIBUTING.md).
 

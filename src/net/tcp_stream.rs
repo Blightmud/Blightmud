@@ -4,27 +4,54 @@ use crate::{
     session::{CommunicationOptions, Session},
 };
 use flate2::read::ZlibDecoder;
+use libtelnet_rs::telnet::op_option as opt;
 use log::{debug, error};
 use std::{
-    io::{Read, Write},
+    io::{Chain, Cursor, Read, Write},
     net::TcpStream,
     sync::{mpsc::Receiver, Arc, Mutex},
     thread,
 };
 
+type Decoder = ZlibDecoder<Chain<Cursor<Vec<u8>>, TcpStream>>;
+
 struct MudReceiver {
     reader: TcpStream,
-    decoder: Option<ZlibDecoder<TcpStream>>,
+    decoder: Option<Decoder>,
     comops: Arc<Mutex<CommunicationOptions>>,
+    last_chunk: Vec<u8>,
 }
 
 impl MudReceiver {
+    // If there were compressed bytes in the last chunk they are extracted here
+    fn extract_compressed_bytes_from_last(&self) -> Option<&[u8]> {
+        if let Some(item) = self
+            .last_chunk
+            .iter()
+            .enumerate()
+            .rfind(|item| *item.1 == opt::MCCP2)
+        {
+            // ... MCCP2 IAC SE, hence the + 3
+            Some(self.last_chunk.split_at(item.0 + 3).1)
+        } else {
+            None
+        }
+    }
+
     fn check_open_zlib_stream(&mut self) {
         if self.decoder.is_none() {
             if let Ok(comops) = self.comops.lock() {
                 if comops.mccp2 {
                     debug!("Opening Zlib stream");
-                    let decoder = ZlibDecoder::new(self.reader.try_clone().unwrap());
+                    let existing =
+                        if let Some(existing_bytes) = self.extract_compressed_bytes_from_last() {
+                            existing_bytes.to_vec()
+                        } else {
+                            vec![]
+                        };
+
+                    let chain = Cursor::new(existing).chain(self.reader.try_clone().unwrap());
+                    let decoder = ZlibDecoder::new(chain);
                     self.decoder.replace(decoder);
                 }
             }
@@ -56,6 +83,7 @@ impl MudReceiver {
         } else {
             data = vec![];
         }
+        self.last_chunk = data.clone();
         data
     }
 }
@@ -73,6 +101,7 @@ impl From<&Session> for MudReceiver {
                 .unwrap(),
             decoder: None,
             comops: session.comops.clone(),
+            last_chunk: vec![],
         }
     }
 }

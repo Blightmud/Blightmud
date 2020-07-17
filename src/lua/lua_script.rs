@@ -693,6 +693,12 @@ mod lua_script_tests {
         assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
         lua.on_connect("test", 21);
         assert_eq!(lua.get_output_lines(), []);
+        lua.reset((100, 100));
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+        lua.on_connect("test", 21);
+        assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
     }
 
     #[test]
@@ -712,5 +718,11 @@ mod lua_script_tests {
         assert_eq!(lua.get_output_lines(), [Line::from("gmcp")]);
         lua.on_gmcp_ready();
         assert_eq!(lua.get_output_lines(), []);
+        lua.reset((100, 100));
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+        lua.on_gmcp_ready();
+        assert_eq!(lua.get_output_lines(), [Line::from("gmcp")]);
     }
 }

@@ -11,6 +11,7 @@ pub struct LuaScript {
     state: Lua,
     writer: Sender<Event>,
     on_connect_triggered: bool,
+    on_gmcp_ready_triggered: bool,
 }
 
 fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lua {
@@ -62,11 +63,13 @@ impl LuaScript {
             state: create_default_lua_state(main_writer.clone(), dimensions),
             writer: main_writer,
             on_connect_triggered: false,
+            on_gmcp_ready_triggered: false,
         }
     }
 
     pub fn reset(&mut self, dimensions: (u16, u16)) {
         self.on_connect_triggered = false;
+        self.on_gmcp_ready_triggered = false;
         self.state = create_default_lua_state(self.writer.clone(), dimensions);
     }
 
@@ -264,18 +267,22 @@ impl LuaScript {
     }
 
     pub fn on_gmcp_ready(&mut self) {
-        self.state
-            .context(|ctx| -> Result<(), rlua::Error> {
-                if let Ok(callback) = ctx
-                    .globals()
-                    .get::<_, rlua::Function>(ON_GMCP_READY_CALLBACK)
-                {
-                    callback.call::<_, ()>(())
-                } else {
+        if !self.on_gmcp_ready_triggered {
+            self.on_gmcp_ready_triggered = true;
+            self.state
+                .context(|ctx| -> Result<(), rlua::Error> {
+                    if let Ok(callback) = ctx
+                        .globals()
+                        .get::<_, rlua::Function>(ON_GMCP_READY_CALLBACK)
+                    {
+                        if let Err(msg) = callback.call::<_, ()>(()) {
+                            output_stack_trace(&self.writer, &msg.to_string());
+                        }
+                    }
                     Ok(())
-                }
-            })
-            .unwrap();
+                })
+                .unwrap();
+        }
     }
 
     pub fn check_bindings(&mut self, cmd: &str) {
@@ -671,5 +678,55 @@ mod lua_script_tests {
         assert_eq!(lua.get_output_lines(), [Line::from("f1")]);
         lua.check_bindings("ctrl-0");
         assert_eq!(lua.get_output_lines(), []);
+    }
+
+    #[test]
+    fn test_on_connect_test() {
+        let lua_code = r#"
+        blight:on_connect(function ()
+            blight:output("connected")
+        end)
+        "#;
+
+        let (mut lua, _reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+
+        lua.on_connect("test", 21);
+        assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
+        lua.on_connect("test", 21);
+        assert_eq!(lua.get_output_lines(), []);
+        lua.reset((100, 100));
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+        lua.on_connect("test", 21);
+        assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
+    }
+
+    #[test]
+    fn test_on_gmcp_ready_test() {
+        let lua_code = r#"
+        blight:on_gmcp_ready(function ()
+            blight:output("gmcp")
+        end)
+        "#;
+
+        let (mut lua, _reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+
+        lua.on_gmcp_ready();
+        assert_eq!(lua.get_output_lines(), [Line::from("gmcp")]);
+        lua.on_gmcp_ready();
+        assert_eq!(lua.get_output_lines(), []);
+        lua.reset((100, 100));
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+        lua.on_gmcp_ready();
+        assert_eq!(lua.get_output_lines(), [Line::from("gmcp")]);
     }
 }

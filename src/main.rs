@@ -275,6 +275,7 @@ fn run(
                 }
                 Event::ProtoEnabled(proto) => {
                     if let opt::GMCP = proto {
+                        session.gmcp.store(true, Ordering::Relaxed);
                         let mut parser = session.telnet_parser.lock().unwrap();
                         if let Some(event) = parser.subnegotiation_text(
                             opt::GMCP,
@@ -342,7 +343,9 @@ fn run(
                                 &session.host.lock().unwrap(),
                                 session.port.load(Ordering::Relaxed),
                             );
-                            lua.on_gmcp_ready();
+                            if session.gmcp.load(Ordering::Relaxed) {
+                                lua.on_gmcp_ready();
+                            }
                         }
                         lua.get_output_lines().iter().for_each(|l| {
                             screen.print_output(l);

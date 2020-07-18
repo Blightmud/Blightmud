@@ -25,14 +25,13 @@ Sends a command to the MUD.
 - `str`     The command to send.
 - `options` An optional table of options (see `Options` below)
 
-***blight:send_bytes(bytes, options)***
-Sends bytes to the MUD
-- `str`     The command to send.
-- `options` An optional table of options (see `Options` below)
-
 **Options**
 - `gag`         Gag echoing of what was sent in the client
 - `skip_log`    Don't print the send command in the log
+
+***blight:send_bytes(bytes)***
+Sends bytes to the MUD
+- `bytes`       A list of bytes to send
 
 ```lua
 blight:send("kill bat")

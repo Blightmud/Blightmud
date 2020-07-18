@@ -559,7 +559,7 @@ mod lua_script_tests {
     fn test_send_bytes() {
         assert_event(
             "blight:send_bytes({ 0xff, 0xf1 })",
-            Event::ServerInput(Line::from(&vec![0xff, 0xf1])),
+            Event::ServerSend(vec![0xff, 0xf1]),
         );
     }
 

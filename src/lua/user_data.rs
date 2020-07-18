@@ -179,21 +179,10 @@ impl UserData for BlightMud {
                 Ok(())
             },
         );
-        methods.add_method(
-            "send_bytes",
-            |_, this, (bytes, options): (Vec<u8>, Option<rlua::Table>)| {
-                let mut line = Line::from(&bytes);
-                line.flags.bypass_script = true;
-
-                if let Some(table) = options {
-                    line.flags.gag = table.get("gag")?;
-                    line.flags.skip_log = table.get("skip_log")?;
-                }
-
-                this.main_writer.send(Event::ServerInput(line)).unwrap();
-                Ok(())
-            },
-        );
+        methods.add_method("send_bytes", |_, this, bytes: Vec<u8>| {
+            this.main_writer.send(Event::ServerSend(bytes)).unwrap();
+            Ok(())
+        });
         methods.add_method("debug", |_, _, strings: Variadic<String>| {
             debug!("{}", strings.join(" "));
             Ok(())

@@ -1,15 +1,13 @@
--- this file is primarily ported from mudlets debugtools.lua
+-- this file is primarily ported from mudlet's debugtools.lua
 -- primarily I updated things to be lua 5.3 friendly.
--- provides: lua <lua stuff>
+-- provides: /lua <lua stuff>
 --
 
-lua_debug_alias = lua_debug_alias or nil
+local lua_debug_usage = blight:add_alias("^/lua$", function()
+        blight:output("[!!] Usage: /lua <code>")
+end)
 
-if lua_debug_alias ~= nil then
-	blight:remove_alias(lua_debug_alias)
-end
-
-lua_debug_alias = blight:add_alias("^/lua (.*)$", function(matches)
+local lua_debug_alias = blight:add_alias("^/lua (.*)$", function(matches)
 	local f, e = load("return "..matches[2])
 	if not f then
 		f, e = assert(load(matches[2]))

@@ -328,7 +328,7 @@ fn run(
                 }
                 Event::ScrollUp => screen.scroll_up()?,
                 Event::ScrollDown => screen.scroll_down()?,
-                Event::ScrollBottom => screen.reset_scroll()?,
+                Event::ScrollBottom => screen.reset_scroll(),
                 Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
                 Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
                 Event::LoadScript(path) => {
@@ -381,12 +381,13 @@ fn run(
                     session.lua_script.lock().unwrap().remove_timed_function(id);
                 }
                 Event::Redraw => {
-                    screen.setup()?;
+                    let _ = screen.update_size();
                     if let Ok(mut script) = session.lua_script.lock() {
                         script.set_dimensions((screen.width, screen.height))?;
                     }
                     let prompt_input = session.prompt_input.lock().unwrap();
-                    screen.print_prompt_input(&prompt_input, prompt_input.len());
+                    screen.set_cursor_pos(prompt_input.len())?;
+                    screen.set_prompt(&*prompt_input);
                 }
                 Event::Quit => {
                     session.terminate.store(true, Ordering::Relaxed);
@@ -394,10 +395,8 @@ fn run(
                     break;
                 }
             };
-            screen.flush();
         }
     }
-    screen.reset()?;
     settings.save()?;
     session.close()?;
     Ok(())

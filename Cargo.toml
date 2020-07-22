@@ -12,6 +12,8 @@ edition = "2018"
 [dependencies]
 libtelnet-rs = "0.3.9"
 termion = "1.5.5"
+tui = "0.10"
+ansi-parser = "0.6.5"
 log = "0.4.8"
 simple-logging = "2.0.2"
 chrono = "0.4.11"

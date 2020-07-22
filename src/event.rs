@@ -147,7 +147,7 @@ impl EventHandler {
                 let host = self.session.host.lock().unwrap();
                 let port = self.session.port.load(Ordering::Relaxed);
                 debug!("Connected to {}:{}", host, port);
-                screen.redraw_top_bar(&host, port)?;
+                screen.set_title(format!("{}:{}", host, port));
                 if let Ok(mut script) = self.session.lua_script.lock() {
                     script.on_connect(&host, port);
                     script.get_output_lines().iter().for_each(|l| {
@@ -175,7 +175,7 @@ impl EventHandler {
                         });
                     }
                     transmit_writer.take();
-                    screen.redraw_top_bar("", 0)?;
+                    screen.set_title("");
                 }
                 Ok(())
             }
@@ -251,13 +251,14 @@ impl EventHandler {
                         screen.print_output(l);
                     });
                 }
-                screen.print_prompt(&output_buffer.prompt);
+                screen.print_output(&output_buffer.prompt);
                 Ok(())
             }
             Event::UserInputBuffer(input_buffer, pos) => {
                 let mut prompt_input = self.session.prompt_input.lock().unwrap();
                 *prompt_input = input_buffer;
-                screen.print_prompt_input(&prompt_input, pos);
+                screen.set_prompt(&*prompt_input);
+                screen.set_cursor_pos(pos)?;
                 Ok(())
             }
             Event::Error(msg) => {

@@ -1,16 +1,25 @@
-use crate::{model::Line, ui::ansi::*};
+use crate::{
+    model::Line,
+    ui::ansi::{parse_ansi, OwnedSpans},
+};
 use anyhow::Result;
 use std::collections::VecDeque;
-use std::io::{stdout, Stdout, Write};
+use std::io::{stdout, Stdout};
 use std::{error, fmt};
 use termion::{
     color,
     raw::{IntoRawMode, RawTerminal},
     screen::AlternateScreen,
 };
+use tui::backend::TermionBackend;
+use tui::buffer::Buffer;
+use tui::layout::{Constraint, Direction, Layout, Rect};
+use tui::style::{Color, Style};
+use tui::terminal::Terminal;
+use tui::text::{Spans, Text};
+use tui::widgets::{Block, BorderType, Borders, Paragraph, Widget};
 
 struct ScrollData(bool, usize);
-const OUTPUT_START_LINE: u16 = 2;
 
 #[derive(Debug)]
 struct TerminalSizeError;
@@ -34,39 +43,100 @@ impl error::Error for TerminalSizeError {
 }
 
 struct StatusArea {
-    start_line: u16,
-    end_line: u16,
-    width: u16,
+    scrolled: bool,
     status_lines: Vec<Option<String>>,
 }
 
-type ScreenHandle = AlternateScreen<RawTerminal<Stdout>>;
+impl Widget for &StatusArea {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        fn draw_bar<T: AsRef<str>>(
+            area: Rect,
+            scrolled: bool,
+            content: &Option<T>,
+            buffer: &mut Buffer,
+        ) {
+            let bar_color = Style::default().fg(Color::Green);
+            let more = if scrolled { "━ (more) " } else { "" };
 
-impl StatusArea {
-    fn new(height: u16, start_line: u16, width: u16) -> Self {
-        let height = height.min(5).max(1);
-        let end_line = start_line + height - 1;
-        Self {
-            start_line,
-            end_line,
-            width,
-            status_lines: vec![None; height as usize],
+            buffer.set_string(area.x, area.y, &more, bar_color);
+
+            if let Some(content) = content {
+                let spans = parse_ansi(content.as_ref()).remove(0);
+                let span_len = spans.len();
+                if more.len() + 2 + span_len + 1 >= area.width as usize {
+                    // No space to draw. Abort
+                    return;
+                }
+                let bar_width = area.width as usize - (more.len() + 2 + span_len + 1);
+
+                buffer.set_string(area.x + more.len() as u16, area.y, "━ ", bar_color);
+
+                buffer.set_spans(
+                    area.x + more.len() as u16 + 2,
+                    area.y,
+                    &spans.into(),
+                    span_len as u16,
+                );
+
+                buffer.set_string(
+                    area.x + more.len() as u16 + 2 + span_len as u16,
+                    area.y,
+                    format!(" {:━<1$}", "", bar_width),
+                    bar_color,
+                );
+            } else {
+                buffer.set_string(
+                    area.x + more.len() as u16,
+                    area.y,
+                    format!("{:━<1$}", "", area.width as usize - more.len()),
+                    bar_color,
+                );
+            }
+        }
+
+        // Draw first line
+        draw_bar(area, self.scrolled, &self.status_lines[0], buf);
+
+        let mut remaining_height = area.height;
+        if self.height() > 1 {
+            // Draw non-bar lines
+            for line_no in 1..(self.height() - 1) {
+                if remaining_height == 0 {
+                    break;
+                }
+                remaining_height -= 1;
+
+                if let Some(line) = &self.status_lines[line_no as usize] {
+                    let spans = parse_ansi(line).remove(0);
+                    let spans_len = spans.len();
+                    buf.set_spans(area.x, area.y + line_no, &spans.into(), spans_len as u16);
+                }
+            }
+
+            // Draw last line
+            if remaining_height > 0 {
+                let last_line_area = {
+                    let mut rect = area;
+                    rect.y = rect.y + self.height() - 1;
+                    rect
+                };
+                draw_bar(
+                    last_line_area,
+                    false,
+                    &self.status_lines[self.height() as usize - 1],
+                    buf,
+                );
+            }
         }
     }
+}
 
-    fn set_height(&mut self, height: u16, start_line: u16) {
-        self.clear();
-        self.status_lines
-            .resize(height.min(5).max(1) as usize, None);
-        self.update_pos(start_line);
-    }
-
-    fn update_pos(&mut self, start_line: u16) {
-        self.start_line = start_line;
-    }
-
-    fn set_width(&mut self, width: u16) {
-        self.width = width;
+impl StatusArea {
+    fn new(height: u16) -> Self {
+        Self {
+            scrolled: false,
+            status_lines: vec![None; height as usize],
+        }
     }
 
     fn set_status_line(&mut self, index: usize, line: String) {
@@ -78,98 +148,8 @@ impl StatusArea {
         }
     }
 
-    fn clear(&mut self) {
-        self.status_lines = vec![None; self.status_lines.len()];
-    }
-
-    fn redraw(&mut self, screen: &mut ScreenHandle, scrolled: bool) -> Result<()> {
-        for line in self.start_line..self.end_line + 1 {
-            write!(
-                screen,
-                "{}{}",
-                termion::cursor::Goto(1, line),
-                termion::clear::CurrentLine,
-            )?;
-        }
-
-        let mut info = if scrolled {
-            "(more) ".to_string()
-        } else {
-            "".to_string()
-        };
-
-        if let Some(Some(custom_info)) = self.status_lines.get(0) {
-            if info.is_empty() {
-                info = custom_info.to_string();
-            } else {
-                info = format!("{}━ {} ", info, custom_info);
-            }
-        }
-
-        self.draw_bar(self.start_line, screen, &info)?;
-        if self.start_line != self.end_line {
-            let height = self.status_lines.len() as u16;
-            for line_no in 1..height {
-                let line_no = line_no as u16;
-                let info = if let Some(info) = &self.status_lines[line_no as usize] {
-                    &info
-                } else {
-                    ""
-                };
-
-                if line_no == height - 1 {
-                    self.draw_bar(self.start_line + line_no, screen, &info)?;
-                } else {
-                    self.draw_line(self.start_line + line_no, screen, &info)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn draw_bar(&self, line: u16, screen: &mut ScreenHandle, custom_info: &str) -> Result<()> {
-        write!(
-            screen,
-            "{}{}{}",
-            termion::cursor::Goto(1, line),
-            termion::clear::CurrentLine,
-            color::Fg(color::Green),
-        )?;
-
-        let custom_info = if !custom_info.trim().is_empty() {
-            format!(
-                "━ {}{}{} ",
-                custom_info.trim(),
-                color::Fg(color::Reset),
-                color::Fg(color::Green)
-            )
-        } else {
-            "".to_string()
-        };
-
-        let info_line = Line::from(&custom_info);
-        let stripped_chars = info_line.line().len() - info_line.clean_line().len();
-
-        write!(
-            screen,
-            "{:━<1$}",
-            &custom_info,
-            self.width as usize + stripped_chars
-        )?; // Print separator
-        write!(screen, "{}", color::Fg(color::Reset))?;
-        Ok(())
-    }
-
-    fn draw_line(&self, line: u16, screen: &mut ScreenHandle, info: &str) -> Result<()> {
-        write!(
-            screen,
-            "{}{}",
-            termion::cursor::Goto(1, line),
-            termion::clear::CurrentLine,
-        )?;
-
-        write!(screen, "{}", info)?; // Print separator
-        Ok(())
+    fn set_height(&mut self, height: u16) {
+        self.status_lines.resize(height as usize, None);
     }
 
     fn height(&self) -> u16 {
@@ -178,7 +158,7 @@ impl StatusArea {
 }
 
 struct History {
-    inner: VecDeque<String>,
+    inner: VecDeque<OwnedSpans>,
 }
 
 impl History {
@@ -188,209 +168,190 @@ impl History {
         }
     }
 
-    fn append(&mut self, line: &str) {
-        if !line.trim().is_empty() {
-            for line in line.lines() {
-                self.inner.push_back(String::from(line));
-            }
-        } else {
-            self.inner.push_back("".to_string());
-        }
-        while self.inner.len() >= self.inner.capacity() {
-            self.inner.pop_front();
-        }
+    fn append_spans(&mut self, spans: OwnedSpans) {
+        self.inner.push_back(spans);
+    }
+
+    fn len(&self) -> usize {
+        self.inner.len()
     }
 }
 
+type Backend = TermionBackend<AlternateScreen<RawTerminal<Stdout>>>;
+
 pub struct Screen {
-    screen: ScreenHandle,
+    terminal: Terminal<Backend>,
     pub width: u16,
     pub height: u16,
-    output_line: u16,
-    prompt_line: u16,
     status_area: StatusArea,
     cursor_prompt_pos: u16,
     history: History,
     scroll_data: ScrollData,
+    title: String,
+    prompt_text: String,
 }
 
 impl Screen {
     pub fn new() -> Result<Self, Box<dyn error::Error>> {
-        let screen = AlternateScreen::from(stdout().into_raw_mode()?);
+        let backend = TermionBackend::new(AlternateScreen::from(stdout().into_raw_mode()?));
+        let terminal = Terminal::new(backend)?;
         let (width, height) = termion::terminal_size()?;
 
         let status_area_height = 1;
-        let output_line = height - status_area_height - 1;
-        let prompt_line = height;
 
-        let status_area = StatusArea::new(status_area_height, output_line + 1, width);
+        let status_area = StatusArea::new(status_area_height);
 
         Ok(Self {
-            screen,
+            terminal,
             width,
             height,
-            output_line,
             status_area,
-            prompt_line,
-            cursor_prompt_pos: 1,
+            cursor_prompt_pos: 0,
             history: History::new(),
             scroll_data: ScrollData(false, 0),
+            title: "".to_string(),
+            prompt_text: "".to_string(),
         })
     }
 
+    /// Initialize the screen
     pub fn setup(&mut self) -> Result<()> {
-        self.reset()?;
-        write!(self.screen, "{}", termion::clear::All)?;
+        self.clear()?;
 
         // Get params in case screen resized
-        let (width, height) = termion::terminal_size()?;
-        if width > 0 && height > 0 {
-            self.width = width;
-            self.height = height;
-            self.output_line = height - self.status_area.height() - 1;
-            self.prompt_line = height;
+        let size = self.terminal.size()?;
+        if size.width > 0 && size.height > 0 {
+            self.width = size.width;
+            self.height = size.height;
 
-            write!(
-                self.screen,
-                "{}{}",
-                ScrollRegion(OUTPUT_START_LINE, self.output_line),
-                DisableOriginMode
-            )
-            .unwrap(); // Set scroll region, non origin mode
-            self.redraw_top_bar("", 0)?;
-            self.reset_scroll()?;
-            self.screen.flush()?;
+            self.reset_scroll();
+            self.goto_prompt()?;
             Ok(())
         } else {
             Err(TerminalSizeError.into())
         }
     }
 
+    pub fn update_size(&mut self) -> Result<()> {
+        let size = self.terminal.size()?;
+        self.width = size.width;
+        self.height = size.height;
+        Ok(())
+    }
+
+    pub fn redraw(&mut self) -> Result<()> {
+        let main_window = {
+            let mut block = Block::default()
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::Green))
+                .border_type(BorderType::Double);
+            if !self.title.is_empty() {
+                let title = format!("══ {} ", self.title);
+                block = block.title(title);
+            }
+            let mut texts: Vec<OwnedSpans> = Vec::with_capacity(self.height as usize);
+
+            if self.status_area.height() + 2 >= self.height {
+                // No space to draw. Abort
+                return Ok(());
+            }
+
+            let height = self.height - 2 - self.status_area.height();
+
+            let top = {
+                if self.scroll_data.0 {
+                    self.scroll_data.1
+                } else if self.history.len() > height as usize {
+                    self.history.len() - height as usize
+                } else {
+                    0
+                }
+            };
+
+            let bottom = top + height as usize;
+
+            for i in top..bottom {
+                let line: OwnedSpans = self
+                    .history
+                    .inner
+                    .get(i)
+                    .cloned()
+                    .unwrap_or_else(|| "".into());
+                texts.push(line);
+            }
+            let text_spans: Vec<Spans<'_>> = texts.into_iter().map(|x| x.into()).collect();
+            Paragraph::new(Text::from(text_spans))
+                .block(block)
+                .wrap(tui::widgets::Wrap { trim: false })
+        };
+
+        let input_prompt = Paragraph::new(Text::from(self.prompt_text.as_str()));
+
+        let size = self.terminal.size()?;
+
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Min(1),
+                    Constraint::Length(self.status_area.height()),
+                    Constraint::Length(1),
+                ]
+                .as_ref(),
+            );
+
+        let status_area = &self.status_area;
+
+        self.terminal.draw(|frame| {
+            let chunks = layout.split(size);
+            frame.render_widget(main_window, chunks[0]);
+            frame.render_widget(status_area, chunks[1]);
+            frame.render_widget(input_prompt, chunks[2]);
+        })?;
+
+        self.goto_prompt()?;
+        self.terminal.show_cursor()?;
+
+        Ok(())
+    }
+
     pub fn set_status_area_height(&mut self, height: u16) -> Result<()> {
         let height = height.max(1).min(5);
-        self.status_area.set_height(height, self.height);
-        self.setup()?;
+        self.status_area.set_height(height);
+        self.redraw()?;
         Ok(())
     }
 
     pub fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.0)?;
-        write!(self.screen, "{}", self.goto_prompt())?;
+        self.redraw()?;
         Ok(())
     }
 
-    pub fn redraw_top_bar(&mut self, host: &str, port: u16) -> Result<()> {
-        write!(
-            self.screen,
-            "{}{}{}",
-            termion::cursor::Goto(1, 1),
-            termion::clear::CurrentLine,
-            color::Fg(color::Green),
-        )?;
-        let output = if !host.is_empty() {
-            format!("═ {}:{} ═", host, port)
-        } else {
-            "".to_string()
-        };
-        write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
-        write!(
-            self.screen,
-            "{}{}",
-            color::Fg(color::Reset),
-            self.goto_prompt(),
-        )?;
+    /// Move cursor to the prompt at the bottom
+    fn goto_prompt(&mut self) -> Result<()> {
+        self.terminal
+            .set_cursor(self.cursor_prompt_pos, self.height)?;
         Ok(())
     }
 
-    fn redraw_status_area(&mut self) -> Result<()> {
-        self.status_area.set_width(self.width);
-        self.status_area.update_pos(self.output_line + 1);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.0)?;
-        write!(self.screen, "{}", self.goto_prompt(),)?;
+    /// Clear the screen
+    pub fn clear(&mut self) -> Result<()> {
+        self.terminal.clear()?;
         Ok(())
-    }
-
-    fn goto_prompt(&self) -> termion::cursor::Goto {
-        termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line)
-    }
-
-    pub fn reset(&mut self) -> Result<()> {
-        write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion)?;
-        Ok(())
-    }
-
-    pub fn print_prompt(&mut self, prompt: &Line) {
-        if let Some(prompt_line) = prompt.print_line() {
-            self.history.append(prompt_line);
-            if !self.scroll_data.0 {
-                write!(
-                    self.screen,
-                    "{}{}{}{}",
-                    termion::cursor::Goto(1, self.output_line),
-                    termion::scroll::Up(1),
-                    prompt_line,
-                    self.goto_prompt(),
-                )
-                .unwrap();
-            }
-        }
-    }
-
-    pub fn print_prompt_input(&mut self, input: &str, pos: usize) {
-        // Sanity check
-        debug_assert!(pos <= input.len());
-
-        let mut input = input;
-        let mut pos = pos;
-        let width = self.width as usize;
-        while input.len() >= width && pos >= width {
-            let (_, last) = input.split_at(self.width as usize);
-            input = last;
-            pos -= width;
-        }
-        if input.len() >= width {
-            input = input.split_at(width).0;
-        }
-        self.cursor_prompt_pos = pos as u16 + 1;
-        write!(
-            self.screen,
-            "{}{}{}{}",
-            termion::cursor::Goto(1, self.prompt_line),
-            termion::clear::CurrentLine,
-            input,
-            self.goto_prompt(),
-        )
-        .unwrap();
     }
 
     pub fn print_output(&mut self, line: &Line) {
         if let Some(print_line) = line.print_line() {
-            if print_line.trim().is_empty() {
-                self.print_line(&print_line);
-            } else {
-                for line in wrap_line(&print_line, self.width as usize) {
-                    self.print_line(&line);
-                }
-            }
+            self.print_line(&print_line);
         }
     }
 
     fn print_line(&mut self, line: &str) {
-        self.history.append(&line);
-        if !self.scroll_data.0 {
-            write!(
-                self.screen,
-                "{}{}{}{}",
-                termion::cursor::Goto(1, self.output_line),
-                termion::scroll::Up(1),
-                &line,
-                self.goto_prompt(),
-            )
-            .unwrap();
+        for line in parse_ansi(line) {
+            self.history.append_spans(line);
         }
+        let _ = self.redraw();
     }
 
     pub fn print_send(&mut self, send: &Line) {
@@ -418,149 +379,51 @@ impl Screen {
     }
 
     pub fn scroll_up(&mut self) -> Result<()> {
-        let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
+        let output_range = self.height as usize - 2 - self.status_area.height() as usize;
         let history = &self.history.inner;
-        if history.len() > output_range as usize {
+        if history.len() > output_range {
             if !self.scroll_data.0 {
                 self.scroll_data.0 = true;
                 self.scroll_data.1 = history.len() - output_range;
             }
             self.scroll_data.0 = true;
             self.scroll_data.1 -= self.scroll_data.1.min(5);
-            self.draw_scroll()?;
         }
         Ok(())
     }
 
     pub fn scroll_down(&mut self) -> Result<()> {
         if self.scroll_data.0 {
-            let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
+            let output_range = self.height as i32 - 2 - self.status_area.height() as i32;
             let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
             let new_start_index = self.scroll_data.1 + 5;
             if new_start_index >= max_start_index as usize {
-                self.reset_scroll()?;
+                self.reset_scroll();
             } else {
                 self.scroll_data.1 = new_start_index;
-                self.draw_scroll()?;
             }
         }
         Ok(())
     }
 
-    fn draw_scroll(&mut self) -> Result<()> {
-        let output_range = self.output_line - OUTPUT_START_LINE + 1;
-        for i in 0..output_range {
-            let index = self.scroll_data.1 + i as usize;
-            let line_no = OUTPUT_START_LINE + i;
-            write!(
-                self.screen,
-                "{}{}{}",
-                termion::cursor::Goto(1, line_no),
-                termion::clear::CurrentLine,
-                self.history.inner[index],
-            )?;
-        }
-        self.redraw_status_area()?;
-        Ok(())
-    }
-
-    pub fn reset_scroll(&mut self) -> Result<()> {
+    pub fn reset_scroll(&mut self) {
         self.scroll_data.0 = false;
-        let output_range = self.output_line - OUTPUT_START_LINE + 1;
-        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
-        if output_start_index >= 0 {
-            let output_start_index = output_start_index as usize;
-            for i in 0..output_range {
-                let index = output_start_index + i as usize;
-                let line_no = OUTPUT_START_LINE + i;
-                write!(
-                    self.screen,
-                    "{}{}{}",
-                    termion::cursor::Goto(1, line_no),
-                    termion::clear::CurrentLine,
-                    self.history.inner[index],
-                )?;
-            }
-        } else {
-            for line in &self.history.inner {
-                write!(
-                    self.screen,
-                    "{}{}{}",
-                    termion::cursor::Goto(1, self.output_line),
-                    termion::scroll::Up(1),
-                    line,
-                )?;
-            }
-        }
-        self.redraw_status_area()?;
+    }
+
+    pub fn set_title<T: Into<String>>(&mut self, title: T) {
+        self.title = title.into();
+    }
+
+    pub fn set_prompt<T: Into<String>>(&mut self, prompt: T) {
+        self.prompt_text = prompt.into();
+        let _ = self.redraw();
+    }
+
+    pub fn set_cursor_pos(&mut self, pos: usize) -> Result<()> {
+        self.cursor_prompt_pos = pos as u16;
+        self.goto_prompt()?;
         Ok(())
     }
-
-    pub fn flush(&mut self) {
-        self.screen.flush().unwrap();
-    }
-}
-
-fn wrap_line(line: &str, width: usize) -> Vec<&str> {
-    let mut lines: Vec<&str> = vec![];
-
-    for line in line.lines() {
-        // If the line is empty just push and continue
-        if line.trim().is_empty() {
-            lines.push(&line);
-            continue;
-        }
-
-        let mut last_cut: usize = 0;
-        let mut last_space: usize = 0;
-        let mut print_length = 0;
-        let mut print_length_since_space = 0;
-        let mut in_escape = false;
-        for (length, c) in line.chars().enumerate() {
-            // Check for escape sequences
-            if c == '\x1b' {
-                in_escape = true;
-                continue;
-            }
-
-            // Check for escape sequence endings
-            if in_escape {
-                in_escape = c != 'm';
-                continue;
-            }
-
-            // Keep track of printable line length
-            print_length += 1;
-
-            // Keep track of last occurence of <space> and how many printable
-            // characters followed it
-            print_length_since_space += 1;
-            if c == ' ' && print_length < width {
-                last_space = length;
-                print_length_since_space = 0;
-            }
-
-            // Split the line if it's print length reaches screen width
-            if print_length >= width {
-                // Cut from last space if there is any. Otherwise just cut.
-                if last_cut < last_space {
-                    lines.push(&line[last_cut..last_space]);
-                    print_length = print_length_since_space;
-                    last_cut = last_space + 1;
-                } else {
-                    lines.push(&line[last_cut..length + 1]);
-                    print_length = 0;
-                    last_cut = length + 1;
-                }
-            }
-        }
-
-        // Push the rest of the line if there is anything left
-        if last_cut < line.len() && !line[last_cut..].trim().is_empty() {
-            lines.push(&line[last_cut..]);
-        }
-    }
-    lines
 }
 
 #[cfg(test)]
@@ -568,57 +431,22 @@ mod screen_test {
     use super::*;
 
     #[test]
-    fn test_wrap_line() {
-        let line: &'static str =
-            "\x1b[34mSomething \x1b[0mthat's pretty \x1b[32mlong and annoying\x1b[0m";
-        let lines = wrap_line(&line, 11);
-        let mut iter = lines.iter();
-        assert_eq!(iter.next(), Some(&"\u{1b}[34mSomething"));
-        assert_eq!(iter.next(), Some(&"\u{1b}[0mthat's"));
-        assert_eq!(iter.next(), Some(&"pretty"));
-        assert_eq!(iter.next(), Some(&"\u{1b}[32mlong and"));
-        assert_eq!(iter.next(), Some(&"annoying\u{1b}[0m"));
-    }
-
-    #[test]
-    fn test_long_line_no_space() {
-        let mut line = String::new();
-        for _ in 0..1000 {
-            for i in 0..10 {
-                let num = format!("{}", i);
-                line = format!(
-                    "{}{}",
-                    line,
-                    std::iter::repeat(num).take(15).collect::<String>()
-                );
-            }
-        }
-        let lines = wrap_line(&line, 15);
-        assert_eq!(lines.len(), 1000 * 10);
-        for (i, line) in lines.iter().enumerate() {
-            let num = format!("{}", i % 10);
-            assert_eq!(
-                line,
-                &format!("{}", std::iter::repeat(num).take(15).collect::<String>())
-            );
-        }
-    }
-
-    #[test]
     fn test_append_history() {
-        let line = "a nice line\n\nwith a blank line\nand lines\nc\ntest\n";
+        let lines = parse_ansi("a nice line\n\nwith a blank line\nand lines\nc\ntest\n");
 
         let mut history = History::new();
-        history.append(line);
+        for line in lines {
+            history.append_spans(line);
+        }
         assert_eq!(
             history.inner,
             vec![
-                "a nice line",
-                "",
-                "with a blank line",
-                "and lines",
-                "c",
-                "test",
+                OwnedSpans::from("a nice line"),
+                OwnedSpans::from(""),
+                OwnedSpans::from("with a blank line"),
+                OwnedSpans::from("and lines"),
+                OwnedSpans::from("c"),
+                OwnedSpans::from("test"),
             ]
         );
     }

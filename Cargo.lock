@@ -188,6 +188,7 @@ dependencies = [
  "rs-complete",
  "serde",
  "serde_json",
+ "shellexpand",
  "signal-hook",
  "simple-error",
  "simple-logging",
@@ -1098,6 +1099,15 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "shellexpand"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a2b22262a9aaf9464d356f656fea420634f78c881c5eebd5ef5e66d8b9bc603"
+dependencies = [
+ "dirs",
 ]
 
 [[package]]

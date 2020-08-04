@@ -12,27 +12,6 @@ use regex::Regex;
 use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
 use std::{collections::BTreeMap, sync::mpsc::Sender};
 
-fn cursor_event_from_str(event: &str) -> Option<UiEvent> {
-    match event {
-        "step_left" => Some(UiEvent::StepLeft),
-        "step_right" => Some(UiEvent::StepRight),
-        "step_to_start" => Some(UiEvent::StepToStart),
-        "step_to_end" => Some(UiEvent::StepToEnd),
-        "step_word_left" => Some(UiEvent::StepWordLeft),
-        "step_word_right" => Some(UiEvent::StepWordRight),
-        "delete" => Some(UiEvent::Remove),
-        "delete_to_end" => Some(UiEvent::DeleteToEnd),
-        "delete_from_start" => Some(UiEvent::DeleteFromStart),
-        "previous_command" => Some(UiEvent::PreviousCommand),
-        "next_command" => Some(UiEvent::NextCommand),
-        "scroll_up" => Some(UiEvent::ScrollUp),
-        "scroll_down" => Some(UiEvent::ScrollDown),
-        "scroll_bottom" => Some(UiEvent::ScrollBottom),
-        "complete" => Some(UiEvent::Complete),
-        _ => None,
-    }
-}
-
 #[derive(Clone)]
 pub struct Alias {
     pub regex: Regex,
@@ -155,12 +134,13 @@ impl UserData for BlightMud {
             Ok(())
         });
         methods.add_method_mut("ui", |_, this, cmd: String| {
-            if let Some(cmd) = cursor_event_from_str(&cmd) {
-                this.ui_events.push(cmd);
-            } else {
+            let event: UiEvent = UiEvent::from(cmd.as_str());
+            if let UiEvent::Unknown(cmd) = event {
                 this.main_writer
                     .send(Event::Error(format!("Invalid ui command: {}", cmd)))
                     .unwrap();
+            } else {
+                this.ui_events.push(event);
             }
             Ok(())
         });

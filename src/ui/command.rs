@@ -296,6 +296,7 @@ fn check_command_binds(
             UiEvent::ScrollUp => writer.send(Event::ScrollUp).unwrap(),
             UiEvent::ScrollBottom => writer.send(Event::ScrollBottom).unwrap(),
             UiEvent::Complete => buffer.tab_complete(),
+            UiEvent::Unknown(_) => {}
         });
         script.get_output_lines().iter().for_each(|l| {
             writer.send(Event::Output(Line::from(l))).unwrap();

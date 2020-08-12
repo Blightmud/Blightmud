@@ -120,6 +120,12 @@ impl UserData for BlightMud {
             this.output_lines.push(Line::from(strings.join(" ")));
             Ok(())
         });
+        methods.add_method("mud_output", |_, this, msg: String| {
+            this.main_writer
+                .send(Event::MudOutput(Line::from(msg)))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method(
             "bind",
             |ctx, _, (cmd, callback): (String, rlua::Function)| {

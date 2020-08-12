@@ -51,6 +51,8 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
                 .exec()?;
             ctx.load(include_str!("../../resources/lua/lua_command.lua"))
                 .exec()?;
+            ctx.load(include_str!("../../resources/lua/macros.lua"))
+                .exec()?;
 
             Ok(())
         })

@@ -169,6 +169,12 @@ impl UserData for BlightMud {
             this.main_writer.send(Event::ServerSend(bytes)).unwrap();
             Ok(())
         });
+        methods.add_method("user_input", |_, this, line: String| {
+            this.main_writer
+                .send(Event::ServerInput(Line::from(line)))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method("debug", |_, _, strings: Variadic<String>| {
             debug!("{}", strings.join(" "));
             Ok(())

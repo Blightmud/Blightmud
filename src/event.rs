@@ -111,8 +111,8 @@ impl EventHandler {
             }
             Event::ServerInput(line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
+                    screen.print_send(&line);
                     if !script.check_for_alias_match(&line) {
-                        screen.print_send(&line);
                         if let Ok(mut logger) = self.session.logger.lock() {
                             if let Some(log_line) = line.log_line() {
                                 logger.log_line(&format!("> {}", &log_line))?;

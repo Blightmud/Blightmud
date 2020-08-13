@@ -29,6 +29,15 @@ blight:mud_output("A trigger line to test")
 
 ##
 
+***blight:user_input(str)***
+Sends a line to the client as if it was typed at the prompt (this will trigger aliases).
+- `str`  The string to output.
+```lua
+blight:user_input("An alias line to trigger")
+```
+
+##
+
 ***blight:send(str, options)***
 Sends a command to the MUD.
 - `str`     The command to send.

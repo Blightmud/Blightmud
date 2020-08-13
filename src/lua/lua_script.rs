@@ -750,4 +750,19 @@ mod lua_script_tests {
             }
         }
     }
+
+    #[test]
+    fn test_user_input_command() {
+        let lua_code = r#"
+        blight:user_input("test line")
+        "#;
+
+        let (lua, reader) = get_lua();
+        lua.state.context(|ctx| ctx.load(lua_code).exec().unwrap());
+
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::ServerInput(Line::from("test line")))
+        );
+    }
 }

@@ -20,6 +20,15 @@ For a list of available colors se `/help colors`
 
 ##
 
+***blight:mud_output(str)***
+Sends a line of text as if it was received from the mud. This can be useful to test triggers etc.
+- `str`  The string to output.
+```lua
+blight:mud_output("A trigger line to test")
+```
+
+##
+
 ***blight:send(str, options)***
 Sends a command to the MUD.
 - `str`     The command to send.

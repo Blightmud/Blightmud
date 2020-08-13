@@ -732,4 +732,22 @@ mod lua_script_tests {
         lua.on_gmcp_ready();
         assert_eq!(lua.get_output_lines(), [Line::from("gmcp")]);
     }
+
+    #[test]
+    fn test_mud_output_command() {
+        let lua_code = r#"
+        blight:add_trigger("^test trigger$", {}, function () end)
+        blight:mud_output("test trigger")
+        "#;
+
+        let (lua, reader) = get_lua();
+        lua.state.context(|ctx| ctx.load(lua_code).exec().unwrap());
+
+        if let Ok(event) = reader.recv() {
+            assert_eq!(event, Event::MudOutput(Line::from("test trigger")));
+            if let Event::MudOutput(line) = event {
+                test_trigger(&line.to_string(), &lua);
+            }
+        }
+    }
 }

@@ -25,6 +25,10 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `/quit`, `/q`                      : Exit program
 - `/help`                            : Help information
 
+## Additional commands:
+
+- `/test <line>`    : Send a line of text as if it was received from the mud (good for testing triggers)
+
 ## Default keybindings:
 
 - `PgUp`/`PgDn`      : Scroll output view

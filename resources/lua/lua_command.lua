@@ -3,6 +3,8 @@
 -- provides: /lua <lua stuff>
 --
 
+blight:core_mode(true)
+
 local lua_debug_usage = blight:add_alias("^/lua$", function()
         blight:output("[!!] Usage: /lua <code>")
 end)
@@ -190,3 +192,5 @@ function prettywrite (tbl, space, not_clever)
 	eat_last_comma()
 	return table.concat(lines, #space > 0 and '\n' or '')
 end
+
+blight:core_mode(false)

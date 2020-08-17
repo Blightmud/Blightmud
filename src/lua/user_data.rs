@@ -62,6 +62,8 @@ pub struct BlightMud {
     output_lines: Vec<Line>,
     ui_events: Vec<UiEvent>,
     pub screen_dimensions: (u16, u16),
+    next_id: u32,
+    core_mode: bool,
 }
 
 impl BlightMud {
@@ -71,7 +73,38 @@ impl BlightMud {
             output_lines: vec![],
             ui_events: vec![],
             screen_dimensions: (0, 0),
+            next_id: 0,
+            core_mode: false,
         }
+    }
+
+    fn next_index(&mut self) -> u32 {
+        self.next_id += 1;
+        self.next_id
+    }
+
+    fn core_mode(&mut self, mode: bool) {
+        self.core_mode = mode;
+    }
+
+    fn alias_table(&self) -> &'static str {
+        if self.core_mode {
+            ALIAS_TABLE_CORE
+        } else {
+            ALIAS_TABLE
+        }
+    }
+
+    fn trigger_table(&self) -> &'static str {
+        if self.core_mode {
+            TRIGGER_TABLE_CORE
+        } else {
+            TRIGGER_TABLE
+        }
+    }
+
+    fn timer_table(&self) -> &'static str {
+        TIMED_FUNCTION_TABLE
     }
 
     pub fn get_output_lines(&mut self) -> Vec<Line> {
@@ -179,6 +212,10 @@ impl UserData for BlightMud {
             debug!("{}", strings.join(" "));
             Ok(())
         });
+        methods.add_method_mut("core_mode", |_, this, mode: bool| {
+            this.core_mode(mode);
+            Ok(())
+        });
         methods.add_method("store", |_, _, (id, data): (String, rlua::Value)| {
             let data = match data {
                 rlua::Value::Table(table) => {
@@ -222,14 +259,14 @@ impl UserData for BlightMud {
             this.main_writer.send(Event::StopLogging).unwrap();
             Ok(())
         });
-        methods.add_method(
+        methods.add_method_mut(
             "add_alias",
             |ctx, this, (regex, callback): (String, rlua::Function)| {
-                let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE)?;
-                let next_index = alias_table.raw_len() + 1;
+                let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
+                let next_index = this.next_index();
                 match Alias::create(&regex) {
                     Ok(alias) => {
-                        alias_table.set(next_index, alias)?;
+                        alias_table.raw_set(next_index, alias)?;
                         let alias_handle: rlua::AnyUserData = alias_table.get(next_index)?;
                         alias_handle.set_user_value(callback)?;
                     }
@@ -240,30 +277,41 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
-        methods.add_method("remove_alias", |ctx, _, alias_idx: i32| {
-            let alias_table: rlua::Table = ctx.globals().get(ALIAS_TABLE)?;
-            alias_table.set(alias_idx, rlua::Nil)
+        methods.add_method("remove_alias", |ctx, this, alias_idx: i32| {
+            let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
+            alias_table.raw_set(alias_idx, rlua::Nil)
         });
-        methods.add_method(
+        methods.add_method("get_alias_ids", |ctx, this, ()| {
+            let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
+            let mut keys: Vec<rlua::Integer> = vec![];
+            for pair in alias_table.pairs::<rlua::Integer, rlua::Value>() {
+                keys.push(pair?.0);
+            }
+            Ok(keys)
+        });
+        methods.add_method("clear_aliases", |ctx, this, ()| {
+            let table = ctx.create_table()?;
+            ctx.globals().set(this.alias_table(), table)?;
+            Ok(())
+        });
+        methods.add_method_mut(
             "add_trigger",
             |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
-                let trigger_table: rlua::Table = if options.contains_key("prompt")? {
-                    ctx.globals().get(PROMPT_TRIGGER_TABLE)?
-                } else {
-                    ctx.globals().get(TRIGGER_TABLE)?
-                };
+                let next_index = this.next_index();
+                debug!("Next trig index: {}", next_index);
 
-                let next_index = {
-                    let triggers: rlua::Table = ctx.globals().get(TRIGGER_TABLE)?;
-                    let prompts: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
-                    prompts.raw_len().max(triggers.raw_len()) + 1
+                let trigger_table: rlua::Table = if !options.get("prompt")? {
+                    ctx.globals().get(this.trigger_table())?
+                } else {
+                    debug!("Fetching prompt table");
+                    ctx.globals().get(PROMPT_TRIGGER_TABLE)?
                 };
 
                 match this.create_trigger(&regex, false) {
                     Ok(mut trigger) => {
                         trigger.gag = options.get("gag")?;
                         trigger.raw = options.get("raw")?;
-                        trigger_table.set(next_index, trigger)?;
+                        trigger_table.raw_set(next_index, trigger)?;
                         let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;
                         trigger_handle.set_user_value(callback)?;
                     }
@@ -274,9 +322,9 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
-        methods.add_method("remove_trigger", |ctx, _, trigger_idx: i32| {
+        methods.add_method("remove_trigger", |ctx, this, trigger_idx: i32| {
             let trigger_table: rlua::Table = {
-                let triggers: rlua::Table = ctx.globals().get(TRIGGER_TABLE)?;
+                let triggers: rlua::Table = ctx.globals().get(this.trigger_table())?;
                 let prompts: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
                 if triggers.contains_key(trigger_idx)? {
                     triggers
@@ -286,23 +334,54 @@ impl UserData for BlightMud {
             };
             trigger_table.set(trigger_idx, rlua::Nil)
         });
+        methods.add_method("get_trigger_ids", |ctx, this, ()| {
+            let trigger_table: rlua::Table = ctx.globals().get(this.trigger_table())?;
+            let prompt_trigger_table: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
+            let mut keys: Vec<rlua::Integer> = vec![];
+            let trigger_it = trigger_table.pairs::<rlua::Integer, rlua::Value>();
+            let prompt_it = prompt_trigger_table.pairs::<rlua::Integer, rlua::Value>();
+            for pair in trigger_it.chain(prompt_it) {
+                keys.push(pair?.0);
+            }
+            Ok(keys)
+        });
+        methods.add_method("clear_triggers", |ctx, this, ()| {
+            let table = ctx.create_table()?;
+            ctx.globals().set(this.trigger_table(), table)?;
+            let table = ctx.create_table()?;
+            ctx.globals().set(PROMPT_TRIGGER_TABLE, table)?;
+            Ok(())
+        });
         methods.add_method("gag", |ctx, _, _: ()| {
             ctx.globals().set(GAG_NEXT_TRIGGER_LINE, true)
         });
-        methods.add_method(
+        methods.add_method_mut(
             "add_timer",
             |ctx, this, (duration, count, callback): (f32, u32, rlua::Function)| {
                 let duration = Duration::milliseconds((duration * 1000.0) as i64);
                 let count = if count > 0 { Some(count) } else { None };
-                let cb_table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
-                let next_index = cb_table.raw_len() + 1;
-                cb_table.set(next_index, callback)?;
+                let cb_table: rlua::Table = ctx.globals().get(this.timer_table())?;
+                let next_index = this.next_index();
+                cb_table.raw_set(next_index, callback)?;
                 this.main_writer
                     .send(Event::AddTimedEvent(duration, count, next_index as u32))
                     .unwrap();
                 Ok(next_index)
             },
         );
+        methods.add_method("get_timer_ids", |ctx, this, ()| {
+            let timer_table: rlua::Table = ctx.globals().get(this.timer_table())?;
+            let mut keys: Vec<rlua::Integer> = vec![];
+            for pair in timer_table.pairs::<rlua::Integer, rlua::Value>() {
+                keys.push(pair?.0);
+            }
+            Ok(keys)
+        });
+        methods.add_method("clear_timers", |ctx, this, ()| {
+            let table = ctx.create_table()?;
+            ctx.globals().set(this.timer_table(), table)?;
+            Ok(())
+        });
         methods.add_method("register_gmcp", |_, this, module: String| {
             this.main_writer.send(Event::GMCPRegister(module)).unwrap();
             Ok(())

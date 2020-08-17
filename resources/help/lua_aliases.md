@@ -24,3 +24,9 @@ end)
 
 blight:remove_alias(alias_id)
 ```
+
+***blight:get_alias_ids()***
+Returns a list of all created alias ids
+
+***blight:clear_aliases()***
+Remove all aliases

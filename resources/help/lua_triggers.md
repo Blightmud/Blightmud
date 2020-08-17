@@ -65,3 +65,11 @@ blight:add_trigger("^Health (\\d+)$", {}, function (matches)
     end
 end)
 ```
+
+***blight:get_trigger_ids()***
+
+Returns a list of all trigger ids
+
+***blight:clear_triggers()***
+
+Remove all triggers

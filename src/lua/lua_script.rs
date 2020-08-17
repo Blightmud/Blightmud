@@ -851,4 +851,31 @@ mod lua_script_tests {
 
         assert!(ids.is_empty());
     }
+
+    #[test]
+    fn test_timer_ids() {
+        let (lua, _reader) = get_lua();
+        let id = lua.state.context(|ctx| -> u32 {
+            ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
+                .call(())
+                .unwrap()
+        });
+
+        let ids = lua.state.context(|ctx| -> Vec<u32> {
+            ctx.load(r#"return blight:get_timer_ids()"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert_eq!(ids, vec![id]);
+
+        let ids = lua.state.context(|ctx| -> Vec<u32> {
+            ctx.load(r#"blight:clear_timers()"#).exec().unwrap();
+            ctx.load(r#"return blight:get_timer_ids()"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert!(ids.is_empty());
+    }
 }

@@ -419,3 +419,38 @@ impl UserData for BlightMud {
         });
     }
 }
+
+#[cfg(test)]
+mod user_data_tests {
+
+    use super::BlightMud;
+    use crate::{event::Event, lua::constants::*};
+    use std::sync::mpsc::{channel, Receiver, Sender};
+
+    fn get_blight() -> (BlightMud, Receiver<Event>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        (BlightMud::new(writer), reader)
+    }
+
+    #[test]
+    fn confirm_core_mode() {
+        let (mut blight, _reader) = get_blight();
+        blight.core_mode(true);
+        assert_eq!(blight.alias_table(), ALIAS_TABLE_CORE);
+        assert_eq!(blight.trigger_table(), TRIGGER_TABLE_CORE);
+        assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE);
+        blight.core_mode(false);
+        assert_eq!(blight.alias_table(), ALIAS_TABLE);
+        assert_eq!(blight.trigger_table(), TRIGGER_TABLE);
+        assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE);
+    }
+
+    #[test]
+    fn test_next_id() {
+        let (mut blight, _reader) = get_blight();
+        assert_eq!(blight.next_id, 0);
+        assert_eq!(blight.next_index(), 1);
+        assert_eq!(blight.next_id, 1);
+        assert_eq!(blight.next_index(), 2);
+    }
+}

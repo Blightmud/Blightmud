@@ -293,12 +293,10 @@ impl UserData for BlightMud {
             "add_trigger",
             |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
                 let next_index = this.next_index();
-                debug!("Next trig index: {}", next_index);
 
                 let trigger_table: rlua::Table = if !options.get("prompt")? {
                     ctx.globals().get(this.trigger_table())?
                 } else {
-                    debug!("Fetching prompt table");
                     ctx.globals().get(PROMPT_TRIGGER_TABLE)?
                 };
 

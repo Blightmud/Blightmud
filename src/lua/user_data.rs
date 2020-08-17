@@ -83,7 +83,7 @@ impl BlightMud {
         self.next_id
     }
 
-    fn core_mode(&mut self, mode: bool) {
+    pub fn core_mode(&mut self, mode: bool) {
         self.core_mode = mode;
     }
 
@@ -212,10 +212,6 @@ impl UserData for BlightMud {
             debug!("{}", strings.join(" "));
             Ok(())
         });
-        methods.add_method_mut("core_mode", |_, this, mode: bool| {
-            this.core_mode(mode);
-            Ok(())
-        });
         methods.add_method("store", |_, _, (id, data): (String, rlua::Value)| {
             let data = match data {
                 rlua::Value::Table(table) => {
@@ -290,8 +286,7 @@ impl UserData for BlightMud {
             Ok(keys)
         });
         methods.add_method("clear_aliases", |ctx, this, ()| {
-            let table = ctx.create_table()?;
-            ctx.globals().set(this.alias_table(), table)?;
+            ctx.globals().set(this.alias_table(), ctx.create_table()?)?;
             Ok(())
         });
         methods.add_method_mut(
@@ -346,10 +341,10 @@ impl UserData for BlightMud {
             Ok(keys)
         });
         methods.add_method("clear_triggers", |ctx, this, ()| {
-            let table = ctx.create_table()?;
-            ctx.globals().set(this.trigger_table(), table)?;
-            let table = ctx.create_table()?;
-            ctx.globals().set(PROMPT_TRIGGER_TABLE, table)?;
+            ctx.globals()
+                .set(this.trigger_table(), ctx.create_table()?)?;
+            ctx.globals()
+                .set(PROMPT_TRIGGER_TABLE, ctx.create_table()?)?;
             Ok(())
         });
         methods.add_method("gag", |ctx, _, _: ()| {
@@ -378,8 +373,8 @@ impl UserData for BlightMud {
             Ok(keys)
         });
         methods.add_method("clear_timers", |ctx, this, ()| {
-            let table = ctx.create_table()?;
-            ctx.globals().set(this.timer_table(), table)?;
+            this.main_writer.send(Event::ClearTimers).unwrap();
+            ctx.globals().set(this.timer_table(), ctx.create_table()?)?;
             Ok(())
         });
         methods.add_method("register_gmcp", |_, this, module: String| {

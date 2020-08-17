@@ -380,6 +380,9 @@ fn run(
                 Event::DropTimedEvent(id) => {
                     session.lua_script.lock().unwrap().remove_timed_function(id);
                 }
+                Event::ClearTimers => {
+                    session.timer_writer.send(TimerEvent::Clear)?;
+                }
                 Event::Redraw => {
                     screen.setup()?;
                     if let Ok(mut script) = session.lua_script.lock() {

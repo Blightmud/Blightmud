@@ -20,6 +20,7 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
 
     let mut blight = BlightMud::new(writer);
     blight.screen_dimensions = dimensions;
+    blight.core_mode(true);
     state
         .context(|ctx| -> LuaResult<()> {
             let globals = ctx.globals();
@@ -50,6 +51,10 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
                 .exec()?;
             ctx.load(include_str!("../../resources/lua/macros.lua"))
                 .exec()?;
+
+            let mut blight: BlightMud = globals.get("blight")?;
+            blight.core_mode(false);
+            globals.set("blight", blight)?;
 
             Ok(())
         })
@@ -791,5 +796,59 @@ mod lua_script_tests {
             reader.recv(),
             Ok(Event::ServerInput(Line::from("test line")))
         );
+    }
+
+    #[test]
+    fn test_alias_ids() {
+        let (lua, _reader) = get_lua();
+        let id = lua.state.context(|ctx| -> u32 {
+            ctx.load(r#"return blight:add_alias("test", function () end)"#)
+                .call(())
+                .unwrap()
+        });
+
+        let ids = lua.state.context(|ctx| -> Vec<u32> {
+            ctx.load(r#"return blight:get_alias_ids()"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert_eq!(ids, vec![id]);
+
+        let ids = lua.state.context(|ctx| -> Vec<u32> {
+            ctx.load(r#"blight:clear_aliases()"#).exec().unwrap();
+            ctx.load(r#"return blight:get_alias_ids()"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert!(ids.is_empty());
+    }
+
+    #[test]
+    fn test_trigger_ids() {
+        let (lua, _reader) = get_lua();
+        let id = lua.state.context(|ctx| -> u32 {
+            ctx.load(r#"return blight:add_trigger("test", {}, function () end)"#)
+                .call(())
+                .unwrap()
+        });
+
+        let ids = lua.state.context(|ctx| -> Vec<u32> {
+            ctx.load(r#"return blight:get_trigger_ids()"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert_eq!(ids, vec![id]);
+
+        let ids = lua.state.context(|ctx| -> Vec<u32> {
+            ctx.load(r#"blight:clear_triggers()"#).exec().unwrap();
+            ctx.load(r#"return blight:get_trigger_ids()"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert!(ids.is_empty());
     }
 }

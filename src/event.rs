@@ -42,6 +42,7 @@ pub enum Event {
     AddTimedEvent(chrono::Duration, Option<u32>, u32),
     TimedEvent(u32),
     DropTimedEvent(u32),
+    ClearTimers,
     LoadScript(String),
     ResetScript,
     StartLogging(String, bool),

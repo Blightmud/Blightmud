@@ -25,9 +25,11 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `/quit`, `/q`                      : Exit program
 - `/help`                            : Help information
 
-## Additional commands:
+## Additional macros:
 
 - `/test <line>`    : Send a line of text as if it was received from the mud (good for testing triggers)
+- `/aliases`        : List all aliases and their status
+- `/triggers`       : List all triggers and their status
 
 ## Default keybindings:
 

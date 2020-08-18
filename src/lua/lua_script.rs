@@ -1,6 +1,6 @@
 use super::constants::*;
 use super::user_data::*;
-use super::{util::*, UiEvent};
+use super::{util::*, Alias, Trigger, UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
@@ -43,9 +43,9 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
                 .call::<_, rlua::Value>(())?;
             globals.set("json", lua_json)?;
 
-            ctx.load(include_str!("../../resources/lua/bindings.lua"))
-                .exec()?;
             ctx.load(include_str!("../../resources/lua/defaults.lua"))
+                .exec()?;
+            ctx.load(include_str!("../../resources/lua/bindings.lua"))
                 .exec()?;
             ctx.load(include_str!("../../resources/lua/lua_command.lua"))
                 .exec()?;
@@ -323,11 +323,15 @@ mod lua_script_tests {
     use super::LuaScript;
     use crate::{
         event::Event,
+        lua::{Alias, Trigger},
         model::{Connection, Line},
         PROJECT_NAME, VERSION,
     };
     use rlua::Result as LuaResult;
-    use std::sync::mpsc::{channel, Receiver, Sender};
+    use std::{
+        collections::BTreeMap,
+        sync::mpsc::{channel, Receiver, Sender},
+    };
 
     fn test_trigger(line: &str, lua: &LuaScript) -> bool {
         let mut line = Line::from(line);
@@ -807,19 +811,19 @@ mod lua_script_tests {
                 .unwrap()
         });
 
-        let ids = lua.state.context(|ctx| -> Vec<u32> {
-            ctx.load(r#"return blight:get_alias_ids()"#)
-                .call(())
-                .unwrap()
+        let aliases = lua.state.context(|ctx| -> BTreeMap<u32, Alias> {
+            ctx.load(r#"return blight:get_aliases()"#).call(()).unwrap()
         });
 
-        assert_eq!(ids, vec![id]);
+        assert!(aliases.contains_key(&id));
 
-        let ids = lua.state.context(|ctx| -> Vec<u32> {
+        let alias = aliases.get(&id).unwrap();
+        assert_eq!(alias.regex.to_string(), "test");
+        assert_eq!(alias.enabled, true);
+
+        let ids = lua.state.context(|ctx| -> BTreeMap<u32, Alias> {
             ctx.load(r#"blight:clear_aliases()"#).exec().unwrap();
-            ctx.load(r#"return blight:get_alias_ids()"#)
-                .call(())
-                .unwrap()
+            ctx.load(r#"return blight:get_aliases()"#).call(()).unwrap()
         });
 
         assert!(ids.is_empty());
@@ -834,17 +838,24 @@ mod lua_script_tests {
                 .unwrap()
         });
 
-        let ids = lua.state.context(|ctx| -> Vec<u32> {
-            ctx.load(r#"return blight:get_trigger_ids()"#)
+        let triggers = lua.state.context(|ctx| -> BTreeMap<u32, Trigger> {
+            ctx.load(r#"return blight:get_triggers()"#)
                 .call(())
                 .unwrap()
         });
 
-        assert_eq!(ids, vec![id]);
+        assert!(triggers.contains_key(&id));
 
-        let ids = lua.state.context(|ctx| -> Vec<u32> {
+        let trigger = triggers.get(&id).unwrap();
+        assert_eq!(trigger.regex.to_string(), "test");
+        assert_eq!(trigger.enabled, true);
+        assert_eq!(trigger.gag, false);
+        assert_eq!(trigger.raw, false);
+        assert_eq!(trigger.prompt, false);
+
+        let ids = lua.state.context(|ctx| -> BTreeMap<u32, Trigger> {
             ctx.load(r#"blight:clear_triggers()"#).exec().unwrap();
-            ctx.load(r#"return blight:get_trigger_ids()"#)
+            ctx.load(r#"return blight:get_triggers()"#)
                 .call(())
                 .unwrap()
         });

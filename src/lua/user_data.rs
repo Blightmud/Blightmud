@@ -1,4 +1,6 @@
-use super::{constants::*, store_data::StoreData, util::output_stack_trace, UiEvent};
+use super::{
+    constants::*, store_data::StoreData, trigger::Trigger, util::output_stack_trace, Alias, UiEvent,
+};
 use crate::event::Event;
 use crate::{
     io::SaveData,
@@ -8,53 +10,8 @@ use crate::{
 use anyhow::Result;
 use chrono::Duration;
 use log::debug;
-use regex::Regex;
 use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
 use std::{collections::BTreeMap, sync::mpsc::Sender};
-
-#[derive(Clone)]
-pub struct Alias {
-    pub regex: Regex,
-    pub enabled: bool,
-}
-
-impl Alias {
-    pub fn create(regex: &str) -> Result<Self, String> {
-        match Regex::new(regex) {
-            Ok(regex) => Ok(Self {
-                regex,
-                enabled: true,
-            }),
-            Err(msg) => Err(msg.to_string()),
-        }
-    }
-}
-
-impl UserData for Alias {}
-
-#[derive(Clone)]
-pub struct Trigger {
-    pub regex: Regex,
-    pub gag: bool,
-    pub raw: bool,
-    pub enabled: bool,
-}
-
-impl Trigger {
-    pub fn create(regex: &str) -> Result<Self, String> {
-        match Regex::new(regex) {
-            Ok(regex) => Ok(Self {
-                regex,
-                gag: false,
-                raw: false,
-                enabled: true,
-            }),
-            Err(msg) => Err(msg.to_string()),
-        }
-    }
-}
-
-impl UserData for Trigger {}
 
 #[derive(Clone)]
 pub struct BlightMud {
@@ -119,12 +76,9 @@ impl BlightMud {
         events
     }
 
-    fn create_trigger(&self, regex: &str, gag: bool) -> Result<Trigger, String> {
+    fn create_trigger(&self, regex: &str) -> Result<Trigger, String> {
         match Trigger::create(&regex) {
-            Ok(mut trigger) => {
-                trigger.gag = gag;
-                Ok(trigger)
-            }
+            Ok(trigger) => Ok(trigger),
             Err(msg) => Err(format!("Failed to parse regex: {}", &msg)),
         }
     }
@@ -273,15 +227,31 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
+        methods.add_method("enable_alias", |ctx, this, (id, enabled): (i32, bool)| {
+            let table: rlua::Table = ctx.globals().raw_get(this.alias_table())?;
+
+            // Retrieve the callback function
+            let cb: rlua::Function = { table.get::<i32, rlua::AnyUserData>(id)?.get_user_value()? };
+            let mut alias: Alias = table.get(id)?;
+            alias.enabled = enabled;
+            table.raw_set(id, alias)?;
+
+            // Reset the callback function
+            let alias_handle: rlua::AnyUserData = table.get(id)?;
+            alias_handle.set_user_value(cb)?;
+
+            Ok(())
+        });
         methods.add_method("remove_alias", |ctx, this, alias_idx: i32| {
             let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
             alias_table.raw_set(alias_idx, rlua::Nil)
         });
-        methods.add_method("get_alias_ids", |ctx, this, ()| {
+        methods.add_method("get_aliases", |ctx, this, ()| {
             let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
-            let mut keys: Vec<rlua::Integer> = vec![];
-            for pair in alias_table.pairs::<rlua::Integer, rlua::Value>() {
-                keys.push(pair?.0);
+            let mut keys: BTreeMap<rlua::Integer, Alias> = BTreeMap::new();
+            for pair in alias_table.pairs::<rlua::Integer, Alias>() {
+                let (id, alias) = pair?;
+                keys.insert(id, alias);
             }
             Ok(keys)
         });
@@ -300,10 +270,12 @@ impl UserData for BlightMud {
                     ctx.globals().get(PROMPT_TRIGGER_TABLE)?
                 };
 
-                match this.create_trigger(&regex, false) {
+                match this.create_trigger(&regex) {
                     Ok(mut trigger) => {
                         trigger.gag = options.get("gag")?;
                         trigger.raw = options.get("raw")?;
+                        trigger.prompt = options.get("prompt")?;
+                        trigger.enabled = !options.get("enabled")?;
                         trigger_table.raw_set(next_index, trigger)?;
                         let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;
                         trigger_handle.set_user_value(callback)?;
@@ -315,6 +287,21 @@ impl UserData for BlightMud {
                 Ok(next_index)
             },
         );
+        methods.add_method("enable_trigger", |ctx, this, (id, enabled): (i32, bool)| {
+            let table: rlua::Table = ctx.globals().raw_get(this.trigger_table())?;
+
+            // Retrieve the callback function
+            let cb: rlua::Function = { table.get::<i32, rlua::AnyUserData>(id)?.get_user_value()? };
+            let mut trigger: Trigger = table.get(id)?;
+            trigger.enabled = enabled;
+            table.raw_set(id, trigger)?;
+
+            // Reset the callback function
+            let trigger_handle: rlua::AnyUserData = table.get(id)?;
+            trigger_handle.set_user_value(cb)?;
+
+            Ok(())
+        });
         methods.add_method("remove_trigger", |ctx, this, trigger_idx: i32| {
             let trigger_table: rlua::Table = {
                 let triggers: rlua::Table = ctx.globals().get(this.trigger_table())?;
@@ -327,16 +314,17 @@ impl UserData for BlightMud {
             };
             trigger_table.set(trigger_idx, rlua::Nil)
         });
-        methods.add_method("get_trigger_ids", |ctx, this, ()| {
+        methods.add_method("get_triggers", |ctx, this, ()| {
             let trigger_table: rlua::Table = ctx.globals().get(this.trigger_table())?;
             let prompt_trigger_table: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
-            let mut keys: Vec<rlua::Integer> = vec![];
-            let trigger_it = trigger_table.pairs::<rlua::Integer, rlua::Value>();
-            let prompt_it = prompt_trigger_table.pairs::<rlua::Integer, rlua::Value>();
+            let mut triggers: BTreeMap<rlua::Integer, Trigger> = BTreeMap::new();
+            let trigger_it = trigger_table.pairs::<rlua::Integer, Trigger>();
+            let prompt_it = prompt_trigger_table.pairs::<rlua::Integer, Trigger>();
             for pair in trigger_it.chain(prompt_it) {
-                keys.push(pair?.0);
+                let (id, trigger) = pair?;
+                triggers.insert(id, trigger);
             }
-            Ok(keys)
+            Ok(triggers)
         });
         methods.add_method("clear_triggers", |ctx, this, ()| {
             ctx.globals()

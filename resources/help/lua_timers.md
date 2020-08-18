@@ -21,8 +21,8 @@ end)
 
 ***blight:get_timer_ids()***
 
-Returns a list of all timer ids
+- Returns a list of all timer ids
 
 ***blight:clear_timers()***
 
-Remove all timers
+Removes all timers

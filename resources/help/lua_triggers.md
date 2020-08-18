@@ -21,6 +21,12 @@ Options allow you to fine-tune how the trigger is matched or displayed.
 - `gag`      Gag (don't print) the matched line.
 - `raw`      Match on the raw mud line (ANSI escapes intact)
 - `prompt`   Match against the prompt instead of regular output lines.
+- `enabled`  Sets the enabled status of the trigger
+
+***blight:enable_trigger(id, enabled)***
+
+- `id`         The id of the trigger to enabled/disable
+- `enabled`    Boolean toggling the enabled flag on the trigger
 
 ***blight:remove_trigger(trigger_id)***
 
@@ -66,9 +72,25 @@ blight:add_trigger("^Health (\\d+)$", {}, function (matches)
 end)
 ```
 
-***blight:get_trigger_ids()***
+***blight:get_triggers()***
 
-Returns a list of all trigger ids
+- Returns a list of all triggers currently added by the user in a table.
+
+```lua
+-- Return data
+{
+    id: Trigger
+}
+
+-- Trigger object
+{
+    regex: String,
+    enabled: bool,
+    gag: bool,
+    raw: bool,
+    prompt: bool,
+}
+```
 
 ***blight:clear_triggers()***
 

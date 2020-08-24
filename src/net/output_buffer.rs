@@ -40,7 +40,7 @@ impl OutputBuffer {
         let mut last_cut: usize = 0;
         let mut lines: Vec<Line> = vec![];
         for (i, bytes) in self.buffer.windows(2).enumerate() {
-            if bytes == b"\r\n" {
+            if i > last_cut && (bytes == b"\r\n" || bytes == b"\n\r") {
                 if i == 0 {
                     lines.push(Line::from("".to_string()));
                     last_cut = 2

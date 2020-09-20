@@ -330,7 +330,7 @@ impl Screen {
                     self.screen,
                     "{}{}{}{}",
                     termion::cursor::Goto(1, self.output_line),
-                    termion::scroll::Up(1),
+                    "\n",
                     prompt_line,
                     self.goto_prompt(),
                 )
@@ -385,7 +385,7 @@ impl Screen {
                 self.screen,
                 "{}{}{}{}",
                 termion::cursor::Goto(1, self.output_line),
-                termion::scroll::Up(1),
+                "\n",
                 &line,
                 self.goto_prompt(),
             )
@@ -487,7 +487,7 @@ impl Screen {
                     self.screen,
                     "{}{}{}",
                     termion::cursor::Goto(1, self.output_line),
-                    termion::scroll::Up(1),
+                    "\n",
                     line,
                 )?;
             }

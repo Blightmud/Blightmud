@@ -8,15 +8,16 @@ use libtelnet_rs::telnet::op_option as opt;
 use log::{debug, error};
 use std::{
     io::{Chain, Cursor, Read, Write},
-    net::TcpStream,
     sync::{mpsc::Receiver, Arc, Mutex},
     thread,
 };
 
-type Decoder = ZlibDecoder<Chain<Cursor<Vec<u8>>, TcpStream>>;
+use super::MudConnection;
+
+type Decoder = ZlibDecoder<Chain<Cursor<Vec<u8>>, MudConnection>>;
 
 struct MudReceiver {
-    reader: TcpStream,
+    connection: MudConnection,
     decoder: Option<Decoder>,
     comops: Arc<Mutex<CommunicationOptions>>,
     last_chunk: Vec<u8>,
@@ -50,7 +51,7 @@ impl MudReceiver {
                             vec![]
                         };
 
-                    let chain = Cursor::new(existing).chain(self.reader.try_clone().unwrap());
+                    let chain = Cursor::new(existing).chain(self.connection.clone());
                     let decoder = ZlibDecoder::new(chain);
                     self.decoder.replace(decoder);
                 }
@@ -76,7 +77,7 @@ impl MudReceiver {
                     data = vec![];
                 }
             }
-        } else if let Ok(bytes_read) = self.reader.read(&mut data) {
+        } else if let Ok(bytes_read) = self.connection.read(&mut data) {
             debug!("Read {} bytes from stream", bytes_read);
             data = data.split_at(bytes_read).0.to_vec();
             debug!("Bytes: {:?}", data);
@@ -91,14 +92,7 @@ impl MudReceiver {
 impl From<&Session> for MudReceiver {
     fn from(session: &Session) -> Self {
         Self {
-            reader: session
-                .stream
-                .lock()
-                .unwrap()
-                .as_ref()
-                .unwrap()
-                .try_clone()
-                .unwrap(),
+            connection: session.connection.lock().unwrap().clone(),
             decoder: None,
             comops: session.comops.clone(),
             last_chunk: vec![],
@@ -111,7 +105,7 @@ pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
         let mut mud_receiver = MudReceiver::from(&session);
         let writer = &session.main_writer;
         let mut telnet_handler = TelnetHandler::new(session.clone());
-        let connection_id = session.connection_id;
+        let connection_id = session.connection_id();
 
         debug!("Receive stream spawned");
         loop {
@@ -136,18 +130,14 @@ pub fn spawn_transmit_thread(
     mut session: Session,
     transmit_read: Receiver<Option<Vec<u8>>>,
 ) -> thread::JoinHandle<()> {
+    let connection = session.connection.lock().unwrap().clone();
     thread::spawn(move || {
-        let mut write_stream = if let Ok(stream) = &session.stream.lock() {
-            stream.as_ref().unwrap().try_clone().unwrap()
-        } else {
-            error!("Failed to spawn transmit stream without a live connection");
-            panic!("Failed to spawn transmit stream");
-        };
+        let mut connection = connection;
         let transmit_read = transmit_read;
-        let connection_id = session.connection_id;
+        let connection_id = session.connection_id();
         debug!("Transmit stream spawned");
         while let Ok(Some(data)) = transmit_read.recv() {
-            if let Err(info) = write_stream.write_all(data.as_slice()) {
+            if let Err(info) = connection.write_all(data.as_slice()) {
                 session.disconnect();
                 let error = format!("Failed to write to socket: {}", info).to_string();
                 session.send_event(Event::Error(error));

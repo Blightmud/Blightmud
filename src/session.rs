@@ -1,15 +1,9 @@
 use libtelnet_rs::{compatibility::CompatibilityTable, telnet::op_option as opt, Parser};
-use std::{
-    net::TcpStream,
-    sync::{
-        atomic::{AtomicBool, AtomicU16, Ordering},
-        mpsc::Sender,
-        Arc, Mutex,
-    },
-};
+use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 
-use crate::{io::Logger, lua::LuaScript, net::OutputBuffer, timer::TimerEvent, Event};
-use log::debug;
+use crate::{
+    io::Logger, lua::LuaScript, net::MudConnection, net::OutputBuffer, timer::TimerEvent, Event,
+};
 
 #[derive(Default)]
 pub struct CommunicationOptions {
@@ -19,12 +13,8 @@ pub struct CommunicationOptions {
 
 #[derive(Clone)]
 pub struct Session {
-    pub connection_id: u16,
-    pub host: Arc<Mutex<String>>,
-    pub port: Arc<AtomicU16>,
-    pub connected: Arc<AtomicBool>,
+    pub connection: Arc<Mutex<MudConnection>>,
     pub gmcp: Arc<AtomicBool>,
-    pub stream: Arc<Mutex<Option<TcpStream>>>,
     pub main_writer: Sender<Event>,
     pub timer_writer: Sender<TimerEvent>,
     pub terminate: Arc<AtomicBool>,
@@ -38,38 +28,23 @@ pub struct Session {
 
 impl Session {
     pub fn connect(&mut self, host: &str, port: u16) -> bool {
-        self.connection_id += 1;
-        if let Ok(mut m_host) = self.host.lock() {
-            *m_host = host.to_string();
+        let mut connected = false;
+        if let Ok(mut connection) = self.connection.lock() {
+            connected = connection.connect(host, port).is_ok();
         }
-        self.port.store(port, Ordering::Relaxed);
-
-        debug!("Connecting to {}:{}", host, port);
-        if let Ok(stream) = TcpStream::connect(format!("{}:{}", host, port)) {
-            self.stream.lock().unwrap().replace(stream);
-            self.connected.store(true, Ordering::Relaxed);
+        if connected {
             self.main_writer
                 .send(Event::StartLogging(host.to_string(), false))
                 .unwrap();
             self.main_writer.send(Event::Connected).unwrap();
         }
-        self.connected.load(Ordering::Relaxed)
+        connected
     }
 
     pub fn disconnect(&mut self) {
-        if self.connected.load(Ordering::Relaxed) {
-            let host = self.host.lock().unwrap();
-            let port = self.port.load(Ordering::Relaxed);
-            debug!("Disconnecting from {}:{}", host, port);
-            if let Ok(mut stream) = self.stream.lock() {
-                stream
-                    .as_mut()
-                    .unwrap()
-                    .shutdown(std::net::Shutdown::Both)
-                    .ok();
-                *stream = None;
-                self.connected.store(false, Ordering::Relaxed);
-            }
+        let mut connection = self.connection.lock().unwrap();
+        if connection.connected() {
+            connection.disconnect().ok();
             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                 output_buffer.clear()
             }
@@ -79,8 +54,27 @@ impl Session {
                 build_compatibility_table(),
             )));
             self.stop_logging();
-            debug!("Disconnected from {}:{}", host, port);
         }
+    }
+
+    pub fn connected(&self) -> bool {
+        let connection = self.connection.lock().unwrap();
+        connection.connected()
+    }
+
+    pub fn connection_id(&self) -> u16 {
+        let connection = self.connection.lock().unwrap();
+        connection.id
+    }
+
+    pub fn host(&self) -> String {
+        let connection = self.connection.lock().unwrap();
+        connection.host.clone()
+    }
+
+    pub fn port(&self) -> u16 {
+        let connection = self.connection.lock().unwrap();
+        connection.port
     }
 
     pub fn start_logging(&self, host: &str) {
@@ -146,12 +140,8 @@ impl SessionBuilder {
         let timer_writer = self.timer_writer.unwrap();
         let dimensions = self.screen_dimensions.unwrap();
         Session {
-            connection_id: 0,
-            host: Arc::new(Mutex::new(String::new())),
-            port: Arc::new(AtomicU16::new(0)),
-            connected: Arc::new(AtomicBool::new(false)),
+            connection: Arc::new(Mutex::new(MudConnection::new())),
             gmcp: Arc::new(AtomicBool::new(false)),
-            stream: Arc::new(Mutex::new(None)),
             main_writer: main_writer.clone(),
             timer_writer,
             terminate: Arc::new(AtomicBool::new(false)),

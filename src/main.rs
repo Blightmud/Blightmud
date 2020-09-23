@@ -338,11 +338,8 @@ fn run(
                         screen.print_error(&format!("Failed to load file: {}", err));
                     } else {
                         screen.print_info(&format!("Loaded script: {}", path));
-                        if session.connected.load(Ordering::Relaxed) {
-                            lua.on_connect(
-                                &session.host.lock().unwrap(),
-                                session.port.load(Ordering::Relaxed),
-                            );
+                        if session.connected() {
+                            lua.on_connect(&session.host(), session.port());
                             if session.gmcp.load(Ordering::Relaxed) {
                                 lua.on_gmcp_ready();
                             }

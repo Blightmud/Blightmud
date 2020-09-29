@@ -145,7 +145,7 @@ impl TelnetHandler {
                 && !output_buffer.is_empty()
                 && output_buffer.len() < 80
             {
-                output_buffer.buffer_to_prompt(false);
+                output_buffer.buffer_to_prompt(true);
                 self.main_writer.send(Event::Prompt).unwrap();
             }
         }

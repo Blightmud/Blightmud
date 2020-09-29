@@ -83,7 +83,6 @@ impl MudConnection {
     }
 
     pub fn disconnect(&mut self) -> Result<()> {
-        debug!("Attempting disconnect");
         if let Some(stream) = &self.stream {
             debug!("Disconnecting from {}:{}", self.host, self.port);
             stream.inner().shutdown(Shutdown::Both)?;

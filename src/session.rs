@@ -1,4 +1,5 @@
 use libtelnet_rs::{compatibility::CompatibilityTable, telnet::op_option as opt, Parser};
+use log::debug;
 use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 
 use crate::{
@@ -27,10 +28,16 @@ pub struct Session {
 }
 
 impl Session {
-    pub fn connect(&mut self, host: &str, port: u16) -> bool {
+    pub fn connect(&mut self, host: &str, port: u16, tls: bool) -> bool {
         let mut connected = false;
         if let Ok(mut connection) = self.connection.lock() {
-            connected = connection.connect(host, port).is_ok();
+            connected = match connection.connect(host, port, tls) {
+                Ok(_) => true,
+                Err(err) => {
+                    debug!("Failed to connect: {}", err);
+                    false
+                }
+            };
         }
         if connected {
             self.main_writer
@@ -75,6 +82,11 @@ impl Session {
     pub fn port(&self) -> u16 {
         let connection = self.connection.lock().unwrap();
         connection.port
+    }
+
+    pub fn tls(&self) -> bool {
+        let connection = self.connection.lock().unwrap();
+        connection.tls
     }
 
     pub fn start_logging(&self, host: &str) {

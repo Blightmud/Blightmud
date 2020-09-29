@@ -134,10 +134,11 @@ fn main() {
     if let Ok(Some(connect)) = matches.opt_get::<String>("c") {
         if connect.contains(':') {
             let split: Vec<&str> = connect.split(':').collect();
-            let host = split[0].to_string();
+            let host = split[0];
             let port: u16 = split[1].parse().unwrap();
             main_writer
-                .send(Event::Connect(Connection { host, port }))
+                // TODO(Connecting with TLS through arguments needs fixing)
+                .send(Event::Connect(Connection::new(host, port, false)))
                 .unwrap();
         } else {
             print_help(program, opts);

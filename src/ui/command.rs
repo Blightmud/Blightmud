@@ -351,6 +351,7 @@ fn parse_command(msg: &str) -> Event {
         Some("/connect") => {
             let p1 = iter.next();
             let p2 = iter.next();
+            let p3 = iter.next();
 
             if p1 == None && p2 == None {
                 Event::Info("USAGE: /connect <host> <port>".to_string())
@@ -360,8 +361,13 @@ fn parse_command(msg: &str) -> Event {
                 Event::LoadServer(name)
             } else {
                 let host = p1.unwrap().to_string();
+                let tls = if let Some(tls) = p3 {
+                    tls == "tls"
+                } else {
+                    false
+                };
                 if let Ok(port) = p2.unwrap().parse::<u16>() {
-                    Event::Connect(Connection { host, port })
+                    Event::Connect(Connection::new(&host, port, tls))
                 } else {
                     Event::Error(
                         "USAGE: /connect <host: String> <port: Positive number>".to_string(),
@@ -375,6 +381,7 @@ fn parse_command(msg: &str) -> Event {
             let p1 = iter.next();
             let p2 = iter.next();
             let p3 = iter.next();
+            let p4 = iter.next();
 
             if p1 == None || p2 == None || p3 == None {
                 Event::Info(
@@ -385,8 +392,14 @@ fn parse_command(msg: &str) -> Event {
                 let name = p1.unwrap().to_string();
                 let host = p2.unwrap().to_string();
 
+                let tls = if let Some(tls) = p4 {
+                    tls == "tls"
+                } else {
+                    false
+                };
+
                 if let Ok(port) = p3.unwrap().parse::<u16>() {
-                    Event::AddServer(name, Connection { host, port })
+                    Event::AddServer(name, Connection::new(&host, port, tls))
                 } else {
                     Event::Error(
                         "USAGE: /add_server <name: String> <host: String> <port: Positive number>"

@@ -89,12 +89,15 @@ impl UserData for BlightMud {
         methods.add_method("terminal_dimensions", |_, this, _: ()| {
             Ok(this.screen_dimensions)
         });
-        methods.add_method("connect", |_, this, (host, port): (String, u16)| {
-            this.main_writer
-                .send(Event::Connect(Connection { host, port }))
-                .unwrap();
-            Ok(())
-        });
+        methods.add_method(
+            "connect",
+            |_, this, (host, port, tls): (String, u16, Option<bool>)| {
+                this.main_writer
+                    .send(Event::Connect(Connection { host, port, tls }))
+                    .unwrap();
+                Ok(())
+            },
+        );
         methods.add_method("reset", |_, this, ()| {
             this.main_writer.send(Event::ResetScript).unwrap();
             Ok(())

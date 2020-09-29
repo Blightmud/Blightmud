@@ -558,6 +558,23 @@ mod lua_script_tests {
             Event::Connect(Connection {
                 host: "hostname".to_string(),
                 port: 99,
+                tls: None,
+            }),
+        );
+        assert_event(
+            "blight:connect(\"hostname\", 99, false)",
+            Event::Connect(Connection {
+                host: "hostname".to_string(),
+                port: 99,
+                tls: Some(false),
+            }),
+        );
+        assert_event(
+            "blight:connect(\"hostname\", 99, true)",
+            Event::Connect(Connection {
+                host: "hostname".to_string(),
+                port: 99,
+                tls: Some(true),
             }),
         );
     }

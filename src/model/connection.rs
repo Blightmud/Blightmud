@@ -10,11 +10,23 @@ use std::path::PathBuf;
 pub struct Connection {
     pub host: String,
     pub port: u16,
+    pub tls: Option<bool>,
+}
+
+impl Connection {
+    pub fn new(host: &str, port: u16, tls: bool) -> Self {
+        Self {
+            host: host.to_owned(),
+            port,
+            tls: Some(tls),
+        }
+    }
 }
 
 impl fmt::Display for Connection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Host: {}, Port: {}", self.host, self.port)
+        let tls = self.tls.unwrap_or_else(|| false);
+        write!(f, "Host: {}, Port: {} TLS: {}", self.host, self.port, tls)
     }
 }
 

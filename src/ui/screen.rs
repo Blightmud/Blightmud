@@ -328,9 +328,8 @@ impl Screen {
             if !self.scroll_data.0 {
                 write!(
                     self.screen,
-                    "{}{}{}{}",
+                    "{}\n{}{}",
                     termion::cursor::Goto(1, self.output_line),
-                    "\n",
                     prompt_line,
                     self.goto_prompt(),
                 )
@@ -383,9 +382,8 @@ impl Screen {
         if !self.scroll_data.0 {
             write!(
                 self.screen,
-                "{}{}{}{}",
+                "{}\n{}{}",
                 termion::cursor::Goto(1, self.output_line),
-                "\n",
                 &line,
                 self.goto_prompt(),
             )
@@ -485,9 +483,8 @@ impl Screen {
             for line in &self.history.inner {
                 write!(
                     self.screen,
-                    "{}{}{}",
+                    "{}\n{}",
                     termion::cursor::Goto(1, self.output_line),
-                    "\n",
                     line,
                 )?;
             }

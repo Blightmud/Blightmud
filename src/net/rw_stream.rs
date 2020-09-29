@@ -15,6 +15,7 @@ impl<T> UnsafeMutator<T> {
         unsafe { &*self.value.get() }
     }
 
+    #[allow(clippy::mut_from_ref)]
     pub fn get_mut(&self) -> &mut T {
         unsafe { &mut *self.value.get() }
     }
@@ -94,6 +95,7 @@ impl<T: Read + Write + Send + 'static> RwStream<T> {
         self.mutator.get()
     }
 
+    #[allow(clippy::mut_from_ref)]
     pub fn inner_mut(&self) -> &mut T {
         self.mutator.get_mut()
     }

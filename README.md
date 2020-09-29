@@ -16,6 +16,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 ## Features
 - Completely terminal based (mac and linux)
 - Telnet:
+    - TLS connections
     - GMCP support
     - MCCP2 support (compress2)
 - Lua scripting:

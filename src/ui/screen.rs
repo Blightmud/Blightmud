@@ -313,8 +313,14 @@ impl Screen {
         Ok(())
     }
 
-    fn goto_prompt(&self) -> termion::cursor::Goto {
-        termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line)
+    fn goto_prompt(&self) -> String {
+        format!(
+            "{}{}{}{}",
+            termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line),
+            color::Fg(color::Reset),
+            color::Bg(color::Reset),
+            termion::style::Reset,
+        )
     }
 
     pub fn reset(&mut self) -> Result<()> {

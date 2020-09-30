@@ -131,7 +131,7 @@ impl EventHandler {
             }
             Event::Connect(Connection { host, port, tls }) => {
                 self.session.disconnect();
-                if self.session.connect(&host, port, tls.unwrap()) {
+                if self.session.connect(&host, port, tls.unwrap_or_default()) {
                     let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
                     spawn_receive_thread(self.session.clone());
                     spawn_transmit_thread(self.session.clone(), reader);

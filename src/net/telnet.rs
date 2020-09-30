@@ -72,26 +72,13 @@ impl TelnetHandler {
                 TelnetEvents::Negotiation(neg) => {
                     debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
                     if let Ok(mut parser) = self.parser.lock() {
-                        match neg {
-                            Neg {
-                                option: opt::GMCP,
-                                command: cmd::WILL,
-                            } => {
-                                parser._will(opt::GMCP);
-                                self.main_writer
-                                    .send(Event::ProtoEnabled(opt::GMCP))
-                                    .unwrap();
-                            }
-                            Neg {
-                                option: opt::MCCP2,
-                                command: cmd::WILL,
-                            } => {
-                                parser._will(opt::MCCP2);
-                                self.main_writer
-                                    .send(Event::ProtoEnabled(opt::MCCP2))
-                                    .unwrap();
-                            }
-                            _ => {}
+                        if let Neg {
+                            option,
+                            command: cmd::WILL,
+                        } = neg
+                        {
+                            parser._will(option);
+                            self.main_writer.send(Event::ProtoEnabled(option)).unwrap();
                         }
                     }
                 }

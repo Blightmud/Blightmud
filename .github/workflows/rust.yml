@@ -37,7 +37,7 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
-        components: ['clippy', 'fmt']
+        components: clippy, rustfmt
         override: true
 
     - name: Formatting

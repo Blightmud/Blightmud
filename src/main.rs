@@ -108,6 +108,11 @@ fn main() {
     let mut opts = Options::new();
     let program = &args[0];
     opts.optopt("c", "connect", "Connect to server", "HOST:PORT");
+    opts.optflag(
+        "t",
+        "tls",
+        "Use tls when connecting to a server (only applies in combination with --connect)",
+    );
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
 
@@ -134,10 +139,11 @@ fn main() {
     if let Ok(Some(connect)) = matches.opt_get::<String>("c") {
         if connect.contains(':') {
             let split: Vec<&str> = connect.split(':').collect();
-            let host = split[0].to_string();
+            let host = split[0];
             let port: u16 = split[1].parse().unwrap();
+            let tls = matches.opt_present("tls");
             main_writer
-                .send(Event::Connect(Connection { host, port }))
+                .send(Event::Connect(Connection::new(host, port, tls)))
                 .unwrap();
         } else {
             print_help(program, opts);
@@ -338,11 +344,8 @@ fn run(
                         screen.print_error(&format!("Failed to load file: {}", err));
                     } else {
                         screen.print_info(&format!("Loaded script: {}", path));
-                        if session.connected.load(Ordering::Relaxed) {
-                            lua.on_connect(
-                                &session.host.lock().unwrap(),
-                                session.port.load(Ordering::Relaxed),
-                            );
+                        if session.connected() {
+                            lua.on_connect(&session.host(), session.port());
                             if session.gmcp.load(Ordering::Relaxed) {
                                 lua.on_gmcp_ready();
                             }

@@ -10,10 +10,7 @@ use libtelnet_rs::events::TelnetEvents;
 use log::debug;
 use std::{
     error::Error,
-    sync::{
-        atomic::Ordering,
-        mpsc::{channel, Receiver, Sender},
-    },
+    sync::mpsc::{channel, Receiver, Sender},
 };
 
 #[allow(dead_code)]
@@ -132,9 +129,9 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::Connect(Connection { host, port }) => {
+            Event::Connect(Connection { host, port, tls }) => {
                 self.session.disconnect();
-                if self.session.connect(&host, port) {
+                if self.session.connect(&host, port, tls.unwrap_or_default()) {
                     let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
                     spawn_receive_thread(self.session.clone());
                     spawn_transmit_thread(self.session.clone(), reader);
@@ -145,8 +142,8 @@ impl EventHandler {
                 Ok(())
             }
             Event::Connected => {
-                let host = self.session.host.lock().unwrap();
-                let port = self.session.port.load(Ordering::Relaxed);
+                let host = self.session.host();
+                let port = self.session.port();
                 debug!("Connected to {}:{}", host, port);
                 screen.redraw_top_bar(&host, port)?;
                 if let Ok(mut script) = self.session.lua_script.lock() {
@@ -158,13 +155,13 @@ impl EventHandler {
                 Ok(())
             }
             Event::Disconnect(id) => {
-                let disconnect = id == 0 || self.session.connection_id == id;
-                if disconnect && self.session.connected.load(Ordering::Relaxed) {
+                let disconnect = id == 0 || self.session.connection_id() == id;
+                if disconnect && self.session.connected() {
                     self.session.disconnect();
                     screen.print_info(&format!(
                         "Disconnecting from: {}:{}",
-                        self.session.host.lock().unwrap(),
-                        self.session.port.load(Ordering::Relaxed)
+                        self.session.host(),
+                        self.session.port()
                     ));
                     if let Some(transmit_writer) = &transmit_writer {
                         transmit_writer.send(None)?;
@@ -181,12 +178,13 @@ impl EventHandler {
                 Ok(())
             }
             Event::Reconnect => {
-                let host = self.session.host.lock().unwrap().clone();
-                let port = self.session.port.load(Ordering::Relaxed);
+                let host = self.session.host();
+                let port = self.session.port();
+                let tls = self.session.tls();
                 if !host.is_empty() && !port > 0 {
                     self.session
                         .main_writer
-                        .send(Event::Connect(Connection { host, port }))?;
+                        .send(Event::Connect(Connection::new(&host, port, tls)))?;
                 } else {
                     screen.print_error("Reconnect to what?");
                 }

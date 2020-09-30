@@ -13,17 +13,17 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 
 ## Basic commands:
 
-- `/connect <host> <port>`           : Connect to a given mud server
-- `/connect <name>`                  : Connect to a saved server
-- `/add_server <name> <host> <port>` : Add a saved server
-- `/remove_server <name>`            : Remove a saved server
-- `/list_servers, /ls`               : List all saved servers
-- `/load <path/to/luafile>`          : Load a script file
-- `/lua <code>`                      : Execute Lua code
-- `/disconnect`, `/dc`               : Disconnect from server
-- `/reconnect`, `/rc`                : Reconnect to last/current server
-- `/quit`, `/q`                      : Exit program
-- `/help`                            : Help information
+- `/connect <host> <port> [tls]`                : Connect to a given mud server
+- `/connect <name>`                             : Connect to a saved server
+- `/add_server <name> <host> <port> [tls]`      : Add a saved server
+- `/remove_server <name>`                       : Remove a saved server
+- `/list_servers, /ls`                          : List all saved servers
+- `/load <path/to/luafile>`                     : Load a script file
+- `/lua <code>`                                 : Execute Lua code
+- `/disconnect`, `/dc`                            : Disconnect from server
+- `/reconnect`, `/rc`                             : Reconnect to last/current server
+- `/quit`, `/q`                                   : Exit program
+- `/help`                                       : Help information
 
 ## Additional macros:
 

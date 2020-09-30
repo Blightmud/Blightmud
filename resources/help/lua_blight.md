@@ -78,6 +78,15 @@ width, height = blight:terminal_dimensions()
 
 ##
 
+***blight:connect(host, port[, tls])***
+Connect to a server
+
+- `host`  The host
+- `port`  The port
+- `tls`   Tls connection? true/false
+
+##
+
 ***blight:on_connect(callback)***
 Registers a callback that is triggered when the client successfully connects to
 a server. You may only register one callback. A secondary callback will overwrite

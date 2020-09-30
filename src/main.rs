@@ -108,6 +108,11 @@ fn main() {
     let mut opts = Options::new();
     let program = &args[0];
     opts.optopt("c", "connect", "Connect to server", "HOST:PORT");
+    opts.optflag(
+        "t",
+        "tls",
+        "Use tls when connecting to a server (only applies in combination with --connect)",
+    );
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
 
@@ -136,9 +141,9 @@ fn main() {
             let split: Vec<&str> = connect.split(':').collect();
             let host = split[0];
             let port: u16 = split[1].parse().unwrap();
+            let tls = matches.opt_present("tls");
             main_writer
-                // TODO(Connecting with TLS through arguments needs fixing)
-                .send(Event::Connect(Connection::new(host, port, false)))
+                .send(Event::Connect(Connection::new(host, port, tls)))
                 .unwrap();
         } else {
             print_help(program, opts);

@@ -315,11 +315,8 @@ impl Screen {
 
     fn goto_prompt(&self) -> String {
         format!(
-            "{}{}{}{}",
+            "{}",
             termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line),
-            color::Fg(color::Reset),
-            color::Bg(color::Reset),
-            termion::style::Reset,
         )
     }
 
@@ -334,8 +331,11 @@ impl Screen {
             if !self.scroll_data.0 {
                 write!(
                     self.screen,
-                    "{}\n{}{}",
+                    "{}\n{}{}{}{}{}",
                     termion::cursor::Goto(1, self.output_line),
+                    color::Fg(color::Reset),
+                    color::Bg(color::Reset),
+                    termion::style::Reset,
                     prompt_line,
                     self.goto_prompt(),
                 )

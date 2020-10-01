@@ -1,0 +1,86 @@
+name: DEB Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  package_deb:
+    name: Build DEB package
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-deb-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo binaries
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-deb-bin-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-deb-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-deb-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install libudev-dev pkg-config
+      - name: Install cargo-deb
+        run: cargo install cargo-deb || true
+      - name: Package DEB
+        run: cargo deb
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: blightmud-deb
+          path: target/debian/*.deb
+
+  build_macos:
+    name: Build for macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Setup Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked --release
+      - name: Get current version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+      - name: Package Binary
+        run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip blightmud
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: blightmud-macos
+          path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip

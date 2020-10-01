@@ -74,10 +74,12 @@ impl HelpHandler {
 fn load_files() -> HashMap<&'static str, &'static str> {
     let mut files: HashMap<&str, &str> = HashMap::new();
     files.insert("help", include_str!("../../resources/help/help.md"));
+    files.insert("changes", include_str!("../../resources/help/changes.md"));
     files.insert("welcome", include_str!("../../resources/help/welcome.md"));
     files.insert("logging", include_str!("../../resources/help/logging.md"));
     files.insert("blight", include_str!("../../resources/help/lua_blight.md"));
     files.insert("bindings", include_str!("../../resources/help/bindings.md"));
+    files.insert("core", include_str!("../../resources/help/core.md"));
     files.insert(
         "status_area",
         include_str!("../../resources/help/lua_status_area.md"),

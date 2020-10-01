@@ -2,8 +2,8 @@
 use dirs;
 
 use lazy_static::lazy_static;
-use libtelnet_rs::{events::TelnetEvents, telnet::op_option as opt};
-use log::{debug, error, info};
+use libtelnet_rs::events::TelnetEvents;
+use log::{error, info};
 use std::path::PathBuf;
 use std::sync::{
     atomic::Ordering,
@@ -30,7 +30,7 @@ use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, ECHO_GMCP, LOGGING_ENABLED};
+use model::{Connection, Settings, LOGGING_ENABLED};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -279,57 +279,39 @@ fn run(
                     screen.print_info("Logging stopped");
                     session.stop_logging();
                 }
-                Event::ProtoEnabled(proto) => {
-                    if let opt::GMCP = proto {
-                        session.gmcp.store(true, Ordering::Relaxed);
-                        let mut parser = session.telnet_parser.lock().unwrap();
-                        if let Some(event) = parser.subnegotiation_text(
-                            opt::GMCP,
-                            &format!(
-                                "Core.Hello {{\"Client\":\"Blightmud\",\"Version\":\"{}\"}}",
-                                VERSION
-                            ),
-                        ) {
-                            if let TelnetEvents::DataSend(data) = event {
-                                debug!("Sending GMCP Core.Hello");
-                                session.main_writer.send(Event::ServerSend(data))?;
-                                if let Ok(mut lua) = session.lua_script.lock() {
-                                    lua.on_gmcp_ready();
-                                    lua.get_output_lines().iter().for_each(|l| {
-                                        screen.print_output(l);
-                                    });
-                                }
+                Event::EnableProto(proto) => {
+                    if let Ok(mut parser) = session.telnet_parser.lock() {
+                        parser.options.support(proto);
+                        if session.connected() {
+                            if let Some(TelnetEvents::DataSend(data)) = parser._do(proto) {
+                                session.main_writer.send(Event::ServerSend(data)).unwrap();
                             }
-                        } else {
-                            error!("Failed to send GMCP Core.Hello");
                         }
                     }
                 }
-                Event::GMCPRegister(msg) => {
-                    let mut parser = session.telnet_parser.lock().unwrap();
-                    if let Some(TelnetEvents::DataSend(data)) = parser.subnegotiation_text(
-                        opt::GMCP,
-                        &format!("Core.Supports.Add [\"{} 1\"]", msg),
-                    ) {
-                        session.main_writer.send(Event::ServerSend(data))?;
+                Event::ProtoEnabled(proto) => {
+                    if let Ok(mut lua) = session.lua_script.lock() {
+                        lua.proto_enabled(proto);
+                        lua.get_output_lines().iter().for_each(|l| {
+                            screen.print_output(l);
+                        });
                     }
                 }
-                Event::GMCPReceive(msg) => {
-                    let mut script = session.lua_script.lock().unwrap();
-                    if let Ok(true) = settings.get(ECHO_GMCP) {
-                        screen.print_info(&format!("[GMCP][RECEIVE]: {}", &msg));
+                Event::ProtoSubnegRecv(proto, data) => {
+                    if let Ok(mut script) = session.lua_script.lock() {
+                        script.proto_subneg(proto, &data);
+                        script.get_output_lines().iter().for_each(|l| {
+                            screen.print_output(l);
+                        });
                     }
-                    script.receive_gmcp(&msg);
-                    script.get_output_lines().iter().for_each(|l| {
-                        screen.print_output(l);
-                    });
                 }
-                Event::GMCPSend(msg) => {
-                    let mut parser = session.telnet_parser.lock().unwrap();
-                    if let Some(TelnetEvents::DataSend(data)) =
-                        parser.subnegotiation_text(opt::GMCP, &msg)
-                    {
-                        session.main_writer.send(Event::ServerSend(data))?;
+                Event::ProtoSubnegSend(proto, data) => {
+                    if let Ok(mut parser) = session.telnet_parser.lock() {
+                        if let Some(TelnetEvents::DataSend(data)) =
+                            parser.subnegotiation(proto, data)
+                        {
+                            session.main_writer.send(Event::ServerSend(data)).unwrap();
+                        }
                     }
                 }
                 Event::ScrollUp => screen.scroll_up()?,
@@ -344,12 +326,6 @@ fn run(
                         screen.print_error(&format!("Failed to load file: {}", err));
                     } else {
                         screen.print_info(&format!("Loaded script: {}", path));
-                        if session.connected() {
-                            lua.on_connect(&session.host(), session.port());
-                            if session.gmcp.load(Ordering::Relaxed) {
-                                lua.on_gmcp_ready();
-                            }
-                        }
                         lua.get_output_lines().iter().for_each(|l| {
                             screen.print_output(l);
                         });

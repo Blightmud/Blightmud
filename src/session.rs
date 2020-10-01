@@ -173,7 +173,7 @@ impl SessionBuilder {
 fn build_compatibility_table() -> CompatibilityTable {
     let mut telnet_compat = CompatibilityTable::default();
     telnet_compat.support(opt::MCCP2);
-    telnet_compat.support(opt::GMCP);
+    //telnet_compat.support(opt::GMCP);
     telnet_compat.support(opt::EOR);
     telnet_compat.support(opt::ECHO);
     telnet_compat
@@ -194,6 +194,12 @@ mod session_test {
             .timer_writer(timer_writer.clone())
             .screen_dimensions((80, 80))
             .build();
+
+        loop {
+            if reader.try_recv().is_err() {
+                break;
+            }
+        }
 
         (session, reader, timer_reader)
     }

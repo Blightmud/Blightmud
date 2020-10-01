@@ -1,6 +1,6 @@
-use super::constants::*;
-use super::user_data::*;
-use super::{util::*, Alias, Trigger, UiEvent};
+use super::blight::*;
+use super::{alias::Alias, trigger::Trigger, util::*};
+use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
@@ -18,13 +18,16 @@ pub struct LuaScript {
 fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lua {
     let state = Lua::new();
 
-    let mut blight = BlightMud::new(writer);
+    let mut blight = Blight::new(writer.clone());
+    let core = Core::new(writer);
+
     blight.screen_dimensions = dimensions;
     blight.core_mode(true);
     state
         .context(|ctx| -> LuaResult<()> {
             let globals = ctx.globals();
             globals.set("blight", blight)?;
+            globals.set("core", core)?;
 
             globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
             globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
@@ -32,9 +35,10 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             globals.set(ALIAS_TABLE, ctx.create_table()?)?;
             globals.set(TRIGGER_TABLE, ctx.create_table()?)?;
             globals.set(PROMPT_TRIGGER_TABLE, ctx.create_table()?)?;
-            globals.set(GMCP_LISTENER_TABLE, ctx.create_table()?)?;
             globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
             globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
+            globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;
+            globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
 
             globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
 
@@ -45,6 +49,8 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
 
             ctx.load(include_str!("../../resources/lua/defaults.lua"))
                 .exec()?;
+            ctx.load(include_str!("../../resources/lua/functions.lua"))
+                .exec()?;
             ctx.load(include_str!("../../resources/lua/bindings.lua"))
                 .exec()?;
             ctx.load(include_str!("../../resources/lua/lua_command.lua"))
@@ -52,7 +58,12 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             ctx.load(include_str!("../../resources/lua/macros.lua"))
                 .exec()?;
 
-            let mut blight: BlightMud = globals.get("blight")?;
+            let lua_gmcp = ctx
+                .load(include_str!("../../resources/lua/gmcp.lua"))
+                .call::<_, rlua::Value>(())?;
+            globals.set("gmcp", lua_gmcp)?;
+
+            let mut blight: Blight = globals.get("blight")?;
             blight.core_mode(false);
             globals.set("blight", blight)?;
 
@@ -81,7 +92,7 @@ impl LuaScript {
     pub fn get_output_lines(&self) -> Vec<Line> {
         self.state
             .context(|ctx| -> LuaResult<Vec<Line>> {
-                let mut blight: BlightMud = ctx.globals().get("blight")?;
+                let mut blight: Blight = ctx.globals().get("blight")?;
                 let lines = blight.get_output_lines();
                 ctx.globals().set("blight", blight)?;
                 Ok(lines)
@@ -197,26 +208,6 @@ impl LuaScript {
             .unwrap();
     }
 
-    pub fn receive_gmcp(&mut self, data: &str) {
-        let split = data
-            .splitn(2, ' ')
-            .map(String::from)
-            .collect::<Vec<String>>();
-        let msg_type = &split[0];
-        let content = &split[1];
-        self.state
-            .context(|ctx| {
-                let listener_table: rlua::Table = ctx.globals().get(GMCP_LISTENER_TABLE).unwrap();
-                if let Ok(func) = listener_table.get::<_, rlua::Function>(msg_type.clone()) {
-                    if let Err(msg) = func.call::<_, ()>(content.clone()) {
-                        output_stack_trace(&self.writer, &msg.to_string());
-                    }
-                }
-                rlua::Result::Ok(())
-            })
-            .unwrap()
-    }
-
     pub fn load_script(&mut self, path: &str) -> Result<()> {
         let mut file = File::open(shell::tilde(path).as_ref())?;
         let mut content = String::new();
@@ -267,29 +258,42 @@ impl LuaScript {
 
     pub fn set_dimensions(&mut self, dim: (u16, u16)) -> LuaResult<()> {
         self.state.context(|ctx| -> LuaResult<()> {
-            let mut blight: BlightMud = ctx.globals().get("blight")?;
+            let mut blight: Blight = ctx.globals().get("blight")?;
             blight.screen_dimensions = dim;
             ctx.globals().set("blight", blight)?;
             Ok(())
         })
     }
 
-    pub fn on_gmcp_ready(&mut self) {
-        if !self.on_gmcp_ready_triggered {
-            self.on_gmcp_ready_triggered = true;
-            self.state
-                .context(|ctx| -> Result<(), rlua::Error> {
-                    if let Ok(callback) = ctx
-                        .globals()
-                        .get::<_, rlua::Function>(ON_GMCP_READY_CALLBACK)
-                    {
-                        if let Err(msg) = callback.call::<_, ()>(()) {
-                            output_stack_trace(&self.writer, &msg.to_string());
-                        }
-                    }
-                    Ok(())
-                })
-                .unwrap();
+    pub fn proto_enabled(&mut self, proto: u8) {
+        let result = self.state.context(|ctx| -> Result<(), rlua::Error> {
+            let globals = ctx.globals();
+            let table: rlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
+            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+                let (_, cb) = pair.unwrap();
+                cb.call::<_, ()>(proto)?;
+            }
+            Ok(())
+        });
+
+        if let Err(msg) = result {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
+    }
+
+    pub fn proto_subneg(&mut self, proto: u8, bytes: &[u8]) {
+        let result = self.state.context(|ctx| -> Result<(), rlua::Error> {
+            let globals = ctx.globals();
+            let table: rlua::Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
+            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+                let (_, cb) = pair.unwrap();
+                cb.call::<_, ()>((proto, bytes.to_vec()))?;
+            }
+            Ok(())
+        });
+
+        if let Err(msg) = result {
+            output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
@@ -309,7 +313,7 @@ impl LuaScript {
     pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
         self.state
             .context(|ctx| -> Result<Vec<UiEvent>, rlua::Error> {
-                let mut blight: BlightMud = ctx.globals().get("blight")?;
+                let mut blight: Blight = ctx.globals().get("blight")?;
                 let events = blight.get_ui_events();
                 ctx.globals().set("blight", blight)?;
                 Ok(events)
@@ -323,7 +327,8 @@ mod lua_script_tests {
     use super::LuaScript;
     use crate::{
         event::Event,
-        lua::{Alias, Trigger},
+        lua::alias::Alias,
+        lua::trigger::Trigger,
         model::{Connection, Line},
         PROJECT_NAME, VERSION,
     };
@@ -347,7 +352,13 @@ mod lua_script_tests {
 
     fn get_lua() -> (LuaScript, Receiver<Event>) {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
-        (LuaScript::new(writer, (80, 80)), reader)
+        let lua = LuaScript::new(writer, (80, 80));
+        loop {
+            if reader.try_recv().is_err() {
+                break;
+            }
+        }
+        (lua, reader)
     }
 
     #[test]
@@ -515,9 +526,9 @@ mod lua_script_tests {
     }
 
     #[test]
-    fn test_send_gmcp() {
+    fn test_enable_proto() {
         let send_gmcp_lua = r#"
-        blight:send_gmcp("Core.Hello")
+        core:enable_protocol(200)
         "#;
 
         let (lua, reader) = get_lua();
@@ -525,7 +536,24 @@ mod lua_script_tests {
             ctx.load(send_gmcp_lua).exec().unwrap();
         });
 
-        assert_eq!(reader.recv(), Ok(Event::GMCPSend("Core.Hello".to_string())));
+        assert_eq!(reader.recv(), Ok(Event::EnableProto(200)));
+    }
+
+    #[test]
+    fn test_proto_send() {
+        let send_gmcp_lua = r#"
+        core:subneg_send(201, { 255, 250, 86, 255, 240 })
+        "#;
+
+        let (lua, reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(send_gmcp_lua).exec().unwrap();
+        });
+
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::ProtoSubnegSend(201, vec![255, 250, 86, 255, 240]))
+        );
     }
 
     #[test]
@@ -759,31 +787,6 @@ mod lua_script_tests {
         });
         lua.on_connect("test", 21);
         assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
-    }
-
-    #[test]
-    fn test_on_gmcp_ready_test() {
-        let lua_code = r#"
-        blight:on_gmcp_ready(function ()
-            blight:output("gmcp")
-        end)
-        "#;
-
-        let (mut lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
-
-        lua.on_gmcp_ready();
-        assert_eq!(lua.get_output_lines(), [Line::from("gmcp")]);
-        lua.on_gmcp_ready();
-        assert_eq!(lua.get_output_lines(), []);
-        lua.reset((100, 100));
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
-        lua.on_gmcp_ready();
-        assert_eq!(lua.get_output_lines(), [Line::from("gmcp")]);
     }
 
     #[test]

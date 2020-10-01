@@ -1,5 +1,6 @@
 use super::{
-    constants::*, store_data::StoreData, trigger::Trigger, util::output_stack_trace, Alias, UiEvent,
+    alias::Alias, constants::*, store_data::StoreData, trigger::Trigger, ui_event::UiEvent,
+    util::output_stack_trace,
 };
 use crate::event::Event;
 use crate::{
@@ -14,7 +15,7 @@ use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
 use std::{collections::BTreeMap, sync::mpsc::Sender};
 
 #[derive(Clone)]
-pub struct BlightMud {
+pub struct Blight {
     main_writer: Sender<Event>,
     output_lines: Vec<Line>,
     ui_events: Vec<UiEvent>,
@@ -23,7 +24,7 @@ pub struct BlightMud {
     core_mode: bool,
 }
 
-impl BlightMud {
+impl Blight {
     pub fn new(writer: Sender<Event>) -> Self {
         Self {
             main_writer: writer,
@@ -84,7 +85,7 @@ impl BlightMud {
     }
 }
 
-impl UserData for BlightMud {
+impl UserData for Blight {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method("terminal_dimensions", |_, this, _: ()| {
             Ok(this.screen_dimensions)
@@ -366,18 +367,6 @@ impl UserData for BlightMud {
             ctx.globals().set(this.timer_table(), ctx.create_table()?)?;
             Ok(())
         });
-        methods.add_method("register_gmcp", |_, this, module: String| {
-            this.main_writer.send(Event::GMCPRegister(module)).unwrap();
-            Ok(())
-        });
-        methods.add_method(
-            "add_gmcp_receiver",
-            |ctx, _, (msg_type, callback): (String, rlua::Function)| {
-                let gmcp_table: rlua::Table = ctx.globals().get(GMCP_LISTENER_TABLE)?;
-                gmcp_table.set(msg_type, callback)?;
-                Ok(())
-            },
-        );
         methods.add_method("status_height", |_, this, height: u16| {
             this.main_writer
                 .send(Event::StatusAreaHeight(height))
@@ -390,18 +379,11 @@ impl UserData for BlightMud {
                 .unwrap();
             Ok(())
         });
-        methods.add_method("send_gmcp", |_, this, msg: String| {
-            this.main_writer.send(Event::GMCPSend(msg)).unwrap();
-            Ok(())
-        });
         methods.add_method("on_connect", |ctx, _, callback: rlua::Function| {
             ctx.globals().set(ON_CONNCTION_CALLBACK, callback)
         });
         methods.add_method("on_disconnect", |ctx, _, callback: rlua::Function| {
             ctx.globals().set(ON_DISCONNECT_CALLBACK, callback)
-        });
-        methods.add_method("on_gmcp_ready", |ctx, _, callback: rlua::Function| {
-            ctx.globals().set(ON_GMCP_READY_CALLBACK, callback)
         });
         methods.add_method("version", |_, _, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))
@@ -412,13 +394,13 @@ impl UserData for BlightMud {
 #[cfg(test)]
 mod user_data_tests {
 
-    use super::BlightMud;
+    use super::Blight;
     use crate::{event::Event, lua::constants::*};
     use std::sync::mpsc::{channel, Receiver, Sender};
 
-    fn get_blight() -> (BlightMud, Receiver<Event>) {
+    fn get_blight() -> (Blight, Receiver<Event>) {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
-        (BlightMud::new(writer), reader)
+        (Blight::new(writer), reader)
     }
 
     #[test]

@@ -83,17 +83,17 @@ impl TelnetHandler {
                     }
                 }
                 TelnetEvents::Subnegotiation(data) => match data.option {
-                    opt::GMCP => {
-                        let msg = String::from_utf8_lossy(&data.buffer).to_mut().clone();
-                        self.main_writer.send(Event::GMCPReceive(msg)).unwrap();
-                    }
                     opt::MCCP2 => {
                         debug!("Initiated MCCP2 compression");
                         if let Ok(mut comops) = self.comops.lock() {
                             comops.mccp2 = true;
                         }
                     }
-                    _ => {}
+                    opt => {
+                        self.main_writer
+                            .send(Event::ProtoSubnegRecv(opt, data.buffer.to_vec()))
+                            .unwrap();
+                    }
                 },
                 TelnetEvents::DataSend(msg) => {
                     debug!("Telnet sending: {:?}", msg);

@@ -11,10 +11,14 @@ Creates an alias which when triggered runs the provided callback function.
 - `callback` A Lua function that gets called when the regex is matched.
 - Returns an id for the created alias (used for removing)
 
+##
+
 ***blight:enable_alias(id, enabled)***
 
 - `id`         The id of the alias to enabled/disable
 - `enabled`    Boolean toggling the enabled flag on the alias
+
+##
 
 ***blight:remove_alias(alias_id)***
 
@@ -29,6 +33,8 @@ end)
 
 blight:remove_alias(alias_id)
 ```
+
+##
 
 ***blight:get_aliases()***
 
@@ -46,6 +52,8 @@ blight:remove_alias(alias_id)
     enabled: bool,
 }
 ```
+
+##
 
 ***blight:clear_aliases()***
 

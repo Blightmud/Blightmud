@@ -19,9 +19,13 @@ blight:add_timer(0.5, 3, function ()
 end)
 ```
 
+##
+
 ***blight:get_timer_ids()***
 
 - Returns a list of all timer ids
+
+##
 
 ***blight:clear_timers()***
 

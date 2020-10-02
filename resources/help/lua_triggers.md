@@ -23,10 +23,14 @@ Options allow you to fine-tune how the trigger is matched or displayed.
 - `prompt`   Match against the prompt instead of regular output lines.
 - `enabled`  Sets the enabled status of the trigger
 
+##
+
 ***blight:enable_trigger(id, enabled)***
 
 - `id`         The id of the trigger to enabled/disable
 - `enabled`    Boolean toggling the enabled flag on the trigger
+
+##
 
 ***blight:remove_trigger(trigger_id)***
 
@@ -59,6 +63,8 @@ local trigger_id = blight:add_trigger(
     )
 ```
 
+##
+
 ***blight:gag()***
 
 This method will gag the next trigger matched line from output. It's best used within a triggers
@@ -71,6 +77,8 @@ blight:add_trigger("^Health (\\d+)$", {}, function (matches)
     end
 end)
 ```
+
+##
 
 ***blight:get_triggers()***
 
@@ -91,6 +99,8 @@ end)
     prompt: bool,
 }
 ```
+
+##
 
 ***blight:clear_triggers()***
 

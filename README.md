@@ -40,6 +40,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 ## Installation
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page
 - **Archlinux/Manjaro**  : Packages are available on AUR
+- **Mac/Homebrew**       : We have a homebrew tap `brew tap LiquidityC/blightmud`
 - **Other/Alternative**  : Download source and run `cargo install --path .` from the project root
 
 ## Support, questions and help

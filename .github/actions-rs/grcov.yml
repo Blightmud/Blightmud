@@ -5,9 +5,7 @@ filter: covered
 output-type: lcov
 output-path: ./lcov.info
 prefix-dir: /home/user/build/
+service-name: blightmud-test
 ignore:
   - "../**"
   - "/*"
-#path-mapping:
-#- "/path1"
-#- "/path2"

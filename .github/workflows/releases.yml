@@ -37,11 +37,15 @@ jobs:
         run: cargo install cargo-deb || true
       - name: Package DEB
         run: cargo deb
+      - name: Set .deb path
+        id: deb_path
+        run: |
+          ls -1 target/debian/*.deb | awk '{print "::set-output name=deb_path::"$1}'
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
           name: blightmud-deb
-          path: target/debian/*.deb
+          path: ${{ steps.deb_path.outputs.deb_path }}
 
   build_macos:
     name: Build for macOS

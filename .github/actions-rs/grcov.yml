@@ -8,6 +8,3 @@ prefix-dir: /home/user/build/
 ignore:
   - "../**"
   - "/*"
-#path-mapping:
-#- "/path1"
-#- "/path2"

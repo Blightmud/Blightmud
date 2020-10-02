@@ -16,9 +16,12 @@ pub fn register_panic_hook() {
             "<Unable to create dump file>".to_string()
         };
 
+        // Attempt to reset the terminal since we crashed
+        println!("\x1b[2J\x1b[r\x1b[?1049l");
+
         println!("\x1b[31m");
-        println!(
-            r#"
+
+        r#"
         Blightmud crashed !!!
 
         Well this is embarrassing... I guess no software is flawless
@@ -28,18 +31,23 @@ pub fn register_panic_hook() {
         a minute to submit a bug report on github.
 
         [URL]: https://github.com/liquidityc/blightmud/issues"#
-        );
-        println!("        [CRASH_LOG]: {}", file_path);
+            .to_string()
+            .lines()
+            .for_each(|line| print!("{}\r\n", line));
 
-        println!(
-            r#"
+        print!("        [CRASH_LOG]: {}\r\n", file_path);
+
+        r#"
         If available, please attach the created crash log to the issue.  Then we'll get around to
         fixing your problem as fast as we can.
 
         Br,
         Linus Probert and all the contributors
         "#
-        );
+        .to_string()
+        .lines()
+        .for_each(|line| print!("{}\r\n", line));
+
         println!("\x1b[0m");
     }));
 }

@@ -1,4 +1,4 @@
-name: DEB Package
+name: Release
 
 on:
   push:

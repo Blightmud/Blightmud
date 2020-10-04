@@ -260,6 +260,12 @@ impl Screen {
             self.redraw_top_bar("", 0)?;
             self.reset_scroll()?;
             self.screen.flush()?;
+            write!(
+                self.screen,
+                "{}{}",
+                termion::cursor::Goto(1, 2),
+                termion::cursor::Save
+            )?;
             Ok(())
         } else {
             Err(TerminalSizeError.into())
@@ -331,11 +337,8 @@ impl Screen {
             if !self.scroll_data.0 {
                 write!(
                     self.screen,
-                    "{}\n{}{}{}{}{}",
+                    "{}\n{}{}",
                     termion::cursor::Goto(1, self.output_line),
-                    color::Fg(color::Reset),
-                    color::Bg(color::Reset),
-                    termion::style::Reset,
                     prompt_line,
                     self.goto_prompt(),
                 )
@@ -362,10 +365,15 @@ impl Screen {
         self.cursor_prompt_pos = pos as u16 + 1;
         write!(
             self.screen,
-            "{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}",
+            termion::cursor::Save,
             termion::cursor::Goto(1, self.prompt_line),
+            termion::color::Fg(termion::color::Reset),
+            termion::color::Bg(termion::color::Reset),
+            termion::style::Reset,
             termion::clear::CurrentLine,
             input,
+            termion::cursor::Restore,
             self.goto_prompt(),
         )
         .unwrap();

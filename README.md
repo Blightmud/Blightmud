@@ -49,5 +49,10 @@ Join our [discord](https://discord.gg/qnxgUC5)
 ## Contributing
 All contributions are welcome. Check out [contributing guidelines](CONTRIBUTING.md).
 
+## Contributors
+<a href="https://github.com/LiquidityC/blightmud/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=LiquidityC/blightmud" />
+</a>
+
 ## Side notes
 This is my first rust project that has actually grown a bit. Some things might look silly but thanks to rust they should still be safe. Anywho. If you find some antipattern where you have a better idea I'm more then happy to se the PR and learn some more rustier ways.

@@ -16,6 +16,8 @@ use super::MudConnection;
 
 type Decoder = ZlibDecoder<Chain<Cursor<Vec<u8>>, MudConnection>>;
 
+pub const BUFFER_SIZE: usize = 32 * 1024;
+
 struct MudReceiver {
     connection: MudConnection,
     decoder: Option<Decoder>,
@@ -33,7 +35,7 @@ impl MudReceiver {
             .rfind(|item| *item.1 == opt::MCCP2)
         {
             // ... MCCP2 IAC SE, hence the + 3
-            Some(self.last_chunk.split_at(item.0 + 3).1)
+            Some(&self.last_chunk[item.0 + 3..])
         } else {
             None
         }
@@ -60,14 +62,18 @@ impl MudReceiver {
     }
 
     fn read_bytes(&mut self) -> Vec<u8> {
-        let mut data = vec![0; 32 * 1024];
+        let mut data = vec![0; BUFFER_SIZE];
         if let Some(decoder) = &mut self.decoder {
+            debug!(
+                "Waiting for zlib data... ({} ---> {})",
+                decoder.total_in(),
+                decoder.total_out()
+            );
             match decoder.read(&mut data) {
                 Ok(bytes_read) => {
-                    debug!("Read {} bytes from stream", bytes_read);
+                    debug!("Read {} bytes from zlib stream", bytes_read);
                     if bytes_read > 0 {
-                        data = data.split_at(bytes_read).0.to_vec();
-                        debug!("Bytes: {:?}", data);
+                        data = data[..bytes_read].to_vec();
                     } else {
                         data = vec![];
                     }
@@ -79,8 +85,7 @@ impl MudReceiver {
             }
         } else if let Ok(bytes_read) = self.connection.read(&mut data) {
             debug!("Read {} bytes from stream", bytes_read);
-            data = data.split_at(bytes_read).0.to_vec();
-            debug!("Bytes: {:?}", data);
+            data = data[..bytes_read].to_vec();
         } else {
             data = vec![];
         }

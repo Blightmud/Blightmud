@@ -3,7 +3,8 @@ use log::debug;
 use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 
 use crate::{
-    io::Logger, lua::LuaScript, net::MudConnection, net::OutputBuffer, timer::TimerEvent, Event,
+    io::Logger, lua::LuaScript, net::MudConnection, net::OutputBuffer, net::BUFFER_SIZE,
+    timer::TimerEvent, Event,
 };
 
 #[derive(Default)]
@@ -57,7 +58,7 @@ impl Session {
             }
             self.comops = Arc::new(Mutex::new(CommunicationOptions::default()));
             self.telnet_parser = Arc::new(Mutex::new(Parser::with_support_and_capacity(
-                4096,
+                BUFFER_SIZE,
                 build_compatibility_table(),
             )));
             self.stop_logging();
@@ -158,7 +159,7 @@ impl SessionBuilder {
             timer_writer,
             terminate: Arc::new(AtomicBool::new(false)),
             telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
-                4096,
+                BUFFER_SIZE,
                 build_compatibility_table(),
             ))),
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
@@ -173,7 +174,6 @@ impl SessionBuilder {
 fn build_compatibility_table() -> CompatibilityTable {
     let mut telnet_compat = CompatibilityTable::default();
     telnet_compat.support(opt::MCCP2);
-    //telnet_compat.support(opt::GMCP);
     telnet_compat.support(opt::EOR);
     telnet_compat.support(opt::ECHO);
     telnet_compat

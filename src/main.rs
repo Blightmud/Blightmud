@@ -289,6 +289,19 @@ fn run(
                         }
                     }
                 }
+                Event::DisableProto(proto) => {
+                    if let Ok(mut parser) = session.telnet_parser.lock() {
+                        let mut opt = parser.options.get_option(proto);
+                        opt.local = false;
+                        opt.remote = false;
+                        parser.options.set_option(proto, opt);
+                        if session.connected() {
+                            if let Some(TelnetEvents::DataSend(data)) = parser._dont(proto) {
+                                session.main_writer.send(Event::ServerSend(data)).unwrap();
+                            }
+                        }
+                    }
+                }
                 Event::ProtoEnabled(proto) => {
                     if let Ok(mut lua) = session.lua_script.lock() {
                         lua.proto_enabled(proto);

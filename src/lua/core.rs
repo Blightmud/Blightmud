@@ -33,6 +33,10 @@ impl UserData for Core {
             this.main_writer.send(Event::EnableProto(proto)).unwrap();
             Ok(())
         });
+        methods.add_method("disable_protocol", |_, this, proto: u8| {
+            this.main_writer.send(Event::DisableProto(proto)).unwrap();
+            Ok(())
+        });
         methods.add_method_mut("on_protocol_enabled", |ctx, this, cb: rlua::Function| {
             let globals = ctx.globals();
             let table: Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;

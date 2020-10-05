@@ -1,6 +1,8 @@
 use crate::model::Line;
 use log::error;
 
+use super::tcp_stream::BUFFER_SIZE;
+
 pub struct OutputBuffer {
     buffer: Vec<u8>,
     pub prompt: Line,
@@ -18,7 +20,7 @@ fn read_string_from(buffer: &[u8]) -> String {
 impl OutputBuffer {
     pub fn new() -> Self {
         Self {
-            buffer: Vec::with_capacity(1024),
+            buffer: Vec::with_capacity(BUFFER_SIZE),
             prompt: Line::from(""),
         }
     }

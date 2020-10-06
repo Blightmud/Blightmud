@@ -74,6 +74,7 @@ impl MudReceiver {
                     debug!("Read {} bytes from zlib stream", bytes_read);
                     if bytes_read > 0 {
                         data = data[..bytes_read].to_vec();
+                        debug!("Bytes: {:?}", data);
                     } else {
                         data = vec![];
                     }
@@ -86,6 +87,7 @@ impl MudReceiver {
         } else if let Ok(bytes_read) = self.connection.read(&mut data) {
             debug!("Read {} bytes from stream", bytes_read);
             data = data[..bytes_read].to_vec();
+            debug!("Bytes: {:?}", data);
         } else {
             data = vec![];
         }

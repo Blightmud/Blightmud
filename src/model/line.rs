@@ -22,7 +22,7 @@ impl Eq for Line {}
 
 impl PartialEq for Line {
     fn eq(&self, other: &Self) -> bool {
-        self.content == other.content
+        self.content == other.content && self.clean_content == other.clean_content
     }
 }
 
@@ -37,6 +37,7 @@ fn get_content_from(line: &str) -> (String, String) {
     } else {
         "".to_string()
     };
+    let clean_content = clean_content.replace("\r", "");
     (content, clean_content)
 }
 
@@ -186,5 +187,12 @@ mod test_line {
         line.flags.skip_log = true;
         assert_eq!(line.print_line(), Some("testline"));
         assert_eq!(line.log_line(), None);
+    }
+
+    #[test]
+    fn test_carriage_return_strip() {
+        let line = Line::from("\r\rtestline");
+        assert_eq!(line.line(), "\r\rtestline");
+        assert_eq!(line.clean_line(), "testline");
     }
 }

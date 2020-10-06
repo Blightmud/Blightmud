@@ -54,9 +54,9 @@ impl OutputBuffer {
         let mut last_cut: usize = 0;
         let mut lines: Vec<Line> = vec![];
         for (i, bytes) in self.buffer.windows(2).enumerate() {
-            if i > last_cut && (bytes == b"\r\n" || bytes == b"\n\r") {
+            if i >= last_cut && (bytes == b"\r\n" || bytes == b"\n\r") {
                 last_cut = cut_line(&mut lines, i, last_cut, 2);
-            } else if i > last_cut && bytes[0] == b'\n' {
+            } else if i >= last_cut && bytes[0] == b'\n' {
                 last_cut = cut_line(&mut lines, i, last_cut, 1);
             }
         }
@@ -152,5 +152,31 @@ mod output_buffer_tests {
         buffer.buffer_to_prompt(true);
         assert_eq!(buffer.prompt, Line::from("prompt"));
         assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_carriage_return_removal() {
+        let mut buffer = OutputBuffer::new();
+        let lines = buffer.receive(b"word1\n\r\r\rword2\r\r\r\nword3\nprompt\r");
+        let mut iter = lines.iter();
+        assert_eq!(iter.next(), Some(&Line::from("word1")));
+        assert_eq!(iter.next(), Some(&Line::from("\r\rword2")));
+        assert_eq!(iter.next(), Some(&Line::from("word3")));
+        buffer.buffer_to_prompt(true);
+        assert_eq!(buffer.prompt, Line::from("prompt"));
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_clean_line_match() {
+        let mut buffer = OutputBuffer::new();
+        let lines = buffer.receive(b"\n\r   \rword1\n\r\r\rprompt\r");
+        let mut iter = lines.iter();
+        let _ = iter.next();
+        let line = iter.next().unwrap();
+        assert_eq!(line.line(), "   \rword1");
+        assert_eq!(line.clean_line(), "   word1");
+        buffer.buffer_to_prompt(true);
+        assert_eq!(buffer.prompt, Line::from("\r\rprompt"));
     }
 }

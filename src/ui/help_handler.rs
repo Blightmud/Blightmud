@@ -54,9 +54,10 @@ impl HelpHandler {
             let parser = Parser::new_ext(&file_content, options);
 
             // Useless as files are embedded into binary.
-            let base_dir = Path::new("resources/help/");
+            let base_dir = Path::new("/");
 
-            if mdcat::push_tty(&md_settings(), &mut md_bytes, &base_dir, parser).is_ok() {
+            let env = mdcat::Environment::for_local_directory(&base_dir).unwrap();
+            if mdcat::push_tty(&md_settings(), &env, &mut md_bytes, parser).is_ok() {
                 if let Ok(md_string) = String::from_utf8(md_bytes) {
                     Event::Output(Line::from(format!("\n\n{}", md_string)))
                 } else {

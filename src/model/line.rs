@@ -9,6 +9,7 @@ pub struct Flags {
     pub prompt: bool,
     pub bypass_script: bool,
     pub matched: bool,
+    pub tts: bool,
 }
 
 #[derive(Debug, Clone)]

@@ -3,9 +3,12 @@ use std::sync::mpsc::Sender;
 use log::debug;
 use rlua::{Table, UserData, UserDataMethods};
 
-use crate::event::Event;
+use crate::{event::Event, io::exec};
 
-use super::constants::{PROTO_ENABLED_LISTENERS_TABLE, PROTO_SUBNEG_LISTENERS_TABLE};
+use super::{
+    constants::{PROTO_ENABLED_LISTENERS_TABLE, PROTO_SUBNEG_LISTENERS_TABLE},
+    exec_response::ExecResponse,
+};
 
 #[derive(Clone)]
 pub struct Core {
@@ -63,5 +66,14 @@ impl UserData for Core {
                 .unwrap();
             Ok(())
         });
+        methods.add_method(
+            "exec",
+            |_, _, cmd: String| -> Result<ExecResponse, rlua::Error> {
+                match exec(&cmd) {
+                    Ok(output) => Ok(ExecResponse::from(output)),
+                    Err(err) => Err(rlua::Error::RuntimeError(err.to_string())),
+                }
+            },
+        );
     }
 }

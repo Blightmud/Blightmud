@@ -5,6 +5,7 @@ mod alias;
 mod blight;
 mod constants;
 mod core;
+mod exec_response;
 mod lua_script;
 mod store_data;
 mod trigger;

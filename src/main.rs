@@ -113,6 +113,11 @@ fn main() {
         "tls",
         "Use tls when connecting to a server (only applies in combination with --connect)",
     );
+    opts.optflag(
+        "T",
+        "tts",
+        "Use the TTS system when playing a MUD (for visually impaired users",
+    );
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
 

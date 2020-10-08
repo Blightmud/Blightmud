@@ -36,6 +36,7 @@ impl UserData for Trigger {
                 "raw" => Ok(rlua::Value::Boolean(this.gag)),
                 "enabled" => Ok(rlua::Value::Boolean(this.enabled)),
                 "prompt" => Ok(rlua::Value::Boolean(this.prompt)),
+                "count" => Ok(rlua::Value::Integer(this.count as i64)),
                 _ => Err(rlua::Error::RuntimeError(format!(
                     "No value {} exists on Trigger object",
                     key

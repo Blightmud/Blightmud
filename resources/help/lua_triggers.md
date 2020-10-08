@@ -21,6 +21,7 @@ Options allow you to fine-tune how the trigger is matched or displayed.
 - `gag`      Gag (don't print) the matched line.
 - `raw`      Match on the raw mud line (ANSI escapes intact)
 - `prompt`   Match against the prompt instead of regular output lines.
+- `count`    Number of times this trigger will match before being removed (default: 0 = infinite)
 - `enabled`  Sets the enabled status of the trigger
 
 ##
@@ -97,6 +98,7 @@ end)
     gag: bool,
     raw: bool,
     prompt: bool,
+    count: number,
 }
 ```
 

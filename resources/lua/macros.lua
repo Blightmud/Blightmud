@@ -23,6 +23,14 @@ local function state_label (state, label)
 	return color .. label .. C_RESET
 end
 
+local function number_label (number, label)
+	local color = C_RED
+	if number > 0 then
+		color = C_GREEN
+	end
+	return label .. color .. tostring(number) .. C_RESET
+end
+
 blight:add_alias("^/aliases$", function ()
 	local aliases = blight:get_aliases()
 
@@ -40,6 +48,7 @@ blight:add_alias("^/triggers$", function ()
 		local gag = state_label(trigger.gag, "gag")
 		local raw = state_label(trigger.raw, "raw")
 		local prompt = state_label(trigger.prompt, "prompt")
-		blight:output(string.format("%s :\t" .. C_YELLOW .. "%s" .. C_RESET .. "\t%s\t%s\t%s\t%s", id, trigger.regex, enabled, gag, raw, prompt))
+		local count = number_label(trigger.count, "count: ")
+		blight:output(string.format("%s :\t" .. C_YELLOW .. "%s" .. C_RESET .. "\t%s\t%s\t%s\t%s\t%s", id, trigger.regex, enabled, gag, raw, prompt, count))
 	end
 end)

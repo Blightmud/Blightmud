@@ -8,6 +8,7 @@ pub struct Trigger {
     pub raw: bool,
     pub enabled: bool,
     pub prompt: bool,
+    pub count: u32,
 }
 
 impl Trigger {
@@ -19,6 +20,7 @@ impl Trigger {
                 raw: false,
                 enabled: true,
                 prompt: false,
+                count: 0,
             }),
             Err(msg) => Err(msg.to_string()),
         }

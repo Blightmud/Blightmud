@@ -1,6 +1,7 @@
 #[cfg(not(debug_assertions))]
 use dirs;
 
+use crate::tts::{spawn_tts_thread, TTSEvent};
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
@@ -20,6 +21,7 @@ mod net;
 mod session;
 mod timer;
 mod tools;
+mod tts;
 mod ui;
 
 use crate::event::Event;
@@ -116,7 +118,7 @@ fn main() {
     opts.optflag(
         "T",
         "tts",
-        "Use the TTS system when playing a MUD (for visually impaired users",
+        "Use the TTS system when playing a MUD (for visually impaired users)",
     );
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
@@ -226,6 +228,10 @@ fn run(
     let mut saved_servers = Servers::load()?;
 
     check_latest_version(session.main_writer.clone());
+    let speak = spawn_tts_thread();
+    speak
+        .send(TTSEvent::Speak("TTS thread starting".to_string(), false))
+        .unwrap();
 
     loop {
         if session.terminate.load(Ordering::Relaxed) {
@@ -397,6 +403,7 @@ fn run(
             screen.flush();
         }
     }
+    speak.send(TTSEvent::Shutdown).unwrap();
     screen.reset()?;
     settings.save()?;
     session.close()?;

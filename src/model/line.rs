@@ -9,7 +9,9 @@ pub struct Flags {
     pub prompt: bool,
     pub bypass_script: bool,
     pub matched: bool,
-    pub tts: bool,
+    pub tts_force: bool,
+    pub tts_gag: bool,
+    pub tts_interrupt: bool,
 }
 
 #[derive(Debug, Clone)]

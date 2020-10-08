@@ -150,9 +150,10 @@ impl LuaScript {
 
         self.state.context(|ctx| {
             let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
-            for pair in trigger_table.pairs::<rlua::Value, rlua::AnyUserData>() {
-                let (_, trigger) = pair.unwrap();
-                let rust_trigger = &trigger.borrow::<Trigger>().unwrap();
+            let mut deletes: Vec<u32> = vec![];
+            for pair in trigger_table.pairs::<rlua::Number, rlua::AnyUserData>() {
+                let (trigger_id, trigger) = pair.unwrap();
+                let rust_trigger = &mut trigger.borrow_mut::<Trigger>().unwrap();
 
                 let trigger_captures = if rust_trigger.raw {
                     rust_trigger.regex.captures(&raw_input)
@@ -179,9 +180,23 @@ impl LuaScript {
                         line.flags.gag =
                             rust_trigger.gag || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
 
+                        if rust_trigger.count > 0 {
+                            rust_trigger.count -= 1;
+                            if rust_trigger.count == 0 {
+                                deletes.push(trigger_id as u32);
+                            }
+                        }
+
                         // Reset the gag flag
                         ctx.globals().set(GAG_NEXT_TRIGGER_LINE, false).unwrap();
                     }
+                }
+            }
+
+            if !deletes.is_empty() {
+                let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
+                for id in deletes {
+                    trigger_table.set(id, rlua::Nil).unwrap();
                 }
             }
         });
@@ -374,6 +389,23 @@ mod lua_script_tests {
 
         assert!(test_trigger("test", &lua));
         assert!(!test_trigger("test test", &lua));
+    }
+
+    #[test]
+    fn test_lua_counted_trigger() {
+        let create_trigger_lua = r#"
+        blight:add_trigger("^test$", {count=3}, function () end)
+        "#;
+
+        let lua = get_lua().0;
+        lua.state.context(|ctx| {
+            ctx.load(create_trigger_lua).exec().unwrap();
+        });
+
+        assert!(test_trigger("test", &lua));
+        assert!(test_trigger("test", &lua));
+        assert!(test_trigger("test", &lua));
+        assert!(!test_trigger("test", &lua));
     }
 
     #[test]

@@ -5,6 +5,10 @@ Blightmud has built in support for Text-to-speech (TTS).
 You can enable TTS using `/tts on|off` or by providing the flag `--tts` on the commandline.
 This will make everything printed spoken through TTS.
 
+Make sure you disable your screen reader before you do this as blightmud and your screen
+reader software sharing the same speech dispatcher isn't always a match made
+in heaven.
+
 If you want to use TTS just for notifications and other special information
 you can interact with it through lua.
 

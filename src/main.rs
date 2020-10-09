@@ -1,16 +1,16 @@
+use crate::tts::TTSController;
 #[cfg(not(debug_assertions))]
 use dirs;
 
-use crate::tts::{spawn_tts_thread, TTSEvent};
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
-use std::path::PathBuf;
 use std::sync::{
     atomic::Ordering,
     mpsc::{channel, Receiver, Sender},
 };
 use std::{env, fs, thread};
+use std::{path::PathBuf, rc::Rc};
 use ui::HelpHandler;
 
 mod event;
@@ -191,7 +191,8 @@ fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut screen = Screen::new()?;
+    let tts_ctrl = Rc::new(TTSController::new(true));
+    let mut screen = Screen::new(tts_ctrl.clone())?;
     screen.setup()?;
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
@@ -224,14 +225,9 @@ fn run(
     }
 
     let mut event_handler = EventHandler::from(&session);
-
     let mut saved_servers = Servers::load()?;
 
     check_latest_version(session.main_writer.clone());
-    let speak = spawn_tts_thread();
-    speak
-        .send(TTSEvent::Speak("TTS thread starting".to_string(), false))
-        .unwrap();
 
     loop {
         if session.terminate.load(Ordering::Relaxed) {
@@ -259,6 +255,7 @@ fn run(
                 | Event::Error(_)
                 | Event::Info(_)
                 | Event::UserInputBuffer(_, _) => {
+                    //tts_ctrl.handle_events(event.clone());
                     event_handler.handle_output_events(event, &mut screen)?;
                 }
                 Event::ShowSetting(setting) => match settings.get(&setting) {
@@ -403,7 +400,7 @@ fn run(
             screen.flush();
         }
     }
-    speak.send(TTSEvent::Shutdown).unwrap();
+    tts_ctrl.shutdown();
     screen.reset()?;
     settings.save()?;
     session.close()?;

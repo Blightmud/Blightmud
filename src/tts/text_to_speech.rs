@@ -105,7 +105,10 @@ fn spawn_tts_thread() -> Sender<TTSEvent> {
                 TTSEvent::Flush => {
                     tts.stop().unwrap();
                 }
-                TTSEvent::Shutdown => break,
+                TTSEvent::Shutdown => {
+                    tts.stop().unwrap();
+                    break;
+                }
             }
         }
     });

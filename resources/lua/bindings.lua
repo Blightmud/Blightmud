@@ -10,3 +10,5 @@ bind("ctrl-a", "step_to_start")
 bind("ctrl-e", "step_to_end")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
+
+blight:bind("ctrl-s", function () tts:stop() end)

@@ -81,6 +81,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
     files.insert("blight", include_str!("../../resources/help/lua_blight.md"));
     files.insert("bindings", include_str!("../../resources/help/bindings.md"));
     files.insert("core", include_str!("../../resources/help/core.md"));
+    files.insert("tts", include_str!("../../resources/help/tts.md"));
     files.insert(
         "status_area",
         include_str!("../../resources/help/lua_status_area.md"),

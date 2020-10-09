@@ -5,9 +5,12 @@ use dirs;
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
-use std::sync::{
-    atomic::Ordering,
-    mpsc::{channel, Receiver, Sender},
+use std::{
+    cell::RefCell,
+    sync::{
+        atomic::Ordering,
+        mpsc::{channel, Receiver, Sender},
+    },
 };
 use std::{env, fs, thread};
 use std::{path::PathBuf, rc::Rc};
@@ -178,8 +181,8 @@ fn main() {
 
     let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
-
-    if let Err(error) = run(main_thread_read, session) {
+    let tts_enabled = matches.opt_present("tts");
+    if let Err(error) = run(main_thread_read, session, tts_enabled) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
     }
@@ -190,8 +193,9 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
+    tts_enabled: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let tts_ctrl = Rc::new(TTSController::new(true));
+    let tts_ctrl = Rc::new(RefCell::new(TTSController::new(tts_enabled)));
     let mut screen = Screen::new(tts_ctrl.clone())?;
     screen.setup()?;
 
@@ -258,6 +262,9 @@ fn run(
                     //tts_ctrl.handle_events(event.clone());
                     event_handler.handle_output_events(event, &mut screen)?;
                 }
+                Event::TTSEnabled(enabled) => tts_ctrl.borrow_mut().enabled(enabled),
+                Event::Speak(msg, interupt) => tts_ctrl.borrow().speak(&msg, interupt),
+                Event::SpeakStop => tts_ctrl.borrow().flush(),
                 Event::ShowSetting(setting) => match settings.get(&setting) {
                     Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
                     Err(error) => screen.print_error(&error.to_string()),
@@ -400,7 +407,7 @@ fn run(
             screen.flush();
         }
     }
-    tts_ctrl.shutdown();
+    tts_ctrl.borrow().shutdown();
     screen.reset()?;
     settings.save()?;
     session.close()?;

@@ -53,6 +53,9 @@ pub enum Event {
     StatusAreaHeight(u16),
     StatusLine(usize, String),
     ShowHelp(String),
+    TTSEnabled(bool),
+    Speak(String, bool),
+    SpeakStop,
     Redraw,
     Quit,
 }

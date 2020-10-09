@@ -6,6 +6,7 @@ use tts::TTS;
 
 use crate::model::Line;
 
+#[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {
     Speak(String, bool),
     Flush,
@@ -20,7 +21,25 @@ pub struct TTSController {
 impl TTSController {
     pub fn new(enabled: bool) -> Self {
         let rt = spawn_tts_thread();
+        if enabled {
+            rt.send(TTSEvent::Speak("Text to speech enabled".to_string(), false))
+                .unwrap();
+        }
         Self { rt, enabled }
+    }
+
+    pub fn enabled(&mut self, enabled: bool) {
+        if enabled {
+            self.rt
+                .send(TTSEvent::Speak("Text to speech enabled".to_string(), false))
+                .unwrap();
+        } else {
+            self.rt.send(TTSEvent::Flush).unwrap();
+            self.rt
+                .send(TTSEvent::Speak("Text to speech disabled".to_string(), true))
+                .unwrap();
+        }
+        self.enabled = enabled;
     }
 
     pub fn speak_line(&self, line: &Line) {
@@ -46,13 +65,10 @@ impl TTSController {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn speak(&self, msg: &str) {
-        if self.enabled {
-            self.rt
-                .send(TTSEvent::Speak(msg.to_string(), false))
-                .unwrap();
-        }
+    pub fn speak(&self, msg: &str, interupt: bool) {
+        self.rt
+            .send(TTSEvent::Speak(msg.to_string(), interupt))
+            .unwrap();
     }
 
     pub fn speak_info(&self, msg: &str) {

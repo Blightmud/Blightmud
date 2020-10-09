@@ -9,5 +9,6 @@ mod exec_response;
 mod lua_script;
 mod store_data;
 mod trigger;
+mod tts;
 mod ui_event;
 mod util;

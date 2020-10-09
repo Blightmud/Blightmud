@@ -52,3 +52,7 @@ blight:add_alias("^/triggers$", function ()
 		blight:output(string.format("%s :\t" .. C_YELLOW .. "%s" .. C_RESET .. "\t%s\t%s\t%s\t%s\t%s", id, trigger.regex, enabled, gag, raw, prompt, count))
 	end
 end)
+
+blight:add_alias("^/tts (on|off)$", function (matches)
+	tts:enable(matches[2] == "on")
+end)

@@ -1,6 +1,9 @@
 use crate::{model::Line, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
-use std::io::{stdout, Stdout, Write};
+use std::{
+    cell::RefCell,
+    io::{stdout, Stdout, Write},
+};
 use std::{collections::VecDeque, rc::Rc};
 use std::{error, fmt};
 use termion::{
@@ -204,7 +207,7 @@ impl History {
 
 pub struct Screen {
     screen: ScreenHandle,
-    tts_ctrl: Rc<TTSController>,
+    tts_ctrl: Rc<RefCell<TTSController>>,
     pub width: u16,
     pub height: u16,
     output_line: u16,
@@ -217,7 +220,7 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(tts_ctrl: Rc<TTSController>) -> Result<Self, Box<dyn error::Error>> {
+    pub fn new(tts_ctrl: Rc<RefCell<TTSController>>) -> Result<Self, Box<dyn error::Error>> {
         let screen = AlternateScreen::from(stdout().into_raw_mode()?);
         let (width, height) = termion::terminal_size()?;
 
@@ -393,7 +396,7 @@ impl Screen {
     }
 
     pub fn print_output(&mut self, line: &Line) {
-        self.tts_ctrl.speak_line(line);
+        self.tts_ctrl.borrow().speak_line(line);
         if let Some(print_line) = line.print_line() {
             if print_line.trim().is_empty() {
                 self.print_line(&print_line);
@@ -421,7 +424,7 @@ impl Screen {
 
     pub fn print_send(&mut self, send: &Line) {
         if let Some(line) = send.print_line() {
-            self.tts_ctrl.speak_input(&line);
+            self.tts_ctrl.borrow().speak_input(&line);
             self.print_line(&format!(
                 "{}> {}{}",
                 color::Fg(color::LightYellow),
@@ -434,7 +437,7 @@ impl Screen {
     pub fn print_info(&mut self, output: &str) {
         let line = &format!("[**] {}", output);
         self.print_line(line);
-        self.tts_ctrl.speak_info(output);
+        self.tts_ctrl.borrow().speak_info(output);
     }
 
     pub fn print_error(&mut self, output: &str) {
@@ -445,7 +448,7 @@ impl Screen {
             color::Fg(color::Reset)
         );
         self.print_line(line);
-        self.tts_ctrl.speak_error(output);
+        self.tts_ctrl.borrow().speak_error(output);
     }
 
     pub fn scroll_up(&mut self) -> Result<()> {

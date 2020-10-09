@@ -146,7 +146,7 @@ impl EventHandler {
                 let host = self.session.host();
                 let port = self.session.port();
                 debug!("Connected to {}:{}", host, port);
-                screen.redraw_top_bar(&host, port)?;
+                screen.set_host(&host, port)?;
                 if let Ok(mut script) = self.session.lua_script.lock() {
                     script.on_connect(&host, port);
                     script.get_output_lines().iter().for_each(|l| {
@@ -174,7 +174,7 @@ impl EventHandler {
                         });
                     }
                     transmit_writer.take();
-                    screen.redraw_top_bar("", 0)?;
+                    screen.set_host("", 0)?;
                 }
                 Ok(())
             }

@@ -212,6 +212,7 @@ pub struct Screen {
     cursor_prompt_pos: u16,
     history: History,
     scroll_data: ScrollData,
+    connection: Option<String>,
 }
 
 impl Screen {
@@ -235,6 +236,7 @@ impl Screen {
             cursor_prompt_pos: 1,
             history: History::new(),
             scroll_data: ScrollData(false, 0),
+            connection: None,
         })
     }
 
@@ -257,7 +259,7 @@ impl Screen {
                 DisableOriginMode
             )
             .unwrap(); // Set scroll region, non origin mode
-            self.redraw_top_bar("", 0)?;
+            self.redraw_top_bar()?;
             self.reset_scroll()?;
             self.screen.flush()?;
             write!(
@@ -287,7 +289,16 @@ impl Screen {
         Ok(())
     }
 
-    pub fn redraw_top_bar(&mut self, host: &str, port: u16) -> Result<()> {
+    pub fn set_host(&mut self, host: &str, port: u16) -> Result<()> {
+        self.connection = if !host.is_empty() {
+            Some(format!("{}:{}", host, port))
+        } else {
+            None
+        };
+        self.redraw_top_bar()
+    }
+
+    fn redraw_top_bar(&mut self) -> Result<()> {
         write!(
             self.screen,
             "{}{}{}",
@@ -295,8 +306,8 @@ impl Screen {
             termion::clear::CurrentLine,
             color::Fg(color::Green),
         )?;
-        let output = if !host.is_empty() {
-            format!("═ {}:{} ═", host, port)
+        let output = if let Some(connection) = &self.connection {
+            format!("═ {} ═", connection)
         } else {
             "".to_string()
         };

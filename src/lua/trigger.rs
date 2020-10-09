@@ -8,6 +8,7 @@ pub struct Trigger {
     pub raw: bool,
     pub enabled: bool,
     pub prompt: bool,
+    pub count: u32,
 }
 
 impl Trigger {
@@ -19,6 +20,7 @@ impl Trigger {
                 raw: false,
                 enabled: true,
                 prompt: false,
+                count: 0,
             }),
             Err(msg) => Err(msg.to_string()),
         }
@@ -34,6 +36,7 @@ impl UserData for Trigger {
                 "raw" => Ok(rlua::Value::Boolean(this.gag)),
                 "enabled" => Ok(rlua::Value::Boolean(this.enabled)),
                 "prompt" => Ok(rlua::Value::Boolean(this.prompt)),
+                "count" => Ok(rlua::Value::Integer(this.count as i64)),
                 _ => Err(rlua::Error::RuntimeError(format!(
                     "No value {} exists on Trigger object",
                     key

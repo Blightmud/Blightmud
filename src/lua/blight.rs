@@ -279,6 +279,7 @@ impl UserData for Blight {
                         trigger.gag = options.get("gag")?;
                         trigger.raw = options.get("raw")?;
                         trigger.prompt = options.get("prompt")?;
+                        trigger.count = options.get("count").ok().unwrap_or_default();
                         trigger.enabled = !options.get("enabled")?;
                         trigger_table.raw_set(next_index, trigger)?;
                         let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;

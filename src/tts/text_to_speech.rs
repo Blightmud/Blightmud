@@ -23,7 +23,7 @@ impl TTSController {
         let rt = spawn_tts_thread();
         if enabled {
             rt.send(TTSEvent::Speak("Text to speech enabled".to_string(), false))
-                .unwrap();
+                .ok();
         }
         Self { rt, enabled }
     }
@@ -32,12 +32,12 @@ impl TTSController {
         if enabled {
             self.rt
                 .send(TTSEvent::Speak("Text to speech enabled".to_string(), false))
-                .unwrap();
+                .ok();
         } else {
-            self.rt.send(TTSEvent::Flush).unwrap();
+            self.rt.send(TTSEvent::Flush).ok();
             self.rt
                 .send(TTSEvent::Speak("Text to speech disabled".to_string(), true))
-                .unwrap();
+                .ok();
         }
         self.enabled = enabled;
     }
@@ -68,14 +68,14 @@ impl TTSController {
     pub fn speak(&self, msg: &str, interupt: bool) {
         self.rt
             .send(TTSEvent::Speak(msg.to_string(), interupt))
-            .unwrap();
+            .ok();
     }
 
     pub fn speak_info(&self, msg: &str) {
         if self.enabled {
             self.rt
                 .send(TTSEvent::Speak(format!("info: {}", msg), false))
-                .unwrap();
+                .ok();
         }
     }
 
@@ -83,7 +83,7 @@ impl TTSController {
         if self.enabled {
             self.rt
                 .send(TTSEvent::Speak(format!("error: {}", msg), false))
-                .unwrap();
+                .ok();
         }
     }
 
@@ -102,31 +102,33 @@ impl TTSController {
 
 fn spawn_tts_thread() -> Sender<TTSEvent> {
     let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
-    thread::spawn(|| {
-        let mut tts = TTS::default().unwrap();
-        let rx = rx;
-        let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
-        while let Ok(event) = rx.recv() {
-            match event {
-                TTSEvent::Speak(msg, force) => {
-                    if msg.is_empty() || !alphanum.is_match(&msg) {
-                        continue;
+    thread::spawn(|| match TTS::default() {
+        Ok(mut tts) => {
+            let rx = rx;
+            let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
+            while let Ok(event) = rx.recv() {
+                match event {
+                    TTSEvent::Speak(msg, force) => {
+                        if msg.is_empty() || !alphanum.is_match(&msg) {
+                            continue;
+                        }
+                        debug!("[TTS]: Speaking: '{}' foce: {}", msg, force);
+                        if let Err(err) = tts.speak(msg, force) {
+                            error!("[TTS]: {}", err.to_string());
+                            continue;
+                        }
                     }
-                    debug!("[TTS]: Speaking: '{}' foce: {}", msg, force);
-                    if let Err(err) = tts.speak(msg, force) {
-                        error!("[TTS]: {}", err.to_string());
-                        continue;
+                    TTSEvent::Flush => {
+                        tts.stop().unwrap();
                     }
-                }
-                TTSEvent::Flush => {
-                    tts.stop().unwrap();
-                }
-                TTSEvent::Shutdown => {
-                    tts.stop().unwrap();
-                    break;
+                    TTSEvent::Shutdown => {
+                        tts.stop().unwrap();
+                        break;
+                    }
                 }
             }
         }
+        Err(err) => error!("[TTS]: {}", err.to_string()),
     });
     tx
 }

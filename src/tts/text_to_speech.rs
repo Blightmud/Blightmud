@@ -1,10 +1,11 @@
-use std::{sync::mpsc::channel, sync::mpsc::Receiver, sync::mpsc::Sender, thread};
+use std::{path::PathBuf, sync::mpsc::channel, sync::mpsc::Receiver, sync::mpsc::Sender, thread};
 
 use log::{debug, error};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use tts::TTS;
 
-use crate::model::Line;
+use crate::{io::SaveData, model::Line};
 
 use anyhow::Result;
 
@@ -14,12 +15,27 @@ pub enum TTSEvent {
     Flush,
     SetRate(f32),
     ChangeRate(f32),
+    EchoKeys(bool),
+    KeyPress(char),
     Shutdown,
 }
 
 pub struct TTSController {
     rt: Sender<TTSEvent>,
     enabled: bool,
+    pub settings: TTSSettings,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct TTSSettings {
+    echo_keys: bool,
+    rate: f32,
+}
+
+impl SaveData for TTSSettings {
+    fn relative_path() -> PathBuf {
+        PathBuf::from("data/tts_settings.ron")
+    }
 }
 
 impl TTSController {
@@ -29,11 +45,37 @@ impl TTSController {
             rt.send(TTSEvent::Speak("Text to speech enabled".to_string(), false))
                 .ok();
         }
-        Self { rt, enabled }
+        let settings = TTSSettings::load().unwrap_or_default();
+        Self {
+            rt,
+            enabled,
+            settings,
+        }
     }
 
     pub fn handle(&mut self, event: TTSEvent) {
-        self.rt.send(event).ok();
+        match event {
+            TTSEvent::ChangeRate(rate) => {
+                self.settings.rate += rate;
+                self.rt.send(event).ok();
+            }
+            TTSEvent::SetRate(rate) => {
+                self.settings.rate = rate;
+                self.rt.send(event).ok();
+            }
+            TTSEvent::EchoKeys(enabled) => {
+                self.settings.echo_keys = enabled;
+            }
+            _ => {
+                self.rt.send(event).ok();
+            }
+        }
+    }
+
+    pub fn key_press(&mut self, key: char) {
+        if self.enabled && self.settings.echo_keys {
+            self.rt.send(TTSEvent::KeyPress(key)).ok();
+        }
     }
 
     pub fn enabled(&mut self, enabled: bool) {
@@ -137,6 +179,10 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
                 tts.stop().unwrap();
                 break;
             }
+            TTSEvent::KeyPress(key) => {
+                tts.speak(key, true)?;
+            }
+            _ => {}
         }
     }
     Ok(())

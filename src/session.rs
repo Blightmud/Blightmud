@@ -4,7 +4,7 @@ use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 
 use crate::{
     io::Logger, lua::LuaScript, net::MudConnection, net::OutputBuffer, net::BUFFER_SIZE,
-    timer::TimerEvent, Event,
+    timer::TimerEvent, tts::TTSController, Event,
 };
 
 #[derive(Default)]
@@ -26,6 +26,7 @@ pub struct Session {
     pub lua_script: Arc<Mutex<LuaScript>>,
     pub comops: Arc<Mutex<CommunicationOptions>>,
     pub logger: Arc<Mutex<Logger>>,
+    pub tts_ctrl: Arc<Mutex<TTSController>>,
 }
 
 impl Session {
@@ -113,6 +114,7 @@ impl Session {
         self.disconnect();
         self.main_writer.send(Event::Quit)?;
         self.timer_writer.send(TimerEvent::Quit)?;
+        self.tts_ctrl.lock().unwrap().shutdown();
         Ok(())
     }
 }
@@ -122,6 +124,7 @@ pub struct SessionBuilder {
     main_writer: Option<Sender<Event>>,
     timer_writer: Option<Sender<TimerEvent>>,
     screen_dimensions: Option<(u16, u16)>,
+    tts_enabled: bool,
 }
 
 impl SessionBuilder {
@@ -130,6 +133,7 @@ impl SessionBuilder {
             main_writer: None,
             timer_writer: None,
             screen_dimensions: None,
+            tts_enabled: false,
         }
     }
 
@@ -148,10 +152,16 @@ impl SessionBuilder {
         self
     }
 
+    pub fn tts_enabled(mut self, enabled: bool) -> Self {
+        self.tts_enabled = enabled;
+        self
+    }
+
     pub fn build(self) -> Session {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
         let dimensions = self.screen_dimensions.unwrap();
+        let tts_enabled = self.tts_enabled;
         Session {
             connection: Arc::new(Mutex::new(MudConnection::new())),
             gmcp: Arc::new(AtomicBool::new(false)),
@@ -167,6 +177,7 @@ impl SessionBuilder {
             lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer, dimensions))),
             comops: Arc::new(Mutex::new(CommunicationOptions::default())),
             logger: Arc::new(Mutex::new(Logger::default())),
+            tts_ctrl: Arc::new(Mutex::new(TTSController::new(tts_enabled))),
         }
     }
 }

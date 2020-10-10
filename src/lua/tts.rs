@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 
 use rlua::{UserData, UserDataMethods};
 
-use crate::event::Event;
+use crate::{event::Event, tts::TTSEvent};
 
 use super::constants::TTS_GAG_NEXT_TRIGGER_LINE;
 
@@ -36,6 +36,18 @@ impl UserData for Tts {
         });
         methods.add_method("enable", |_, this, enabled: bool| {
             this.writer.send(Event::TTSEnabled(enabled)).unwrap();
+            Ok(())
+        });
+        methods.add_method("set_rate", |_, this, rate: f64| {
+            this.writer
+                .send(Event::TTSEvent(TTSEvent::SetRate(rate as f32)))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_method("change_rate", |_, this, rate: f64| {
+            this.writer
+                .send(Event::TTSEvent(TTSEvent::ChangeRate(rate as f32)))
+                .unwrap();
             Ok(())
         });
     }

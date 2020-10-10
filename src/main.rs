@@ -262,9 +262,12 @@ fn run(
                     //tts_ctrl.handle_events(event.clone());
                     event_handler.handle_output_events(event, &mut screen)?;
                 }
+
                 Event::TTSEnabled(enabled) => tts_ctrl.borrow_mut().enabled(enabled),
                 Event::Speak(msg, interupt) => tts_ctrl.borrow().speak(&msg, interupt),
                 Event::SpeakStop => tts_ctrl.borrow().flush(),
+                Event::TTSEvent(event) => tts_ctrl.borrow_mut().handle(event),
+
                 Event::ShowSetting(setting) => match settings.get(&setting) {
                     Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
                     Err(error) => screen.print_error(&error.to_string()),

@@ -6,10 +6,14 @@ use tts::TTS;
 
 use crate::model::Line;
 
+use anyhow::Result;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {
     Speak(String, bool),
     Flush,
+    SetRate(f32),
+    ChangeRate(f32),
     Shutdown,
 }
 
@@ -26,6 +30,10 @@ impl TTSController {
                 .ok();
         }
         Self { rt, enabled }
+    }
+
+    pub fn handle(&mut self, event: TTSEvent) {
+        self.rt.send(event).ok();
     }
 
     pub fn enabled(&mut self, enabled: bool) {
@@ -100,32 +108,46 @@ impl TTSController {
     }
 }
 
+fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
+    let rx = rx;
+    let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
+    tts.set_rate((tts.max_rate() - tts.normal_rate()) / 2.0)?;
+    while let Ok(event) = rx.recv() {
+        debug!("[TTS]: Event: {:?}", event);
+        match event {
+            TTSEvent::Speak(msg, force) => {
+                if msg.is_empty() || !alphanum.is_match(&msg) {
+                    continue;
+                }
+                if let Err(err) = tts.speak(msg, force) {
+                    error!("[TTS]: {}", err.to_string());
+                    continue;
+                }
+            }
+            TTSEvent::Flush => {
+                tts.stop().unwrap();
+            }
+            TTSEvent::SetRate(rate) => {
+                tts.set_rate(rate.min(100.0).max(-100.0))?;
+            }
+            TTSEvent::ChangeRate(increment) => {
+                tts.set_rate((tts.get_rate()? + increment).min(100.0).max(-100.0))?;
+            }
+            TTSEvent::Shutdown => {
+                tts.stop().unwrap();
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn spawn_tts_thread() -> Sender<TTSEvent> {
     let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
     thread::spawn(|| match TTS::default() {
         Ok(mut tts) => {
-            let rx = rx;
-            let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
-            while let Ok(event) = rx.recv() {
-                match event {
-                    TTSEvent::Speak(msg, force) => {
-                        if msg.is_empty() || !alphanum.is_match(&msg) {
-                            continue;
-                        }
-                        debug!("[TTS]: Speaking: '{}' foce: {}", msg, force);
-                        if let Err(err) = tts.speak(msg, force) {
-                            error!("[TTS]: {}", err.to_string());
-                            continue;
-                        }
-                    }
-                    TTSEvent::Flush => {
-                        tts.stop().unwrap();
-                    }
-                    TTSEvent::Shutdown => {
-                        tts.stop().unwrap();
-                        break;
-                    }
-                }
+            if let Err(err) = run_tts(&mut tts, rx) {
+                error!("[TTS]: {}", err.to_string());
             }
         }
         Err(err) => error!("[TTS]: {}", err.to_string()),

@@ -348,6 +348,7 @@ impl Screen {
     }
 
     pub fn print_prompt(&mut self, prompt: &Line) {
+        self.tts_ctrl.borrow().speak_line(&prompt);
         if let Some(prompt_line) = prompt.print_line() {
             self.history.append(prompt_line);
             if !self.scroll_data.0 {

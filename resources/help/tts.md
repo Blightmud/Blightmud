@@ -12,6 +12,11 @@ in heaven.
 If you want to use TTS just for notifications and other special information
 you can interact with it through lua.
 
+## Macros
+
+`/tts on|off`          Enable or disable TTS
+`/tts_rate <rate>`     Set the TTS rate
+
 ## Functions
 
 ***tts:speak(msg, interupt)***
@@ -27,6 +32,17 @@ Toggle general TTS on or off. Where `on` is wither true or false.
 
 ***tts:enabled() -> enabled***
 Returns if tts is enabled or not
+
+##
+
+***tts:set_rate(rate)***
+Set the speech rate. Default is usually 0, max is 100 and min is -100. This can
+vary on different operating systems.
+
+##
+
+***tts:change_rate(change)***
+Increase or decrease the rate of speech
 
 ##
 

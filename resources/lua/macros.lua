@@ -56,3 +56,7 @@ end)
 blight:add_alias("^/tts (on|off)$", function (matches)
 	tts:enable(matches[2] == "on")
 end)
+
+blight:add_alias("^/tts_rate ([-\\d]+)$", function (matches)
+	tts:set_rate(matches[2])
+end)

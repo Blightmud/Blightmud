@@ -3,6 +3,7 @@ use crate::{
     model::{Connection, Line, Servers},
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
+    tts::TTSEvent,
     ui::Screen,
     TelnetData,
 };
@@ -56,6 +57,7 @@ pub enum Event {
     TTSEnabled(bool),
     Speak(String, bool),
     SpeakStop,
+    TTSEvent(TTSEvent),
     Redraw,
     Quit,
 }

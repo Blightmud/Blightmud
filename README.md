@@ -28,8 +28,10 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - Customizing status bar
     - Persistent storage
     - Keybindings
+    - Text-To-Speech
 - Low resource and fast
 - In client help and manuals
+- Native Text-To-Speech functionality
 - Tab completion
 
 ## Compiling

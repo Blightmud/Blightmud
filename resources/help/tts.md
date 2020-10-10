@@ -14,8 +14,9 @@ you can interact with it through lua.
 
 ## Macros
 
-`/tts on|off`          Enable or disable TTS
-`/tts_rate <rate>`     Set the TTS rate
+`/tts on|off`               Enable or disable TTS
+`/tts_rate <rate>`          Set the TTS rate
+`/tts_keypresses on|off`    Toggle key press speaking when typing
 
 ## Functions
 

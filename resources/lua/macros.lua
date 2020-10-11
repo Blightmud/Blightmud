@@ -62,5 +62,5 @@ blight:add_alias("^/tts_rate ([-\\d]+)$", function (matches)
 end)
 
 blight:add_alias("^/tts_keypresses (on|off)$", function (matches)
-	tts:echo_keypresses(matches[2] == on)
+	tts:echo_keypresses(matches[2] == "on")
 end)

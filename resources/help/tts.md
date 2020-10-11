@@ -18,6 +18,11 @@ you can interact with it through lua.
 `/tts_rate <rate>`          Set the TTS rate
 `/tts_keypresses on|off`    Toggle key press speaking when typing
 
+## Settings
+
+Any of the various settings included in tts will be persisted between
+blightmud restarts so you only need to configure this once.
+
 ## Functions
 
 ***tts:speak(msg, interupt)***

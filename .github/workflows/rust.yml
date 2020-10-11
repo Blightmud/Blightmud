@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - dev
+      - "*_impl"
   pull_request:
     branches: ["*"]
 

@@ -59,8 +59,10 @@ impl TTSController {
             enabled,
             settings,
         };
-        tts_ctrl.send(TTSEvent::SetRate(tts_ctrl.settings.rate));
-        tts_ctrl.send(TTSEvent::Speak("Text to speech enabled".to_string(), false));
+
+        if let Some(rt) = &tts_ctrl.rt {
+            rt.send(TTSEvent::SetRate(tts_ctrl.settings.rate)).ok();
+        }
         tts_ctrl
     }
 

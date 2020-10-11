@@ -472,15 +472,22 @@ fn parse_command(msg: &str) -> Event {
 #[cfg(test)]
 mod command_test {
 
+    use std::sync::{Arc, Mutex};
+
     use super::CommandBuffer;
+    use crate::tts::TTSController;
 
     fn push_string(buffer: &mut CommandBuffer, msg: &str) {
         msg.chars().for_each(|c| buffer.push_key(c));
     }
 
+    fn get_command() -> CommandBuffer {
+        CommandBuffer::new(Arc::new(Mutex::new(TTSController::new(false))))
+    }
+
     #[test]
     fn test_editing() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
 
         push_string(&mut buffer, "test is test");
         assert_eq!(buffer.get_buffer(), "test is test");
@@ -502,7 +509,7 @@ mod command_test {
 
     #[test]
     fn test_no_zero_index_remove_crash() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         buffer.push_key('t');
         buffer.move_left();
         assert_eq!(buffer.get_pos(), 0);
@@ -512,14 +519,14 @@ mod command_test {
 
     #[test]
     fn test_no_history_empty_input() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         buffer.submit();
         assert!(buffer.history.is_empty());
     }
 
     #[test]
     fn no_duplicate_commands_in_history() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "test");
         buffer.submit();
         push_string(&mut buffer, "test");
@@ -549,7 +556,7 @@ mod command_test {
 
     #[test]
     fn test_input_navigation() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_word_left();
         assert_eq!(buffer.cursor_pos, 12);
@@ -571,7 +578,7 @@ mod command_test {
 
     #[test]
     fn test_end_start_navigation() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         assert_eq!(buffer.cursor_pos, 0);
@@ -585,7 +592,7 @@ mod command_test {
 
     #[test]
     fn test_delete_rest_of_line() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();
@@ -595,7 +602,7 @@ mod command_test {
 
     #[test]
     fn test_delete_from_start_of_line() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();

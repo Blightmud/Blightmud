@@ -79,7 +79,7 @@ jobs:
     - name: Check
       run: cargo check --no-default-features
     - name: Clippy
-      run: cargo clippy
+      run: cargo clippy --no-default-features
     - name: Test
       run: cargo test --no-default-features
     - name: Build
@@ -143,7 +143,7 @@ jobs:
     - name: Check
       run: cargo check --no-default-features
     - name: Clippy
-      run: cargo clippy
+      run: cargo clippy --no-default-features
     - name: Test
       run: cargo test --no-default-features
     - name: Build

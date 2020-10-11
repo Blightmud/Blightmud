@@ -138,8 +138,6 @@ jobs:
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-    - name: Installing dependencies
-      run: sudo apt-get install libspeechd-dev
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check

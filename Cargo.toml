@@ -37,5 +37,5 @@ curl = "0.4.33"
 human-panic = "1.0.3"
 shellexpand = "2.0.0"
 native-tls = "0.2.4"
-tts = { version = "0.8.0", optional = true }
+tts = { version = "0.10.0", optional = true }
 serde_json = "1.0.58"

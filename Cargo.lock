@@ -1702,26 +1702,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "238ce071d267c5710f9d31451efec16c5ee22de34df17cc05e56cbc92e967117"
 
 [[package]]
-name = "tolk"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "911d14d75320ddd07382694a481ed4069e3ec5f116a16a373d3142cf806bebbb"
-dependencies = [
- "tolk-sys",
- "widestring",
-]
-
-[[package]]
-name = "tolk-sys"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7576a974a96efcabc612bc23ae0fab8d70e977360e5e354eb1731cbaa353478a"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
 name = "toml"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1732,9 +1712,9 @@ dependencies = [
 
 [[package]]
 name = "tts"
-version = "0.8.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f91d20b6c58ba9ba129e3f99a5c3d10fc7dfc66854247ac5fe894a484285b5c9"
+checksum = "0787a17312c9e40295cd3c67691e17811d9cab3520f9f1dbdbceccbc149f0b9c"
 dependencies = [
  "cocoa-foundation",
  "lazy_static",
@@ -1743,7 +1723,6 @@ dependencies = [
  "objc",
  "speech-dispatcher",
  "thiserror",
- "tolk",
  "tts_winrt_bindings",
  "wasm-bindgen",
  "web-sys",
@@ -1952,12 +1931,6 @@ checksum = "d011071ae14a2f6671d0b74080ae0cd8ebf3a6f8c9589a2cd45f23126fe29724"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "widestring"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c168940144dd21fd8046987c16a46a33d5fc84eec29ef9dcddc2ac9e31526b7c"
 
 [[package]]
 name = "winapi"

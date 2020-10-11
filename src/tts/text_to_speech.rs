@@ -55,6 +55,7 @@ impl TTSController {
             enabled,
             settings,
         };
+        tts_ctrl.send(TTSEvent::SetRate(tts_ctrl.settings.rate));
         tts_ctrl.send(TTSEvent::Speak("Text to speech enabled".to_string(), false));
         tts_ctrl
     }
@@ -150,7 +151,6 @@ impl TTSController {
 fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
     let rx = rx;
     let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
-    tts.set_rate((tts.max_rate() - tts.normal_rate()) / 2.0)?;
     while let Ok(event) = rx.recv() {
         debug!("[TTS]: Event: {:?}", event);
         match event {

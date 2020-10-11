@@ -5,14 +5,14 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "tts")]
 use {
     anyhow::Result,
+    log::debug,
     log::error,
+    regex::Regex,
     std::{
         sync::mpsc::{channel, Receiver},
         thread,
     },
     tts::TTS,
-    log::debug,
-    regex::Regex,
 };
 
 use crate::{io::SaveData, model::Line};

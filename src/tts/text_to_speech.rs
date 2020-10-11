@@ -193,16 +193,20 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
 
 #[cfg(feature = "tts")]
 fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
-    let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
-    thread::spawn(|| match TTS::default() {
-        Ok(mut tts) => {
-            if let Err(err) = run_tts(&mut tts, rx) {
-                error!("[TTS]: {}", err.to_string());
+    if !cfg!(test) {
+        let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
+        thread::spawn(|| match TTS::default() {
+            Ok(mut tts) => {
+                if let Err(err) = run_tts(&mut tts, rx) {
+                    error!("[TTS]: {}", err.to_string());
+                }
             }
-        }
-        Err(err) => error!("[TTS]: {}", err.to_string()),
-    });
-    Some(tx)
+            Err(err) => error!("[TTS]: {}", err.to_string()),
+        });
+        Some(tx)
+    } else {
+        None
+    }
 }
 
 #[cfg(not(feature = "tts"))]

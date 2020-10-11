@@ -49,7 +49,11 @@ impl SaveData for TTSSettings {
 impl TTSController {
     pub fn new(enabled: bool) -> Self {
         let rt = spawn_tts_thread();
-        let settings = TTSSettings::load().unwrap_or_default();
+        let settings = if !cfg!(test) {
+            TTSSettings::load().unwrap_or_default()
+        } else {
+            TTSSettings::default()
+        };
         let tts_ctrl = Self {
             rt,
             enabled,
@@ -140,8 +144,10 @@ impl TTSController {
     }
 
     pub fn shutdown(&self) {
-        self.settings.save().ok();
         if let Some(rt) = &self.rt {
+            if !cfg!(test) {
+                self.settings.save().ok();
+            }
             rt.send(TTSEvent::Shutdown).ok();
         }
     }

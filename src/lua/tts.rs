@@ -50,5 +50,11 @@ impl UserData for Tts {
                 .unwrap();
             Ok(())
         });
+        methods.add_method("echo_keypresses", |_, this, enabled: bool| {
+            this.writer
+                .send(Event::TTSEvent(TTSEvent::EchoKeys(enabled)))
+                .unwrap();
+            Ok(())
+        });
     }
 }

@@ -14,8 +14,14 @@ you can interact with it through lua.
 
 ## Macros
 
-`/tts on|off`          Enable or disable TTS
-`/tts_rate <rate>`     Set the TTS rate
+`/tts on|off`               Enable or disable TTS
+`/tts_rate <rate>`          Set the TTS rate
+`/tts_keypresses on|off`    Toggle key press speaking when typing
+
+## Settings
+
+Any of the various settings included in tts will be persisted between
+blightmud restarts so you only need to configure this once.
 
 ## Functions
 
@@ -25,13 +31,13 @@ possible messages that are waiting to be spoken.
 
 ##
 
-***tts:enable(on)***
-Toggle general TTS on or off. Where `on` is wither true or false.
+***tts:enable(enabled)***
+Toggle general TTS on or off. Where `enabled` is wither true or false.
 
 ##
 
-***tts:enabled() -> enabled***
-Returns if tts is enabled or not
+***tts:echo_keypresses(enabled)***
+Toggle if TTS should speak keypresses when typing or not
 
 ##
 

@@ -1,12 +1,21 @@
-use std::{sync::mpsc::channel, sync::mpsc::Receiver, sync::mpsc::Sender, thread};
+use std::{path::PathBuf, sync::mpsc::Sender};
 
-use log::{debug, error};
-use regex::Regex;
-use tts::TTS;
+use serde::{Deserialize, Serialize};
 
-use crate::model::Line;
+#[cfg(feature = "tts")]
+use {
+    anyhow::Result,
+    log::debug,
+    log::error,
+    regex::Regex,
+    std::{
+        sync::mpsc::{channel, Receiver},
+        thread,
+    },
+    tts::TTS,
+};
 
-use anyhow::Result;
+use crate::{io::SaveData, model::Line};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {
@@ -14,49 +23,95 @@ pub enum TTSEvent {
     Flush,
     SetRate(f32),
     ChangeRate(f32),
+    EchoKeys(bool),
+    KeyPress(char),
     Shutdown,
 }
 
 pub struct TTSController {
-    rt: Sender<TTSEvent>,
+    rt: Option<Sender<TTSEvent>>,
     enabled: bool,
+    pub settings: TTSSettings,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct TTSSettings {
+    echo_keys: bool,
+    rate: f32,
+}
+
+impl SaveData for TTSSettings {
+    fn relative_path() -> PathBuf {
+        PathBuf::from("data/tts_settings.ron")
+    }
 }
 
 impl TTSController {
     pub fn new(enabled: bool) -> Self {
         let rt = spawn_tts_thread();
-        if enabled {
-            rt.send(TTSEvent::Speak("Text to speech enabled".to_string(), false))
-                .ok();
+        let settings = if !cfg!(test) {
+            TTSSettings::load().unwrap_or_default()
+        } else {
+            TTSSettings::default()
+        };
+        let tts_ctrl = Self {
+            rt,
+            enabled,
+            settings,
+        };
+        tts_ctrl.send(TTSEvent::SetRate(tts_ctrl.settings.rate));
+        tts_ctrl.send(TTSEvent::Speak("Text to speech enabled".to_string(), false));
+        tts_ctrl
+    }
+
+    fn send(&self, event: TTSEvent) {
+        if self.enabled {
+            if let Some(rt) = &self.rt {
+                rt.send(event).ok();
+            }
         }
-        Self { rt, enabled }
     }
 
     pub fn handle(&mut self, event: TTSEvent) {
-        self.rt.send(event).ok();
+        match event {
+            TTSEvent::ChangeRate(rate) => {
+                self.settings.rate += rate;
+                self.send(event);
+            }
+            TTSEvent::SetRate(rate) => {
+                self.settings.rate = rate;
+                self.send(event);
+            }
+            TTSEvent::EchoKeys(enabled) => {
+                self.settings.echo_keys = enabled;
+            }
+            _ => {
+                self.send(event);
+            }
+        }
+    }
+
+    pub fn key_press(&mut self, key: char) {
+        if self.settings.echo_keys {
+            self.send(TTSEvent::KeyPress(key));
+        }
     }
 
     pub fn enabled(&mut self, enabled: bool) {
-        if enabled {
-            self.rt
-                .send(TTSEvent::Speak("Text to speech enabled".to_string(), false))
-                .ok();
-        } else {
-            self.rt.send(TTSEvent::Flush).ok();
-            self.rt
-                .send(TTSEvent::Speak("Text to speech disabled".to_string(), true))
-                .ok();
-        }
         self.enabled = enabled;
+        if enabled {
+            self.send(TTSEvent::Speak("Text to speech enabled".to_string(), false));
+        } else {
+            self.send(TTSEvent::Flush);
+            self.send(TTSEvent::Speak("Text to speech disabled".to_string(), true));
+        }
     }
 
     pub fn speak_line(&self, line: &Line) {
         if (self.enabled && !line.flags.tts_gag) || line.flags.tts_force {
             let speak = line.clean_line().trim();
             if !speak.is_empty() {
-                self.rt
-                    .send(TTSEvent::Speak(speak.to_string(), line.flags.tts_interrupt))
-                    .ok();
+                self.send(TTSEvent::Speak(speak.to_string(), line.flags.tts_interrupt));
             }
         }
     }
@@ -66,52 +121,42 @@ impl TTSController {
             self.flush();
             let input = line.trim();
             if !input.is_empty() {
-                debug!("Speaking input: {}", input);
                 let speak = format!("input: {}", input);
-                self.rt.send(TTSEvent::Speak(speak, true)).ok();
+                self.send(TTSEvent::Speak(speak, true));
             }
         }
     }
 
     pub fn speak(&self, msg: &str, interupt: bool) {
-        self.rt
-            .send(TTSEvent::Speak(msg.to_string(), interupt))
-            .ok();
+        self.send(TTSEvent::Speak(msg.to_string(), interupt));
     }
 
     pub fn speak_info(&self, msg: &str) {
-        if self.enabled {
-            self.rt
-                .send(TTSEvent::Speak(format!("info: {}", msg), false))
-                .ok();
-        }
+        self.send(TTSEvent::Speak(format!("info: {}", msg), false));
     }
 
     pub fn speak_error(&self, msg: &str) {
-        if self.enabled {
-            self.rt
-                .send(TTSEvent::Speak(format!("error: {}", msg), false))
-                .ok();
-        }
+        self.send(TTSEvent::Speak(format!("error: {}", msg), false));
     }
 
     pub fn flush(&self) {
-        if self.enabled {
-            self.rt.send(TTSEvent::Flush).ok();
-        }
+        self.send(TTSEvent::Flush);
     }
 
     pub fn shutdown(&self) {
-        if self.enabled {
-            self.rt.send(TTSEvent::Shutdown).ok();
+        if let Some(rt) = &self.rt {
+            if !cfg!(test) {
+                self.settings.save().ok();
+            }
+            rt.send(TTSEvent::Shutdown).ok();
         }
     }
 }
 
+#[cfg(feature = "tts")]
 fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
     let rx = rx;
     let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
-    tts.set_rate((tts.max_rate() - tts.normal_rate()) / 2.0)?;
     while let Ok(event) = rx.recv() {
         debug!("[TTS]: Event: {:?}", event);
         match event {
@@ -137,20 +182,34 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
                 tts.stop().unwrap();
                 break;
             }
+            TTSEvent::KeyPress(key) => {
+                tts.speak(key, true)?;
+            }
+            _ => {}
         }
     }
     Ok(())
 }
 
-fn spawn_tts_thread() -> Sender<TTSEvent> {
-    let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
-    thread::spawn(|| match TTS::default() {
-        Ok(mut tts) => {
-            if let Err(err) = run_tts(&mut tts, rx) {
-                error!("[TTS]: {}", err.to_string());
+#[cfg(feature = "tts")]
+fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
+    if !cfg!(test) {
+        let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
+        thread::spawn(|| match TTS::default() {
+            Ok(mut tts) => {
+                if let Err(err) = run_tts(&mut tts, rx) {
+                    error!("[TTS]: {}", err.to_string());
+                }
             }
-        }
-        Err(err) => error!("[TTS]: {}", err.to_string()),
-    });
-    tx
+            Err(err) => error!("[TTS]: {}", err.to_string()),
+        });
+        Some(tx)
+    } else {
+        None
+    }
+}
+
+#[cfg(not(feature = "tts"))]
+fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
+    None
 }

@@ -1,19 +1,15 @@
-use crate::tts::TTSController;
 #[cfg(not(debug_assertions))]
 use dirs;
 
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
-use std::{
-    cell::RefCell,
-    sync::{
-        atomic::Ordering,
-        mpsc::{channel, Receiver, Sender},
-    },
+use std::path::PathBuf;
+use std::sync::{
+    atomic::Ordering,
+    mpsc::{channel, Receiver, Sender},
 };
 use std::{env, fs, thread};
-use std::{path::PathBuf, rc::Rc};
 use ui::HelpHandler;
 
 mod event;
@@ -177,12 +173,12 @@ fn main() {
         .main_writer(main_writer)
         .timer_writer(timer_writer)
         .screen_dimensions(dimensions)
+        .tts_enabled(matches.opt_present("tts"))
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
-    let tts_enabled = matches.opt_present("tts");
-    if let Err(error) = run(main_thread_read, session, tts_enabled) {
+    if let Err(error) = run(main_thread_read, session) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
     }
@@ -193,10 +189,8 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
-    tts_enabled: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let tts_ctrl = Rc::new(RefCell::new(TTSController::new(tts_enabled)));
-    let mut screen = Screen::new(tts_ctrl.clone())?;
+    let mut screen = Screen::new(session.tts_ctrl.clone())?;
     screen.setup()?;
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
@@ -263,10 +257,12 @@ fn run(
                     event_handler.handle_output_events(event, &mut screen)?;
                 }
 
-                Event::TTSEnabled(enabled) => tts_ctrl.borrow_mut().enabled(enabled),
-                Event::Speak(msg, interupt) => tts_ctrl.borrow().speak(&msg, interupt),
-                Event::SpeakStop => tts_ctrl.borrow().flush(),
-                Event::TTSEvent(event) => tts_ctrl.borrow_mut().handle(event),
+                Event::TTSEnabled(enabled) => session.tts_ctrl.lock().unwrap().enabled(enabled),
+                Event::Speak(msg, interupt) => {
+                    session.tts_ctrl.lock().unwrap().speak(&msg, interupt)
+                }
+                Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
+                Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
 
                 Event::ShowSetting(setting) => match settings.get(&setting) {
                     Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
@@ -410,7 +406,6 @@ fn run(
             screen.flush();
         }
     }
-    tts_ctrl.borrow().shutdown();
     screen.reset()?;
     settings.save()?;
     session.close()?;

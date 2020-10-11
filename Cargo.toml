@@ -7,6 +7,9 @@ license = "GPL3"
 authors = ["Linus Probert"]
 edition = "2018"
 
+[features]
+default = ["tts"]
+
 [dependencies]
 libtelnet-rs = "1.0.0"
 termion = "1.5.5"
@@ -31,8 +34,8 @@ rs-complete = "1.0.0"
 simple-error = "0.2.2"
 getopts = "0.2.21"
 curl = "0.4.33"
-serde_json = "1.0.58"
 human-panic = "1.0.3"
 shellexpand = "2.0.0"
 native-tls = "0.2.4"
-tts="0.8.0"
+tts = { version = "0.10.0", optional = true }
+serde_json = "1.0.58"

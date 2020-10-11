@@ -39,13 +39,51 @@ jobs:
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
-      run: cargo check
+      run: cargo check --locked
     - name: Clippy
-      run: cargo clippy
+      run: cargo clippy --locked
     - name: Test
-      run: cargo test
+      run: cargo test --locked
     - name: Build
-      run: cargo build --release
+      run: cargo build --release --locked
+
+  test_macos_no_tts:
+    name: Build on MacOS (no TTS)
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-ndf-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-ndf-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo build
+      uses: actions/cache@v1
+      with:
+        path: target
+        key: ${{ runner.os }}-ndf-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Setup toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        components: clippy, rustfmt
+        override: true
+    - name: Formatting
+      run: cargo fmt -- --check
+    - name: Check
+      run: cargo check --no-default-features --locked
+    - name: Clippy
+      run: cargo clippy --no-default-features --locked
+    - name: Test
+      run: cargo test --no-default-features --locked
+    - name: Build
+      run: cargo build --release --no-default-features --locked
 
   test_ubuntu:
     name: Build on Ubuntu
@@ -67,13 +105,46 @@ jobs:
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Installing dependencies
+      run: sudo apt-get install libspeechd-dev
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
-      run: cargo check
+      run: cargo check --locked
     - name: Clippy
-      run: cargo clippy
+      run: cargo clippy --locked
     - name: Test
-      run: cargo test
+      run: cargo test --locked
     - name: Build
-      run: cargo build --release
+      run: cargo build --release --locked
+
+  test_ubuntu_no_tts:
+    name: Build on Ubuntu (no TTS)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-ndf-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-ndf-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo build
+      uses: actions/cache@v1
+      with:
+        path: target
+        key: ${{ runner.os }}-ndf-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Formatting
+      run: cargo fmt -- --check
+    - name: Check
+      run: cargo check --no-default-features --locked
+    - name: Clippy
+      run: cargo clippy --no-default-features --locked
+    - name: Test
+      run: cargo test --no-default-features --locked
+    - name: Build
+      run: cargo build --release --no-default-features --locked

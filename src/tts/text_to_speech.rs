@@ -4,19 +4,18 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "tts")]
 use {
+    super::speech_queue::SpeechQueue,
     anyhow::Result,
-    log::{error, debug},
+    log::{debug, error},
     regex::Regex,
     std::{
         sync::mpsc::{channel, Receiver},
         thread,
     },
     tts::TTS,
-    super::speech_queue::SpeechQueue,
 };
 
 use crate::{io::SaveData, model::Line};
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {

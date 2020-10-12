@@ -5,19 +5,18 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "tts")]
 use {
     anyhow::Result,
-    log::debug,
-    log::error,
+    log::{error, debug},
     regex::Regex,
     std::{
         sync::mpsc::{channel, Receiver},
         thread,
     },
     tts::TTS,
+    super::speech_queue::SpeechQueue,
 };
 
 use crate::{io::SaveData, model::Line};
 
-use super::speech_queue::SpeechQueue;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {
@@ -163,6 +162,7 @@ impl TTSController {
 }
 
 #[inline]
+#[cfg(feature = "tts")]
 fn speak(tts: &mut TTS, msg: &str, force: bool) -> bool {
     if let Err(err) = tts.speak(msg, force) {
         error!("[TTS]: {}", err.to_string());

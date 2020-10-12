@@ -336,10 +336,16 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                         ))
                         .unwrap();
                 }
-                termion::event::Event::Unsupported(_bytes) => {
-                    writer
-                        .send(Event::Info(format!("Unknown command: {:?}", _bytes)))
-                        .unwrap();
+                termion::event::Event::Unsupported(bytes) => {
+                    if let Ok(utf8) = String::from_utf8(bytes.clone()) {
+                        writer
+                            .send(Event::Info(format!("Unknown command: {:?}", utf8)))
+                            .unwrap();
+                    } else {
+                        writer
+                            .send(Event::Info(format!("Unknown command: {:?}", bytes)))
+                            .unwrap();
+                    }
                 }
                 _ => {}
             }

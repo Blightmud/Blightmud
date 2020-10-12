@@ -17,6 +17,8 @@ use {
 
 use crate::{io::SaveData, model::Line};
 
+use super::speech_queue::SpeechQueue;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {
     Speak(String, bool),
@@ -25,6 +27,10 @@ pub enum TTSEvent {
     ChangeRate(f32),
     EchoKeys(bool),
     KeyPress(char),
+    Next(usize),
+    Prev(usize),
+    Begin,
+    End,
     Shutdown,
 }
 
@@ -113,14 +119,15 @@ impl TTSController {
         if (self.enabled && !line.flags.tts_gag) || line.flags.tts_force {
             let speak = line.clean_line().trim();
             if !speak.is_empty() {
-                self.send(TTSEvent::Speak(speak.to_string(), line.flags.tts_interrupt));
+                for l in speak.lines() {
+                    self.send(TTSEvent::Speak(l.to_string(), line.flags.tts_interrupt));
+                }
             }
         }
     }
 
     pub fn speak_input(&self, line: &str) {
         if self.enabled {
-            self.flush();
             let input = line.trim();
             if !input.is_empty() {
                 let speak = format!("input: {}", input);
@@ -155,10 +162,22 @@ impl TTSController {
     }
 }
 
+#[inline]
+fn speak(tts: &mut TTS, msg: &str, force: bool) -> bool {
+    if let Err(err) = tts.speak(msg, force) {
+        error!("[TTS]: {}", err.to_string());
+        true
+    } else {
+        false
+    }
+}
+
 #[cfg(feature = "tts")]
 fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
+    let mut queue = SpeechQueue::new(1000);
     let rx = rx;
     let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
+
     while let Ok(event) = rx.recv() {
         debug!("[TTS]: Event: {:?}", event);
         match event {
@@ -166,12 +185,42 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
                 if msg.is_empty() || !alphanum.is_match(&msg) {
                     continue;
                 }
-                if let Err(err) = tts.speak(msg, force) {
-                    error!("[TTS]: {}", err.to_string());
-                    continue;
+                if let Some(msg) = queue.push(msg, force) {
+                    if speak(tts, &msg, force) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::Next(step) => {
+                if let Some(msg) = queue.next(step) {
+                    if speak(tts, &msg, true) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::Prev(step) => {
+                if let Some(msg) = queue.prev(step) {
+                    if speak(tts, &msg, true) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::Begin => {
+                if let Some(msg) = queue.current() {
+                    if speak(tts, &msg, true) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::End => {
+                if let Some(msg) = queue.next(1) {
+                    if speak(tts, &msg, true) {
+                        continue;
+                    }
                 }
             }
             TTSEvent::Flush => {
+                queue.flush();
                 tts.stop().unwrap();
             }
             TTSEvent::SetRate(rate) => {
@@ -194,11 +243,22 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
 }
 
 #[cfg(feature = "tts")]
+fn setup_callbacks(tts: &mut TTS, tx: Sender<TTSEvent>) -> Result<(), tts::Error> {
+    tts.on_utterance_end(Some(Box::new(move |_| {
+        tx.send(TTSEvent::Next(1)).ok();
+    })))
+}
+
+#[cfg(feature = "tts")]
 fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
     if !cfg!(test) {
         let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
-        thread::spawn(|| match TTS::default() {
+        let ttx = tx.clone();
+        thread::spawn(move || match TTS::default() {
             Ok(mut tts) => {
+                if let Err(err) = setup_callbacks(&mut tts, ttx) {
+                    error!("[TTS]: {}", err.to_string());
+                }
                 if let Err(err) = run_tts(&mut tts, rx) {
                     error!("[TTS]: {}", err.to_string());
                 }

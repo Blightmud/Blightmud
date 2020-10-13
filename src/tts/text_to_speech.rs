@@ -126,6 +126,7 @@ impl TTSController {
 
     pub fn speak_input(&self, line: &str) {
         if self.enabled {
+            self.flush();
             let input = line.trim();
             if !input.is_empty() {
                 let speak = format!("input: {}", input);

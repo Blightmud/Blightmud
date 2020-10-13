@@ -7,7 +7,6 @@ use {
     super::speech_queue::SpeechQueue,
     anyhow::Result,
     log::{debug, error},
-    regex::Regex,
     std::{
         sync::mpsc::{channel, Receiver},
         thread,
@@ -20,6 +19,7 @@ use crate::{io::SaveData, model::Line};
 #[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {
     Speak(String, bool),
+    SpeakInput(String),
     SpeakDirect(String),
     Flush,
     SetRate(f32),
@@ -129,10 +129,12 @@ impl TTSController {
         if self.enabled {
             self.flush();
             let input = line.trim();
-            if !input.is_empty() {
-                let speak = format!("input: {}", input);
-                self.send(TTSEvent::Speak(speak, true));
-            }
+            let speak = if !input.is_empty() {
+                format!("input: {}", input)
+            } else {
+                "input: blank".to_string()
+            };
+            self.send(TTSEvent::SpeakInput(speak));
         }
     }
 
@@ -177,20 +179,19 @@ fn speak(tts: &mut TTS, msg: &str, force: bool) -> bool {
 fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
     let mut queue = SpeechQueue::new(1000);
     let rx = rx;
-    let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
 
     while let Ok(event) = rx.recv() {
         debug!("[TTS]: Event: {:?}", event);
         match event {
             TTSEvent::Speak(msg, force) => {
-                if !msg.is_empty() && !alphanum.is_match(&msg) {
-                    continue;
-                }
                 if let Some(msg) = queue.push(msg, force) {
                     if speak(tts, &msg, force) {
                         continue;
                     }
                 }
+            }
+            TTSEvent::SpeakInput(msg) => {
+                queue.push_input(msg);
             }
             TTSEvent::SpeakDirect(msg) => {
                 if !msg.is_empty() {

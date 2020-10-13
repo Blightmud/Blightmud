@@ -1,10 +1,47 @@
 use std::collections::VecDeque;
 
+use regex::Regex;
+
+#[derive(Clone)]
+pub struct SpeechMessage {
+    pub msg: String,
+    pub input: bool,
+}
+
+impl SpeechMessage {
+    pub fn speakable(&self) -> bool {
+        let alphanum = Regex::new("[A-Za-z0-9]+").unwrap();
+        alphanum.is_match(&self.msg) && !self.input
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.msg.is_empty()
+    }
+}
+
+impl From<String> for SpeechMessage {
+    fn from(msg: String) -> Self {
+        Self {
+            msg,
+            input: false,
+        }
+    }
+}
+
+impl From<&str> for SpeechMessage {
+    fn from(msg: &str) -> Self {
+        Self {
+            msg: msg.to_string(),
+            input: false,
+        }
+    }
+}
+
 pub struct SpeechQueue {
     capacity: usize,
     index: usize,
     scan_index: usize,
-    queue: VecDeque<String>,
+    queue: VecDeque<SpeechMessage>,
 }
 
 impl SpeechQueue {
@@ -17,7 +54,17 @@ impl SpeechQueue {
         }
     }
 
+    pub fn push_input(&mut self, msg: String) {
+        let mut msg = SpeechMessage::from(msg);
+        msg.input = true;
+        self.push_back(msg, true);
+    }
+
     pub fn push(&mut self, msg: String, force: bool) -> Option<String> {
+        self.push_back(SpeechMessage::from(msg), force)
+    }
+
+    fn push_back(&mut self, msg: SpeechMessage, force: bool) -> Option<String> {
         self.queue.push_back(msg.clone());
         let speak_next = self.index == self.queue.len() - 1;
         let scanning = self.scan_index < self.queue.len() - 1;
@@ -32,12 +79,12 @@ impl SpeechQueue {
             }
         }
         if force || speak_next {
-            if msg.is_empty() {
+            if !msg.speakable() {
                 self.index = self.queue.len();
                 None
             } else {
                 self.index = self.queue.len() - 1;
-                Some(msg)
+                Some(msg.msg)
             }
         } else {
             None
@@ -46,13 +93,13 @@ impl SpeechQueue {
 
     pub fn scan_back(&mut self, step: usize) -> Option<String> {
         self.scan_index = (self.scan_index as i32 - step as i32).max(0) as usize;
-        Some(self.queue[self.scan_index].clone())
+        Some(self.queue[self.scan_index].msg.clone())
     }
 
     pub fn scan_forward(&mut self, step: usize) -> Option<String> {
         self.scan_index = (self.scan_index + step).min(self.queue.len());
         if self.scan_index < self.queue.len() {
-            Some(self.queue[self.scan_index].clone())
+            Some(self.queue[self.scan_index].msg.clone())
         } else {
             None
         }
@@ -61,12 +108,12 @@ impl SpeechQueue {
     pub fn next(&mut self, step: usize) -> Option<String> {
         self.index = (self.index + step).min(self.queue.len());
 
-        while self.index < self.queue.len() && self.queue[self.index].is_empty() {
+        while self.index < self.queue.len() && !self.queue[self.index].speakable() {
             self.index += 1;
         }
 
         if self.index < self.queue.len() {
-            Some(self.queue[self.index].clone())
+            Some(self.queue[self.index].msg.clone())
         } else {
             None
         }
@@ -74,7 +121,7 @@ impl SpeechQueue {
 
     pub fn current(&mut self) -> Option<String> {
         if self.index < self.queue.len() {
-            Some(self.queue[self.index].clone())
+            Some(self.queue[self.index].msg.clone())
         } else {
             None
         }
@@ -90,7 +137,7 @@ impl SpeechQueue {
         if self.queue[self.index].is_empty() {
             None
         } else {
-            Some(self.queue[self.index].clone())
+            Some(self.queue[self.index].msg.clone())
         }
     }
 
@@ -124,6 +171,16 @@ mod test_speech_queue {
         assert_eq!(q.next(2), Some("test5".to_string()));
         assert_eq!(q.index, 4);
         assert_eq!(q.next(10), None);
+    }
+
+    #[test]
+    fn test_push_input() {
+        let mut q = SpeechQueue::new(100);
+        assert_eq!(q.push("line".to_string(), false), Some("line".to_string()));
+        assert_eq!(q.next(1), None);
+        q.push_input("input".to_string());
+        assert_eq!(q.next(1), None);
+        assert_eq!(q.push("line".to_string(), false), Some("line".to_string()));
     }
 
     #[test]

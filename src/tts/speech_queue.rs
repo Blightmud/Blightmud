@@ -21,10 +21,7 @@ impl SpeechMessage {
 
 impl From<String> for SpeechMessage {
     fn from(msg: String) -> Self {
-        Self {
-            msg,
-            input: false,
-        }
+        Self { msg, input: false }
     }
 }
 

@@ -27,6 +27,8 @@ pub enum TTSEvent {
     KeyPress(char),
     Next(usize),
     Prev(usize),
+    ScanBack(usize),
+    ScanForward(usize),
     Begin,
     End,
     Shutdown,
@@ -116,10 +118,8 @@ impl TTSController {
     pub fn speak_line(&self, line: &Line) {
         if (self.enabled && !line.flags.tts_gag) || line.flags.tts_force {
             let speak = line.clean_line().trim();
-            if !speak.is_empty() {
-                for l in speak.lines() {
-                    self.send(TTSEvent::Speak(l.to_string(), line.flags.tts_interrupt));
-                }
+            for l in speak.lines() {
+                self.send(TTSEvent::Speak(l.to_string(), line.flags.tts_interrupt));
             }
         }
     }
@@ -181,7 +181,7 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
         debug!("[TTS]: Event: {:?}", event);
         match event {
             TTSEvent::Speak(msg, force) => {
-                if msg.is_empty() || !alphanum.is_match(&msg) {
+                if !msg.is_empty() && !alphanum.is_match(&msg) {
                     continue;
                 }
                 if let Some(msg) = queue.push(msg, force) {
@@ -200,6 +200,28 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
             TTSEvent::Prev(step) => {
                 if let Some(msg) = queue.prev(step) {
                     if speak(tts, &msg, true) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::ScanBack(step) => {
+                if let Some(msg) = queue.scan_back(step) {
+                    if msg.is_empty() {
+                        if speak(tts, "blank", true) {
+                            continue;
+                        }
+                    } else if speak(tts, &msg, true) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::ScanForward(step) => {
+                if let Some(msg) = queue.scan_forward(step) {
+                    if msg.is_empty() {
+                        if speak(tts, "blank", true) {
+                            continue;
+                        }
+                    } else if speak(tts, &msg, true) {
                         continue;
                     }
                 }

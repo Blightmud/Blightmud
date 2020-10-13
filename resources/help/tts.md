@@ -60,8 +60,31 @@ See `/help triggers` for details about triggers.
 
 ##
 
+***tts:step_back(step)***
+Move the current reading index back by `step` rows. TTS will continue reading
+lines from the point you step forward to.
+
+##
+
+***tts:step_forward(step)***
+Move the current reading index forward by `step` rows. TTS will continue reading
+lines from the point you step forward to.
+
+##
+
+***tts:scan_back(step)***
+Read out the line `step` lines back from the scan index.
+
+##
+
+***tts:scan_forward(step)***
+Read out the line `step` lines forward from the scan index.
+
+##
+
 ***tts:stop()***
-Stop all speach
+Stop all speach and move the reading index and the scan index to the bottom of
+the output.
 
 ## Bindings
 

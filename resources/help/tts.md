@@ -26,8 +26,15 @@ blightmud restarts so you only need to configure this once.
 ## Functions
 
 ***tts:speak(msg, interupt)***
-Will speak the provided. If interupt is true, this message will interupt
+Will speak the provided `msg`. If interupt is true, this message will interupt
 possible messages that are waiting to be spoken.
+
+##
+
+***tts:speak_direct(msg)***
+Will speak the provided `msg` directly and interrupt anything that's being said
+at the moment but it won't clear subsequent messages in queue. This message
+will not be stored in the TTS history.
 
 ##
 

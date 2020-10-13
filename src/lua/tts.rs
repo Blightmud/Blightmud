@@ -27,6 +27,12 @@ impl UserData for Tts {
                 Ok(())
             },
         );
+        methods.add_method("speak_direct", |_, this, msg: String| {
+            this.writer
+                .send(Event::TTSEvent(TTSEvent::SpeakDirect(msg)))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method("stop", |_, this, _: ()| {
             this.writer.send(Event::SpeakStop).unwrap();
             Ok(())

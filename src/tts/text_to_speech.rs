@@ -20,6 +20,7 @@ use crate::{io::SaveData, model::Line};
 #[derive(Debug, PartialEq, Clone)]
 pub enum TTSEvent {
     Speak(String, bool),
+    SpeakDirect(String),
     Flush,
     SetRate(f32),
     ChangeRate(f32),
@@ -189,6 +190,11 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
                     if speak(tts, &msg, force) {
                         continue;
                     }
+                }
+            }
+            TTSEvent::SpeakDirect(msg) => {
+                if !msg.is_empty() {
+                    tts.speak(msg, true).ok();
                 }
             }
             TTSEvent::Next(step) => {

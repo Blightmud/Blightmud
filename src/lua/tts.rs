@@ -86,6 +86,18 @@ impl UserData for Tts {
                 .unwrap();
             Ok(())
         });
+        methods.add_method("scan_input_back", |_, this, _: ()| {
+            this.writer
+                .send(Event::TTSEvent(TTSEvent::ScanBackToInput))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_method("scan_input_forward", |_, this, _: ()| {
+            this.writer
+                .send(Event::TTSEvent(TTSEvent::ScanForwardToInput))
+                .unwrap();
+            Ok(())
+        });
         methods.add_method("step_begin", |_, this, _: ()| {
             this.writer.send(Event::TTSEvent(TTSEvent::Begin)).unwrap();
             Ok(())

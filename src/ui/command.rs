@@ -242,7 +242,12 @@ fn parse_key_event(
     tts_ctrl: &mut Arc<Mutex<TTSController>>,
 ) {
     match key {
-        Key::Char('\n') => writer.send(parse_command(&buffer.submit())).unwrap(),
+        Key::Char('\n') => {
+            writer
+                .send(Event::InputSent(Line::from(&buffer.buffer)))
+                .unwrap();
+            writer.send(parse_command(&buffer.submit())).unwrap();
+        }
         Key::Char('\t') => buffer.tab_complete(),
         Key::Char(c) => {
             tts_ctrl.lock().unwrap().key_press(c);

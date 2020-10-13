@@ -102,6 +102,32 @@ impl SpeechQueue {
         }
     }
 
+    pub fn scan_back_to_input(&mut self) -> Option<String> {
+        while self.scan_index > 0 {
+            self.scan_index -= 1;
+            if self.queue[self.scan_index].input {
+                break;
+            }
+        }
+        Some(self.queue[self.scan_index].msg.clone())
+    }
+
+    pub fn scan_forward_to_input(&mut self) -> Option<String> {
+        while self.scan_index < self.queue.len() - 1 {
+            self.scan_index += 1;
+            if self.queue[self.scan_index].input {
+                break;
+            }
+        }
+
+        if self.scan_index < self.queue.len() && self.queue[self.scan_index].input {
+            Some(self.queue[self.scan_index].msg.clone())
+        } else {
+            self.scan_index = self.queue.len();
+            None
+        }
+    }
+
     pub fn next(&mut self, step: usize) -> Option<String> {
         self.index = (self.index + step).min(self.queue.len());
 
@@ -301,5 +327,32 @@ mod test_speech_queue {
         }
         q.flush();
         assert_eq!(q.prev(1), Some("line".to_string()));
+    }
+
+    #[test]
+    fn test_scan_input() {
+        let mut q = SpeechQueue::new(100);
+        q.push("line".to_string(), false);
+        q.push("line".to_string(), false);
+        q.push_input("input1".to_string());
+        q.push("line".to_string(), false);
+        q.push("line".to_string(), false);
+        q.push("line".to_string(), false);
+        q.push("line".to_string(), false);
+        q.push_input("input2".to_string());
+        q.push("line".to_string(), false);
+        q.push("line".to_string(), false);
+
+        assert_eq!(q.scan_back_to_input(), Some("input2".to_string()));
+        assert_eq!(q.scan_index, 7);
+        assert_eq!(q.scan_back_to_input(), Some("input1".to_string()));
+        assert_eq!(q.scan_index, 2);
+        assert_eq!(q.scan_back_to_input(), Some("line".to_string()));
+        assert_eq!(q.scan_index, 0);
+        assert_eq!(q.scan_forward_to_input(), Some("input1".to_string()));
+        assert_eq!(q.scan_index, 2);
+        assert_eq!(q.scan_forward_to_input(), Some("input2".to_string()));
+        assert_eq!(q.scan_index, 7);
+        assert_eq!(q.scan_forward_to_input(), None);
     }
 }

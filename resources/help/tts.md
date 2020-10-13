@@ -89,6 +89,19 @@ Read out the line `step` lines forward from the scan index.
 
 ##
 
+***tts:scan_input_back()***
+Attempts to move the scan index to the nearest input line in the TTS history
+before the cursor if nothing is found this will place the index at the start of
+the history.
+
+##
+
+***tts:scan_input_forward()***
+Attempts to move the scan index to the nearest input line in the TTS history
+after the current scan index. If none is found nothing will be spoken.
+
+##
+
 ***tts:stop()***
 Stop all speach and move the reading index and the scan index to the bottom of
 the output.

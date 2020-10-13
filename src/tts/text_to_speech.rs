@@ -30,6 +30,8 @@ pub enum TTSEvent {
     Prev(usize),
     ScanBack(usize),
     ScanForward(usize),
+    ScanBackToInput,
+    ScanForwardToInput,
     Begin,
     End,
     Shutdown,
@@ -225,6 +227,28 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
             }
             TTSEvent::ScanForward(step) => {
                 if let Some(msg) = queue.scan_forward(step) {
+                    if msg.is_empty() {
+                        if speak(tts, "blank", true) {
+                            continue;
+                        }
+                    } else if speak(tts, &msg, true) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::ScanBackToInput => {
+                if let Some(msg) = queue.scan_back_to_input() {
+                    if msg.is_empty() {
+                        if speak(tts, "blank", true) {
+                            continue;
+                        }
+                    } else if speak(tts, &msg, true) {
+                        continue;
+                    }
+                }
+            }
+            TTSEvent::ScanForwardToInput => {
+                if let Some(msg) = queue.scan_forward_to_input() {
                     if msg.is_empty() {
                         if speak(tts, "blank", true) {
                             continue;

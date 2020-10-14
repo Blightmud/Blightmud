@@ -3,6 +3,7 @@ use super::{blight::*, tts::Tts};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
+use log::debug;
 use rlua::{Lua, Result as LuaResult};
 use shellexpand as shell;
 use std::io::prelude::*;
@@ -317,10 +318,17 @@ impl LuaScript {
         }
     }
 
-    pub fn check_bindings(&mut self, cmd: &str) {
+    pub fn check_bindings(&mut self, cmd: &str) -> bool {
+        let mut response = false;
         let result = self.state.context(|ctx| -> Result<(), rlua::Error> {
             let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            for pair in bind_table.pairs::<String, rlua::Function>() {
+                let (i, _) = pair.unwrap();
+                debug!("{:?}", i);
+            }
+            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
             if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
+                response = true;
                 callback.call::<_, ()>(())
             } else {
                 Ok(())
@@ -330,6 +338,7 @@ impl LuaScript {
         if let Err(msg) = result {
             output_stack_trace(&self.writer, &msg.to_string());
         }
+        response
     }
 
     pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
@@ -793,6 +802,9 @@ mod lua_script_tests {
         blight:bind("alt-1", function ()
             blight:output("alt-1")
         end)
+        blight:bind("\x1b[1;5A", function ()
+            blight:output("ctrl-up")
+        end)
         "#;
 
         let (mut lua, _reader) = get_lua();
@@ -808,6 +820,8 @@ mod lua_script_tests {
         assert_eq!(lua.get_output_lines(), [Line::from("f1")]);
         lua.check_bindings("ctrl-0");
         assert_eq!(lua.get_output_lines(), []);
+        lua.check_bindings("\x1b[1;5a");
+        assert_eq!(lua.get_output_lines(), [Line::from("ctrl-up")]);
     }
 
     #[test]

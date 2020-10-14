@@ -318,27 +318,36 @@ impl LuaScript {
     }
 
     pub fn check_bindings(&mut self, cmd: &str) {
-        self.state
-            .context(|ctx| -> Result<(), rlua::Error> {
-                let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
-                if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
-                    callback.call::<_, ()>(())
-                } else {
-                    Ok(())
-                }
-            })
-            .unwrap();
+        let result = self.state.context(|ctx| -> Result<(), rlua::Error> {
+            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
+                callback.call::<_, ()>(())
+            } else {
+                Ok(())
+            }
+        });
+
+        if let Err(msg) = result {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
     }
 
     pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
-        self.state
+        let result = self
+            .state
             .context(|ctx| -> Result<Vec<UiEvent>, rlua::Error> {
                 let mut blight: Blight = ctx.globals().get("blight")?;
                 let events = blight.get_ui_events();
                 ctx.globals().set("blight", blight)?;
                 Ok(events)
-            })
-            .unwrap()
+            });
+
+        if let Err(msg) = result {
+            output_stack_trace(&self.writer, &msg.to_string());
+            vec![]
+        } else {
+            result.unwrap()
+        }
     }
 }
 

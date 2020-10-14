@@ -27,7 +27,11 @@ local function GMCP()
 		if proto == OPT then
 			self.gmcp_ready = true
 			program, version = blight:version()
-			core:subneg_send(201, string_to_bytes("Core.Hello {{\"Client\":\"" .. program .. "\",\"" .. version .. "\":\"1.0.0\"}}"))
+			local hello_obj = {
+				Version=version,
+				Client=program,
+			}
+			core:subneg_send(201, string_to_bytes("Core.Hello " .. json.encode(hello_obj)))
 			for _,cb in ipairs(self.ready_listeners) do
 				cb()
 			end

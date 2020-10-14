@@ -4,11 +4,13 @@ It is possible bind certain key commands in lua script to perform actions when
 pressed. This also include rebinding keys to a setup you are more comfortable
 with rather then the default.
 
-Currently bindings are limited to the following options:
-
 - `Ctrl-<char>` eg. `Ctrl-a, Ctrl-b` but not `Ctrl-PgUp`, there is no distinction for capitalization
 - `Alt-<char>` eg. `Alt-a, Alt-b` but not `Alt-PgUp`, there is no distinction for capitalization
 - `F1-F12`
+
+You may also bind on escape sequences. For example `\x1b[1;5A` (ctrl-up). When
+unbound, blightmud will echo these commands to the output when pressed. This
+will make it easy for you to find the escape sequence you want to bind.
 
 ***blight:bind(cmd, callback)***
 Is the command to use when creating a binding.
@@ -17,10 +19,14 @@ Is the command to use when creating a binding.
 - `Ctrl-{}` where {} is a character, eg. a, b, c, etc.
 - `Alt-{}` where {} is a character, eg. a, b, c, etc.
 - `fn` where n is a number from 1-12
+- Or an escape sequence such as `\x1b[1;5A`
 
 ```lua
 blight:bind("f1", function ()
     blight:send("kick " .. target)
+end)
+blight:bind("\x1b[1;5D", function ()
+    blight:ui("step_word_left")
 end)
 ```
 
@@ -59,7 +65,9 @@ end
 bind("ctrl-p", "previous_command")
 bind("ctrl-n", "next_command")
 bind("alt-b", "step_word_left")
+bind("\x1b[1;5D", "step_word_left")
 bind("alt-f", "step_word_right")
+bind("\x1b[1;5C", "step_word_right")
 bind("ctrl-a", "step_to_start")
 bind("ctrl-e", "step_to_end")
 bind("ctrl-k", "delete_to_end")

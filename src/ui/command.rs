@@ -280,6 +280,38 @@ fn check_command_binds(
             }
             _ => {}
         }
+    }
+    handle_script_ui_io(buffer, script, writer);
+}
+
+fn check_escape_bindings(
+    escape: &str,
+    buffer: &mut CommandBuffer,
+    script: &Arc<Mutex<LuaScript>>,
+    writer: &Sender<Event>,
+) {
+    if let Ok(mut script) = script.lock() {
+        if !script.check_bindings(&escape.to_lowercase()) {
+            writer
+                .send(Event::Info(format!("Unknown command: {:?}", escape)))
+                .unwrap();
+        }
+    }
+    handle_script_ui_io(buffer, script, writer);
+    writer
+        .send(Event::UserInputBuffer(
+            buffer.get_buffer(),
+            buffer.get_pos(),
+        ))
+        .unwrap();
+}
+
+fn handle_script_ui_io(
+    buffer: &mut CommandBuffer,
+    script: &Arc<Mutex<LuaScript>>,
+    writer: &Sender<Event>,
+) {
+    if let Ok(mut script) = script.lock() {
         script.get_ui_events().iter().for_each(|event| match event {
             UiEvent::StepLeft => buffer.move_left(),
             UiEvent::StepRight => buffer.move_right(),
@@ -328,10 +360,19 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                         ))
                         .unwrap();
                 }
-                termion::event::Event::Unsupported(_bytes) => {
-                    writer
-                        .send(Event::Info(format!("Unknown command: {:?}", _bytes)))
-                        .unwrap();
+                termion::event::Event::Unsupported(bytes) => {
+                    if let Ok(escape) = String::from_utf8(bytes.clone()) {
+                        check_escape_bindings(
+                            &escape.to_lowercase(),
+                            &mut buffer,
+                            &script,
+                            &writer,
+                        );
+                    } else {
+                        writer
+                            .send(Event::Info(format!("Unknown command: {:?}", bytes)))
+                            .unwrap();
+                    }
                 }
                 _ => {}
             }

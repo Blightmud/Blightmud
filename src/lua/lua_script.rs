@@ -13,11 +13,18 @@ pub struct LuaScript {
     writer: Sender<Event>,
 }
 
-fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lua {
+fn create_default_lua_state(
+    writer: Sender<Event>,
+    dimensions: (u16, u16),
+    core: Option<Core>,
+) -> Lua {
     let state = Lua::new();
 
     let mut blight = Blight::new(writer.clone());
-    let core = Core::new(writer);
+    let core = match core {
+        Some(core) => core,
+        None => Core::new(writer),
+    };
 
     blight.screen_dimensions = dimensions;
     blight.core_mode(true);
@@ -74,13 +81,17 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
 impl LuaScript {
     pub fn new(main_writer: Sender<Event>, dimensions: (u16, u16)) -> Self {
         Self {
-            state: create_default_lua_state(main_writer.clone(), dimensions),
+            state: create_default_lua_state(main_writer.clone(), dimensions, None),
             writer: main_writer,
         }
     }
 
     pub fn reset(&mut self, dimensions: (u16, u16)) {
-        self.state = create_default_lua_state(self.writer.clone(), dimensions);
+        let core = self
+            .state
+            .context(|ctx| -> Result<Core, rlua::Error> { ctx.globals().get("core") })
+            .ok();
+        self.state = create_default_lua_state(self.writer.clone(), dimensions, core);
     }
 
     pub fn get_output_lines(&self) -> Vec<Line> {

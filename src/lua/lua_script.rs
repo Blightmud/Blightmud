@@ -11,8 +11,6 @@ use std::{fs::File, sync::mpsc::Sender};
 pub struct LuaScript {
     state: Lua,
     writer: Sender<Event>,
-    on_connect_triggered: bool,
-    on_gmcp_ready_triggered: bool,
 }
 
 fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lua {
@@ -81,14 +79,10 @@ impl LuaScript {
         Self {
             state: create_default_lua_state(main_writer.clone(), dimensions),
             writer: main_writer,
-            on_connect_triggered: false,
-            on_gmcp_ready_triggered: false,
         }
     }
 
     pub fn reset(&mut self, dimensions: (u16, u16)) {
-        self.on_connect_triggered = false;
-        self.on_gmcp_ready_triggered = false;
         self.state = create_default_lua_state(self.writer.clone(), dimensions);
     }
 
@@ -242,22 +236,19 @@ impl LuaScript {
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16) {
-        if !self.on_connect_triggered {
-            self.on_connect_triggered = true;
-            self.state
-                .context(|ctx| -> LuaResult<()> {
-                    if let Ok(callback) = ctx
-                        .globals()
-                        .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
-                    {
-                        if let Err(msg) = callback.call::<_, ()>((host, port)) {
-                            output_stack_trace(&self.writer, &msg.to_string());
-                        }
+        self.state
+            .context(|ctx| -> LuaResult<()> {
+                if let Ok(callback) = ctx
+                    .globals()
+                    .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
+                {
+                    if let Err(msg) = callback.call::<_, ()>((host, port)) {
+                        output_stack_trace(&self.writer, &msg.to_string());
                     }
-                    Ok(())
-                })
-                .unwrap();
-        }
+                }
+                Ok(())
+            })
+            .unwrap();
     }
 
     pub fn on_disconnect(&mut self) {
@@ -833,8 +824,6 @@ mod lua_script_tests {
 
         lua.on_connect("test", 21);
         assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
-        lua.on_connect("test", 21);
-        assert_eq!(lua.get_output_lines(), []);
         lua.reset((100, 100));
         lua.state.context(|ctx| {
             ctx.load(lua_code).exec().unwrap();

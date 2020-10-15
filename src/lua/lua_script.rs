@@ -317,11 +317,6 @@ impl LuaScript {
         let mut response = false;
         let result = self.state.context(|ctx| -> Result<(), rlua::Error> {
             let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
-            for pair in bind_table.pairs::<String, rlua::Function>() {
-                let (i, _) = pair.unwrap();
-                debug!("{:?}", i);
-            }
-            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
             if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
                 response = true;
                 callback.call::<_, ()>(())

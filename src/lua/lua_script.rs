@@ -3,7 +3,6 @@ use super::{blight::*, tts::Tts};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
-use log::debug;
 use rlua::{Lua, Result as LuaResult};
 use shellexpand as shell;
 use std::io::prelude::*;

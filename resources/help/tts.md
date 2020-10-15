@@ -36,6 +36,8 @@ Will speak the provided `msg` directly and interrupt anything that's being said
 at the moment but it won't clear subsequent messages in queue. This message
 will not be stored in the TTS history.
 
+These messages will be spoken even if TTS is disabled.
+
 ##
 
 ***tts:enable(enabled)***

@@ -76,9 +76,16 @@ impl TTSController {
     }
 
     fn send(&self, event: TTSEvent) {
-        if self.enabled {
-            if let Some(rt) = &self.rt {
-                rt.send(event).ok();
+        if let Some(rt) = &self.rt {
+            match event {
+                TTSEvent::SpeakDirect(_) => {
+                    rt.send(event).ok();
+                }
+                _ => {
+                    if self.enabled {
+                        rt.send(event).ok();
+                    }
+                }
             }
         }
     }
@@ -113,13 +120,13 @@ impl TTSController {
         if enabled {
             self.send(TTSEvent::Speak("Text to speech enabled".to_string(), false));
         } else {
+            self.send(TTSEvent::SpeakDirect("Text to speech disabled".to_string()));
             self.send(TTSEvent::Flush);
-            self.send(TTSEvent::Speak("Text to speech disabled".to_string(), true));
         }
     }
 
     pub fn speak_line(&self, line: &Line) {
-        if (self.enabled && !line.flags.tts_gag) || line.flags.tts_force {
+        if !line.flags.tts_gag {
             let speak = line.clean_line().trim();
             for l in speak.lines() {
                 self.send(TTSEvent::Speak(l.to_string(), line.flags.tts_interrupt));

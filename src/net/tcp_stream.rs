@@ -4,7 +4,7 @@ use crate::{
     session::{CommunicationOptions, Session},
 };
 use flate2::read::ZlibDecoder;
-use libtelnet_rs::telnet::op_option as opt;
+use libtelnet_rs::telnet::{op_command as cmd, op_option as opt};
 use log::{debug, error};
 use std::{
     io::{Chain, Cursor, Read, Write},
@@ -30,11 +30,12 @@ impl MudReceiver {
     fn extract_compressed_bytes_from_last(&self) -> Option<&[u8]> {
         if let Some(item) = self
             .last_chunk
-            .iter()
+            .windows(3)
             .enumerate()
-            .rfind(|item| *item.1 == opt::MCCP2)
+            .rfind(|item| *item.1 == [opt::MCCP2, cmd::IAC, cmd::SE])
         {
             // ... MCCP2 IAC SE, hence the + 3
+            debug!("Buffered bytes {}", self.last_chunk.len() - item.0);
             Some(&self.last_chunk[item.0 + 3..])
         } else {
             None
@@ -91,7 +92,12 @@ impl MudReceiver {
         } else {
             data = vec![];
         }
-        self.last_chunk = data.clone();
+
+        self.last_chunk.append(&mut data.clone());
+        if self.last_chunk.len() > BUFFER_SIZE {
+            let drain = self.last_chunk.len() - BUFFER_SIZE;
+            self.last_chunk.drain(0..drain);
+        }
         data
     }
 }

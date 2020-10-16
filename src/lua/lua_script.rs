@@ -182,8 +182,9 @@ impl LuaScript {
                         }
 
                         line.flags.matched = true;
-                        line.flags.gag =
-                            rust_trigger.gag || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
+                        line.flags.gag = line.flags.gag
+                            || rust_trigger.gag
+                            || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
 
                         if rust_trigger.count > 0 {
                             rust_trigger.count -= 1;

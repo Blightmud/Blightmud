@@ -25,7 +25,7 @@ pub fn check_latest_version(main_writer: Sender<Event>) {
                     Ok(data.len())
                 })
                 .unwrap();
-            transfer.perform().unwrap();
+            transfer.perform().ok();
         }
 
         if let Ok(json) = serde_json::from_slice(&response_data) {

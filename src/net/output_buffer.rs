@@ -1,20 +1,10 @@
 use crate::model::Line;
-use log::error;
 
 use super::tcp_stream::BUFFER_SIZE;
 
 pub struct OutputBuffer {
     buffer: Vec<u8>,
     pub prompt: Line,
-}
-
-fn read_string_from(buffer: &[u8]) -> String {
-    if let Ok(string) = String::from_utf8(buffer.to_vec()) {
-        string
-    } else {
-        error!("Unparsable bytes: {:?}", buffer);
-        String::from_utf8_lossy(buffer).to_mut().clone()
-    }
 }
 
 impl OutputBuffer {
@@ -45,8 +35,7 @@ impl OutputBuffer {
                     lines.push(Line::from("".to_string()));
                     cut_len
                 } else {
-                    let line: String = read_string_from(&self.buffer[last_cut..i]);
-                    lines.push(Line::from(line));
+                    lines.push(Line::from(&self.buffer[last_cut..i]));
                     i + cut_len
                 }
             };

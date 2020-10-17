@@ -13,11 +13,18 @@ pub struct LuaScript {
     writer: Sender<Event>,
 }
 
-fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lua {
+fn create_default_lua_state(
+    writer: Sender<Event>,
+    dimensions: (u16, u16),
+    core: Option<Core>,
+) -> Lua {
     let state = Lua::new();
 
     let mut blight = Blight::new(writer.clone());
-    let core = Core::new(writer.clone());
+    let core = match core {
+        Some(core) => core,
+        None => Core::new(writer.clone()),
+    };
     let tts = Tts::new(writer);
 
     blight.screen_dimensions = dimensions;
@@ -77,13 +84,17 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
 impl LuaScript {
     pub fn new(main_writer: Sender<Event>, dimensions: (u16, u16)) -> Self {
         Self {
-            state: create_default_lua_state(main_writer.clone(), dimensions),
+            state: create_default_lua_state(main_writer.clone(), dimensions, None),
             writer: main_writer,
         }
     }
 
     pub fn reset(&mut self, dimensions: (u16, u16)) {
-        self.state = create_default_lua_state(self.writer.clone(), dimensions);
+        let core = self
+            .state
+            .context(|ctx| -> Result<Core, rlua::Error> { ctx.globals().get("core") })
+            .ok();
+        self.state = create_default_lua_state(self.writer.clone(), dimensions, core);
     }
 
     pub fn get_output_lines(&self) -> Vec<Line> {
@@ -174,9 +185,11 @@ impl LuaScript {
                         }
 
                         line.flags.matched = true;
-                        line.flags.gag =
-                            rust_trigger.gag || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
-                        line.flags.tts_gag = ctx.globals().get(TTS_GAG_NEXT_TRIGGER_LINE).unwrap();
+                        line.flags.gag = line.flags.gag
+                            || rust_trigger.gag
+                            || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
+                        line.flags.tts_gag = line.flags.tts_gag
+                            || ctx.globals().get(TTS_GAG_NEXT_TRIGGER_LINE).unwrap();
 
                         if rust_trigger.count > 0 {
                             rust_trigger.count -= 1;

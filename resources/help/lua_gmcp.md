@@ -53,6 +53,14 @@ data = { char = { hp = "1234" } }
 gmcp.send_gmcp("Char.Health " .. json.encode(data))
 ```
 
+##
+
+***gmcp.echo(enabled)***
+Toggle the gmcp module echoing. If true all received GMCP data will be printed
+to screen
+
+- `enabled`   true or false
+
 ## Complete GMCP example: 
 
 ```lua

@@ -400,7 +400,7 @@ impl Screen {
     pub fn print_output(&mut self, line: &Line) {
         self.tts_ctrl.lock().unwrap().speak_line(line);
         if let Some(print_line) = line.print_line() {
-            if print_line.trim().is_empty() {
+            if !line.is_utf8() || print_line.trim().is_empty() {
                 self.print_line(&print_line);
             } else {
                 for line in wrap_line(&print_line, self.width as usize) {

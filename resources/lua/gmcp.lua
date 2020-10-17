@@ -5,7 +5,8 @@ local function GMCP()
 	local self = {
 		receivers = {},
 		ready_listeners = {},
-		gmcp_ready = false,
+		echo_gmcp = core:read("echo_gmcp") == "true",
+		gmcp_ready = core:read("gmcp_ready") == "true",
 	}
 
 	local function parse_gmcp(msg)
@@ -26,6 +27,7 @@ local function GMCP()
 	local _on_enable = function (proto)
 		if proto == OPT then
 			self.gmcp_ready = true
+			core:store("gmcp_ready", "true")
 			program, version = blight:version()
 			local hello_obj = {
 				Version=version,
@@ -42,10 +44,18 @@ local function GMCP()
 		if proto == OPT then
 			local msg = utf8.char(unpack(data))
 			local mod, json = parse_gmcp(msg)
+			if self.echo_gmcp then
+				blight:output("[GMCP]: " .. msg)
+			end
 			if self.receivers[mod] ~= nil then
 				self.receivers[mod](json)
 			end
 		end
+	end
+
+	local echo = function (enabled)
+		core:store("echo_gmcp", tostring(enabled))
+		self.echo_gmcp = enabled
 	end
 
 	local register = function (mod)
@@ -72,6 +82,7 @@ local function GMCP()
 		send = send,
 		receive = receive,
 		register = register,
+		echo = echo,
 		_subneg_recv = _subneg_recv,
 		_on_enable = _on_enable,
 	}

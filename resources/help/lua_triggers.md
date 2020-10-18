@@ -24,6 +24,10 @@ Options allow you to fine-tune how the trigger is matched or displayed.
 - `count`    Number of times this trigger will match before being removed (default: 0 = infinite)
 - `enabled`  Sets the enabled status of the trigger
 
+## Callback
+The callback function for a trigger will receive two values, the first is the
+matches and the second is the complete trigger line with ansi escapes intact.
+
 ##
 
 ***blight:enable_trigger(id, enabled)***

@@ -180,7 +180,7 @@ impl LuaScript {
                             .collect();
 
                         let cb: rlua::Function = trigger.get_user_value().unwrap();
-                        if let Err(msg) = cb.call::<_, ()>(captures) {
+                        if let Err(msg) = cb.call::<_, ()>((captures, line.print_line())) {
                             output_stack_trace(&self.writer, &msg.to_string());
                         }
 

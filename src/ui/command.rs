@@ -162,6 +162,35 @@ impl CommandBuffer {
         }
     }
 
+    fn delete_word_right(&mut self) {
+        let origin = (self.cursor_pos).min(self.buffer.len());
+        let start = self.buffer[origin..]
+            .find(|c| c != ' ')
+            .map(|c| c + origin)
+            .unwrap_or(origin);
+        if let Some(pos) = self.buffer[start..].find(' ') {
+            self.buffer.replace_range(origin..start + pos, "");
+        } else if origin < self.buffer.len() {
+            self.buffer.replace_range(origin.., "");
+        }
+    }
+
+    fn delete_word_left(&mut self) {
+        if self.cursor_pos == 0 {
+            return;
+        }
+        let origin = self.cursor_pos.max(1);
+        let start = self.buffer[..origin].rfind(|c| c != ' ').unwrap_or(origin);
+        if let Some(pos) = self.buffer[..start].rfind(' ') {
+            let pos = pos + 1;
+            self.cursor_pos = pos;
+            self.buffer.replace_range(pos..origin, "");
+        } else {
+            self.cursor_pos = 0;
+            self.buffer.replace_range(..origin, "");
+        }
+    }
+
     fn remove(&mut self) {
         if self.cursor_pos > 0 {
             if self.cursor_pos < self.buffer.len() {
@@ -328,6 +357,8 @@ fn handle_script_ui_io(
             UiEvent::Remove => buffer.remove(),
             UiEvent::DeleteToEnd => buffer.delete_to_end(),
             UiEvent::DeleteFromStart => buffer.delete_from_start(),
+            UiEvent::DeleteWordLeft => buffer.delete_word_left(),
+            UiEvent::DeleteWordRight => buffer.delete_word_right(),
             UiEvent::DeleteRight => buffer.delete_right(),
             UiEvent::PreviousCommand => buffer.previous(),
             UiEvent::NextCommand => buffer.next(),

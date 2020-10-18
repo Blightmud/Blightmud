@@ -674,4 +674,43 @@ mod command_test {
         buffer.delete_to_end();
         assert_eq!(buffer.get_buffer(), "some random");
     }
+
+    #[test]
+    fn test_delete_right() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "somerandom words");
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "someandom words");
+        buffer.move_to_end();
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "someandom words");
+    }
+
+    #[test]
+    fn test_delete_word_left() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_end();
+        buffer.delete_word_left();
+        assert_eq!(buffer.get_buffer(), "some random ");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.delete_word_left();
+        assert_eq!(buffer.get_buffer(), " random ");
+    }
+
+    #[test]
+    fn test_delete_word_right() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.delete_word_right();
+        assert_eq!(buffer.get_buffer(), " random words");
+        buffer.delete_word_right();
+        assert_eq!(buffer.get_buffer(), " words");
+    }
 }

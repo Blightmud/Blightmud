@@ -156,6 +156,12 @@ impl CommandBuffer {
         self.cursor_pos = 0;
     }
 
+    fn delete_right(&mut self) {
+        if self.cursor_pos < self.buffer.len() {
+            self.buffer.remove(self.cursor_pos);
+        }
+    }
+
     fn remove(&mut self) {
         if self.cursor_pos > 0 {
             if self.cursor_pos < self.buffer.len() {
@@ -322,6 +328,7 @@ fn handle_script_ui_io(
             UiEvent::Remove => buffer.remove(),
             UiEvent::DeleteToEnd => buffer.delete_to_end(),
             UiEvent::DeleteFromStart => buffer.delete_from_start(),
+            UiEvent::DeleteRight => buffer.delete_right(),
             UiEvent::PreviousCommand => buffer.previous(),
             UiEvent::NextCommand => buffer.next(),
             UiEvent::ScrollDown => writer.send(Event::ScrollDown).unwrap(),

@@ -163,31 +163,19 @@ impl CommandBuffer {
     }
 
     fn delete_word_right(&mut self) {
-        let origin = (self.cursor_pos).min(self.buffer.len());
-        let start = self.buffer[origin..]
-            .find(|c| c != ' ')
-            .map(|c| c + origin)
-            .unwrap_or(origin);
-        if let Some(pos) = self.buffer[start..].find(' ') {
-            self.buffer.replace_range(origin..start + pos, "");
-        } else if origin < self.buffer.len() {
-            self.buffer.replace_range(origin.., "");
+        let origin = self.cursor_pos;
+        self.move_word_right();
+        if origin != self.cursor_pos {
+            self.buffer.replace_range(origin..self.cursor_pos, "");
+            self.cursor_pos = origin;
         }
     }
 
     fn delete_word_left(&mut self) {
-        if self.cursor_pos == 0 {
-            return;
-        }
-        let origin = self.cursor_pos.max(1);
-        let start = self.buffer[..origin].rfind(|c| c != ' ').unwrap_or(origin);
-        if let Some(pos) = self.buffer[..start].rfind(' ') {
-            let pos = pos + 1;
-            self.cursor_pos = pos;
-            self.buffer.replace_range(pos..origin, "");
-        } else {
-            self.cursor_pos = 0;
-            self.buffer.replace_range(..origin, "");
+        let origin = self.cursor_pos;
+        self.move_word_left();
+        if origin != self.cursor_pos {
+            self.buffer.replace_range(self.cursor_pos..origin, "");
         }
     }
 

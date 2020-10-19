@@ -1,6 +1,6 @@
 use crate::event::Event;
 use crate::net::OutputBuffer;
-use crate::session::{CommunicationOptions, Session};
+use crate::session::Session;
 use libtelnet_rs::{
     events::{TelnetEvents, TelnetNegotiation as Neg},
     telnet::{op_command as cmd, op_option as opt},
@@ -27,7 +27,6 @@ pub struct TelnetHandler {
     parser: Arc<Mutex<Parser>>,
     main_writer: Sender<Event>,
     output_buffer: Arc<Mutex<OutputBuffer>>,
-    comops: Arc<Mutex<CommunicationOptions>>,
     mode: TelnetMode,
 }
 
@@ -37,14 +36,14 @@ impl TelnetHandler {
             parser: session.telnet_parser,
             main_writer: session.main_writer,
             output_buffer: session.output_buffer,
-            comops: session.comops,
             mode: TelnetMode::Undefined,
         }
     }
 }
 
 impl TelnetHandler {
-    pub fn parse(&mut self, data: &[u8]) {
+    pub fn parse(&mut self, data: &[u8]) -> Option<Vec<u8>> {
+        let mut result = None;
         let events = if let Ok(mut parser) = self.parser.lock() {
             parser.receive(data)
         } else {
@@ -82,12 +81,14 @@ impl TelnetHandler {
                         }
                     }
                 }
+                TelnetEvents::DecompressImmediate(buffer) => {
+                    debug!("Breaking on buff: {:?}", &buffer);
+                    result = Some(buffer);
+                    break;
+                }
                 TelnetEvents::Subnegotiation(data) => match data.option {
                     opt::MCCP2 => {
                         debug!("Initiated MCCP2 compression");
-                        if let Ok(mut comops) = self.comops.lock() {
-                            comops.mccp2 = true;
-                        }
                     }
                     opt => {
                         self.main_writer
@@ -114,6 +115,7 @@ impl TelnetHandler {
                 }
             };
         }
+        result
     }
 
     pub fn handle_prompt(&mut self) {

@@ -11,7 +11,7 @@ edition = "2018"
 default = ["tts"]
 
 [dependencies]
-libtelnet-rs = "1.0.0"
+libtelnet-rs = "1.1.0"
 termion = "1.5.5"
 log = "0.4.11"
 simple-logging = "2.0.2"

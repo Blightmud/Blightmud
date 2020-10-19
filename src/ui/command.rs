@@ -278,6 +278,7 @@ fn parse_key_event(
         Key::Left => buffer.move_left(),
         Key::Right => buffer.move_right(),
         Key::Backspace => buffer.remove(),
+        Key::Delete => buffer.delete_right(),
         Key::Up => buffer.previous(),
         Key::Down => buffer.next(),
         _ => {}
@@ -293,10 +294,10 @@ fn check_command_binds(
     if let Ok(mut script) = script.lock() {
         match cmd {
             Key::Ctrl(c) => {
-                script.check_bindings(&format!("ctrl-{}", c));
+                script.check_bindings(&human_key("ctrl-", c));
             }
             Key::Alt(c) => {
-                script.check_bindings(&format!("alt-{}", c));
+                script.check_bindings(&human_key("alt-", c));
             }
             Key::F(n) => {
                 script.check_bindings(&format!("f{}", n));
@@ -305,6 +306,17 @@ fn check_command_binds(
         }
     }
     handle_script_ui_io(buffer, script, writer);
+}
+
+/// Convert a key combination to a human-readable form.
+fn human_key(prefix: &str, c: char) -> String {
+    let mut out = prefix.to_owned();
+    match c {
+        '\u{7f}' => out.push_str("backspace"),
+        '\u{1b}' => out.push_str("escape"),
+        _ => out.push(c),
+    }
+    out
 }
 
 fn check_escape_bindings(
@@ -700,5 +712,17 @@ mod command_test {
         assert_eq!(buffer.get_buffer(), " random words");
         buffer.delete_word_right();
         assert_eq!(buffer.get_buffer(), " words");
+    }
+
+    #[test]
+    fn test_human_key() {
+        use super::human_key;
+
+        assert_eq!(human_key("alt-", '\u{7f}'), "alt-backspace");
+        assert_eq!(human_key("ctrl-", '\u{7f}'), "ctrl-backspace");
+        assert_eq!(human_key("alt-", '\u{1b}'), "alt-escape");
+        assert_eq!(human_key("ctrl-", '\u{1b}'), "ctrl-escape");
+        assert_eq!(human_key("ctrl-", 'd'), "ctrl-d");
+        assert_eq!(human_key("f", 'x'), "fx");
     }
 }

@@ -156,6 +156,41 @@ impl CommandBuffer {
         self.cursor_pos = 0;
     }
 
+    fn delete_right(&mut self) {
+        if self.cursor_pos < self.buffer.len() {
+            self.buffer.remove(self.cursor_pos);
+        }
+    }
+
+    fn delete_word_right(&mut self) {
+        let origin = (self.cursor_pos).min(self.buffer.len());
+        let start = self.buffer[origin..]
+            .find(|c| c != ' ')
+            .map(|c| c + origin)
+            .unwrap_or(origin);
+        if let Some(pos) = self.buffer[start..].find(' ') {
+            self.buffer.replace_range(origin..start + pos, "");
+        } else if origin < self.buffer.len() {
+            self.buffer.replace_range(origin.., "");
+        }
+    }
+
+    fn delete_word_left(&mut self) {
+        if self.cursor_pos == 0 {
+            return;
+        }
+        let origin = self.cursor_pos.max(1);
+        let start = self.buffer[..origin].rfind(|c| c != ' ').unwrap_or(origin);
+        if let Some(pos) = self.buffer[..start].rfind(' ') {
+            let pos = pos + 1;
+            self.cursor_pos = pos;
+            self.buffer.replace_range(pos..origin, "");
+        } else {
+            self.cursor_pos = 0;
+            self.buffer.replace_range(..origin, "");
+        }
+    }
+
     fn remove(&mut self) {
         if self.cursor_pos > 0 {
             if self.cursor_pos < self.buffer.len() {
@@ -334,6 +369,9 @@ fn handle_script_ui_io(
             UiEvent::Remove => buffer.remove(),
             UiEvent::DeleteToEnd => buffer.delete_to_end(),
             UiEvent::DeleteFromStart => buffer.delete_from_start(),
+            UiEvent::DeleteWordLeft => buffer.delete_word_left(),
+            UiEvent::DeleteWordRight => buffer.delete_word_right(),
+            UiEvent::DeleteRight => buffer.delete_right(),
             UiEvent::PreviousCommand => buffer.previous(),
             UiEvent::NextCommand => buffer.next(),
             UiEvent::ScrollDown => writer.send(Event::ScrollDown).unwrap(),
@@ -655,5 +693,44 @@ mod command_test {
         buffer.move_word_right();
         buffer.delete_to_end();
         assert_eq!(buffer.get_buffer(), "some random");
+    }
+
+    #[test]
+    fn test_delete_right() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "somerandom words");
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "someandom words");
+        buffer.move_to_end();
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "someandom words");
+    }
+
+    #[test]
+    fn test_delete_word_left() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_end();
+        buffer.delete_word_left();
+        assert_eq!(buffer.get_buffer(), "some random ");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.delete_word_left();
+        assert_eq!(buffer.get_buffer(), " random ");
+    }
+
+    #[test]
+    fn test_delete_word_right() {
+        let mut buffer = CommandBuffer::default();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.delete_word_right();
+        assert_eq!(buffer.get_buffer(), " random words");
+        buffer.delete_word_right();
+        assert_eq!(buffer.get_buffer(), " words");
     }
 }

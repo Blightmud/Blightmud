@@ -45,6 +45,9 @@ The following options are available for `cmd`:
 - `"step_word_left"`    : Moves cursor left by one word
 - `"step_word_right"`   : Moves cursor right by one word
 - `"delete"`            : Deletes the character before the cursor
+- `"delete_right"`      : Deletes the character after the cursor
+- `"delete_word_left"`  : Deletes the word after the cursor
+- `"delete_word_right"` : Deletes the word before the cursor
 - `"delete_to_end"`     : Deletes from the cursor to the end of the line
 - `"delete_from_start"` : Deletes from the start of the input line to the cursor
 - `"previous_command"`  : Get the previous input command
@@ -68,8 +71,11 @@ bind("alt-b", "step_word_left")
 bind("\x1b[1;5D", "step_word_left")
 bind("alt-f", "step_word_right")
 bind("\x1b[1;5C", "step_word_right")
+bind("alt-h", "delete_word_left")
+bind("alt-d", "delete_word_right")
 bind("ctrl-a", "step_to_start")
 bind("ctrl-e", "step_to_end")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
+bind("ctrl-d", "delete_right")
 ```

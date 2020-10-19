@@ -290,6 +290,7 @@ fn parse_key_event(
         Key::Left => buffer.move_left(),
         Key::Right => buffer.move_right(),
         Key::Backspace => buffer.remove(),
+        Key::Delete => buffer.delete_right(),
         Key::Up => buffer.previous(),
         Key::Down => buffer.next(),
         _ => {}

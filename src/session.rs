@@ -7,12 +7,6 @@ use crate::{
     timer::TimerEvent, Event,
 };
 
-#[derive(Default)]
-pub struct CommunicationOptions {
-    pub mccp2: bool,
-    pub debug_gmcp: bool,
-}
-
 #[derive(Clone)]
 pub struct Session {
     pub connection: Arc<Mutex<MudConnection>>,
@@ -24,7 +18,6 @@ pub struct Session {
     pub output_buffer: Arc<Mutex<OutputBuffer>>,
     pub prompt_input: Arc<Mutex<String>>,
     pub lua_script: Arc<Mutex<LuaScript>>,
-    pub comops: Arc<Mutex<CommunicationOptions>>,
     pub logger: Arc<Mutex<Logger>>,
 }
 
@@ -56,7 +49,6 @@ impl Session {
             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                 output_buffer.clear()
             }
-            self.comops = Arc::new(Mutex::new(CommunicationOptions::default()));
             self.telnet_parser = Arc::new(Mutex::new(Parser::with_support_and_capacity(
                 BUFFER_SIZE,
                 build_compatibility_table(),
@@ -165,7 +157,6 @@ impl SessionBuilder {
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
             prompt_input: Arc::new(Mutex::new(String::new())),
             lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer, dimensions))),
-            comops: Arc::new(Mutex::new(CommunicationOptions::default())),
             logger: Arc::new(Mutex::new(Logger::default())),
         }
     }

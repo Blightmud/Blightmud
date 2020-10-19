@@ -624,9 +624,9 @@ checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 
 [[package]]
 name = "libtelnet-rs"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e394ddea6c497c70f4f20505c01446a9551295cdfb684568b24235e4dfe8fb0"
+checksum = "4b66106d8f927c9615ec50873dc3e489edf5df56b82681c8a9577f88ac21c58a"
 
 [[package]]
 name = "libz-sys"

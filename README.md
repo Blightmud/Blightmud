@@ -47,6 +47,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - **Archlinux/Manjaro**  : Packages are available on AUR
 - **Mac/Homebrew**       : We have a homebrew tap `brew tap LiquidityC/blightmud`
 - **Other/Alternative**  : Download source and run `cargo install --path .` from the project root
+- **Windows**            : No native windows support but Blightmud runs fine under WSL
 
 ## Support, questions and help
 Join our [discord](https://discord.gg/qnxgUC5)

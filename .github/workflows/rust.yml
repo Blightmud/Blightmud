@@ -21,7 +21,7 @@ jobs:
         path: |
           ~/.cargo/git
           ~/.cargo/registry
-          target
+          ~/.cargo/bin
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Setup toolchain
       uses: actions-rs/toolchain@v1
@@ -51,7 +51,7 @@ jobs:
         path: |
           ~/.cargo/git
           ~/.cargo/registry
-          target
+          ~/.cargo/bin
         key: ${{ runner.os }}-cargo-no-tts-${{ hashFiles('**/Cargo.lock') }}
     - name: Setup toolchain
       uses: actions-rs/toolchain@v1
@@ -79,6 +79,7 @@ jobs:
         path: |
           ~/.cargo/git
           ~/.cargo/registry
+          ~/.cargo/bin
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Installing dependencies
@@ -105,6 +106,7 @@ jobs:
         path: |
           ~/.cargo/git
           ~/.cargo/registry
+          ~/.cargo/bin
           target
         key: ${{ runner.os }}-cargo-no-tts-${{ hashFiles('**/Cargo.lock') }}
     - name: Formatting

@@ -14,7 +14,7 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Cache cargo registry
+    - name: Cache
       uses: actions/cache@v2
       with:
         path: |
@@ -32,11 +32,11 @@ jobs:
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
-      run: cargo check
+      run: cargo check --locked
     - name: Clippy
-      run: cargo clippy
+      run: cargo clippy --locked
     - name: Test
-      run: cargo test
+      run: cargo test --locked
     - name: Build
       run: cargo build --release
 
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Cache cargo registry
+    - name: Cache
       uses: actions/cache@v2
       with:
         path: |
@@ -56,10 +56,10 @@ jobs:
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
-      run: cargo check
+      run: cargo check --locked
     - name: Clippy
-      run: cargo clippy
+      run: cargo clippy --locked
     - name: Test
-      run: cargo test
+      run: cargo test --locked
     - name: Build
       run: cargo build --release

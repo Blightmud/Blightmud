@@ -5,6 +5,7 @@ use std::io::{stdout, Stdout, Write};
 use std::{error, fmt};
 use termion::{
     color,
+    input::MouseTerminal,
     raw::{IntoRawMode, RawTerminal},
     screen::AlternateScreen,
 };
@@ -40,7 +41,7 @@ struct StatusArea {
     status_lines: Vec<Option<String>>,
 }
 
-type ScreenHandle = AlternateScreen<RawTerminal<Stdout>>;
+type ScreenHandle = MouseTerminal<AlternateScreen<RawTerminal<Stdout>>>;
 
 impl StatusArea {
     fn new(height: u16, start_line: u16, width: u16) -> Self {
@@ -217,7 +218,7 @@ pub struct Screen {
 
 impl Screen {
     pub fn new() -> Result<Self, Box<dyn error::Error>> {
-        let screen = AlternateScreen::from(stdout().into_raw_mode()?);
+        let screen = MouseTerminal::from(AlternateScreen::from(stdout().into_raw_mode()?));
         let (width, height) = termion::terminal_size()?;
 
         let status_area_height = 1;

@@ -254,6 +254,15 @@ impl CommandBuffer {
     }
 }
 
+fn parse_mouse_event(event: termion::event::MouseEvent, writer: &Sender<Event>) {
+    use termion::event::{MouseButton, MouseEvent};
+    match event {
+        MouseEvent::Press(MouseButton::WheelUp, ..) => writer.send(Event::ScrollUp).unwrap(),
+        MouseEvent::Press(MouseButton::WheelDown, ..) => writer.send(Event::ScrollDown).unwrap(),
+        _ => {}
+    }
+}
+
 fn parse_key_event(
     key: termion::event::Key,
     buffer: &mut CommandBuffer,
@@ -398,6 +407,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                         ))
                         .unwrap();
                 }
+                termion::event::Event::Mouse(event) => parse_mouse_event(event, &writer),
                 termion::event::Event::Unsupported(bytes) => {
                     if let Ok(escape) = String::from_utf8(bytes.clone()) {
                         check_escape_bindings(
@@ -412,7 +422,6 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                             .unwrap();
                     }
                 }
-                _ => {}
             }
             if terminate.load(Ordering::Relaxed) {
                 break;

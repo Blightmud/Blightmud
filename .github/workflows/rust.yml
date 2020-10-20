@@ -32,13 +32,13 @@ jobs:
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
-      run: cargo check --locked
+      run: cargo check --locked --all-features
     - name: Clippy
-      run: cargo clippy --locked
+      run: cargo clippy --locked --all-features
     - name: Test
-      run: cargo test --locked
+      run: cargo test --locked --all-features
     - name: Build
-      run: cargo build --release --locked
+      run: cargo build --release --locked --all-features
 
   test_macos_no_tts:
     name: Build on MacOS (no TTS)
@@ -62,11 +62,11 @@ jobs:
     - name: Formatting
       run: cargo fmt -- --check
     - name: Clippy
-      run: cargo clippy --no-default-features --locked
+      run: cargo clippy --locked
     - name: Test
-      run: cargo test --no-default-features --locked
+      run: cargo test --locked
     - name: Build
-      run: cargo build --release --no-default-features --locked
+      run: cargo build --release --locked
 
   test_ubuntu:
     name: Build on Ubuntu
@@ -87,13 +87,13 @@ jobs:
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
-      run: cargo check --locked
+      run: cargo check --locked --all-features
     - name: Clippy
-      run: cargo clippy --locked
+      run: cargo clippy --locked --all-features
     - name: Test
-      run: cargo test --locked
+      run: cargo test --locked --all-features
     - name: Build
-      run: cargo build --release --locked
+      run: cargo build --release --locked --all-features
 
   test_ubuntu_no_tts:
     name: Build on Ubuntu (no TTS)
@@ -112,10 +112,10 @@ jobs:
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
-      run: cargo check --no-default-features --locked
+      run: cargo check --locked
     - name: Clippy
-      run: cargo clippy --no-default-features --locked
+      run: cargo clippy --locked
     - name: Test
-      run: cargo test --no-default-features --locked
+      run: cargo test --locked
     - name: Build
-      run: cargo build --release --no-default-features --locked
+      run: cargo build --release --locked

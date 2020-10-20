@@ -31,7 +31,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - Text-To-Speech
 - Low resource and fast
 - In client help and manuals
-- Native Text-To-Speech functionality
+- Native Text-To-Speech functionality (optional)
 - Tab completion
 
 ## Compiling
@@ -39,8 +39,8 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - Run `cargo build` to compile
 - Run `cargo run` to run
 
-### Compile without text-to-speech
-- Run `cargo build|run|install --no-default-features`
+### Compile with text-to-speech
+- Run `cargo build|run|install --all-features`
 
 ## Installation
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page

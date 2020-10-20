@@ -8,7 +8,7 @@ authors = ["Linus Probert"]
 edition = "2018"
 
 [features]
-default = ["tts"]
+text-to-speech = ["tts"]
 
 [dependencies]
 libtelnet-rs = "1.1.0"

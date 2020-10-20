@@ -163,31 +163,19 @@ impl CommandBuffer {
     }
 
     fn delete_word_right(&mut self) {
-        let origin = (self.cursor_pos).min(self.buffer.len());
-        let start = self.buffer[origin..]
-            .find(|c| c != ' ')
-            .map(|c| c + origin)
-            .unwrap_or(origin);
-        if let Some(pos) = self.buffer[start..].find(' ') {
-            self.buffer.replace_range(origin..start + pos, "");
-        } else if origin < self.buffer.len() {
-            self.buffer.replace_range(origin.., "");
+        let origin = self.cursor_pos;
+        self.move_word_right();
+        if origin != self.cursor_pos {
+            self.buffer.replace_range(origin..self.cursor_pos, "");
+            self.cursor_pos = origin;
         }
     }
 
     fn delete_word_left(&mut self) {
-        if self.cursor_pos == 0 {
-            return;
-        }
-        let origin = self.cursor_pos.max(1);
-        let start = self.buffer[..origin].rfind(|c| c != ' ').unwrap_or(origin);
-        if let Some(pos) = self.buffer[..start].rfind(' ') {
-            let pos = pos + 1;
-            self.cursor_pos = pos;
-            self.buffer.replace_range(pos..origin, "");
-        } else {
-            self.cursor_pos = 0;
-            self.buffer.replace_range(..origin, "");
+        let origin = self.cursor_pos;
+        self.move_word_left();
+        if origin != self.cursor_pos {
+            self.buffer.replace_range(self.cursor_pos..origin, "");
         }
     }
 
@@ -269,6 +257,15 @@ impl CommandBuffer {
     }
 }
 
+fn parse_mouse_event(event: termion::event::MouseEvent, writer: &Sender<Event>) {
+    use termion::event::{MouseButton, MouseEvent};
+    match event {
+        MouseEvent::Press(MouseButton::WheelUp, ..) => writer.send(Event::ScrollUp).unwrap(),
+        MouseEvent::Press(MouseButton::WheelDown, ..) => writer.send(Event::ScrollDown).unwrap(),
+        _ => {}
+    }
+}
+
 fn parse_key_event(
     key: termion::event::Key,
     buffer: &mut CommandBuffer,
@@ -302,6 +299,7 @@ fn parse_key_event(
         Key::Left => buffer.move_left(),
         Key::Right => buffer.move_right(),
         Key::Backspace => buffer.remove(),
+        Key::Delete => buffer.delete_right(),
         Key::Up => buffer.previous(),
         Key::Down => buffer.next(),
         _ => {}
@@ -317,10 +315,10 @@ fn check_command_binds(
     if let Ok(mut script) = script.lock() {
         match cmd {
             Key::Ctrl(c) => {
-                script.check_bindings(&format!("ctrl-{}", c));
+                script.check_bindings(&human_key("ctrl-", c));
             }
             Key::Alt(c) => {
-                script.check_bindings(&format!("alt-{}", c));
+                script.check_bindings(&human_key("alt-", c));
             }
             Key::F(n) => {
                 script.check_bindings(&format!("f{}", n));
@@ -329,6 +327,17 @@ fn check_command_binds(
         }
     }
     handle_script_ui_io(buffer, script, writer);
+}
+
+/// Convert a key combination to a human-readable form.
+fn human_key(prefix: &str, c: char) -> String {
+    let mut out = prefix.to_owned();
+    match c {
+        '\u{7f}' => out.push_str("backspace"),
+        '\u{1b}' => out.push_str("escape"),
+        _ => out.push(c),
+    }
+    out
 }
 
 fn check_escape_bindings(
@@ -411,6 +420,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                         ))
                         .unwrap();
                 }
+                termion::event::Event::Mouse(event) => parse_mouse_event(event, &writer),
                 termion::event::Event::Unsupported(bytes) => {
                     if let Ok(escape) = String::from_utf8(bytes.clone()) {
                         check_escape_bindings(
@@ -425,7 +435,6 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                             .unwrap();
                     }
                 }
-                _ => {}
             }
             if terminate.load(Ordering::Relaxed) {
                 break;
@@ -697,7 +706,7 @@ mod command_test {
 
     #[test]
     fn test_delete_right() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();
@@ -712,7 +721,7 @@ mod command_test {
 
     #[test]
     fn test_delete_word_left() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_end();
         buffer.delete_word_left();
@@ -725,12 +734,24 @@ mod command_test {
 
     #[test]
     fn test_delete_word_right() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.delete_word_right();
         assert_eq!(buffer.get_buffer(), " random words");
         buffer.delete_word_right();
         assert_eq!(buffer.get_buffer(), " words");
+    }
+
+    #[test]
+    fn test_human_key() {
+        use super::human_key;
+
+        assert_eq!(human_key("alt-", '\u{7f}'), "alt-backspace");
+        assert_eq!(human_key("ctrl-", '\u{7f}'), "ctrl-backspace");
+        assert_eq!(human_key("alt-", '\u{1b}'), "alt-escape");
+        assert_eq!(human_key("ctrl-", '\u{1b}'), "ctrl-escape");
+        assert_eq!(human_key("ctrl-", 'd'), "ctrl-d");
+        assert_eq!(human_key("f", 'x'), "fx");
     }
 }

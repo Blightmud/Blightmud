@@ -16,3 +16,5 @@ bind("ctrl-d", "delete_right")
 bind("ctrl-h", "delete")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
+
+blight:bind("ctrl-s", function () tts:stop() end)

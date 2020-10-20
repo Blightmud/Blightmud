@@ -1,5 +1,5 @@
-use crate::event::Event;
 use crate::model::{Connection, Line};
+use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session};
 use log::debug;
 use rs_complete::CompletionTree;
@@ -56,10 +56,11 @@ pub struct CommandBuffer {
     cursor_pos: usize,
     completion_tree: CompletionTree,
     completion: CompletionStepData,
+    tts_ctrl: Arc<Mutex<TTSController>>,
 }
 
-impl Default for CommandBuffer {
-    fn default() -> Self {
+impl CommandBuffer {
+    pub fn new(tts_ctrl: Arc<Mutex<TTSController>>) -> Self {
         Self {
             buffer: String::default(),
             cached_buffer: String::default(),
@@ -68,11 +69,10 @@ impl Default for CommandBuffer {
             cursor_pos: 0,
             completion_tree: CompletionTree::with_inclusions(&['/', '_']),
             completion: CompletionStepData::default(),
+            tts_ctrl,
         }
     }
-}
 
-impl CommandBuffer {
     fn get_buffer(&self) -> String {
         self.buffer.clone()
     }
@@ -208,6 +208,7 @@ impl CommandBuffer {
                 }
             }
             if let Some(comp) = self.completion.next() {
+                self.tts_ctrl.lock().unwrap().speak(&comp, true);
                 self.buffer = comp.clone();
                 self.cursor_pos = comp.len();
             }
@@ -229,6 +230,7 @@ impl CommandBuffer {
             };
             self.buffer = self.history[self.current_index].clone();
             self.cursor_pos = self.buffer.len();
+            self.tts_ctrl.lock().unwrap().speak(&self.buffer, true);
         }
     }
 
@@ -250,6 +252,7 @@ impl CommandBuffer {
                 self.buffer = self.history[self.current_index].clone();
             }
         }
+        self.tts_ctrl.lock().unwrap().speak(&self.buffer, true);
         self.cursor_pos = self.buffer.len();
     }
 }
@@ -268,11 +271,20 @@ fn parse_key_event(
     buffer: &mut CommandBuffer,
     writer: &Sender<Event>,
     terminate: &Arc<AtomicBool>,
+    tts_ctrl: &mut Arc<Mutex<TTSController>>,
 ) {
     match key {
-        Key::Char('\n') => writer.send(parse_command(&buffer.submit())).unwrap(),
+        Key::Char('\n') => {
+            writer
+                .send(Event::InputSent(Line::from(&buffer.buffer)))
+                .unwrap();
+            writer.send(parse_command(&buffer.submit())).unwrap();
+        }
         Key::Char('\t') => buffer.tab_complete(),
-        Key::Char(c) => buffer.push_key(c),
+        Key::Char(c) => {
+            tts_ctrl.lock().unwrap().key_press(c);
+            buffer.push_key(c);
+        }
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
         Key::Ctrl('c') => {
             debug!("Caught ctrl-c, terminating");
@@ -390,7 +402,8 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         let terminate = session.terminate;
         let script = session.lua_script;
         let stdin = stdin();
-        let mut buffer = CommandBuffer::default();
+        let mut tts_ctrl = session.tts_ctrl;
+        let mut buffer = CommandBuffer::new(tts_ctrl.clone());
         buffer
             .completion_tree
             .insert(include_str!("../../resources/completions.txt"));
@@ -398,7 +411,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         for e in stdin.events() {
             match e.unwrap() {
                 termion::event::Event::Key(key) => {
-                    parse_key_event(key, &mut buffer, &writer, &terminate);
+                    parse_key_event(key, &mut buffer, &writer, &terminate, &mut tts_ctrl);
                     check_command_binds(key, &mut buffer, &script, &writer);
                     writer
                         .send(Event::UserInputBuffer(
@@ -552,15 +565,22 @@ fn parse_command(msg: &str) -> Event {
 #[cfg(test)]
 mod command_test {
 
+    use std::sync::{Arc, Mutex};
+
     use super::CommandBuffer;
+    use crate::tts::TTSController;
 
     fn push_string(buffer: &mut CommandBuffer, msg: &str) {
         msg.chars().for_each(|c| buffer.push_key(c));
     }
 
+    fn get_command() -> CommandBuffer {
+        CommandBuffer::new(Arc::new(Mutex::new(TTSController::new(false))))
+    }
+
     #[test]
     fn test_editing() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
 
         push_string(&mut buffer, "test is test");
         assert_eq!(buffer.get_buffer(), "test is test");
@@ -582,7 +602,7 @@ mod command_test {
 
     #[test]
     fn test_no_zero_index_remove_crash() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         buffer.push_key('t');
         buffer.move_left();
         assert_eq!(buffer.get_pos(), 0);
@@ -592,14 +612,14 @@ mod command_test {
 
     #[test]
     fn test_no_history_empty_input() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         buffer.submit();
         assert!(buffer.history.is_empty());
     }
 
     #[test]
     fn no_duplicate_commands_in_history() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "test");
         buffer.submit();
         push_string(&mut buffer, "test");
@@ -629,7 +649,7 @@ mod command_test {
 
     #[test]
     fn test_input_navigation() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_word_left();
         assert_eq!(buffer.cursor_pos, 12);
@@ -651,7 +671,7 @@ mod command_test {
 
     #[test]
     fn test_end_start_navigation() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         assert_eq!(buffer.cursor_pos, 0);
@@ -665,7 +685,7 @@ mod command_test {
 
     #[test]
     fn test_delete_rest_of_line() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();
@@ -675,7 +695,7 @@ mod command_test {
 
     #[test]
     fn test_delete_from_start_of_line() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();
@@ -686,7 +706,7 @@ mod command_test {
 
     #[test]
     fn test_delete_right() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();
@@ -701,7 +721,7 @@ mod command_test {
 
     #[test]
     fn test_delete_word_left() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_end();
         buffer.delete_word_left();
@@ -714,7 +734,7 @@ mod command_test {
 
     #[test]
     fn test_delete_word_right() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.delete_word_right();

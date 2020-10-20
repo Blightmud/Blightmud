@@ -10,6 +10,7 @@ pub struct Settings {
 }
 
 pub const LOGGING_ENABLED: &str = "logging_enabled";
+pub const TTS_ENABLED: &str = "tts_enabled";
 
 impl Settings {
     pub fn get(&self, key: &str) -> Result<bool> {
@@ -26,6 +27,10 @@ impl Settings {
                 self.settings.insert(key.to_string(), value);
                 Ok(())
             }
+            TTS_ENABLED => {
+                self.settings.insert(key.to_string(), value);
+                Ok(())
+            }
             _ => bail!("Unknown setting: {}", key),
         }
     }
@@ -35,6 +40,7 @@ impl Default for Settings {
     fn default() -> Self {
         let mut settings: HashMap<String, bool> = HashMap::new();
         settings.insert(LOGGING_ENABLED.to_string(), false);
+        settings.insert(TTS_ENABLED.to_string(), true);
         Self { settings }
     }
 }

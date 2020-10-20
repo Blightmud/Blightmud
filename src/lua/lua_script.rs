@@ -1,5 +1,5 @@
-use super::blight::*;
 use super::{alias::Alias, trigger::Trigger, util::*};
+use super::{blight::*, tts::Tts};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
@@ -23,8 +23,9 @@ fn create_default_lua_state(
     let mut blight = Blight::new(writer.clone());
     let core = match core {
         Some(core) => core,
-        None => Core::new(writer),
+        None => Core::new(writer.clone()),
     };
+    let tts = Tts::new(writer);
 
     blight.screen_dimensions = dimensions;
     blight.core_mode(true);
@@ -33,6 +34,7 @@ fn create_default_lua_state(
             let globals = ctx.globals();
             globals.set("blight", blight)?;
             globals.set("core", core)?;
+            globals.set("tts", tts)?;
 
             globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
             globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
@@ -46,6 +48,7 @@ fn create_default_lua_state(
             globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
 
             globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
+            globals.set(TTS_GAG_NEXT_TRIGGER_LINE, false)?;
 
             let lua_json = ctx
                 .load(include_str!("../../resources/lua/json.lua"))
@@ -185,6 +188,8 @@ impl LuaScript {
                         line.flags.gag = line.flags.gag
                             || rust_trigger.gag
                             || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
+                        line.flags.tts_gag = line.flags.tts_gag
+                            || ctx.globals().get(TTS_GAG_NEXT_TRIGGER_LINE).unwrap();
 
                         if rust_trigger.count > 0 {
                             rust_trigger.count -= 1;
@@ -195,6 +200,7 @@ impl LuaScript {
 
                         // Reset the gag flag
                         ctx.globals().set(GAG_NEXT_TRIGGER_LINE, false).unwrap();
+                        ctx.globals().set(TTS_GAG_NEXT_TRIGGER_LINE, false).unwrap();
                     }
                 }
             }

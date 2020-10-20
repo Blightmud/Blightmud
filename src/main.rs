@@ -20,6 +20,7 @@ mod net;
 mod session;
 mod timer;
 mod tools;
+mod tts;
 mod ui;
 
 use crate::event::Event;
@@ -113,6 +114,11 @@ fn main() {
         "tls",
         "Use tls when connecting to a server (only applies in combination with --connect)",
     );
+    opts.optflag(
+        "T",
+        "tts",
+        "Use the TTS system when playing a MUD (for visually impaired users)",
+    );
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
 
@@ -167,11 +173,11 @@ fn main() {
         .main_writer(main_writer)
         .timer_writer(timer_writer)
         .screen_dimensions(dimensions)
+        .tts_enabled(matches.opt_present("tts"))
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
-
     if let Err(error) = run(main_thread_read, session) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
@@ -184,7 +190,7 @@ fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut screen = Screen::new()?;
+    let mut screen = Screen::new(session.tts_ctrl.clone())?;
     screen.setup()?;
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
@@ -217,7 +223,6 @@ fn run(
     }
 
     let mut event_handler = EventHandler::from(&session);
-
     let mut saved_servers = Servers::load()?;
 
     check_latest_version(session.main_writer.clone());
@@ -247,9 +252,19 @@ fn run(
                 | Event::Prompt
                 | Event::Error(_)
                 | Event::Info(_)
+                | Event::InputSent(_)
                 | Event::UserInputBuffer(_, _) => {
+                    //tts_ctrl.handle_events(event.clone());
                     event_handler.handle_output_events(event, &mut screen)?;
                 }
+
+                Event::TTSEnabled(enabled) => session.tts_ctrl.lock().unwrap().enabled(enabled),
+                Event::Speak(msg, interupt) => {
+                    session.tts_ctrl.lock().unwrap().speak(&msg, interupt)
+                }
+                Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
+                Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
+
                 Event::ShowSetting(setting) => match settings.get(&setting) {
                     Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
                     Err(error) => screen.print_error(&error.to_string()),

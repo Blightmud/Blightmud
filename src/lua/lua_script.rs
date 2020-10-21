@@ -1,5 +1,5 @@
-use super::blight::*;
 use super::{alias::Alias, trigger::Trigger, util::*};
+use super::{blight::*, tts::Tts};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
@@ -11,15 +11,21 @@ use std::{fs::File, sync::mpsc::Sender};
 pub struct LuaScript {
     state: Lua,
     writer: Sender<Event>,
-    on_connect_triggered: bool,
-    on_gmcp_ready_triggered: bool,
 }
 
-fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lua {
+fn create_default_lua_state(
+    writer: Sender<Event>,
+    dimensions: (u16, u16),
+    core: Option<Core>,
+) -> Lua {
     let state = Lua::new();
 
     let mut blight = Blight::new(writer.clone());
-    let core = Core::new(writer);
+    let core = match core {
+        Some(core) => core,
+        None => Core::new(writer.clone()),
+    };
+    let tts = Tts::new(writer);
 
     blight.screen_dimensions = dimensions;
     blight.core_mode(true);
@@ -28,6 +34,7 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             let globals = ctx.globals();
             globals.set("blight", blight)?;
             globals.set("core", core)?;
+            globals.set("tts", tts)?;
 
             globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
             globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
@@ -41,6 +48,7 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
             globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
 
             globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
+            globals.set(TTS_GAG_NEXT_TRIGGER_LINE, false)?;
 
             let lua_json = ctx
                 .load(include_str!("../../resources/lua/json.lua"))
@@ -76,17 +84,17 @@ fn create_default_lua_state(writer: Sender<Event>, dimensions: (u16, u16)) -> Lu
 impl LuaScript {
     pub fn new(main_writer: Sender<Event>, dimensions: (u16, u16)) -> Self {
         Self {
-            state: create_default_lua_state(main_writer.clone(), dimensions),
+            state: create_default_lua_state(main_writer.clone(), dimensions, None),
             writer: main_writer,
-            on_connect_triggered: false,
-            on_gmcp_ready_triggered: false,
         }
     }
 
     pub fn reset(&mut self, dimensions: (u16, u16)) {
-        self.on_connect_triggered = false;
-        self.on_gmcp_ready_triggered = false;
-        self.state = create_default_lua_state(self.writer.clone(), dimensions);
+        let core = self
+            .state
+            .context(|ctx| -> Result<Core, rlua::Error> { ctx.globals().get("core") })
+            .ok();
+        self.state = create_default_lua_state(self.writer.clone(), dimensions, core);
     }
 
     pub fn get_output_lines(&self) -> Vec<Line> {
@@ -172,13 +180,16 @@ impl LuaScript {
                             .collect();
 
                         let cb: rlua::Function = trigger.get_user_value().unwrap();
-                        if let Err(msg) = cb.call::<_, ()>(captures) {
+                        if let Err(msg) = cb.call::<_, ()>((captures, line.print_line())) {
                             output_stack_trace(&self.writer, &msg.to_string());
                         }
 
                         line.flags.matched = true;
-                        line.flags.gag =
-                            rust_trigger.gag || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
+                        line.flags.gag = line.flags.gag
+                            || rust_trigger.gag
+                            || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
+                        line.flags.tts_gag = line.flags.tts_gag
+                            || ctx.globals().get(TTS_GAG_NEXT_TRIGGER_LINE).unwrap();
 
                         if rust_trigger.count > 0 {
                             rust_trigger.count -= 1;
@@ -189,6 +200,7 @@ impl LuaScript {
 
                         // Reset the gag flag
                         ctx.globals().set(GAG_NEXT_TRIGGER_LINE, false).unwrap();
+                        ctx.globals().set(TTS_GAG_NEXT_TRIGGER_LINE, false).unwrap();
                     }
                 }
             }
@@ -203,24 +215,22 @@ impl LuaScript {
     }
 
     pub fn run_timed_function(&mut self, id: u32) {
-        self.state
-            .context(|ctx| -> Result<()> {
-                let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
-                let func: rlua::Function = table.get(id)?;
-                func.call::<_, ()>(())?;
-                Ok(())
-            })
-            .unwrap();
+        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
+            let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+            let func: rlua::Function = table.get(id)?;
+            func.call::<_, ()>(())
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
     }
 
     pub fn remove_timed_function(&mut self, id: u32) {
-        self.state
-            .context(|ctx| -> Result<()> {
-                let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
-                table.set(id, rlua::Nil)?;
-                Ok(())
-            })
-            .unwrap();
+        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
+            let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+            table.set(id, rlua::Nil)
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
     }
 
     pub fn load_script(&mut self, path: &str) -> Result<()> {
@@ -237,51 +247,48 @@ impl LuaScript {
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16) {
-        if !self.on_connect_triggered {
-            self.on_connect_triggered = true;
-            self.state
-                .context(|ctx| -> LuaResult<()> {
-                    if let Ok(callback) = ctx
-                        .globals()
-                        .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
-                    {
-                        if let Err(msg) = callback.call::<_, ()>((host, port)) {
-                            output_stack_trace(&self.writer, &msg.to_string());
-                        }
-                    }
-                    Ok(())
-                })
-                .unwrap();
+        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
+            if let Ok(callback) = ctx
+                .globals()
+                .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
+            {
+                callback.call::<_, ()>((host, port))
+            } else {
+                Ok(())
+            }
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn on_disconnect(&mut self) {
-        self.state
-            .context(|ctx| -> LuaResult<()> {
-                if let Ok(callback) = ctx
-                    .globals()
-                    .get::<_, rlua::Function>(ON_DISCONNECT_CALLBACK)
-                {
-                    if let Err(msg) = callback.call::<_, ()>(()) {
-                        output_stack_trace(&self.writer, &msg.to_string());
-                    }
-                }
+        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
+            if let Ok(callback) = ctx
+                .globals()
+                .get::<_, rlua::Function>(ON_DISCONNECT_CALLBACK)
+            {
+                callback.call::<_, ()>(())
+            } else {
                 Ok(())
-            })
-            .unwrap();
+            }
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
     }
 
-    pub fn set_dimensions(&mut self, dim: (u16, u16)) -> LuaResult<()> {
-        self.state.context(|ctx| -> LuaResult<()> {
+    pub fn set_dimensions(&mut self, dim: (u16, u16)) {
+        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
             let mut blight: Blight = ctx.globals().get("blight")?;
             blight.screen_dimensions = dim;
             ctx.globals().set("blight", blight)?;
             Ok(())
-        })
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
     }
 
     pub fn proto_enabled(&mut self, proto: u8) {
-        let result = self.state.context(|ctx| -> Result<(), rlua::Error> {
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
             let globals = ctx.globals();
             let table: rlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
             for pair in table.pairs::<rlua::Value, rlua::Function>() {
@@ -289,15 +296,13 @@ impl LuaScript {
                 cb.call::<_, ()>(proto)?;
             }
             Ok(())
-        });
-
-        if let Err(msg) = result {
+        }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn proto_subneg(&mut self, proto: u8, bytes: &[u8]) {
-        let result = self.state.context(|ctx| -> Result<(), rlua::Error> {
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
             let globals = ctx.globals();
             let table: rlua::Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
             for pair in table.pairs::<rlua::Value, rlua::Function>() {
@@ -305,35 +310,42 @@ impl LuaScript {
                 cb.call::<_, ()>((proto, bytes.to_vec()))?;
             }
             Ok(())
-        });
-
-        if let Err(msg) = result {
+        }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
-    pub fn check_bindings(&mut self, cmd: &str) {
-        self.state
-            .context(|ctx| -> Result<(), rlua::Error> {
-                let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
-                if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
-                    callback.call::<_, ()>(())
-                } else {
-                    Ok(())
-                }
-            })
-            .unwrap();
+    pub fn check_bindings(&mut self, cmd: &str) -> bool {
+        let mut response = false;
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
+                response = true;
+                callback.call::<_, ()>(())
+            } else {
+                Ok(())
+            }
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
+        response
     }
 
     pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
-        self.state
+        match self
+            .state
             .context(|ctx| -> Result<Vec<UiEvent>, rlua::Error> {
                 let mut blight: Blight = ctx.globals().get("blight")?;
                 let events = blight.get_ui_events();
                 ctx.globals().set("blight", blight)?;
                 Ok(events)
-            })
-            .unwrap()
+            }) {
+            Ok(data) => data,
+            Err(msg) => {
+                output_stack_trace(&self.writer, &msg.to_string());
+                vec![]
+            }
+        }
     }
 }
 
@@ -549,7 +561,7 @@ mod lua_script_tests {
             .context(|ctx| ctx.load("return blight:terminal_dimensions()").call(()))
             .unwrap();
         assert_eq!(dim, (80, 80));
-        lua.set_dimensions((70, 70)).unwrap();
+        lua.set_dimensions((70, 70));
         let dim: (u16, u16) = lua
             .state
             .context(|ctx| ctx.load("return blight:terminal_dimensions()").call(()))
@@ -779,6 +791,9 @@ mod lua_script_tests {
         blight:bind("alt-1", function ()
             blight:output("alt-1")
         end)
+        blight:bind("\x1b[1;5A", function ()
+            blight:output("ctrl-up")
+        end)
         "#;
 
         let (mut lua, _reader) = get_lua();
@@ -794,6 +809,8 @@ mod lua_script_tests {
         assert_eq!(lua.get_output_lines(), [Line::from("f1")]);
         lua.check_bindings("ctrl-0");
         assert_eq!(lua.get_output_lines(), []);
+        lua.check_bindings("\x1b[1;5a");
+        assert_eq!(lua.get_output_lines(), [Line::from("ctrl-up")]);
     }
 
     #[test]
@@ -811,8 +828,6 @@ mod lua_script_tests {
 
         lua.on_connect("test", 21);
         assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
-        lua.on_connect("test", 21);
-        assert_eq!(lua.get_output_lines(), []);
         lua.reset((100, 100));
         lua.state.context(|ctx| {
             ctx.load(lua_code).exec().unwrap();

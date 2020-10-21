@@ -3,6 +3,7 @@ use crate::{
     model::{Connection, Line, Servers},
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
+    tts::TTSEvent,
     ui::Screen,
     TelnetData,
 };
@@ -18,6 +19,7 @@ use std::{
 pub enum Event {
     Prompt,
     ServerSend(Vec<u8>),
+    InputSent(Line),
     ServerInput(Line),
     MudOutput(Line),
     Output(Line),
@@ -53,6 +55,10 @@ pub enum Event {
     StatusAreaHeight(u16),
     StatusLine(usize, String),
     ShowHelp(String),
+    TTSEnabled(bool),
+    Speak(String, bool),
+    SpeakStop,
+    TTSEvent(TTSEvent),
     Redraw,
     Quit,
 }
@@ -110,7 +116,6 @@ impl EventHandler {
             }
             Event::ServerInput(line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
-                    screen.print_send(&line);
                     if !script.check_for_alias_match(&line) {
                         if let Ok(mut logger) = self.session.logger.lock() {
                             if let Some(log_line) = line.log_line() {
@@ -266,6 +271,10 @@ impl EventHandler {
             }
             Event::Info(msg) => {
                 screen.print_info(&msg);
+                Ok(())
+            }
+            Event::InputSent(msg) => {
+                screen.print_send(&msg);
                 Ok(())
             }
             _ => Err(BadEventRoutingError.into()),

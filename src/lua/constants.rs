@@ -5,6 +5,7 @@ pub const ON_CONNCTION_CALLBACK: &str = "__connection_callback";
 pub const ON_DISCONNECT_CALLBACK: &str = "__disconnect_callback";
 pub const TIMED_FUNCTION_TABLE: &str = "__timed_functions";
 pub const GAG_NEXT_TRIGGER_LINE: &str = "__gag_next";
+pub const TTS_GAG_NEXT_TRIGGER_LINE: &str = "__tts_gag_next";
 pub const COMMAND_BINDING_TABLE: &str = "__cmd_binds";
 
 pub const ALIAS_TABLE_CORE: &str = "__alias_table_core";

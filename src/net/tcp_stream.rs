@@ -1,14 +1,9 @@
-use crate::{
-    event::Event,
-    net::TelnetHandler,
-    session::{CommunicationOptions, Session},
-};
+use crate::{event::Event, net::TelnetHandler, session::Session};
 use flate2::read::ZlibDecoder;
-use libtelnet_rs::telnet::op_option as opt;
 use log::{debug, error};
 use std::{
     io::{Chain, Cursor, Read, Write},
-    sync::{mpsc::Receiver, Arc, Mutex},
+    sync::mpsc::Receiver,
     thread,
 };
 
@@ -21,44 +16,13 @@ pub const BUFFER_SIZE: usize = 32 * 1024;
 struct MudReceiver {
     connection: MudConnection,
     decoder: Option<Decoder>,
-    comops: Arc<Mutex<CommunicationOptions>>,
-    last_chunk: Vec<u8>,
 }
 
 impl MudReceiver {
-    // If there were compressed bytes in the last chunk they are extracted here
-    fn extract_compressed_bytes_from_last(&self) -> Option<&[u8]> {
-        if let Some(item) = self
-            .last_chunk
-            .iter()
-            .enumerate()
-            .rfind(|item| *item.1 == opt::MCCP2)
-        {
-            // ... MCCP2 IAC SE, hence the + 3
-            Some(&self.last_chunk[item.0 + 3..])
-        } else {
-            None
-        }
-    }
-
-    fn check_open_zlib_stream(&mut self) {
-        if self.decoder.is_none() {
-            if let Ok(comops) = self.comops.lock() {
-                if comops.mccp2 {
-                    debug!("Opening Zlib stream");
-                    let existing =
-                        if let Some(existing_bytes) = self.extract_compressed_bytes_from_last() {
-                            existing_bytes.to_vec()
-                        } else {
-                            vec![]
-                        };
-
-                    let chain = Cursor::new(existing).chain(self.connection.clone());
-                    let decoder = ZlibDecoder::new(chain);
-                    self.decoder.replace(decoder);
-                }
-            }
-        }
+    fn open_zlib_stream(&mut self, existing: Vec<u8>) {
+        debug!("Opening Zlib stream");
+        let chain = ZlibDecoder::new(Cursor::new(existing).chain(self.connection.clone()));
+        self.decoder.replace(chain);
     }
 
     fn read_bytes(&mut self) -> Vec<u8> {
@@ -91,7 +55,6 @@ impl MudReceiver {
         } else {
             data = vec![];
         }
-        self.last_chunk = data.clone();
         data
     }
 }
@@ -101,8 +64,6 @@ impl From<&Session> for MudReceiver {
         Self {
             connection: session.connection.lock().unwrap().clone(),
             decoder: None,
-            comops: session.comops.clone(),
-            last_chunk: vec![],
         }
     }
 }
@@ -115,10 +76,13 @@ pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
         let connection_id = session.connection_id();
 
         debug!("Receive stream spawned");
+        let mut remaining_bytes = None;
         loop {
-            mud_receiver.check_open_zlib_stream();
-            let bytes = mud_receiver.read_bytes();
+            if let Some(bytes) = remaining_bytes {
+                mud_receiver.open_zlib_stream(bytes);
+            }
 
+            let bytes = mud_receiver.read_bytes();
             if bytes.is_empty() {
                 writer
                     .send(Event::Info("Connection closed".to_string()))
@@ -127,7 +91,7 @@ pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
                 break;
             }
 
-            telnet_handler.parse(&bytes);
+            remaining_bytes = telnet_handler.parse(&bytes);
         }
         debug!("Receive stream closing");
     })

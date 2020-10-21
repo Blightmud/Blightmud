@@ -1,5 +1,5 @@
-use crate::event::Event;
 use crate::model::{Connection, Line};
+use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session};
 use log::debug;
 use rs_complete::CompletionTree;
@@ -56,10 +56,11 @@ pub struct CommandBuffer {
     cursor_pos: usize,
     completion_tree: CompletionTree,
     completion: CompletionStepData,
+    tts_ctrl: Arc<Mutex<TTSController>>,
 }
 
-impl Default for CommandBuffer {
-    fn default() -> Self {
+impl CommandBuffer {
+    pub fn new(tts_ctrl: Arc<Mutex<TTSController>>) -> Self {
         Self {
             buffer: String::default(),
             cached_buffer: String::default(),
@@ -68,11 +69,10 @@ impl Default for CommandBuffer {
             cursor_pos: 0,
             completion_tree: CompletionTree::with_inclusions(&['/', '_']),
             completion: CompletionStepData::default(),
+            tts_ctrl,
         }
     }
-}
 
-impl CommandBuffer {
     fn get_buffer(&self) -> String {
         self.buffer.clone()
     }
@@ -156,6 +156,29 @@ impl CommandBuffer {
         self.cursor_pos = 0;
     }
 
+    fn delete_right(&mut self) {
+        if self.cursor_pos < self.buffer.len() {
+            self.buffer.remove(self.cursor_pos);
+        }
+    }
+
+    fn delete_word_right(&mut self) {
+        let origin = self.cursor_pos;
+        self.move_word_right();
+        if origin != self.cursor_pos {
+            self.buffer.replace_range(origin..self.cursor_pos, "");
+            self.cursor_pos = origin;
+        }
+    }
+
+    fn delete_word_left(&mut self) {
+        let origin = self.cursor_pos;
+        self.move_word_left();
+        if origin != self.cursor_pos {
+            self.buffer.replace_range(self.cursor_pos..origin, "");
+        }
+    }
+
     fn remove(&mut self) {
         if self.cursor_pos > 0 {
             if self.cursor_pos < self.buffer.len() {
@@ -185,6 +208,7 @@ impl CommandBuffer {
                 }
             }
             if let Some(comp) = self.completion.next() {
+                self.tts_ctrl.lock().unwrap().speak(&comp, true);
                 self.buffer = comp.clone();
                 self.cursor_pos = comp.len();
             }
@@ -206,6 +230,7 @@ impl CommandBuffer {
             };
             self.buffer = self.history[self.current_index].clone();
             self.cursor_pos = self.buffer.len();
+            self.tts_ctrl.lock().unwrap().speak(&self.buffer, true);
         }
     }
 
@@ -227,7 +252,17 @@ impl CommandBuffer {
                 self.buffer = self.history[self.current_index].clone();
             }
         }
+        self.tts_ctrl.lock().unwrap().speak(&self.buffer, true);
         self.cursor_pos = self.buffer.len();
+    }
+}
+
+fn parse_mouse_event(event: termion::event::MouseEvent, writer: &Sender<Event>) {
+    use termion::event::{MouseButton, MouseEvent};
+    match event {
+        MouseEvent::Press(MouseButton::WheelUp, ..) => writer.send(Event::ScrollUp).unwrap(),
+        MouseEvent::Press(MouseButton::WheelDown, ..) => writer.send(Event::ScrollDown).unwrap(),
+        _ => {}
     }
 }
 
@@ -236,11 +271,20 @@ fn parse_key_event(
     buffer: &mut CommandBuffer,
     writer: &Sender<Event>,
     terminate: &Arc<AtomicBool>,
+    tts_ctrl: &mut Arc<Mutex<TTSController>>,
 ) {
     match key {
-        Key::Char('\n') => writer.send(parse_command(&buffer.submit())).unwrap(),
+        Key::Char('\n') => {
+            writer
+                .send(Event::InputSent(Line::from(&buffer.buffer)))
+                .unwrap();
+            writer.send(parse_command(&buffer.submit())).unwrap();
+        }
         Key::Char('\t') => buffer.tab_complete(),
-        Key::Char(c) => buffer.push_key(c),
+        Key::Char(c) => {
+            tts_ctrl.lock().unwrap().key_press(c);
+            buffer.push_key(c);
+        }
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
         Key::Ctrl('c') => {
             debug!("Caught ctrl-c, terminating");
@@ -255,6 +299,7 @@ fn parse_key_event(
         Key::Left => buffer.move_left(),
         Key::Right => buffer.move_right(),
         Key::Backspace => buffer.remove(),
+        Key::Delete => buffer.delete_right(),
         Key::Up => buffer.previous(),
         Key::Down => buffer.next(),
         _ => {}
@@ -270,16 +315,59 @@ fn check_command_binds(
     if let Ok(mut script) = script.lock() {
         match cmd {
             Key::Ctrl(c) => {
-                script.check_bindings(&format!("ctrl-{}", c));
+                script.check_bindings(&human_key("ctrl-", c));
             }
             Key::Alt(c) => {
-                script.check_bindings(&format!("alt-{}", c));
+                script.check_bindings(&human_key("alt-", c));
             }
             Key::F(n) => {
                 script.check_bindings(&format!("f{}", n));
             }
             _ => {}
         }
+    }
+    handle_script_ui_io(buffer, script, writer);
+}
+
+/// Convert a key combination to a human-readable form.
+fn human_key(prefix: &str, c: char) -> String {
+    let mut out = prefix.to_owned();
+    match c {
+        '\u{7f}' => out.push_str("backspace"),
+        '\u{1b}' => out.push_str("escape"),
+        _ => out.push(c),
+    }
+    out
+}
+
+fn check_escape_bindings(
+    escape: &str,
+    buffer: &mut CommandBuffer,
+    script: &Arc<Mutex<LuaScript>>,
+    writer: &Sender<Event>,
+) {
+    if let Ok(mut script) = script.lock() {
+        if !script.check_bindings(&escape.to_lowercase()) {
+            writer
+                .send(Event::Info(format!("Unknown command: {:?}", escape)))
+                .unwrap();
+        }
+    }
+    handle_script_ui_io(buffer, script, writer);
+    writer
+        .send(Event::UserInputBuffer(
+            buffer.get_buffer(),
+            buffer.get_pos(),
+        ))
+        .unwrap();
+}
+
+fn handle_script_ui_io(
+    buffer: &mut CommandBuffer,
+    script: &Arc<Mutex<LuaScript>>,
+    writer: &Sender<Event>,
+) {
+    if let Ok(mut script) = script.lock() {
         script.get_ui_events().iter().for_each(|event| match event {
             UiEvent::StepLeft => buffer.move_left(),
             UiEvent::StepRight => buffer.move_right(),
@@ -290,6 +378,9 @@ fn check_command_binds(
             UiEvent::Remove => buffer.remove(),
             UiEvent::DeleteToEnd => buffer.delete_to_end(),
             UiEvent::DeleteFromStart => buffer.delete_from_start(),
+            UiEvent::DeleteWordLeft => buffer.delete_word_left(),
+            UiEvent::DeleteWordRight => buffer.delete_word_right(),
+            UiEvent::DeleteRight => buffer.delete_right(),
             UiEvent::PreviousCommand => buffer.previous(),
             UiEvent::NextCommand => buffer.next(),
             UiEvent::ScrollDown => writer.send(Event::ScrollDown).unwrap(),
@@ -311,7 +402,8 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         let terminate = session.terminate;
         let script = session.lua_script;
         let stdin = stdin();
-        let mut buffer = CommandBuffer::default();
+        let mut tts_ctrl = session.tts_ctrl;
+        let mut buffer = CommandBuffer::new(tts_ctrl.clone());
         buffer
             .completion_tree
             .insert(include_str!("../../resources/completions.txt"));
@@ -319,7 +411,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         for e in stdin.events() {
             match e.unwrap() {
                 termion::event::Event::Key(key) => {
-                    parse_key_event(key, &mut buffer, &writer, &terminate);
+                    parse_key_event(key, &mut buffer, &writer, &terminate, &mut tts_ctrl);
                     check_command_binds(key, &mut buffer, &script, &writer);
                     writer
                         .send(Event::UserInputBuffer(
@@ -328,12 +420,21 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                         ))
                         .unwrap();
                 }
-                termion::event::Event::Unsupported(_bytes) => {
-                    writer
-                        .send(Event::Info(format!("Unknown command: {:?}", _bytes)))
-                        .unwrap();
+                termion::event::Event::Mouse(event) => parse_mouse_event(event, &writer),
+                termion::event::Event::Unsupported(bytes) => {
+                    if let Ok(escape) = String::from_utf8(bytes.clone()) {
+                        check_escape_bindings(
+                            &escape.to_lowercase(),
+                            &mut buffer,
+                            &script,
+                            &writer,
+                        );
+                    } else {
+                        writer
+                            .send(Event::Info(format!("Unknown command: {:?}", bytes)))
+                            .unwrap();
+                    }
                 }
-                _ => {}
             }
             if terminate.load(Ordering::Relaxed) {
                 break;
@@ -464,15 +565,22 @@ fn parse_command(msg: &str) -> Event {
 #[cfg(test)]
 mod command_test {
 
+    use std::sync::{Arc, Mutex};
+
     use super::CommandBuffer;
+    use crate::tts::TTSController;
 
     fn push_string(buffer: &mut CommandBuffer, msg: &str) {
         msg.chars().for_each(|c| buffer.push_key(c));
     }
 
+    fn get_command() -> CommandBuffer {
+        CommandBuffer::new(Arc::new(Mutex::new(TTSController::new(false))))
+    }
+
     #[test]
     fn test_editing() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
 
         push_string(&mut buffer, "test is test");
         assert_eq!(buffer.get_buffer(), "test is test");
@@ -494,7 +602,7 @@ mod command_test {
 
     #[test]
     fn test_no_zero_index_remove_crash() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         buffer.push_key('t');
         buffer.move_left();
         assert_eq!(buffer.get_pos(), 0);
@@ -504,14 +612,14 @@ mod command_test {
 
     #[test]
     fn test_no_history_empty_input() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         buffer.submit();
         assert!(buffer.history.is_empty());
     }
 
     #[test]
     fn no_duplicate_commands_in_history() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "test");
         buffer.submit();
         push_string(&mut buffer, "test");
@@ -541,7 +649,7 @@ mod command_test {
 
     #[test]
     fn test_input_navigation() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_word_left();
         assert_eq!(buffer.cursor_pos, 12);
@@ -563,7 +671,7 @@ mod command_test {
 
     #[test]
     fn test_end_start_navigation() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         assert_eq!(buffer.cursor_pos, 0);
@@ -577,7 +685,7 @@ mod command_test {
 
     #[test]
     fn test_delete_rest_of_line() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();
@@ -587,12 +695,63 @@ mod command_test {
 
     #[test]
     fn test_delete_from_start_of_line() {
-        let mut buffer = CommandBuffer::default();
+        let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.move_word_right();
         buffer.move_word_right();
         buffer.delete_to_end();
         assert_eq!(buffer.get_buffer(), "some random");
+    }
+
+    #[test]
+    fn test_delete_right() {
+        let mut buffer = get_command();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "somerandom words");
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "someandom words");
+        buffer.move_to_end();
+        buffer.delete_right();
+        assert_eq!(buffer.get_buffer(), "someandom words");
+    }
+
+    #[test]
+    fn test_delete_word_left() {
+        let mut buffer = get_command();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_end();
+        buffer.delete_word_left();
+        assert_eq!(buffer.get_buffer(), "some random ");
+        buffer.move_to_start();
+        buffer.move_word_right();
+        buffer.delete_word_left();
+        assert_eq!(buffer.get_buffer(), " random ");
+    }
+
+    #[test]
+    fn test_delete_word_right() {
+        let mut buffer = get_command();
+        push_string(&mut buffer, "some random words");
+        buffer.move_to_start();
+        buffer.delete_word_right();
+        assert_eq!(buffer.get_buffer(), " random words");
+        buffer.delete_word_right();
+        assert_eq!(buffer.get_buffer(), " words");
+    }
+
+    #[test]
+    fn test_human_key() {
+        use super::human_key;
+
+        assert_eq!(human_key("alt-", '\u{7f}'), "alt-backspace");
+        assert_eq!(human_key("ctrl-", '\u{7f}'), "ctrl-backspace");
+        assert_eq!(human_key("alt-", '\u{1b}'), "alt-escape");
+        assert_eq!(human_key("ctrl-", '\u{1b}'), "ctrl-escape");
+        assert_eq!(human_key("ctrl-", 'd'), "ctrl-d");
+        assert_eq!(human_key("f", 'x'), "fx");
     }
 }

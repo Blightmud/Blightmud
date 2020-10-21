@@ -1,3 +1,4 @@
+use log::error;
 use std::fmt;
 use strip_ansi_escapes::strip as strip_ansi;
 
@@ -9,12 +10,15 @@ pub struct Flags {
     pub prompt: bool,
     pub bypass_script: bool,
     pub matched: bool,
+    pub tts_gag: bool,
+    pub tts_interrupt: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct Line {
     content: String,
     clean_content: String,
+    clean_utf8: bool,
     pub flags: Flags,
 }
 
@@ -26,19 +30,22 @@ impl PartialEq for Line {
     }
 }
 
-fn get_content_from(line: &str) -> (String, String) {
+fn get_content_from(line: &str) -> (String, String, bool) {
+    let mut clean_utf8 = true;
     let content = line.trim_end().to_string();
     let clean_content = if let Ok(bytes) = strip_ansi(&content) {
         if let Ok(clean) = String::from_utf8(bytes.clone()) {
             clean
         } else {
+            error!("[Line]: Unparsable &str : {:?}", line);
+            clean_utf8 = false;
             String::from_utf8_lossy(&bytes).to_mut().clone()
         }
     } else {
         "".to_string()
     };
     let clean_content = clean_content.replace("\r", "");
-    (content, clean_content)
+    (content, clean_content, clean_utf8)
 }
 
 impl fmt::Display for Line {
@@ -52,6 +59,7 @@ impl From<&Line> for Line {
         Self {
             content: line.content.clone(),
             clean_content: line.clean_content.clone(),
+            clean_utf8: line.clean_utf8,
             flags: line.flags.clone(),
         }
     }
@@ -59,10 +67,11 @@ impl From<&Line> for Line {
 
 impl From<&str> for Line {
     fn from(line: &str) -> Self {
-        let (content, clean_content) = get_content_from(line);
+        let (content, clean_content, clean_utf8) = get_content_from(line);
         Self {
             content,
             clean_content,
+            clean_utf8,
             flags: Flags::default(),
         }
     }
@@ -70,10 +79,11 @@ impl From<&str> for Line {
 
 impl From<String> for Line {
     fn from(line: String) -> Self {
-        let (content, clean_content) = get_content_from(&line);
+        let (content, clean_content, clean_utf8) = get_content_from(&line);
         Self {
             content,
             clean_content,
+            clean_utf8,
             flags: Flags::default(),
         }
     }
@@ -81,10 +91,11 @@ impl From<String> for Line {
 
 impl From<&String> for Line {
     fn from(line: &String) -> Self {
-        let (content, clean_content) = get_content_from(&line);
+        let (content, clean_content, clean_utf8) = get_content_from(&line);
         Self {
             content,
             clean_content,
+            clean_utf8,
             flags: Flags::default(),
         }
     }
@@ -92,16 +103,20 @@ impl From<&String> for Line {
 
 impl From<&[u8]> for Line {
     fn from(line: &[u8]) -> Self {
+        let mut clean_utf8 = true;
         let line = if let Ok(line) = String::from_utf8(line.to_vec()) {
             line
         } else {
+            clean_utf8 = false;
+            error!("[Line]: Unparsable bytes : {:?}", line);
             String::from_utf8_lossy(line).to_mut().clone()
         };
 
-        let (content, clean_content) = get_content_from(&line);
+        let (content, clean_content, _) = get_content_from(&line);
         Self {
             content,
             clean_content,
+            clean_utf8,
             flags: Flags::default(),
         }
     }
@@ -115,10 +130,11 @@ impl From<&Vec<u8>> for Line {
             String::from_utf8_lossy(&line).to_mut().clone()
         };
 
-        let (content, clean_content) = get_content_from(&line);
+        let (content, clean_content, clean_utf8) = get_content_from(&line);
         Self {
             content,
             clean_content,
+            clean_utf8,
             flags: Flags::default(),
         }
     }
@@ -132,6 +148,10 @@ impl Line {
         } else {
             None
         }
+    }
+
+    pub fn is_utf8(&self) -> bool {
+        self.clean_utf8
     }
 
     pub fn log_line(&self) -> Option<&str> {

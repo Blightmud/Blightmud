@@ -6,6 +6,7 @@ Available topics:
 
 - `config_scripts`
 - `scripting`
+- `tts`
 - `logging`
 - `settings`
 

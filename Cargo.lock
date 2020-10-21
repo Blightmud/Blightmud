@@ -303,7 +303,6 @@ dependencies = [
  "atty",
  "bitflags",
  "strsim",
- "term_size",
  "textwrap",
  "unicode-width",
  "vec_map",
@@ -352,7 +351,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a89e2ae426ea83155dccf10c0fa6b1463ef6d5fcb44cee0b224a408fa640a62"
 dependencies = [
- "core-foundation-sys 0.8.1",
+ "core-foundation-sys 0.8.2",
  "libc",
 ]
 
@@ -364,9 +363,9 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
 name = "core-foundation-sys"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0af3b5e4601de3837c9332e29e0aae47a0d46ebfa246d12b82f564bac233393"
+checksum = "ea221b5284a47e40033bf9b66f35f984ec0ea2931eb03505246cd27a963f981b"
 
 [[package]]
 name = "core-graphics-types"
@@ -848,9 +847,9 @@ checksum = "60302e4db3a61da70c0cb7991976248362f30319e88850c487b9b95bbf059e00"
 
 [[package]]
 name = "mdcat"
-version = "0.21.1"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a2bc701e328bec1f37343121d244a98808a3cd3c10ae1e74fb8d11e1a598b1d"
+checksum = "bbfc66e910fedd4674b6208362ea60ffe00703b3a185ae9902bc7728389c724b"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
@@ -859,6 +858,7 @@ dependencies = [
  "fehler",
  "gethostname",
  "image",
+ "libc",
  "mime",
  "pulldown-cmark",
  "shell-words",
@@ -1626,7 +1626,6 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
- "term_size",
  "unicode-width",
 ]
 

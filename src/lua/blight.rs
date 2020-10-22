@@ -170,29 +170,36 @@ impl UserData for Blight {
             debug!("{}", strings.join(" "));
             Ok(())
         });
-        methods.add_method("store", |_, _, (id, data): (String, rlua::Value)| {
-            let data = match data {
-                rlua::Value::Table(table) => {
-                    let mut map: BTreeMap<String, String> = BTreeMap::new();
-                    let iter = table.pairs();
-                    for entry in iter {
-                        if let Ok((key, value)) = entry {
-                            map.insert(key, value);
+        methods.add_method(
+            "store",
+            |_, _, (id, data): (String, rlua::Value)| -> LuaResult<()> {
+                let data = match data {
+                    rlua::Value::Table(table) => {
+                        let mut map: BTreeMap<String, String> = BTreeMap::new();
+                        let iter = table.pairs();
+                        for entry in iter {
+                            if let Ok((key, value)) = entry {
+                                map.insert(key, value);
+                            }
                         }
+                        Ok(map)
                     }
-                    Ok(map)
+                    _ => Err(rlua::Error::RuntimeError(
+                        "Bad data! You may only store tables".to_string(),
+                    )),
+                }?;
+
+                if let Ok(mut store_data) = StoreData::load() {
+                    store_data.insert(id, data);
+                    store_data.save().unwrap();
+                    Ok(())
+                } else {
+                    Err(rlua::Error::RuntimeError(
+                        "Failed to access store file".to_string(),
+                    ))
                 }
-                _ => Err(rlua::Error::RuntimeError(
-                    "Bad data! You may only store tables".to_string(),
-                )),
-            }?;
-
-            let mut store_data = StoreData::load().unwrap();
-            store_data.insert(id, data);
-
-            store_data.save().unwrap();
-            Ok(())
-        });
+            },
+        );
         methods.add_method(
             "read",
             |_, _, id: String| -> LuaResult<Option<BTreeMap<String, String>>> {

@@ -35,12 +35,19 @@ end)
 
 ##
 
-***core:subneg_recv(proto, data)***
-Send a subnegotation to the mud.  This will send an `IAC SB proto data IAC SE`
+***core:subneg_send(proto, data)***
+Send a subnegotation to the mud. This will send an `IAC SB proto data IAC SE`
 to the mud.
 
 - `proto`     The subnegotiation protocol identifier
 - `data`      The bytes you want to send
+
+##
+
+***core:subneg_recv(callback)***
+Listen for protocol subnegotiation communication.
+
+- `callback`  A function that takes the protocol and bytes in a table as arguments
 
 ```lua
 core:subneg_recv(function (proto, data)

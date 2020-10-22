@@ -70,6 +70,10 @@ fn create_default_lua_state(
                 .load(include_str!("../../resources/lua/gmcp.lua"))
                 .call::<_, rlua::Value>(())?;
             globals.set("gmcp", lua_gmcp)?;
+            let lua_msdp = ctx
+                .load(include_str!("../../resources/lua/msdp.lua"))
+                .call::<_, rlua::Value>(())?;
+            globals.set("msdp", lua_msdp)?;
 
             let mut blight: Blight = globals.get("blight")?;
             blight.core_mode(false);

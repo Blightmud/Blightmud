@@ -135,7 +135,6 @@ function msdp()
 	end
 
 	local function msdp_send(data)
-		blight:debug("[MSDP] Sending: " .. #data .. " bytes")
 		core:subneg_send(MSDP, assemble(data))
 	end
 
@@ -167,35 +166,35 @@ function msdp()
 	end
 
 	local report = function (value)
-		local payload = { MSDP_VAR, "REPORT", MSDP_VAL }
+		local payload = { MSDP_VAR, "REPORT" }
 		if type(value) == "string" then
+			table.insert(payload, MSDP_VAL)
 			table.insert(payload, value)
-		else
-			table.insert(payload, MSDP_ARRAY_OPEN)
+			msdp_send(payload)
+		elseif type(value) == "table" then
 			for _,val in ipairs(value) do
 				table.insert(payload, MSDP_VAL)
 				table.insert(payload, val)
 			end
-			table.insert(payload, MSDP_ARRAY_CLOSE)
+			msdp_send(payload)
 		end
 
-		msdp_send(payload)
 	end
 
 	local unreport = function (value)
-		local payload = { MSDP_VAR, "UNREPORT", MSDP_VAL }
+		local payload = { MSDP_VAR, "UNREPORT" }
 		if type(value) == "string" then
+			table.insert(payload, MSDP_VAL)
 			table.insert(payload, value)
-		else
-			table.insert(payload, MSDP_ARRAY_OPEN)
+			msdp_send(payload)
+		elseif type(value) == "table" then
 			for _,val in ipairs(value) do
 				table.insert(payload, MSDP_VAL)
 				table.insert(payload, val)
 			end
-			table.insert(payload, MSDP_ARRAY_CLOSE)
+			msdp_send(payload)
 		end
 
-		msdp_send(payload)
 	end
 
 	local list = function (list)
@@ -208,12 +207,18 @@ function msdp()
 	end
 
 	local send = function (var)
-		msdp_send({
-				MSDP_VAR,
-				"SEND",
-				MSDP_VAL,
-				var,
-			})
+		local payload = { MSDP_VAR, "SEND" }
+		if type(var) == "string" then
+			table.insert(payload, MSDP_VAL)
+			table.insert(payload, var)
+			msdp_send(payload)
+		elseif type(var) == "table" then
+			for _,v in pairs(var) do
+				table.insert(payload, MSDP_VAL)
+				table.insert(payload, v)
+			end
+			msdp_send(payload)
+		end
 	end
 
 	local on_ready = function (cb)
@@ -224,7 +229,6 @@ function msdp()
 	end
 
 	local _on_enable = function ()
-		blight:debug("[MSDP]: enabled")
 		self.enabled = true
 		core:store("__msdp_enabled", tostring(true))
 		store_content(nil)

@@ -99,6 +99,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
     );
     files.insert("timers", include_str!("../../resources/help/lua_timers.md"));
     files.insert("gmcp", include_str!("../../resources/help/lua_gmcp.md"));
+    files.insert("msdp", include_str!("../../resources/help/msdp.md"));
     files.insert(
         "config_scripts",
         include_str!("../../resources/help/config_scripts.md"),

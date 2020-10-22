@@ -104,6 +104,19 @@ fn print_help(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
+fn print_version() {
+    println!(
+        "{} v{} {}",
+        PROJECT_NAME,
+        VERSION,
+        if cfg!(debug_assertions) {
+            "[DEBUG]"
+        } else {
+            ""
+        }
+    );
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -121,6 +134,7 @@ fn main() {
     );
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
+    opts.optflag("v", "version", "Print version information");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -129,6 +143,11 @@ fn main() {
 
     if matches.opt_present("h") {
         print_help(program, opts);
+        return;
+    }
+
+    if matches.opt_present("v") {
+        print_version();
         return;
     }
 

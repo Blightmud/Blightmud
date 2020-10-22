@@ -42,13 +42,6 @@ to the mud.
 - `proto`     The subnegotiation protocol identifier
 - `data`      The bytes you want to send
 
-##
-
-***core:subneg_recv(callback)***
-Listen for protocol subnegotiation communication.
-
-- `callback`  A function that takes the protocol and bytes in a table as arguments
-
 ```lua
 core:subneg_recv(function (proto, data)
     if proto == 201 then -- Operator on GMCP

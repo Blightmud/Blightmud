@@ -215,8 +215,17 @@ pub struct Screen {
 }
 
 impl Screen {
-    pub fn new(tts_ctrl: Arc<Mutex<TTSController>>) -> Result<Self, Box<dyn error::Error>> {
-        let screen = MouseTerminal::from(AlternateScreen::from(stdout().into_raw_mode()?));
+    pub fn new(
+        tts_ctrl: Arc<Mutex<TTSController>>,
+        mouse_support: bool,
+    ) -> Result<Self, Box<dyn error::Error>> {
+        let screen: Box<dyn Write> = if mouse_support {
+            Box::new(MouseTerminal::from(AlternateScreen::from(
+                stdout().into_raw_mode()?,
+            )))
+        } else {
+            Box::new(AlternateScreen::from(stdout().into_raw_mode()?))
+        };
         let (width, height) = termion::terminal_size()?;
 
         let status_area_height = 1;
@@ -226,7 +235,7 @@ impl Screen {
         let status_area = StatusArea::new(status_area_height, output_line + 1, width);
 
         Ok(Self {
-            screen: Box::new(screen),
+            screen,
             tts_ctrl,
             width,
             height,

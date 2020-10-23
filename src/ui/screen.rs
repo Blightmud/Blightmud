@@ -3,16 +3,11 @@ use anyhow::Result;
 use std::collections::VecDeque;
 use std::{error, fmt};
 use std::{
-    io::{stdout, Stdout, Write},
+    io::{stdout, Write},
     sync::Arc,
     sync::Mutex,
 };
-use termion::{
-    color,
-    input::MouseTerminal,
-    raw::{IntoRawMode, RawTerminal},
-    screen::AlternateScreen,
-};
+use termion::{color, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 
 struct ScrollData(bool, usize);
 const OUTPUT_START_LINE: u16 = 2;
@@ -44,8 +39,6 @@ struct StatusArea {
     width: u16,
     status_lines: Vec<Option<String>>,
 }
-
-type ScreenHandle = MouseTerminal<AlternateScreen<RawTerminal<Stdout>>>;
 
 impl StatusArea {
     fn new(height: u16, start_line: u16, width: u16) -> Self {
@@ -87,7 +80,7 @@ impl StatusArea {
         self.status_lines = vec![None; self.status_lines.len()];
     }
 
-    fn redraw(&mut self, screen: &mut ScreenHandle, scrolled: bool) -> Result<()> {
+    fn redraw(&mut self, screen: &mut impl Write, scrolled: bool) -> Result<()> {
         for line in self.start_line..self.end_line + 1 {
             write!(
                 screen,
@@ -132,7 +125,7 @@ impl StatusArea {
         Ok(())
     }
 
-    fn draw_bar(&self, line: u16, screen: &mut ScreenHandle, custom_info: &str) -> Result<()> {
+    fn draw_bar(&self, line: u16, screen: &mut impl Write, custom_info: &str) -> Result<()> {
         write!(
             screen,
             "{}{}{}",
@@ -165,7 +158,7 @@ impl StatusArea {
         Ok(())
     }
 
-    fn draw_line(&self, line: u16, screen: &mut ScreenHandle, info: &str) -> Result<()> {
+    fn draw_line(&self, line: u16, screen: &mut impl Write, info: &str) -> Result<()> {
         write!(
             screen,
             "{}{}",
@@ -208,7 +201,7 @@ impl History {
 }
 
 pub struct Screen {
-    screen: ScreenHandle,
+    screen: Box<dyn Write>,
     tts_ctrl: Arc<Mutex<TTSController>>,
     pub width: u16,
     pub height: u16,
@@ -233,7 +226,7 @@ impl Screen {
         let status_area = StatusArea::new(status_area_height, output_line + 1, width);
 
         Ok(Self {
-            screen,
+            screen: Box::new(screen),
             tts_ctrl,
             width,
             height,

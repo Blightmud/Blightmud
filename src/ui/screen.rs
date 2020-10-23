@@ -219,13 +219,7 @@ impl Screen {
         tts_ctrl: Arc<Mutex<TTSController>>,
         mouse_support: bool,
     ) -> Result<Self, Box<dyn error::Error>> {
-        let screen: Box<dyn Write> = if mouse_support {
-            Box::new(MouseTerminal::from(AlternateScreen::from(
-                stdout().into_raw_mode()?,
-            )))
-        } else {
-            Box::new(AlternateScreen::from(stdout().into_raw_mode()?))
-        };
+        let screen = Self::create_screen_writer(mouse_support)?;
         let (width, height) = termion::terminal_size()?;
 
         let status_area_height = 1;
@@ -536,6 +530,16 @@ impl Screen {
 
     pub fn flush(&mut self) {
         self.screen.flush().unwrap();
+    }
+
+    /// Creates the io::Write terminal handler we draw to.
+    fn create_screen_writer(mouse_support: bool) -> Result<Box<dyn Write>, Box<dyn error::Error>> {
+        let screen = AlternateScreen::from(stdout().into_raw_mode()?);
+        if mouse_support {
+            Ok(Box::new(MouseTerminal::from(screen)))
+        } else {
+            Ok(Box::new(screen))
+        }
     }
 }
 

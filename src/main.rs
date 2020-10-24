@@ -1,5 +1,5 @@
 #[cfg(not(debug_assertions))]
-use dirs;
+use dirs_next as dirs;
 
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;

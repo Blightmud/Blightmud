@@ -136,11 +136,7 @@ impl CommandBuffer {
 
     fn move_word_right(&mut self) {
         let origin = (self.cursor_pos + 1).min(self.buffer.len());
-        self.cursor_pos = if let Some((pos, _)) = self.buffer[origin..]
-            .iter()
-            .enumerate()
-            .find(|(_, c)| **c == ' ')
-        {
+        self.cursor_pos = if let Some(pos) = self.buffer[origin..].iter().position(|c| *c == ' ') {
             origin + pos
         } else {
             self.buffer.len()
@@ -149,10 +145,7 @@ impl CommandBuffer {
 
     fn move_word_left(&mut self) {
         let origin = self.cursor_pos.max(1) - 1;
-        self.cursor_pos = if let Some((pos, _)) = self.buffer[0..origin]
-            .iter()
-            .enumerate()
-            .rfind(|(_, c)| **c == ' ')
+        self.cursor_pos = if let Some(pos) = self.buffer[0..origin].iter().rposition(|c| *c == ' ')
         {
             pos + 1
         } else {

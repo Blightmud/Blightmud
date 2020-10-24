@@ -1,5 +1,5 @@
 #[cfg(not(debug_assertions))]
-use dirs;
+use dirs_next as dirs;
 
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
@@ -104,6 +104,19 @@ fn print_help(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
+fn print_version() {
+    println!(
+        "{} v{} {}",
+        PROJECT_NAME,
+        VERSION,
+        if cfg!(debug_assertions) {
+            "[DEBUG]"
+        } else {
+            ""
+        }
+    );
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::new();
@@ -119,8 +132,10 @@ fn main() {
         "tts",
         "Use the TTS system when playing a MUD (for visually impaired users)",
     );
+    opts.optflag("M", "mouse", "Enable experimental mouse support");
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
+    opts.optflag("v", "version", "Print version information");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -131,6 +146,13 @@ fn main() {
         print_help(program, opts);
         return;
     }
+
+    if matches.opt_present("v") {
+        print_version();
+        return;
+    }
+
+    let wants_mouse = matches.opt_present("M");
 
     register_panic_hook();
     if let Err(e) = start_logging() {
@@ -173,6 +195,7 @@ fn main() {
         .main_writer(main_writer)
         .timer_writer(timer_writer)
         .screen_dimensions(dimensions)
+        .mouse_enabled(wants_mouse)
         .tts_enabled(matches.opt_present("tts"))
         .build();
 
@@ -190,7 +213,7 @@ fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut screen = Screen::new(session.tts_ctrl.clone())?;
+    let mut screen = Screen::new(session.tts_ctrl.clone(), session.mouse_support)?;
     screen.setup()?;
 
     let mut transmit_writer: Option<Sender<TelnetData>> = None;

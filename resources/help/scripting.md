@@ -19,6 +19,7 @@ by typing `/help <category>`.
 - `triggers`    Functions triggered in response to incoming text.
 - `timers`      Functions that execute on a timed delay.
 - `gmcp`        Methods for interacting with the Generic MUD Communication Protocol.
+- `msdp`        Methods for interacting with the Mud Server Data Protocol
 - `status_area` Methods for controlling and printing to the status bar
 - `storage`     Methods for persisting data between sessions
 - `bindings`    Methods for configuring keybindings and adding new ones

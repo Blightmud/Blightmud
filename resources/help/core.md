@@ -35,8 +35,8 @@ end)
 
 ##
 
-***core:subneg_recv(proto, data)***
-Send a subnegotation to the mud.  This will send an `IAC SB proto data IAC SE`
+***core:subneg_send(proto, data)***
+Send a subnegotation to the mud. This will send an `IAC SB proto data IAC SE`
 to the mud.
 
 - `proto`     The subnegotiation protocol identifier

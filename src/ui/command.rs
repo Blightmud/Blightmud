@@ -49,8 +49,9 @@ impl CompletionStepData {
 }
 
 pub struct CommandBuffer {
-    buffer: String,
-    cached_buffer: String,
+    strbuf: String,
+    buffer: Vec<char>,
+    cached_buffer: Vec<char>,
     history: VecDeque<String>,
     current_index: usize,
     cursor_pos: usize,
@@ -62,8 +63,9 @@ pub struct CommandBuffer {
 impl CommandBuffer {
     pub fn new(tts_ctrl: Arc<Mutex<TTSController>>) -> Self {
         Self {
-            buffer: String::default(),
-            cached_buffer: String::default(),
+            strbuf: String::new(),
+            buffer: vec![],
+            cached_buffer: vec![],
             history: VecDeque::default(),
             current_index: 0,
             cursor_pos: 0,
@@ -73,8 +75,9 @@ impl CommandBuffer {
         }
     }
 
-    fn get_buffer(&self) -> String {
-        self.buffer.clone()
+    fn get_buffer(&mut self) -> String {
+        self.strbuf = self.buffer.iter().collect();
+        self.strbuf.clone()
     }
 
     fn get_pos(&self) -> usize {
@@ -82,23 +85,24 @@ impl CommandBuffer {
     }
 
     fn submit(&mut self) -> String {
-        self.completion_tree.insert(&self.buffer.to_lowercase());
-
         // Insert history
         let cmd = if !self.buffer.is_empty() {
+            let command = self.get_buffer();
+            self.completion_tree.insert(&command);
+
             if let Some(last_cmd) = self.history.iter().last() {
-                if &self.buffer != last_cmd {
-                    self.history.push_back(self.buffer.clone());
+                if &command != last_cmd {
+                    self.history.push_back(command.clone());
                 }
             } else {
-                self.history.push_back(self.buffer.clone());
+                self.history.push_back(command.clone());
             }
 
             while self.history.len() > 100 {
                 self.history.pop_front();
             }
 
-            self.buffer.clone()
+            command
         } else {
             String::new()
         };
@@ -106,6 +110,7 @@ impl CommandBuffer {
         self.current_index = self.history.len();
         self.buffer.clear();
         self.cursor_pos = 0;
+
         cmd
     }
 
@@ -131,7 +136,7 @@ impl CommandBuffer {
 
     fn move_word_right(&mut self) {
         let origin = (self.cursor_pos + 1).min(self.buffer.len());
-        self.cursor_pos = if let Some(pos) = self.buffer[origin..].find(' ') {
+        self.cursor_pos = if let Some(pos) = self.buffer[origin..].iter().position(|c| *c == ' ') {
             origin + pos
         } else {
             self.buffer.len()
@@ -140,7 +145,8 @@ impl CommandBuffer {
 
     fn move_word_left(&mut self) {
         let origin = self.cursor_pos.max(1) - 1;
-        self.cursor_pos = if let Some(pos) = self.buffer[0..origin].rfind(' ') {
+        self.cursor_pos = if let Some(pos) = self.buffer[0..origin].iter().rposition(|c| *c == ' ')
+        {
             pos + 1
         } else {
             0
@@ -148,11 +154,11 @@ impl CommandBuffer {
     }
 
     fn delete_to_end(&mut self) {
-        self.buffer = self.buffer[..self.cursor_pos].to_string();
+        self.buffer.drain(self.cursor_pos..self.buffer.len());
     }
 
     fn delete_from_start(&mut self) {
-        self.buffer = self.buffer[self.cursor_pos..].to_string();
+        self.buffer.drain(0..self.cursor_pos);
         self.cursor_pos = 0;
     }
 
@@ -166,7 +172,7 @@ impl CommandBuffer {
         let origin = self.cursor_pos;
         self.move_word_right();
         if origin != self.cursor_pos {
-            self.buffer.replace_range(origin..self.cursor_pos, "");
+            self.buffer.drain(origin..self.cursor_pos);
             self.cursor_pos = origin;
         }
     }
@@ -175,7 +181,7 @@ impl CommandBuffer {
         let origin = self.cursor_pos;
         self.move_word_left();
         if origin != self.cursor_pos {
-            self.buffer.replace_range(self.cursor_pos..origin, "");
+            self.buffer.drain(self.cursor_pos..origin);
         }
     }
 
@@ -203,13 +209,13 @@ impl CommandBuffer {
     fn tab_complete(&mut self) {
         if self.buffer.len() > 1 {
             if self.completion.is_empty() {
-                if let Some(options) = self.completion_tree.complete(&self.buffer) {
-                    self.completion.set_options(&self.buffer, options);
+                if let Some(options) = self.completion_tree.complete(&self.strbuf) {
+                    self.completion.set_options(&self.strbuf, options);
                 }
             }
             if let Some(comp) = self.completion.next() {
                 self.tts_ctrl.lock().unwrap().speak(&comp, true);
-                self.buffer = comp.clone();
+                self.buffer = comp.chars().collect();
                 self.cursor_pos = comp.len();
             }
         }
@@ -218,7 +224,7 @@ impl CommandBuffer {
     fn previous(&mut self) {
         if !self.history.is_empty() {
             if self.current_index == self.history.len() {
-                self.cached_buffer = self.buffer.clone()
+                self.cached_buffer = self.buffer.clone();
             }
 
             self.current_index = {
@@ -228,9 +234,9 @@ impl CommandBuffer {
                     self.current_index
                 }
             };
-            self.buffer = self.history[self.current_index].clone();
+            self.buffer = self.history[self.current_index].chars().collect();
             self.cursor_pos = self.buffer.len();
-            self.tts_ctrl.lock().unwrap().speak(&self.buffer, true);
+            self.tts_ctrl.lock().unwrap().speak(&self.strbuf, true);
         }
     }
 
@@ -249,10 +255,10 @@ impl CommandBuffer {
                 self.buffer = self.cached_buffer.clone();
                 self.cached_buffer.clear();
             } else {
-                self.buffer = self.history[self.current_index].clone();
+                self.buffer = self.history[self.current_index].chars().collect();
             }
         }
-        self.tts_ctrl.lock().unwrap().speak(&self.buffer, true);
+        self.tts_ctrl.lock().unwrap().speak(&self.strbuf, true);
         self.cursor_pos = self.buffer.len();
     }
 }
@@ -276,7 +282,7 @@ fn parse_key_event(
     match key {
         Key::Char('\n') => {
             writer
-                .send(Event::InputSent(Line::from(&buffer.buffer)))
+                .send(Event::InputSent(Line::from(buffer.get_buffer())))
                 .unwrap();
             writer.send(parse_command(&buffer.submit())).unwrap();
         }
@@ -741,6 +747,16 @@ mod command_test {
         assert_eq!(buffer.get_buffer(), " random words");
         buffer.delete_word_right();
         assert_eq!(buffer.get_buffer(), " words");
+    }
+
+    #[test]
+    fn test_fancy_chars() {
+        let mut buffer = get_command();
+        let input = "some weird chars: ÅÖÄø æĸœ→ €ßðßª“";
+        push_string(&mut buffer, input);
+        assert_eq!(input.chars().count(), buffer.buffer.len());
+        assert_ne!(input.len(), buffer.buffer.len());
+        assert_eq!(buffer.get_buffer().len(), input.len());
     }
 
     #[test]

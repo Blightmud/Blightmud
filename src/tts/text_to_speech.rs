@@ -78,7 +78,7 @@ impl TTSController {
     fn send(&self, event: TTSEvent) {
         if let Some(rt) = &self.rt {
             match event {
-                TTSEvent::SpeakDirect(_) => {
+                TTSEvent::SetRate(_) | TTSEvent::ChangeRate(_) | TTSEvent::SpeakDirect(_) => {
                     rt.send(event).ok();
                 }
                 _ => {

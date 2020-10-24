@@ -49,5 +49,6 @@ pub fn register_panic_hook() {
         .for_each(|line| print!("{}\r\n", line));
 
         println!("\x1b[0m");
+        std::process::exit(1);
     }));
 }

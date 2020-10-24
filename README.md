@@ -18,20 +18,22 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - Telnet:
     - TLS connections
     - GMCP support
+    - MSDP support
     - MCCP2 support (compress2)
 - Lua scripting:
     - Output and sending
     - Aliases
     - Triggers
-    - GMCP hooks and sending
     - Timers
     - Customizing status bar
     - Persistent storage
+    - Session storage
     - Keybindings
     - Text-To-Speech
+    - Mouse scrolling (experimental)
 - Low resource and fast
 - In client help and manuals
-- Native Text-To-Speech functionality (optional)
+- Native Text-To-Speech functionality (optional compile)
 - Tab completion
 
 ## Compiling

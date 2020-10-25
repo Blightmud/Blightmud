@@ -11,6 +11,7 @@ mod io;
 mod lua;
 mod model;
 mod net;
+mod plugin;
 mod session;
 mod timer;
 mod tools;

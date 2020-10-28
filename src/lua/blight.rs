@@ -203,10 +203,13 @@ impl UserData for Blight {
         methods.add_method(
             "read",
             |_, _, id: String| -> LuaResult<Option<BTreeMap<String, String>>> {
-                let data = StoreData::load().unwrap();
-                Ok(match data.get(&id) {
-                    Some(data) => Some(data.clone()),
-                    _ => None,
+                Ok(if let Ok(data) = StoreData::load() {
+                    match data.get(&id) {
+                        Some(data) => Some(data.clone()),
+                        _ => None,
+                    }
+                } else {
+                    None
                 })
             },
         );

@@ -55,10 +55,6 @@ impl OutputBuffer {
         lines
     }
 
-    pub fn flush(&mut self) {
-        self.buffer.clear();
-    }
-
     pub fn clear(&mut self) {
         self.buffer.clear();
         self.prompt.clear();

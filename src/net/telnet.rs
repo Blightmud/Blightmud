@@ -59,7 +59,7 @@ impl TelnetHandler {
                             if self.mode != TelnetMode::TerminatedPrompt {
                                 debug!("Setting telnet mode: TerminatedPrompt");
                                 self.mode = TelnetMode::TerminatedPrompt;
-                                buffer.flush();
+                                buffer.buffer_to_prompt(true);
                             } else {
                                 buffer.buffer_to_prompt(true);
                                 self.main_writer.send(Event::Prompt).unwrap();

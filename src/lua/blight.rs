@@ -388,10 +388,18 @@ impl UserData for Blight {
             Ok(())
         });
         methods.add_method("on_connect", |ctx, _, callback: rlua::Function| {
-            ctx.globals().set(ON_CONNCTION_CALLBACK, callback)
+            let globals = ctx.globals();
+            let table: rlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
+            table.set(table.raw_len() + 1, callback)?;
+            globals.set(ON_CONNECTION_CALLBACK_TABLE, table)?;
+            Ok(())
         });
         methods.add_method("on_disconnect", |ctx, _, callback: rlua::Function| {
-            ctx.globals().set(ON_DISCONNECT_CALLBACK, callback)
+            let globals = ctx.globals();
+            let table: rlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
+            table.set(table.raw_len() + 1, callback)?;
+            globals.set(ON_DISCONNECT_CALLBACK_TABLE, table)?;
+            Ok(())
         });
         methods.add_method("version", |_, _, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))

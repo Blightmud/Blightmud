@@ -77,6 +77,10 @@ local function GMCP()
 		end
 	end
 
+	local _reset = function ()
+		self.gmcp_ready = false
+	end
+
 	return {
 		on_ready = on_ready,
 		send = send,
@@ -85,6 +89,7 @@ local function GMCP()
 		echo = echo,
 		_subneg_recv = _subneg_recv,
 		_on_enable = _on_enable,
+		_reset = _reset,
 	}
 end
 
@@ -97,6 +102,9 @@ core:on_protocol_enabled(function (proto)
 end)
 core:subneg_recv(function (proto, data)
 	gmcp._subneg_recv(proto, data)
+end)
+blight:on_disconnect(function ()
+	gmcp._reset()
 end)
 
 return gmcp

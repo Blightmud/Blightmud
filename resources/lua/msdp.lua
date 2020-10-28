@@ -257,9 +257,16 @@ function msdp()
 		end
 	end
 
+	local _reset = function ()
+		self.enabled = false
+		core:store("__msdp_enabled", tostring(false))
+		store_content(nil)
+	end
+
 	return {
 		_on_enable = _on_enable,
 		_subneg_recv = _subneg_recv,
+		_reset = _reset,
 		get = get,
 		set = set,
 		report = report,
@@ -282,6 +289,9 @@ core:subneg_recv(function (proto, data)
 	if proto == MSDP then
 		msdp._subneg_recv(data)
 	end
+end)
+blight:on_disconnect(function ()
+	msdp._reset()
 end)
 
 return msdp

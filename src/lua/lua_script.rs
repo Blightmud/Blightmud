@@ -25,63 +25,68 @@ fn create_default_lua_state(
         Some(core) => core,
         None => Core::new(writer.clone()),
     };
-    let tts = Tts::new(writer);
+    let tts = Tts::new(writer.clone());
 
     blight.screen_dimensions = dimensions;
     blight.core_mode(true);
-    state
-        .context(|ctx| -> LuaResult<()> {
-            let globals = ctx.globals();
-            globals.set("blight", blight)?;
-            globals.set("core", core)?;
-            globals.set("tts", tts)?;
+    let result = state.context(|ctx| -> LuaResult<()> {
+        let globals = ctx.globals();
+        globals.set("blight", blight)?;
+        globals.set("core", core)?;
+        globals.set("tts", tts)?;
 
-            globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
-            globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
+        globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
+        globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
 
-            globals.set(ALIAS_TABLE, ctx.create_table()?)?;
-            globals.set(TRIGGER_TABLE, ctx.create_table()?)?;
-            globals.set(PROMPT_TRIGGER_TABLE, ctx.create_table()?)?;
-            globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
-            globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
-            globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;
-            globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
+        globals.set(ALIAS_TABLE, ctx.create_table()?)?;
+        globals.set(TRIGGER_TABLE, ctx.create_table()?)?;
+        globals.set(PROMPT_TRIGGER_TABLE, ctx.create_table()?)?;
+        globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
+        globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
+        globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;
+        globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
+        globals.set(ON_CONNECTION_CALLBACK_TABLE, ctx.create_table()?)?;
+        globals.set(ON_DISCONNECT_CALLBACK_TABLE, ctx.create_table()?)?;
 
-            globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
-            globals.set(TTS_GAG_NEXT_TRIGGER_LINE, false)?;
+        globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
+        globals.set(TTS_GAG_NEXT_TRIGGER_LINE, false)?;
 
-            let lua_json = ctx
-                .load(include_str!("../../resources/lua/json.lua"))
-                .call::<_, rlua::Value>(())?;
-            globals.set("json", lua_json)?;
+        let lua_json = ctx
+            .load(include_str!("../../resources/lua/json.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("json", lua_json)?;
 
-            ctx.load(include_str!("../../resources/lua/defaults.lua"))
-                .exec()?;
-            ctx.load(include_str!("../../resources/lua/functions.lua"))
-                .exec()?;
-            ctx.load(include_str!("../../resources/lua/bindings.lua"))
-                .exec()?;
-            ctx.load(include_str!("../../resources/lua/lua_command.lua"))
-                .exec()?;
-            ctx.load(include_str!("../../resources/lua/macros.lua"))
-                .exec()?;
+        ctx.load(include_str!("../../resources/lua/defaults.lua"))
+            .exec()?;
+        ctx.load(include_str!("../../resources/lua/functions.lua"))
+            .exec()?;
+        ctx.load(include_str!("../../resources/lua/bindings.lua"))
+            .exec()?;
+        ctx.load(include_str!("../../resources/lua/lua_command.lua"))
+            .exec()?;
+        ctx.load(include_str!("../../resources/lua/macros.lua"))
+            .exec()?;
 
-            let lua_gmcp = ctx
-                .load(include_str!("../../resources/lua/gmcp.lua"))
-                .call::<_, rlua::Value>(())?;
-            globals.set("gmcp", lua_gmcp)?;
-            let lua_msdp = ctx
-                .load(include_str!("../../resources/lua/msdp.lua"))
-                .call::<_, rlua::Value>(())?;
-            globals.set("msdp", lua_msdp)?;
+        let lua_gmcp = ctx
+            .load(include_str!("../../resources/lua/gmcp.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("gmcp", lua_gmcp)?;
+        let lua_msdp = ctx
+            .load(include_str!("../../resources/lua/msdp.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("msdp", lua_msdp)?;
 
-            let mut blight: Blight = globals.get("blight")?;
-            blight.core_mode(false);
-            globals.set("blight", blight)?;
+        let mut blight: Blight = globals.get("blight")?;
+        blight.core_mode(false);
+        globals.set("blight", blight)?;
 
-            Ok(())
-        })
-        .unwrap();
+        Ok(())
+    });
+
+    if let Err(err) = result {
+        output_stack_trace(&writer, &err.to_string());
+    }
+
     state
 }
 
@@ -251,30 +256,28 @@ impl LuaScript {
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16) {
-        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            if let Ok(callback) = ctx
-                .globals()
-                .get::<_, rlua::Function>(ON_CONNCTION_CALLBACK)
-            {
-                callback.call::<_, ()>((host, port))
-            } else {
-                Ok(())
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+            let globals = ctx.globals();
+            let table: rlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
+            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+                let (_, cb) = pair.unwrap();
+                cb.call::<_, ()>((host, port))?;
             }
+            Ok(())
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn on_disconnect(&mut self) {
-        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            if let Ok(callback) = ctx
-                .globals()
-                .get::<_, rlua::Function>(ON_DISCONNECT_CALLBACK)
-            {
-                callback.call::<_, ()>(())
-            } else {
-                Ok(())
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+            let globals = ctx.globals();
+            let table: rlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
+            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+                let (_, cb) = pair.unwrap();
+                cb.call::<_, ()>(())?;
             }
+            Ok(())
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }
@@ -820,8 +823,14 @@ mod lua_script_tests {
     #[test]
     fn test_on_connect_test() {
         let lua_code = r#"
-        blight:on_connect(function ()
-            blight:output("connected")
+        blight:on_connect(function (host, port)
+            blight:output(host .. ":" .. port .. "-1")
+        end)
+        blight:on_connect(function (host, port)
+            blight:output(host .. ":" .. port .. "-2")
+        end)
+        blight:on_connect(function (host, port)
+            blight:output(host .. ":" .. port .. "-3")
         end)
         "#;
 
@@ -831,13 +840,70 @@ mod lua_script_tests {
         });
 
         lua.on_connect("test", 21);
-        assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
+        assert_eq!(
+            lua.get_output_lines(),
+            [
+                Line::from("test:21-1"),
+                Line::from("test:21-2"),
+                Line::from("test:21-3"),
+            ]
+        );
         lua.reset((100, 100));
         lua.state.context(|ctx| {
             ctx.load(lua_code).exec().unwrap();
         });
-        lua.on_connect("test", 21);
-        assert_eq!(lua.get_output_lines(), [Line::from("connected")]);
+        lua.on_connect("server", 1000);
+        assert_eq!(
+            lua.get_output_lines(),
+            [
+                Line::from("server:1000-1"),
+                Line::from("server:1000-2"),
+                Line::from("server:1000-3"),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_on_disconnect_test() {
+        let lua_code = r#"
+        blight:on_disconnect(function ()
+            blight:output("disconnected1")
+        end)
+        blight:on_disconnect(function ()
+            blight:output("disconnected2")
+        end)
+        blight:on_disconnect(function ()
+            blight:output("disconnected3")
+        end)
+        "#;
+
+        let (mut lua, _reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+
+        lua.on_disconnect();
+        assert_eq!(
+            lua.get_output_lines(),
+            [
+                Line::from("disconnected1"),
+                Line::from("disconnected2"),
+                Line::from("disconnected3"),
+            ]
+        );
+        lua.reset((100, 100));
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+        lua.on_disconnect();
+        assert_eq!(
+            lua.get_output_lines(),
+            [
+                Line::from("disconnected1"),
+                Line::from("disconnected2"),
+                Line::from("disconnected3"),
+            ]
+        );
     }
 
     #[test]

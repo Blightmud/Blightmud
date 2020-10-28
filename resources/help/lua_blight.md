@@ -89,10 +89,10 @@ Connect to a server
 
 ***blight:on_connect(callback)***
 Registers a callback that is triggered when the client successfully connects to
-a server. You may only register one callback. A secondary callback will overwrite
-the first one.
-The callback function may take two arguments: `host` and `port`.
-- `callback`   A Lua function to be called upon connection.
+a server. 
+
+- `callback`   A Lua function to be called upon connection. (host, port)
+- 
 ```lua
 blight:on_connect(function (host, port)
     blight:output("Connected to:", host, port)
@@ -102,9 +102,8 @@ end)
 ##
 
 ***blight:on_disconnect(callback)***
-Registers a callback that is triggered upon disconnecting from a server. You
-may only register one callback. Subsequent calls to this method will overwrite
-previously registered callbacks.
+Registers a callback that is triggered upon disconnecting from a server.
+
 ```lua
 blight:on_disconnect(function ()
     blight:output("Disconnected from server")

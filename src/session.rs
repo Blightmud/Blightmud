@@ -51,10 +51,11 @@ impl Session {
             if let Ok(mut output_buffer) = self.output_buffer.lock() {
                 output_buffer.clear()
             }
-            self.telnet_parser = Arc::new(Mutex::new(Parser::with_support_and_capacity(
-                BUFFER_SIZE,
-                build_compatibility_table(),
-            )));
+
+            if let Ok(mut parser) = self.telnet_parser.lock() {
+                parser.options.reset_states();
+            };
+
             self.stop_logging();
         }
     }

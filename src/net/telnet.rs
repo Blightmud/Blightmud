@@ -36,7 +36,7 @@ impl TelnetHandler {
             parser: session.telnet_parser,
             main_writer: session.main_writer,
             output_buffer: session.output_buffer,
-            mode: TelnetMode::Undefined,
+            mode: TelnetMode::UnterminatedPrompt,
         }
     }
 }
@@ -54,16 +54,14 @@ impl TelnetHandler {
                 TelnetEvents::IAC(iac) => {
                     debug!("IAC: {}", iac.command);
                     match iac.command {
-                        cmd::GA | cmd::EOR => {
-                            let mut buffer = self.output_buffer.lock().unwrap();
+                        cmd::GA | cmd::EOR | cmd::NOP => {
                             if self.mode != TelnetMode::TerminatedPrompt {
                                 debug!("Setting telnet mode: TerminatedPrompt");
                                 self.mode = TelnetMode::TerminatedPrompt;
-                                buffer.buffer_to_prompt(true);
-                            } else {
-                                buffer.buffer_to_prompt(true);
-                                self.main_writer.send(Event::Prompt).unwrap();
                             }
+                            let mut buffer = self.output_buffer.lock().unwrap();
+                            buffer.buffer_to_prompt(true);
+                            self.main_writer.send(Event::Prompt).unwrap();
                         }
                         _ => {}
                     }
@@ -130,10 +128,7 @@ impl TelnetHandler {
                 }
             }
 
-            if self.mode == TelnetMode::UnterminatedPrompt
-                && !output_buffer.is_empty()
-                && output_buffer.len() < 80
-            {
+            if self.mode == TelnetMode::UnterminatedPrompt && output_buffer.len() < 80 {
                 output_buffer.buffer_to_prompt(true);
                 self.main_writer.send(Event::Prompt).unwrap();
             }

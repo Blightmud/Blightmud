@@ -7,3 +7,7 @@ function bytes_to_string(bytes)
 	return table.concat(chars)
 end
 
+-- Make Lua's `print()` write to Blightmud's output buffer.
+function _G.print(...)
+	blight:output(...)
+end

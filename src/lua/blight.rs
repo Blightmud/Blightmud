@@ -378,6 +378,10 @@ impl UserData for Blight {
             ctx.globals().set(this.timer_table(), ctx.create_table()?)?;
             Ok(())
         });
+        methods.add_method("remove_timer", |ctx, this, timer_idx: i32| {
+            let timer_table: rlua::Table = ctx.globals().get(this.timer_table())?;
+            timer_table.set(timer_idx, rlua::Nil)
+        });
         methods.add_method("status_height", |_, this, height: u16| {
             this.main_writer
                 .send(Event::StatusAreaHeight(height))

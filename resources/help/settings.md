@@ -8,6 +8,5 @@ These are toggled as follows.
 
 Available settings are:
 
-- `echo_gmcp`           Echo received GMCP to the output view (good for debugging)
 - `logging_enabled`     See `/help logging`
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.

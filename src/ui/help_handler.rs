@@ -28,7 +28,10 @@ impl HelpHandler {
     /// Load helpfiles from disk in debug mode, from memory otherwise.
     fn file_content(&self, file: &str) -> Cow<str> {
         if cfg!(debug_assertions) {
-            Cow::from(fs::read_to_string(self.files[file]).expect(&format!("Can't find {}", file)))
+            Cow::from(
+                fs::read_to_string(self.files[file])
+                    .unwrap_or_else(|_| panic!("Can't find {}", file)),
+            )
         } else {
             Cow::from(self.files[file])
         }

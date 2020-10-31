@@ -186,6 +186,12 @@ impl History {
         }
     }
 
+    fn drain(&mut self) {
+        while self.inner.len() >= self.inner.capacity() {
+            self.inner.pop_front();
+        }
+    }
+
     fn append(&mut self, line: &str) {
         if !line.trim().is_empty() {
             for line in line.lines() {
@@ -194,9 +200,11 @@ impl History {
         } else {
             self.inner.push_back("".to_string());
         }
-        while self.inner.len() >= self.inner.capacity() {
-            self.inner.pop_front();
-        }
+        self.drain();
+    }
+
+    fn remove_last(&mut self) {
+        self.inner.pop_back();
     }
 }
 
@@ -347,6 +355,9 @@ impl Screen {
 
     pub fn print_prompt(&mut self, prompt: &Line) {
         self.tts_ctrl.lock().unwrap().speak_line(&prompt);
+        if prompt.flags.separate_receives {
+            self.history.remove_last();
+        }
         if let Some(prompt_line) = prompt.print_line() {
             self.history.append(prompt_line);
             if !self.scroll_data.0 {
@@ -396,24 +407,30 @@ impl Screen {
 
     pub fn print_output(&mut self, line: &Line) {
         self.tts_ctrl.lock().unwrap().speak_line(line);
+        if line.flags.separate_receives {
+            self.history.remove_last();
+        }
         if let Some(print_line) = line.print_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {
-                self.print_line(&print_line);
+                self.print_line(&print_line, !line.flags.separate_receives);
             } else {
-                for line in wrap_line(&print_line, self.width as usize) {
-                    self.print_line(&line);
+                let mut replace_first = !line.flags.separate_receives;
+                for l in wrap_line(&print_line, self.width as usize) {
+                    self.print_line(&l, replace_first);
+                    replace_first = true;
                 }
             }
         }
     }
 
-    fn print_line(&mut self, line: &str) {
+    fn print_line(&mut self, line: &str, new_line: bool) {
         self.history.append(&line);
         if !self.scroll_data.0 {
             write!(
                 self.screen,
-                "{}\n{}{}",
+                "{}{}{}{}",
                 termion::cursor::Goto(1, self.output_line),
+                if new_line { "\n" } else { "" },
                 &line,
                 self.goto_prompt(),
             )
@@ -424,18 +441,21 @@ impl Screen {
     pub fn print_send(&mut self, send: &Line) {
         if let Some(line) = send.print_line() {
             self.tts_ctrl.lock().unwrap().speak_input(&line);
-            self.print_line(&format!(
-                "{}> {}{}",
-                color::Fg(color::LightYellow),
-                line,
-                color::Fg(color::Reset)
-            ));
+            self.print_line(
+                &format!(
+                    "{}> {}{}",
+                    color::Fg(color::LightYellow),
+                    line,
+                    color::Fg(color::Reset)
+                ),
+                true,
+            );
         }
     }
 
     pub fn print_info(&mut self, output: &str) {
         let line = &format!("[**] {}", output);
-        self.print_line(line);
+        self.print_line(line, true);
         self.tts_ctrl.lock().unwrap().speak_info(output);
     }
 
@@ -446,7 +466,7 @@ impl Screen {
             output,
             color::Fg(color::Reset)
         );
-        self.print_line(line);
+        self.print_line(line, true);
         self.tts_ctrl.lock().unwrap().speak_error(output);
     }
 

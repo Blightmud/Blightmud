@@ -103,7 +103,7 @@ impl TelnetHandler {
                 TelnetEvents::DataReceive(msg) => {
                     if !msg.is_empty() {
                         if let Ok(mut output_buffer) = self.output_buffer.lock() {
-                            let new_lines = output_buffer.receive(msg.as_slice());
+                            let new_lines = output_buffer.receive(&msg);
                             for line in new_lines {
                                 self.main_writer.send(Event::MudOutput(line)).unwrap();
                             }
@@ -129,7 +129,7 @@ impl TelnetHandler {
             }
 
             if self.mode == TelnetMode::UnterminatedPrompt && output_buffer.len() < 80 {
-                output_buffer.buffer_to_prompt(true);
+                output_buffer.buffer_to_prompt(false);
                 self.main_writer.send(Event::Prompt).unwrap();
             }
         }

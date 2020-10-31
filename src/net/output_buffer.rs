@@ -27,6 +27,8 @@ impl OutputBuffer {
     }
 
     pub fn receive(&mut self, data: &[u8]) -> Vec<Line> {
+        let existing_buffer_len = self.buffer.len();
+
         self.buffer.append(&mut Vec::from(data));
 
         let cut_line =
@@ -35,7 +37,11 @@ impl OutputBuffer {
                     lines.push(Line::from("".to_string()));
                     cut_len
                 } else {
-                    lines.push(Line::from(&self.buffer[last_cut..i]));
+                    let mut line = Line::from(&self.buffer[last_cut..i]);
+                    if last_cut == 0 {
+                        line.flags.separate_receives = i > existing_buffer_len;
+                    }
+                    lines.push(line);
                     i + cut_len
                 }
             };

@@ -226,8 +226,10 @@ impl LuaScript {
     pub fn run_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
             let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
-            let func: rlua::Function = table.get(id)?;
-            func.call::<_, ()>(())
+            match table.get(id)? {
+                rlua::Value::Function(func) => func.call::<_, ()>(()),
+                _ => Ok(()), // ignore recently removed timers
+            }
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }

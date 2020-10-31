@@ -6,7 +6,7 @@ Blightmud's scripting engine.
 ##
 
 ***blight:output(str)***
-Prints output to the screen.
+Prints output to the screen. Also aliased as `print()`.
 - `str`  The string to output.
 ```lua
 -- Standard printing
@@ -15,6 +15,9 @@ blight:output("A", "nice", "message")
 -- Color printing
 blight:output(C_RED .. "Red message" .. C_RESET);
 blight:output(C_BWHITE .. BG_BLUE .. "White text with blue background" .. C_RESET);
+
+-- Lua's print()
+print("Another", BG_BLUE .. "nice" .. C_RESET, "message")
 ```
 For a list of available colors se `/help colors`
 
@@ -89,10 +92,10 @@ Connect to a server
 
 ***blight:on_connect(callback)***
 Registers a callback that is triggered when the client successfully connects to
-a server. 
+a server.
 
 - `callback`   A Lua function to be called upon connection. (host, port)
-- 
+-
 ```lua
 blight:on_connect(function (host, port)
     blight:output("Connected to:", host, port)

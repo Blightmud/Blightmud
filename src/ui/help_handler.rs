@@ -1,7 +1,7 @@
 use crate::{event::Event, model::Line, VERSION};
 
 use std::path::Path;
-use std::{collections::HashMap, sync::mpsc::Sender};
+use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
 use log::debug;
 use mdcat::{ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
@@ -25,6 +25,15 @@ impl HelpHandler {
         Ok(())
     }
 
+    /// Load helpfiles from disk in debug mode, from memory otherwise.
+    fn file_content(&self, file: &str) -> Cow<str> {
+        if cfg!(debug_assertions) {
+            Cow::from(fs::read_to_string(self.files[file]).expect(&format!("Can't find {}", file)))
+        } else {
+            Cow::from(self.files[file])
+        }
+    }
+
     fn parse_helpfile(&self, file: &str) -> Event {
         if self.files.contains_key(file) {
             let mut md_bytes = vec![];
@@ -42,7 +51,8 @@ impl HelpHandler {
                 "$USER_CONFIG_DIR"
             };
 
-            let file_content = self.files[file]
+            let file_content = self
+                .file_content(file)
                 .replace("$VERSION", VERSION)
                 .replace("$LOGDIR", logdir)
                 .replace("$CONFIGDIR", config_dir);
@@ -72,51 +82,6 @@ impl HelpHandler {
     }
 }
 
-fn load_files() -> HashMap<&'static str, &'static str> {
-    let mut files: HashMap<&str, &str> = HashMap::new();
-    files.insert("help", include_str!("../../resources/help/help.md"));
-    files.insert("changes", include_str!("../../resources/help/changes.md"));
-    files.insert("welcome", include_str!("../../resources/help/welcome.md"));
-    files.insert("logging", include_str!("../../resources/help/logging.md"));
-    files.insert("blight", include_str!("../../resources/help/lua_blight.md"));
-    files.insert("bindings", include_str!("../../resources/help/bindings.md"));
-    files.insert("core", include_str!("../../resources/help/core.md"));
-    #[cfg(feature = "tts")]
-    files.insert("tts", include_str!("../../resources/help/tts.md"));
-    #[cfg(not(feature = "tts"))]
-    files.insert("tts", include_str!("../../resources/help/no_tts.md"));
-    files.insert(
-        "status_area",
-        include_str!("../../resources/help/lua_status_area.md"),
-    );
-    files.insert(
-        "aliases",
-        include_str!("../../resources/help/lua_aliases.md"),
-    );
-    files.insert(
-        "triggers",
-        include_str!("../../resources/help/lua_triggers.md"),
-    );
-    files.insert("timers", include_str!("../../resources/help/lua_timers.md"));
-    files.insert("gmcp", include_str!("../../resources/help/lua_gmcp.md"));
-    files.insert("msdp", include_str!("../../resources/help/msdp.md"));
-    files.insert(
-        "config_scripts",
-        include_str!("../../resources/help/config_scripts.md"),
-    );
-    files.insert(
-        "scripting",
-        include_str!("../../resources/help/scripting.md"),
-    );
-    files.insert("settings", include_str!("../../resources/help/settings.md"));
-    files.insert(
-        "storage",
-        include_str!("../../resources/help/lua_storage.md"),
-    );
-    files.insert("colors", include_str!("../../resources/help/lua_colors.md"));
-    files
-}
-
 fn md_settings() -> Settings {
     let terminal_size = TerminalSize::detect().unwrap_or_default();
 
@@ -125,6 +90,58 @@ fn md_settings() -> Settings {
         terminal_size,
         resource_access: ResourceAccess::LocalOnly,
         syntax_set: SyntaxSet::load_defaults_newlines(),
+    }
+}
+
+macro_rules! help_files {
+    ($(
+        $(#[$attr:meta])*
+        $name:literal => $path:literal,
+    )+) => {
+        let mut files: HashMap<&str, &str> = HashMap::new();
+        $(
+            $(#[$attr])*
+            files.insert(
+                $name,
+                if cfg!(debug_assertions) {
+                    concat!(env!("CARGO_MANIFEST_DIR"), "/resources/help/", $path)
+                } else {
+                    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/help/", $path))
+                }
+            );
+        )+
+        files
+    };
+    // Same as above but allows no trailing comma.
+    ($($(#[$attr:meta])* $file:literal => $path:literal),+) => {
+        help_files!($($(#[$attr])* $file => $path,)+)
+    };
+}
+
+fn load_files() -> HashMap<&'static str, &'static str> {
+    help_files! {
+        "help" => "help.md",
+        "changes" => "changes.md",
+        "welcome" => "welcome.md",
+        "logging" => "logging.md",
+        "blight" => "lua_blight.md",
+        "bindings" => "bindings.md",
+        "core" => "core.md",
+        #[cfg(feature = "tts")]
+        "tts" => "tts.md",
+        #[cfg(not(feature = "tts"))]
+        "tts" => "no_tts.md",
+        "status_area" => "lua_status_area.md",
+        "aliases" => "lua_aliases.md",
+        "triggers" => "lua_triggers.md",
+        "timers" => "lua_timers.md",
+        "gmcp" => "lua_gmcp.md",
+        "msdp" => "msdp.md",
+        "config_scripts" => "config_scripts.md",
+        "scripting" => "scripting.md",
+        "settings" => "settings.md",
+        "storage" => "lua_storage.md",
+        "colors" => "lua_colors.md",
     }
 }
 

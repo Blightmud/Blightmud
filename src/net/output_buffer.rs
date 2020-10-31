@@ -1,6 +1,6 @@
 use crate::model::Line;
 
-use super::tcp_stream::BUFFER_SIZE;
+use super::{tcp_stream::BUFFER_SIZE, telnet::TelnetMode};
 
 pub struct OutputBuffer {
     buffer: Vec<u8>,
@@ -26,7 +26,7 @@ impl OutputBuffer {
         }
     }
 
-    pub fn receive(&mut self, data: &[u8]) -> Vec<Line> {
+    pub fn receive(&mut self, data: &[u8], telnet_mode: &TelnetMode) -> Vec<Line> {
         let existing_buffer_len = self.buffer.len();
 
         self.buffer.append(&mut Vec::from(data));
@@ -38,7 +38,7 @@ impl OutputBuffer {
                     cut_len
                 } else {
                     let mut line = Line::from(&self.buffer[last_cut..i]);
-                    if last_cut == 0 {
+                    if *telnet_mode == TelnetMode::UnterminatedPrompt && last_cut == 0 {
                         line.flags.separate_receives = i > existing_buffer_len;
                     }
                     lines.push(line);

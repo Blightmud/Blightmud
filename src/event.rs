@@ -1,12 +1,4 @@
-use crate::{
-    io::SaveData,
-    model::{Connection, Line, Servers},
-    net::{spawn_receive_thread, spawn_transmit_thread},
-    session::Session,
-    tts::TTSEvent,
-    ui::Screen,
-    TelnetData,
-};
+use crate::{TelnetData, io::SaveData, model::{Connection, Line, Servers}, net::{spawn_receive_thread, spawn_transmit_thread}, session::Session, tts::TTSEvent, ui::Screen, net::TelnetMode};
 use libtelnet_rs::events::TelnetEvents;
 use log::debug;
 use std::{
@@ -276,7 +268,7 @@ impl EventHandler {
             }
             Event::InputSent(msg) => {
                 let mut output_buffer = self.session.output_buffer.lock().unwrap();
-                output_buffer.receive(b"\r\n");
+                output_buffer.receive(b"\r\n", &TelnetMode::Undefined);
                 screen.print_send(&msg);
                 Ok(())
             }

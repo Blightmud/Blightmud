@@ -10,7 +10,7 @@ use log::debug;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
 #[derive(Eq, PartialEq)]
-enum TelnetMode {
+pub enum TelnetMode {
     Undefined,
     TerminatedPrompt,
     UnterminatedPrompt,
@@ -103,7 +103,7 @@ impl TelnetHandler {
                 TelnetEvents::DataReceive(msg) => {
                     if !msg.is_empty() {
                         if let Ok(mut output_buffer) = self.output_buffer.lock() {
-                            let new_lines = output_buffer.receive(&msg);
+                            let new_lines = output_buffer.receive(&msg, &self.mode);
                             for line in new_lines {
                                 self.main_writer.send(Event::MudOutput(line)).unwrap();
                             }

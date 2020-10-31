@@ -31,7 +31,7 @@ use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, LOGGING_ENABLED};
+use model::{Connection, Settings, LOGGING_ENABLED, MOUSE_ENABLED};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -132,7 +132,6 @@ fn main() {
         "tts",
         "Use the TTS system when playing a MUD (for visually impaired users)",
     );
-    opts.optflag("M", "mouse", "Enable experimental mouse support");
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
     opts.optflag("v", "version", "Print version information");
@@ -151,8 +150,6 @@ fn main() {
         print_version();
         return;
     }
-
-    let wants_mouse = matches.opt_present("M");
 
     register_panic_hook();
     if let Err(e) = start_logging() {
@@ -195,7 +192,6 @@ fn main() {
         .main_writer(main_writer)
         .timer_writer(timer_writer)
         .screen_dimensions(dimensions)
-        .mouse_enabled(wants_mouse)
         .tts_enabled(matches.opt_present("tts"))
         .build();
 
@@ -213,12 +209,12 @@ fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut screen = Screen::new(session.tts_ctrl.clone(), session.mouse_support)?;
-    screen.setup()?;
-
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut settings = Settings::load().unwrap();
+
+    let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
+    screen.setup()?;
 
     let lua_scripts = {
         fs::read_dir(CONFIG_DIR.as_path())?

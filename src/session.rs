@@ -20,7 +20,6 @@ pub struct Session {
     pub lua_script: Arc<Mutex<LuaScript>>,
     pub logger: Arc<Mutex<Logger>>,
     pub tts_ctrl: Arc<Mutex<TTSController>>,
-    pub mouse_support: bool,
 }
 
 impl Session {
@@ -119,7 +118,6 @@ pub struct SessionBuilder {
     timer_writer: Option<Sender<TimerEvent>>,
     screen_dimensions: Option<(u16, u16)>,
     tts_enabled: bool,
-    mouse_enabled: bool,
 }
 
 impl SessionBuilder {
@@ -129,7 +127,6 @@ impl SessionBuilder {
             timer_writer: None,
             screen_dimensions: None,
             tts_enabled: false,
-            mouse_enabled: false,
         }
     }
 
@@ -153,11 +150,6 @@ impl SessionBuilder {
         self
     }
 
-    pub fn mouse_enabled(mut self, enabled: bool) -> Self {
-        self.mouse_enabled = enabled;
-        self
-    }
-
     pub fn build(self) -> Session {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
@@ -177,7 +169,6 @@ impl SessionBuilder {
             prompt_input: Arc::new(Mutex::new(String::new())),
             lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer, dimensions))),
             logger: Arc::new(Mutex::new(Logger::default())),
-            mouse_support: self.mouse_enabled,
             tts_ctrl: Arc::new(Mutex::new(TTSController::new(tts_enabled))),
         }
     }

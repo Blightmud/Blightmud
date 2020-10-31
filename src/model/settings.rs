@@ -11,7 +11,8 @@ pub struct Settings {
 
 pub const LOGGING_ENABLED: &str = "logging_enabled";
 pub const TTS_ENABLED: &str = "tts_enabled";
-pub const SETTINGS: [&str; 2] = [LOGGING_ENABLED, TTS_ENABLED];
+pub const MOUSE_ENABLED: &str = "mouse_enabled";
+pub const SETTINGS: [&str; 3] = [LOGGING_ENABLED, TTS_ENABLED, MOUSE_ENABLED];
 
 impl Settings {
     pub fn get(&self, key: &str) -> Result<bool> {
@@ -37,6 +38,7 @@ impl Default for Settings {
         let mut settings: HashMap<String, bool> = HashMap::new();
         settings.insert(LOGGING_ENABLED.to_string(), false);
         settings.insert(TTS_ENABLED.to_string(), true);
+        settings.insert(MOUSE_ENABLED.to_string(), true);
         Self { settings }
     }
 }

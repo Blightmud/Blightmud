@@ -10,9 +10,13 @@ local function GMCP()
 	}
 
 	local function parse_gmcp(msg)
+		local mod = msg
+		local body = {}
 		local split = string.find(msg, " ")
-		local mod = string.sub(msg, 0, split-1)
-		local body = string.sub(msg, split)
+		if split ~= nil then
+			mod = string.sub(msg, 0, split-1)
+			body = string.sub(msg, split)
+		end
 		return mod, body
 	end
 

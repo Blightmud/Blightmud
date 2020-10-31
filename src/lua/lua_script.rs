@@ -18,7 +18,7 @@ fn create_default_lua_state(
     dimensions: (u16, u16),
     core: Option<Core>,
 ) -> Lua {
-    let state = Lua::new();
+    let state = unsafe { Lua::new_with_debug() };
 
     let mut blight = Blight::new(writer.clone());
     let core = match core {

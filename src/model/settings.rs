@@ -46,3 +46,49 @@ impl SaveData for Settings {
         crate::DATA_DIR.join("config").join("settings.ron")
     }
 }
+
+#[cfg(test)]
+mod settings_test {
+    use super::*;
+
+    #[test]
+    fn get_settings() {
+        let settings = Settings::default();
+
+        assert_eq!(true, settings.get(TTS_ENABLED).unwrap());
+        assert_eq!(false, settings.get(LOGGING_ENABLED).unwrap());
+        assert_eq!(
+            "Unknown setting: SOMETHING_RANDOM",
+            settings.get("SOMETHING_RANDOM").unwrap_err().to_string()
+        );
+    }
+
+    #[test]
+    fn new_settings() {
+        let map = HashMap::new();
+        let settings = Settings { settings: map };
+        assert_eq!(false, settings.get(TTS_ENABLED).unwrap());
+        assert_eq!(
+            "Unknown setting: SOMETHING_RANDOM",
+            settings.get("SOMETHING_RANDOM").unwrap_err().to_string()
+        );
+    }
+
+    #[test]
+    fn set_settings() {
+        let mut settings = Settings::default();
+
+        settings.set(TTS_ENABLED, false).unwrap();
+        settings.set(LOGGING_ENABLED, true).unwrap();
+
+        assert_eq!(false, settings.get(TTS_ENABLED).unwrap());
+        assert_eq!(true, settings.get(LOGGING_ENABLED).unwrap());
+        assert_eq!(
+            "Unknown setting: SOMETHING_RANDOM",
+            settings
+                .set("SOMETHING_RANDOM", true)
+                .unwrap_err()
+                .to_string()
+        );
+    }
+}

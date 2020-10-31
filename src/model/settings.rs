@@ -11,27 +11,23 @@ pub struct Settings {
 
 pub const LOGGING_ENABLED: &str = "logging_enabled";
 pub const TTS_ENABLED: &str = "tts_enabled";
+pub const SETTINGS: [&str; 2] = [LOGGING_ENABLED, TTS_ENABLED];
 
 impl Settings {
     pub fn get(&self, key: &str) -> Result<bool> {
-        if let Some(value) = self.settings.get(key) {
-            Ok(*value)
+        if SETTINGS.contains(&key) {
+            Ok(*self.settings.get(key).unwrap_or(&false))
         } else {
             bail!("Unknown setting: {}", key)
         }
     }
 
     pub fn set(&mut self, key: &str, value: bool) -> Result<()> {
-        match key {
-            LOGGING_ENABLED => {
-                self.settings.insert(key.to_string(), value);
-                Ok(())
-            }
-            TTS_ENABLED => {
-                self.settings.insert(key.to_string(), value);
-                Ok(())
-            }
-            _ => bail!("Unknown setting: {}", key),
+        if SETTINGS.contains(&key) {
+            self.settings.insert(key.to_string(), value);
+            Ok(())
+        } else {
+            bail!("Unknown setting: {}", key)
         }
     }
 }

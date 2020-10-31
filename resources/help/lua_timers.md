@@ -21,19 +21,21 @@ end)
 
 ##
 
-***blight::remove_timer(timer_id)***
+***blight:remove_timer(timer_id)***
 
 - `timer_id` The id returned when creating a timer
 
 ```lua
 local count = 0
-local timer_id = blight:add_timer(0.5, 3, function ()
+timer_id = blight:add_timer(0.5, 3, function ()
     count = count + 1
-    blight:send("say " .. count)
+    blight:output("And a " .. count)
+    if count > 1 then
+        -- This should only count to 2 and then show "Timer Removed".
+        blight:output("Timer Removed")
+        blight:remove_timer(timer_id)
+    end
 end)
-
--- Maybe you changed your mind...
-blight:remove_timer(timer_id)
 ```
 
 ##

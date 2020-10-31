@@ -43,6 +43,7 @@ pub enum Event {
     TimedEvent(u32),
     DropTimedEvent(u32),
     ClearTimers,
+    RemoveTimer(u32),
     LoadScript(String),
     ResetScript,
     StartLogging(String, bool),

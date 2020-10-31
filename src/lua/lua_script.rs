@@ -226,8 +226,10 @@ impl LuaScript {
     pub fn run_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
             let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
-            let func: rlua::Function = table.get(id)?;
-            func.call::<_, ()>(())
+            match table.get(id)? {
+                rlua::Value::Function(func) => func.call::<_, ()>(()),
+                _ => Ok(()), // ignore recently removed timers
+            }
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }
@@ -1025,5 +1027,57 @@ mod lua_script_tests {
         });
 
         assert!(ids.is_empty());
+    }
+
+    #[test]
+    fn test_remove_timer() {
+        let (lua, _reader) = get_lua();
+
+        macro_rules! timer_ids {
+            () => {
+                lua.state.context(|ctx| -> Vec<u32> {
+                    ctx.load(r#"return blight:get_timer_ids()"#)
+                        .call(())
+                        .unwrap()
+                })
+            };
+        }
+
+        let id1 = lua.state.context(|ctx| -> u32 {
+            ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
+                .call(())
+                .unwrap()
+        });
+        let id2 = lua.state.context(|ctx| -> u32 {
+            ctx.load(r#"return blight:add_timer(15, 15, function () end)"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert_eq!(timer_ids!(), vec![id1, id2]);
+
+        lua.state.context(|ctx| {
+            ctx.load(&format!("blight:remove_timer({})", id1))
+                .exec()
+                .unwrap();
+        });
+
+        assert_eq!(timer_ids!(), vec![id2]);
+
+        let id3 = lua.state.context(|ctx| -> u32 {
+            ctx.load(r#"return blight:add_timer(30, 30, function () end)"#)
+                .call(())
+                .unwrap()
+        });
+
+        assert_eq!(timer_ids!(), vec![id3, id2]);
+
+        lua.state.context(|ctx| {
+            ctx.load(&format!("blight:remove_timer({})", id3))
+                .exec()
+                .unwrap();
+        });
+
+        assert_eq!(timer_ids!(), vec![id2]);
     }
 }

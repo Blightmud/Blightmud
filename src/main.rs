@@ -413,6 +413,9 @@ fn run(
                 Event::ClearTimers => {
                     session.timer_writer.send(TimerEvent::Clear)?;
                 }
+                Event::RemoveTimer(idx) => {
+                    session.timer_writer.send(TimerEvent::Remove(idx))?;
+                }
                 Event::Redraw => {
                     screen.setup()?;
                     if let Ok(mut script) = session.lua_script.lock() {

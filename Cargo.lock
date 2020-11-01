@@ -55,12 +55,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1fd36ffbb1fb7c834eac128ea8d0e310c5aeb635548f9d58861e1308d46e71c"
 
 [[package]]
-name = "arc-swap"
-version = "0.4.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d25d88fd6b8041580a654f9d0c581a047baee2b3efee13275f2fc392fc75034"
-
-[[package]]
 name = "arrayref"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -808,9 +802,9 @@ dependencies = [
 
 [[package]]
 name = "libtelnet-rs"
-version = "1.1.1"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc0661f153c9105b55fa7ad7001bc0f14dff6b55ae851316814f5f37b7a50418"
+checksum = "992ba607a47645788936f482802517100cb9e0f5f1c4ddd3c3a16d1edce77258"
 
 [[package]]
 name = "libz-sys"
@@ -1269,9 +1263,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.4.1"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8963b85b8ce3074fecffde43b4b0dded83ce2f367dc8d363afc56679f3ee820b"
+checksum = "38cf2c13ed4745de91a5eb834e11c00bcc3709e773173b2ce4c56c9fbde04b9c"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1281,9 +1275,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.6.20"
+version = "0.6.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cab7a364d15cde1e505267766a2d3c4e22a843e1a601f0fa7564c0f82ced11c"
+checksum = "3b181ba2dcf07aaccad5448e8ead58db5b742cf85dfe035e2227f137a539a189"
 
 [[package]]
 name = "remove_dir_all"
@@ -1487,11 +1481,10 @@ dependencies = [
 
 [[package]]
 name = "signal-hook-registry"
-version = "1.2.1"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3e12110bc539e657a646068aaf5eb5b63af9d0c1f7b29c97113fad80e15f035"
+checksum = "ce32ea0c6c56d5eacaeb814fbed9960547021d3edd010ded1425f180536b20ab"
 dependencies = [
- "arc-swap",
  "libc",
 ]
 

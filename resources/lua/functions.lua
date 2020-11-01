@@ -11,3 +11,16 @@ end
 function _G.print(...)
 	blight:output(...)
 end
+
+function cformat(msg, ...)
+  msg = msg:gsub("<(.-)>", function (s)
+    if s:find(':', 1, true) then
+      local fg, bg = s:match('(%w+):(%w+)')
+      return _G['C_' .. fg:upper()] .. _G['BG_' .. bg:upper()]
+    else
+      return _G['C_' .. s:upper()]
+    end
+	end)
+
+	return msg:format(...)
+end

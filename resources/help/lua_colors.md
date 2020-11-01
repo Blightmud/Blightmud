@@ -15,7 +15,7 @@ mudding. The following colors are available:
 - `C_MAGENTA`
 - `C_CYAN`
 - `C_WHITE`
-             
+
 ## Background colors
 
 - `BG_BLACK`
@@ -28,7 +28,7 @@ mudding. The following colors are available:
 - `BG_WHITE`
 
 ## Bright foreground colors
-             
+
 - `C_BBLACK`
 - `C_BRED`
 - `C_BGREEN`
@@ -39,7 +39,7 @@ mudding. The following colors are available:
 - `C_BWHITE`
 
 ## Bright background colors
-             
+
 - `BG_BBLACK`
 - `BG_BRED`
 - `BG_BGREEN`
@@ -73,3 +73,15 @@ blight:output(C_INFO .. "Ok, he left. Everbody relax!" .. C_RESET)
 ```
 
 There is a lot more you can do with ansi escapes in a terminal. All your ideas should probably work through `blight:output(msg)`
+
+## cformat utility
+
+Concatenating variables everywhere isn't the best coding experience. That's
+why we provide the `cformat` utility function, which will return a formatted
+string you can use.
+
+```lua
+blight:output(cformat('This is some <red>red<reset> text.'))
+blight:output(cformat('This is some <red:blue>red on blue<reset> text.'))
+blight:output(cformat('This is some <yellow>%s<reset> text.', 'formatted'))
+```

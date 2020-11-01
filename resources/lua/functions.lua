@@ -20,7 +20,7 @@ function cformat(msg, ...)
     else
       return _G['C_' .. s:upper()]
     end
-	end)
+  end)
 
-	return msg:format(...)
+  return msg:format(...)
 end

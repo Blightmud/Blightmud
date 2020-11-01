@@ -1,4 +1,13 @@
-use crate::{TelnetData, io::SaveData, model::{Connection, Line, Servers}, net::{spawn_receive_thread, spawn_transmit_thread}, session::Session, tts::TTSEvent, ui::Screen, net::TelnetMode};
+use crate::{
+    io::SaveData,
+    model::{Connection, Line, Servers},
+    net::TelnetMode,
+    net::{spawn_receive_thread, spawn_transmit_thread},
+    session::Session,
+    tts::TTSEvent,
+    ui::Screen,
+    TelnetData,
+};
 use libtelnet_rs::events::TelnetEvents;
 use log::debug;
 use std::{

@@ -1,5 +1,6 @@
 -- Colors
 C_RESET = "\x1b[0m"
+C_BOLD = "\x1b[1m"
 C_BLACK = "\x1b[30m"
 C_RED = "\x1b[31m"
 C_GREEN = "\x1b[32m"

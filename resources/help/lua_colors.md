@@ -6,6 +6,7 @@ mudding. The following colors are available:
 ## Foreground colors
 
 - `C_RESET`
+- `C_BOLD`
 - `C_BLACK`
 - `C_RED`
 - `C_GREEN`

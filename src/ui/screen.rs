@@ -17,7 +17,7 @@ struct TerminalSizeError;
 
 impl fmt::Display for TerminalSizeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Failed to retrieve valid dimsensions for terminal")
+        write!(f, "Failed to retrieve valid dimensions for terminal")
     }
 }
 
@@ -84,9 +84,10 @@ impl StatusArea {
         for line in self.start_line..self.end_line + 1 {
             write!(
                 screen,
-                "{}{}",
+                "{}{}{}",
                 termion::cursor::Goto(1, line),
                 termion::clear::CurrentLine,
+                termion::style::Reset,
             )?;
         }
 
@@ -425,7 +426,8 @@ impl Screen {
         if let Some(line) = send.print_line() {
             self.tts_ctrl.lock().unwrap().speak_input(&line);
             self.print_line(&format!(
-                "{}> {}{}",
+                "{}{}> {}{}",
+                termion::style::Reset,
                 color::Fg(color::LightYellow),
                 line,
                 color::Fg(color::Reset)
@@ -487,9 +489,10 @@ impl Screen {
             let line_no = OUTPUT_START_LINE + i;
             write!(
                 self.screen,
-                "{}{}{}",
+                "{}{}{}{}",
                 termion::cursor::Goto(1, line_no),
                 termion::clear::CurrentLine,
+                termion::style::Reset,
                 self.history.inner[index],
             )?;
         }

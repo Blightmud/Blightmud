@@ -10,4 +10,4 @@ Available settings are:
 
 - `logging_enabled`     See `/help logging`
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
-- `save_history`        Save input history to disk.
+- `save_history`        Save your last 100 commands to disk.

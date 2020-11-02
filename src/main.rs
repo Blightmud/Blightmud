@@ -31,7 +31,7 @@ use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, LOGGING_ENABLED, MOUSE_ENABLED};
+use model::{Connection, Settings, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -187,17 +187,19 @@ fn main() {
             .unwrap();
     }
 
+    let settings = Settings::load().unwrap();
     let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)
         .timer_writer(timer_writer)
         .screen_dimensions(dimensions)
         .tts_enabled(matches.opt_present("tts"))
+        .save_history(settings.get(SAVE_HISTORY).unwrap())
         .build();
 
     let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
-    if let Err(error) = run(main_thread_read, session) {
+    if let Err(error) = run(main_thread_read, session, settings) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
     }
@@ -208,10 +210,10 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
+    mut settings: Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
-    let mut settings = Settings::load().unwrap();
 
     let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
     screen.setup()?;
@@ -289,17 +291,13 @@ fn run(
                     Err(error) => screen.print_error(&error.to_string()),
                 },
                 Event::ToggleSetting(setting, toggle) => {
-                    if let Err(error) = settings.set(
-                        &setting,
-                        match toggle.as_str() {
-                            "on" => true,
-                            "true" => true,
-                            "enabled" => true,
-                            _ => false,
-                        },
-                    ) {
+                    let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
+                    if let Err(error) = settings.set(&setting, toggle) {
                         screen.print_error(&error.to_string());
                     } else {
+                        if setting == SAVE_HISTORY {
+                            session.set_save_history(toggle);
+                        }
                         screen.print_info(&format!("Setting: {} => {}", setting, toggle));
                     }
                 }

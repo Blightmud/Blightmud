@@ -3,8 +3,14 @@ use log::debug;
 use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 
 use crate::{
-    io::Logger, lua::LuaScript, net::MudConnection, net::OutputBuffer, net::BUFFER_SIZE,
-    timer::TimerEvent, tts::TTSController, Event,
+    io::Logger,
+    lua::LuaScript,
+    net::MudConnection,
+    net::BUFFER_SIZE,
+    net::{OutputBuffer, TelnetMode},
+    timer::TimerEvent,
+    tts::TTSController,
+    Event,
 };
 
 #[derive(Clone)]
@@ -165,7 +171,9 @@ impl SessionBuilder {
                 BUFFER_SIZE,
                 build_compatibility_table(),
             ))),
-            output_buffer: Arc::new(Mutex::new(OutputBuffer::new())),
+            output_buffer: Arc::new(Mutex::new(OutputBuffer::new(
+                &TelnetMode::UnterminatedPrompt,
+            ))),
             prompt_input: Arc::new(Mutex::new(String::new())),
             lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer, dimensions))),
             logger: Arc::new(Mutex::new(Logger::default())),

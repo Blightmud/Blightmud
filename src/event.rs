@@ -1,7 +1,6 @@
 use crate::{
     io::SaveData,
     model::{Connection, Line, Servers},
-    net::TelnetMode,
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
     tts::TTSEvent,
@@ -277,7 +276,7 @@ impl EventHandler {
             }
             Event::InputSent(msg) => {
                 let mut output_buffer = self.session.output_buffer.lock().unwrap();
-                output_buffer.receive(b"\r\n", &TelnetMode::Undefined);
+                output_buffer.input_sent();
                 screen.print_send(&msg);
                 Ok(())
             }

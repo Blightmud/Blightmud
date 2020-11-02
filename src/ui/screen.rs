@@ -356,12 +356,9 @@ impl Screen {
 
     pub fn print_prompt(&mut self, prompt: &Line) {
         self.tts_ctrl.lock().unwrap().speak_line(&prompt);
-        if prompt.flags.separate_receives {
-            self.history.remove_last();
-        }
         if let Some(prompt_line) = prompt.print_line() {
             self.history.append(prompt_line);
-            if !self.scroll_data.0 {
+            if !self.scroll_data.0 && !prompt_line.is_empty() {
                 write!(
                     self.screen,
                     "{}\n{}{}",

@@ -29,6 +29,8 @@ impl OutputBuffer {
             if consume_buffer {
                 self.buffer.clear();
             }
+        } else {
+            self.prompt.clear();
         }
     }
 

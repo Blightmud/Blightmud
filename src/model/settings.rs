@@ -38,7 +38,7 @@ impl Default for Settings {
         let mut settings: HashMap<String, bool> = HashMap::new();
         settings.insert(LOGGING_ENABLED.to_string(), false);
         settings.insert(TTS_ENABLED.to_string(), true);
-        settings.insert(MOUSE_ENABLED.to_string(), true);
+        settings.insert(MOUSE_ENABLED.to_string(), false);
         Self { settings }
     }
 }

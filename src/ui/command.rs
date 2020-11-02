@@ -1,12 +1,13 @@
 use crate::model::{Connection, Line};
 use crate::{event::Event, tts::TTSController};
-use crate::{lua::LuaScript, lua::UiEvent, session::Session};
+use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
 use rs_complete::CompletionTree;
 use std::collections::VecDeque;
 use std::thread;
 use std::{
     io::stdin,
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc::Sender,
@@ -14,6 +15,15 @@ use std::{
     },
 };
 use termion::{event::Key, input::TermRead};
+
+const MAX_HISTORY: usize = 100;
+
+pub type History = VecDeque<String>;
+impl SaveData for History {
+    fn relative_path() -> PathBuf {
+        PathBuf::from("data/history.ron")
+    }
+}
 
 #[derive(Default)]
 struct CompletionStepData {
@@ -52,7 +62,7 @@ pub struct CommandBuffer {
     strbuf: String,
     buffer: Vec<char>,
     cached_buffer: Vec<char>,
-    history: VecDeque<String>,
+    history: History,
     current_index: usize,
     cursor_pos: usize,
     completion_tree: CompletionTree,
@@ -66,8 +76,8 @@ impl CommandBuffer {
             strbuf: String::new(),
             buffer: vec![],
             cached_buffer: vec![],
-            history: VecDeque::default(),
             current_index: 0,
+            history: History::default(),
             cursor_pos: 0,
             completion_tree: CompletionTree::with_inclusions(&['/', '_']),
             completion: CompletionStepData::default(),
@@ -98,7 +108,7 @@ impl CommandBuffer {
                 self.history.push_back(command.clone());
             }
 
-            while self.history.len() > 100 {
+            while self.history.len() > MAX_HISTORY {
                 self.history.pop_front();
             }
 
@@ -404,15 +414,23 @@ fn handle_script_ui_io(
 pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         debug!("Input stream spawned");
-        let writer = session.main_writer;
-        let terminate = session.terminate;
-        let script = session.lua_script;
+        let writer = session.main_writer.clone();
+        let terminate = session.terminate.clone();
+        let script = session.lua_script.clone();
         let stdin = stdin();
-        let mut tts_ctrl = session.tts_ctrl;
+        let mut tts_ctrl = session.tts_ctrl.clone();
         let mut buffer = CommandBuffer::new(tts_ctrl.clone());
         buffer
             .completion_tree
             .insert(include_str!("../../resources/completions.txt"));
+
+        if session.save_history() {
+            buffer.history = History::load().unwrap();
+            buffer.current_index = buffer.history.len();
+            for line in buffer.history.iter() {
+                buffer.completion_tree.insert(&line);
+            }
+        }
 
         for e in stdin.events() {
             match e.unwrap() {
@@ -445,6 +463,9 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
             if terminate.load(Ordering::Relaxed) {
                 break;
             }
+        }
+        if session.save_history() {
+            buffer.history.save().unwrap();
         }
         debug!("Input stream closing");
     })

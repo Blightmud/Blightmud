@@ -80,6 +80,7 @@ impl OutputBuffer {
     pub fn clear(&mut self) {
         self.buffer.clear();
         self.prompt.clear();
+        self.telnet_mode = TelnetMode::default();
     }
 
     #[cfg(test)]

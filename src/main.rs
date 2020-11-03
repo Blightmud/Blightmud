@@ -1,6 +1,3 @@
-#[cfg(not(debug_assertions))]
-use dirs_next as dirs;
-
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
@@ -38,14 +35,19 @@ use tools::register_panic_hook;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROJECT_NAME: &str = "Blightmud";
 
+#[cfg(not(debug_assertions))]
+const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
+#[cfg(not(debug_assertions))]
+const XDG_CONFIG_DIR: &str = "~/.config/blightmud";
+
 type TelnetData = Option<Vec<u8>>;
 
 lazy_static! {
     pub static ref DATA_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
-            let mut data_dir = dirs::data_dir().unwrap();
-            data_dir.push("blightmud");
+            use crate::lua::util;
+            let data_dir = PathBuf::from(util::expand_tilde(XDG_DATA_DIR).as_ref());
             let _ = std::fs::create_dir_all(&data_dir);
             data_dir
         }
@@ -56,8 +58,8 @@ lazy_static! {
     pub static ref CONFIG_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
-            let mut config_dir = dirs::config_dir().unwrap();
-            config_dir.push("blightmud");
+            use crate::lua::util;
+            let config_dir = PathBuf::from(util::expand_tilde(XDG_CONFIG_DIR).as_ref());
             let _ = std::fs::create_dir_all(&config_dir);
             config_dir
         }

@@ -46,15 +46,11 @@ lazy_static! {
     pub static ref DATA_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
-            use crate::lua::util;
-            let mut data_dir = PathBuf::from(util::expand_tilde(XDG_DATA_DIR).as_ref());
-
-            #[cfg(target_os = "macos")]
-            {
-                if MACOS_DEPRECATED_DIR.exists() {
-                    data_dir = MACOS_DEPRECATED_DIR.to_path_buf();
-                }
-            }
+            let data_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
+                MACOS_DEPRECATED_DIR.to_path_buf();
+            } else {
+                PathBuf::from(crate::lua::util::expand_tilde(XDG_DATA_DIR).as_ref())
+            };
 
             let _ = std::fs::create_dir_all(&data_dir);
             data_dir
@@ -66,15 +62,12 @@ lazy_static! {
     pub static ref CONFIG_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
-            use crate::lua::util;
-            let mut config_dir = PathBuf::from(util::expand_tilde(XDG_CONFIG_DIR).as_ref());
 
-            #[cfg(target_os = "macos")]
-            {
-                if MACOS_DEPRECATED_DIR.exists() {
-                    config_dir = MACOS_DEPRECATED_DIR.to_path_buf();
-                }
-            }
+            let config_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
+                MACOS_DEPRECATED_DIR.to_path_buf();
+            } else {
+                PathBuf::from(crate::lua::util::expand_tilde(XDG_CONFIG_DIR).as_ref())
+            };
 
             let _ = std::fs::create_dir_all(&config_dir);
             config_dir
@@ -83,8 +76,6 @@ lazy_static! {
         #[cfg(debug_assertions)]
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     };
-
-    #[cfg(target_os = "macos")]
     pub static ref MACOS_DEPRECATED_DIR: PathBuf = {
         use crate::lua::util;
         PathBuf::from(util::expand_tilde("~/Library/Application Support/blightmud").as_ref())

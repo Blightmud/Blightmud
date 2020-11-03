@@ -14,7 +14,7 @@ pub fn output_stack_trace(writer: &Sender<Event>, error: &str) {
 
 /// "~/blightmud" => "/home/yourname/blightmud"
 pub fn expand_tilde(path: &str) -> Cow<str> {
-    if path.starts_with("~") {
+    if path.starts_with('~') {
         Cow::from(env::var("HOME").expect("$HOME must be set") + &path[1..])
     } else {
         Cow::from(path)
@@ -31,7 +31,10 @@ mod util_tests {
         assert_eq!("/home/what/blightmud", expand_tilde("~/blightmud"));
 
         env::set_var("HOME", "/Users/cindi");
-        assert_eq!("/Users/cindi/blightmud/data", expand_tilde("~/blightmud/data"));
+        assert_eq!(
+            "/Users/cindi/blightmud/data",
+            expand_tilde("~/blightmud/data")
+        );
 
         assert_eq!("/leave/it/alone", expand_tilde("/leave/it/alone"));
         assert_eq!("/leave/~/alone", expand_tilde("/leave/~/alone"));

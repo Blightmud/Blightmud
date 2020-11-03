@@ -175,7 +175,7 @@ fn main() {
             return;
         }
     } else if let Ok(Some(world)) = matches.opt_get::<String>("w") {
-        let servers = Servers::load().unwrap();
+        let servers = Servers::load();
         if servers.contains_key(&world) {
             main_writer
                 .send(Event::Connect(servers.get(&world).unwrap().clone()))
@@ -187,7 +187,7 @@ fn main() {
             .unwrap();
     }
 
-    let settings = Settings::load().unwrap();
+    let settings = Settings::load();
     let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)
@@ -244,7 +244,7 @@ fn run(
     }
 
     let mut event_handler = EventHandler::from(&session);
-    let mut saved_servers = Servers::load()?;
+    let mut saved_servers = Servers::load();
 
     check_latest_version(session.main_writer.clone());
 
@@ -428,7 +428,7 @@ fn run(
         }
     }
     screen.reset()?;
-    settings.save()?;
+    settings.save();
     session.close()?;
     Ok(())
 }

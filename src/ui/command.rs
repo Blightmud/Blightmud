@@ -428,7 +428,7 @@ pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> threa
             .insert(include_str!("../../resources/completions.txt"));
 
         if session.save_history() {
-            buffer.history = History::load().unwrap();
+            buffer.history = History::load();
             buffer.current_index = buffer.history.len();
             for line in buffer.history.iter() {
                 buffer.completion_tree.insert(&line);
@@ -468,7 +468,7 @@ pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> threa
             }
         }
         if session.save_history() {
-            buffer.history.save().unwrap();
+            buffer.history.save();
         }
         debug!("Input stream closing");
     })

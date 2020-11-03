@@ -189,27 +189,19 @@ impl UserData for Blight {
                     )),
                 }?;
 
-                if let Ok(mut store_data) = StoreData::load() {
-                    store_data.insert(id, data);
-                    store_data.save().unwrap();
-                    Ok(())
-                } else {
-                    Err(rlua::Error::RuntimeError(
-                        "Failed to access store file".to_string(),
-                    ))
-                }
+                let mut store_data = StoreData::load();
+                store_data.insert(id, data);
+                store_data.save();
+                Ok(())
             },
         );
         methods.add_method(
             "read",
             |_, _, id: String| -> LuaResult<Option<BTreeMap<String, String>>> {
-                Ok(if let Ok(data) = StoreData::load() {
-                    match data.get(&id) {
-                        Some(data) => Some(data.clone()),
-                        _ => None,
-                    }
-                } else {
-                    None
+                let data = StoreData::load();
+                Ok(match data.get(&id) {
+                    Some(data) => Some(data.clone()),
+                    _ => None,
                 })
             },
         );

@@ -1,6 +1,7 @@
 use crate::DATA_DIR;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
+use log::error;
 use serde::{de::DeserializeOwned, Serialize};
 
 use std::fs;
@@ -19,23 +20,36 @@ pub trait SaveData: DeserializeOwned + Serialize + Default {
         Ok(path)
     }
 
-    fn load() -> Result<Self> {
-        let path = Self::path()?;
+    fn load() -> Self {
+        let read_data = || -> Result<Self> {
+            let path = Self::path()?;
+            if path.exists() {
+                let file = fs::File::open(&path)?;
+                let obj = ron::de::from_reader(&file)?;
+                Ok(obj)
+            } else {
+                bail!("Bad path")
+            }
+        };
 
-        if path.exists() {
-            let file = fs::File::open(&path)?;
-
-            Ok(ron::de::from_reader(&file)?)
-        } else {
-            Ok(Self::default())
+        match read_data() {
+            Ok(obj) => obj,
+            Err(err) => {
+                error!("Write data error: {}", err.to_string());
+                Self::default()
+            }
         }
     }
 
-    fn save(&self) -> Result<()> {
-        let contents = ron::ser::to_string(&self)?;
+    fn save(&self) {
+        let write_data = || -> Result<()> {
+            let contents = ron::ser::to_string(&self)?;
+            fs::write(Self::path()?, contents)?;
+            Ok(())
+        };
 
-        fs::write(Self::path()?, contents)?;
-
-        Ok(())
+        if let Err(err) = write_data() {
+            error!("Write data error: {}", err.to_string());
+        }
     }
 }

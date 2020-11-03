@@ -47,7 +47,15 @@ lazy_static! {
         #[cfg(not(debug_assertions))]
         {
             use crate::lua::util;
-            let data_dir = PathBuf::from(util::expand_tilde(XDG_DATA_DIR).as_ref());
+            let mut data_dir = PathBuf::from(util::expand_tilde(XDG_DATA_DIR).as_ref());
+
+            #[cfg(target_os = "macos")]
+            {
+                if MACOS_DEPRECATED_DIR.exists() {
+                    data_dir = MACOS_DEPRECATED_DIR.to_path_buf();
+                }
+            }
+
             let _ = std::fs::create_dir_all(&data_dir);
             data_dir
         }
@@ -59,13 +67,27 @@ lazy_static! {
         #[cfg(not(debug_assertions))]
         {
             use crate::lua::util;
-            let config_dir = PathBuf::from(util::expand_tilde(XDG_CONFIG_DIR).as_ref());
+            let mut config_dir = PathBuf::from(util::expand_tilde(XDG_CONFIG_DIR).as_ref());
+
+            #[cfg(target_os = "macos")]
+            {
+                if MACOS_DEPRECATED_DIR.exists() {
+                    config_dir = MACOS_DEPRECATED_DIR.to_path_buf();
+                }
+            }
+
             let _ = std::fs::create_dir_all(&config_dir);
             config_dir
         }
 
         #[cfg(debug_assertions)]
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    };
+
+    #[cfg(target_os = "macos")]
+    pub static ref MACOS_DEPRECATED_DIR: PathBuf = {
+        use crate::lua::util;
+        PathBuf::from(util::expand_tilde("~/Library/Application Support/blightmud").as_ref())
     };
 }
 
@@ -250,6 +272,21 @@ fn run(
     }
 
     check_latest_version(session.main_writer.clone());
+    // #[cfg(all(not(debug_assertions), target_os = "macos"))]
+    {
+        if MACOS_DEPRECATED_DIR.exists() {
+            let msg = r#"~/Library/Application Support/blightmud will be removed in a future release.
+Please move your Lua scripts to ~/.config/blightmud
+Please move your data/config/log dirs to ~/.local/share/blightmud
+For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
+            for line in msg.lines() {
+                session
+                    .main_writer
+                    .send(Event::Error(line.to_string()))
+                    .unwrap();
+            }
+        }
+    }
 
     loop {
         if session.terminate.load(Ordering::Relaxed) {

@@ -59,7 +59,7 @@ impl TTSController {
     pub fn new(enabled: bool) -> Self {
         let rt = spawn_tts_thread();
         let settings = if !cfg!(test) {
-            TTSSettings::load().unwrap_or_default()
+            TTSSettings::load()
         } else {
             TTSSettings::default()
         };
@@ -166,7 +166,7 @@ impl TTSController {
     pub fn shutdown(&self) {
         if let Some(rt) = &self.rt {
             if !cfg!(test) {
-                self.settings.save().ok();
+                self.settings.save();
             }
             rt.send(TTSEvent::Shutdown).ok();
         }

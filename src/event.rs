@@ -301,7 +301,7 @@ impl EventHandler {
                 }
 
                 saved_servers.insert(name.clone(), connection);
-                saved_servers.save()?;
+                saved_servers.save();
 
                 self.session
                     .main_writer
@@ -312,7 +312,7 @@ impl EventHandler {
             Event::RemoveServer(name) => {
                 if saved_servers.contains_key(&name) {
                     saved_servers.remove(&name);
-                    saved_servers.save()?;
+                    saved_servers.save();
 
                     self.session
                         .main_writer

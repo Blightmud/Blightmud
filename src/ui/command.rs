@@ -411,7 +411,7 @@ fn handle_script_ui_io(
     }
 }
 
-pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
+pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         debug!("Input stream spawned");
         let writer = session.main_writer.clone();
@@ -420,6 +420,9 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         let stdin = stdin();
         let mut tts_ctrl = session.tts_ctrl.clone();
         let mut buffer = CommandBuffer::new(tts_ctrl.clone());
+        for server in saved_servers {
+            buffer.completion_tree.insert(&server);
+        }
         buffer
             .completion_tree
             .insert(include_str!("../../resources/completions.txt"));

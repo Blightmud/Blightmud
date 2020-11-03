@@ -47,7 +47,7 @@ lazy_static! {
         #[cfg(not(debug_assertions))]
         {
             let data_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
-                MACOS_DEPRECATED_DIR.to_path_buf();
+                MACOS_DEPRECATED_DIR.to_path_buf()
             } else {
                 PathBuf::from(crate::lua::util::expand_tilde(XDG_DATA_DIR).as_ref())
             };
@@ -62,9 +62,8 @@ lazy_static! {
     pub static ref CONFIG_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
-
             let config_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
-                MACOS_DEPRECATED_DIR.to_path_buf();
+                MACOS_DEPRECATED_DIR.to_path_buf()
             } else {
                 PathBuf::from(crate::lua::util::expand_tilde(XDG_CONFIG_DIR).as_ref())
             };

@@ -197,8 +197,6 @@ fn main() {
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .build();
 
-    let _input_thread = spawn_input_thread(session.clone());
-    let _signal_thread = register_terminal_resize_listener(session.clone());
     if let Err(error) = run(main_thread_read, session, settings) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
@@ -214,9 +212,15 @@ fn run(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
+    let mut event_handler = EventHandler::from(&session);
+    let mut saved_servers = Servers::load();
 
     let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
     screen.setup()?;
+
+    let _input_thread =
+        spawn_input_thread(session.clone(), saved_servers.keys().cloned().collect());
+    let _signal_thread = register_terminal_resize_listener(session.clone());
 
     let lua_scripts = {
         fs::read_dir(CONFIG_DIR.as_path())?
@@ -242,9 +246,6 @@ fn run(
             .main_writer
             .send(Event::LoadScript(script.to_str().unwrap().to_string()))?;
     }
-
-    let mut event_handler = EventHandler::from(&session);
-    let mut saved_servers = Servers::load();
 
     check_latest_version(session.main_writer.clone());
 

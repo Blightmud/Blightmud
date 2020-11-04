@@ -159,7 +159,10 @@ function msdp()
 	end
 
 	local register = function (value, cb)
-		self.update_listeners[value] = cb
+		if not self.update_listeners[value] then
+			self.update_listeners[value] = {}
+		end
+		table.insert(self.update_listeners[value], cb)
 		if self.content[value] ~= nil then
 			cb(self.content[value])
 		end
@@ -252,7 +255,9 @@ function msdp()
 		store_content(recv)
 		for var,val in pairs(recv) do
 			if self.update_listeners[var] ~= nil then
-				self.update_listeners[var](val)
+				for _,cb in ipairs(self.update_listeners[var]) do
+					cb(val)
+				end
 			end
 		end
 	end

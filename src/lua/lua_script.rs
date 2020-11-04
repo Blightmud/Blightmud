@@ -631,6 +631,17 @@ mod lua_script_tests {
         assert_eq!(reader.recv(), Ok(event));
     }
 
+    fn assert_events(lua_code: &str, events: Vec<Event>) {
+        let (lua, reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(lua_code).exec().unwrap();
+        });
+
+        for event in events.iter() {
+            assert_eq!(reader.recv(), Ok(event.clone()));
+        }
+    }
+
     #[test]
     fn test_connect() {
         assert_event(
@@ -685,9 +696,12 @@ mod lua_script_tests {
 
     #[test]
     fn test_sending() {
-        assert_event(
+        assert_events(
             "blight:send(\"message\")",
-            Event::ServerInput(Line::from("message")),
+            vec![
+                Event::InputSent(Line::from("message")),
+                Event::ServerInput(Line::from("message")),
+            ],
         );
     }
 
@@ -934,6 +948,7 @@ mod lua_script_tests {
         let (lua, reader) = get_lua();
         lua.state.context(|ctx| ctx.load(lua_code).exec().unwrap());
 
+        assert_eq!(reader.recv(), Ok(Event::InputSent(Line::from("test line"))));
         assert_eq!(
             reader.recv(),
             Ok(Event::ServerInput(Line::from("test line")))

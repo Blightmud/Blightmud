@@ -152,6 +152,9 @@ impl UserData for Blight {
                     line.flags.skip_log = table.get("skip_log")?;
                 }
 
+                this.main_writer
+                    .send(Event::InputSent(line.clone()))
+                    .unwrap();
                 this.main_writer.send(Event::ServerInput(line)).unwrap();
                 Ok(())
             },
@@ -161,9 +164,11 @@ impl UserData for Blight {
             Ok(())
         });
         methods.add_method("user_input", |_, this, line: String| {
+            let line = Line::from(line);
             this.main_writer
-                .send(Event::ServerInput(Line::from(line)))
+                .send(Event::InputSent(line.clone()))
                 .unwrap();
+            this.main_writer.send(Event::ServerInput(line)).unwrap();
             Ok(())
         });
         methods.add_method("debug", |_, _, strings: Variadic<String>| {

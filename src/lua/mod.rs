@@ -11,4 +11,4 @@ mod store_data;
 mod trigger;
 mod tts;
 mod ui_event;
-mod util;
+pub mod util;

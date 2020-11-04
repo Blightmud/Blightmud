@@ -1,6 +1,3 @@
-#[cfg(not(debug_assertions))]
-use dirs_next as dirs;
-
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
@@ -38,14 +35,23 @@ use tools::register_panic_hook;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROJECT_NAME: &str = "Blightmud";
 
+#[cfg(not(debug_assertions))]
+const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
+#[cfg(not(debug_assertions))]
+const XDG_CONFIG_DIR: &str = "~/.config/blightmud";
+
 type TelnetData = Option<Vec<u8>>;
 
 lazy_static! {
     pub static ref DATA_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
-            let mut data_dir = dirs::data_dir().unwrap();
-            data_dir.push("blightmud");
+            let data_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
+                MACOS_DEPRECATED_DIR.to_path_buf()
+            } else {
+                PathBuf::from(crate::lua::util::expand_tilde(XDG_DATA_DIR).as_ref())
+            };
+
             let _ = std::fs::create_dir_all(&data_dir);
             data_dir
         }
@@ -56,14 +62,22 @@ lazy_static! {
     pub static ref CONFIG_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
         {
-            let mut config_dir = dirs::config_dir().unwrap();
-            config_dir.push("blightmud");
+            let config_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
+                MACOS_DEPRECATED_DIR.to_path_buf()
+            } else {
+                PathBuf::from(crate::lua::util::expand_tilde(XDG_CONFIG_DIR).as_ref())
+            };
+
             let _ = std::fs::create_dir_all(&config_dir);
             config_dir
         }
 
         #[cfg(debug_assertions)]
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    };
+    pub static ref MACOS_DEPRECATED_DIR: PathBuf = {
+        use crate::lua::util;
+        PathBuf::from(util::expand_tilde("~/Library/Application Support/blightmud").as_ref())
     };
 }
 
@@ -248,6 +262,21 @@ fn run(
     }
 
     check_latest_version(session.main_writer.clone());
+    // #[cfg(all(not(debug_assertions), target_os = "macos"))]
+    {
+        if MACOS_DEPRECATED_DIR.exists() {
+            let msg = r#"~/Library/Application Support/blightmud will be removed in a future release.
+Please move your Lua scripts to ~/.config/blightmud
+Please move your data/config/log dirs to ~/.local/share/blightmud
+For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
+            for line in msg.lines() {
+                session
+                    .main_writer
+                    .send(Event::Error(line.to_string()))
+                    .unwrap();
+            }
+        }
+    }
 
     loop {
         if session.terminate.load(Ordering::Relaxed) {

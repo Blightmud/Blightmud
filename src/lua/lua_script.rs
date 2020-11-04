@@ -1,10 +1,9 @@
 use super::{alias::Alias, trigger::Trigger, util::*};
-use super::{blight::*, tts::Tts};
+use super::{blight::*, tts::Tts, util::expand_tilde};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
-use shellexpand as shell;
 use std::io::prelude::*;
 use std::{fs::File, sync::mpsc::Sender};
 
@@ -245,7 +244,7 @@ impl LuaScript {
     }
 
     pub fn load_script(&mut self, path: &str) -> Result<()> {
-        let mut file = File::open(shell::tilde(path).as_ref())?;
+        let mut file = File::open(expand_tilde(path).as_ref())?;
         let mut content = String::new();
         file.read_to_string(&mut content)?;
         if let Err(msg) = self

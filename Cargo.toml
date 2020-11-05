@@ -29,7 +29,7 @@ serde = { version = "1.0.117", features = ['derive'] }
 ron = "0.6.2"
 anyhow = "1.0.33"
 lazy_static = "1.4.0"
-rs-complete = "1.0.0"
+rs-complete = "1.1.0"
 simple-error = "0.2.2"
 getopts = "0.2.21"
 curl = "0.4.34"

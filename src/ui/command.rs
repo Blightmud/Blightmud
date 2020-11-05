@@ -72,6 +72,9 @@ pub struct CommandBuffer {
 
 impl CommandBuffer {
     pub fn new(tts_ctrl: Arc<Mutex<TTSController>>) -> Self {
+        let mut completion = CompletionTree::with_inclusions(&['/', '_']);
+        completion.set_min_word_len(3);
+
         Self {
             strbuf: String::new(),
             buffer: vec![],
@@ -79,7 +82,7 @@ impl CommandBuffer {
             current_index: 0,
             history: History::default(),
             cursor_pos: 0,
-            completion_tree: CompletionTree::with_inclusions(&['/', '_']),
+            completion_tree: completion,
             completion: CompletionStepData::default(),
             tts_ctrl,
         }

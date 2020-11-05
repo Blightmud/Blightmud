@@ -1,6 +1,12 @@
-# Changes in Blightmud $VERSION
+# Changes
 
-## The GMCP module has been re-worked
+This file lists some of the things that are new between the versions of
+Blightmud. It doesn't list all new features but will always list breaking
+changes where you might need to take action.
+
+## Changes in Blightmud v2.0
+
+### The GMCP module has been re-worked
 All the gmcp related functionality now resides in the `gmcp` module.
 It's already imported and ready to use. The following changes to your scripts will let you have a smooth transition.
 

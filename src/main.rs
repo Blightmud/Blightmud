@@ -28,7 +28,7 @@ use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY};
+use model::{Connection, Settings, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY, SETTINGS};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -316,6 +316,9 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
                 Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
 
+                Event::ShowSettings => SETTINGS.iter().for_each(|key| {
+                    screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
+                }),
                 Event::ShowSetting(setting) => match settings.get(&setting) {
                     Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
                     Err(error) => screen.print_error(&error.to_string()),

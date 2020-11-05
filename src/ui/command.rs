@@ -8,11 +8,7 @@ use std::thread;
 use std::{
     io::stdin,
     path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc::Sender,
-        Arc, Mutex,
-    },
+    sync::{atomic::Ordering, mpsc::Sender, Arc, Mutex},
 };
 use termion::{event::Key, input::TermRead};
 
@@ -289,7 +285,6 @@ fn parse_key_event(
     key: termion::event::Key,
     buffer: &mut CommandBuffer,
     writer: &Sender<Event>,
-    terminate: &Arc<AtomicBool>,
     tts_ctrl: &mut Arc<Mutex<TTSController>>,
 ) {
     match key {
@@ -305,11 +300,7 @@ fn parse_key_event(
             buffer.push_key(c);
         }
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
-        Key::Ctrl('c') => {
-            debug!("Caught ctrl-c, terminating");
-            terminate.store(true, Ordering::Relaxed);
-            writer.send(Event::Quit).unwrap();
-        }
+        Key::Ctrl('c') => writer.send(Event::Quit).unwrap(),
         Key::PageUp => writer.send(Event::ScrollUp).unwrap(),
         Key::PageDown => writer.send(Event::ScrollDown).unwrap(),
         Key::End => writer.send(Event::ScrollBottom).unwrap(),
@@ -441,7 +432,7 @@ pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> threa
         for e in stdin.events() {
             match e.unwrap() {
                 termion::event::Event::Key(key) => {
-                    parse_key_event(key, &mut buffer, &writer, &terminate, &mut tts_ctrl);
+                    parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl);
                     check_command_binds(key, &mut buffer, &script, &writer);
                     writer
                         .send(Event::UserInputBuffer(

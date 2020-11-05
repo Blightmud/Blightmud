@@ -24,4 +24,5 @@ by typing `/help <category>`.
 - `status_area` Methods for controlling and printing to the status bar
 - `storage`     Methods for persisting data between sessions
 - `bindings`    Methods for configuring keybindings and adding new ones
+- `tasks`       Library for control of background tasks
 - `core`        Methods for advanced scripting and telnet protocol control

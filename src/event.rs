@@ -39,7 +39,7 @@ pub enum Event {
     DisableProto(u8),
     ProtoSubnegRecv(u8, Vec<u8>),
     ProtoSubnegSend(u8, Vec<u8>),
-    AddTimedEvent(chrono::Duration, Option<u32>, u32),
+    AddTimedEvent(chrono::Duration, Option<u32>, u32, bool),
     TimedEvent(u32),
     DropTimedEvent(u32),
     ClearTimers,

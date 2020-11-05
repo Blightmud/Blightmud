@@ -9,10 +9,10 @@ use timer::{Guard, MessageTimer};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TimerEvent {
-    Create(Duration, Option<u32>, u32),
+    Create(Duration, Option<u32>, u32, bool),
     Trigger(u32),
     Remove(u32),
-    Clear,
+    Clear(bool),
     Quit,
 }
 
@@ -24,6 +24,7 @@ struct Job {
 struct Schedule {
     main_thread_writer: Sender<Event>,
     jobs: HashMap<u32, Job>,
+    core_jobs: HashMap<u32, Job>,
 }
 
 impl Schedule {
@@ -31,11 +32,17 @@ impl Schedule {
         Self {
             main_thread_writer,
             jobs: HashMap::new(),
+            core_jobs: HashMap::new(),
         }
     }
 
-    fn add_job(&mut self, guard: Guard, count: Option<u32>, callback_id: u32) {
-        self.jobs.insert(
+    fn add_job(&mut self, guard: Guard, count: Option<u32>, callback_id: u32, core: bool) {
+        let map = if core {
+            &mut self.core_jobs
+        } else {
+            &mut self.jobs
+        };
+        map.insert(
             callback_id,
             Job {
                 _guard: guard,
@@ -44,8 +51,11 @@ impl Schedule {
         );
     }
 
-    fn clear_jobs(&mut self) {
+    fn clear_jobs(&mut self, include_core: bool) {
         self.jobs.clear();
+        if include_core {
+            self.core_jobs.clear();
+        }
     }
 
     fn remove_job(&mut self, callback_id: u32) {
@@ -53,7 +63,11 @@ impl Schedule {
     }
 
     fn run_job(&mut self, callback_id: u32) {
-        if let Some(job) = self.jobs.get_mut(&callback_id) {
+        let opt_job = self
+            .core_jobs
+            .get_mut(&callback_id)
+            .or(self.jobs.get_mut(&callback_id));
+        if let Some(job) = opt_job {
             if let Some(count) = job.count {
                 if count == 0 {
                     self.main_thread_writer
@@ -86,9 +100,9 @@ pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEven
         loop {
             if let Ok(event) = receiver.recv() {
                 match event {
-                    TimerEvent::Create(duration, count, cbid) => {
+                    TimerEvent::Create(duration, count, cbid, core) => {
                         let guard = timer.schedule_repeating(duration, TimerEvent::Trigger(cbid));
-                        schedule.add_job(guard, count, cbid);
+                        schedule.add_job(guard, count, cbid, core);
                     }
                     TimerEvent::Trigger(cbid) => {
                         schedule.run_job(cbid);
@@ -96,8 +110,8 @@ pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEven
                     TimerEvent::Remove(cbid) => {
                         schedule.remove_job(cbid);
                     }
-                    TimerEvent::Clear => {
-                        schedule.clear_jobs();
+                    TimerEvent::Clear(include_core) => {
+                        schedule.clear_jobs(include_core);
                     }
                     TimerEvent::Quit => break,
                 }
@@ -124,7 +138,7 @@ mod timer_tests {
         let mut schedule = Schedule::new(writer);
         let duration = Duration::milliseconds(0);
         let guard = timer.schedule_repeating(duration, TimerEvent::Trigger(1));
-        schedule.add_job(guard, Some(1), 1);
+        schedule.add_job(guard, Some(1), 1, false);
         if let Ok(event) = receiver.recv() {
             assert_eq!(event, TimerEvent::Trigger(1));
         }
@@ -134,9 +148,9 @@ mod timer_tests {
         assert!(schedule.jobs.is_empty());
 
         let guard = timer.schedule_repeating(duration, TimerEvent::Trigger(1));
-        schedule.add_job(guard, Some(1), 1);
+        schedule.add_job(guard, Some(1), 1, false);
         assert_eq!(schedule.jobs.len(), 1);
-        schedule.clear_jobs();
+        schedule.clear_jobs(true);
         assert!(schedule.jobs.is_empty());
     }
 }

@@ -37,6 +37,7 @@ fn create_default_lua_state(
 
         globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
         globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
+        globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
 
         globals.set(ALIAS_TABLE, ctx.create_table()?)?;
         globals.set(TRIGGER_TABLE, ctx.create_table()?)?;
@@ -229,10 +230,16 @@ impl LuaScript {
 
     pub fn run_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
-            match table.get(id)? {
+            let core_table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE_CORE)?;
+            match core_table.get(id)? {
                 rlua::Value::Function(func) => func.call::<_, ()>(()),
-                _ => Ok(()), // ignore recently removed timers
+                _ => {
+                    let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+                    match table.get(id)? {
+                        rlua::Value::Function(func) => func.call::<_, ()>(()),
+                        _ => Ok(()),
+                    }
+                }
             }
         }) {
             output_stack_trace(&self.writer, &msg.to_string());

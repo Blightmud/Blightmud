@@ -408,15 +408,15 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     script.reset((screen.width, screen.height));
                     screen.print_info("Done");
                 }
-                session.timer_writer.send(TimerEvent::Clear)?;
+                session.timer_writer.send(TimerEvent::Clear(true))?;
             }
             Event::ShowHelp(hfile) => {
                 help_handler.show_help(&hfile)?;
             }
-            Event::AddTimedEvent(duration, count, id) => {
+            Event::AddTimedEvent(duration, count, id, core) => {
                 session
                     .timer_writer
-                    .send(TimerEvent::Create(duration, count, id))?;
+                    .send(TimerEvent::Create(duration, count, id, core))?;
             }
             Event::TimedEvent(id) => {
                 if let Ok(mut script) = session.lua_script.lock() {
@@ -430,7 +430,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 session.lua_script.lock().unwrap().remove_timed_function(id);
             }
             Event::ClearTimers => {
-                session.timer_writer.send(TimerEvent::Clear)?;
+                session.timer_writer.send(TimerEvent::Clear(false))?;
             }
             Event::RemoveTimer(idx) => {
                 session.timer_writer.send(TimerEvent::Remove(idx))?;

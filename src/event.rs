@@ -50,6 +50,7 @@ pub enum Event {
     StopLogging,
     ToggleSetting(String, String),
     ShowSetting(String),
+    ShowSettings,
     ScrollUp,
     ScrollDown,
     ScrollBottom,

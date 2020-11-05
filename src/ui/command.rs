@@ -575,6 +575,7 @@ fn parse_command(msg: &str) -> Event {
             }
         }
         Some("/stop_log") => Event::StopLogging,
+        Some("/settings") => Event::ShowSettings,
         Some("/set") => {
             let p1 = iter.next();
             let p2 = iter.next();

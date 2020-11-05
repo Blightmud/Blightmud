@@ -312,6 +312,7 @@ fn parse_key_event(
         }
         Key::PageUp => writer.send(Event::ScrollUp).unwrap(),
         Key::PageDown => writer.send(Event::ScrollDown).unwrap(),
+        Key::Home => writer.send(Event::ScrollTop).unwrap(),
         Key::End => writer.send(Event::ScrollBottom).unwrap(),
 
         // Input navigation
@@ -404,6 +405,7 @@ fn handle_script_ui_io(
             UiEvent::NextCommand => buffer.next(),
             UiEvent::ScrollDown => writer.send(Event::ScrollDown).unwrap(),
             UiEvent::ScrollUp => writer.send(Event::ScrollUp).unwrap(),
+            UiEvent::ScrollTop => writer.send(Event::ScrollTop).unwrap(),
             UiEvent::ScrollBottom => writer.send(Event::ScrollBottom).unwrap(),
             UiEvent::Complete => buffer.tab_complete(),
             UiEvent::Unknown(_) => {}

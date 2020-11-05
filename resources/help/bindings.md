@@ -54,6 +54,7 @@ The following options are available for `cmd`:
 - `"next_command"`      : Get the next input command
 - `"scroll_up"`         : Scroll output view up
 - `"scroll_down"`       : Scroll output view down
+- `"scroll_top"`        : Scroll output view to the top
 - `"scroll_bottom"`     : Scroll the output view to the bottom
 - `"complete"`          : Perform *tab-completion* on the current word
 

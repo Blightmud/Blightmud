@@ -16,9 +16,9 @@ Returns `true` or `false`.
 
 ```lua
 local re = regex.new("^This is a \\w+ line$")
-assert(re.test("This is a good line"))
-assert(re.test("This is a bad line"))
-assert(not re.test("This is a good and bad line"))
+assert(re:test("This is a good line"))
+assert(re:test("This is a bad line"))
+assert(not re:test("This is a good and bad line"))
 ```
 
 ##

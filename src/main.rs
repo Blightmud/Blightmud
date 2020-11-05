@@ -262,7 +262,7 @@ fn run(
     }
 
     check_latest_version(session.main_writer.clone());
-    // #[cfg(all(not(debug_assertions), target_os = "macos"))]
+    #[cfg(all(not(debug_assertions), target_os = "macos"))]
     {
         if MACOS_DEPRECATED_DIR.exists() {
             let msg = r#"~/Library/Application Support/blightmud will be removed in a future release.

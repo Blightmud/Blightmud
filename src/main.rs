@@ -28,7 +28,9 @@ use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY, SETTINGS};
+use model::{
+    Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY, SETTINGS,
+};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -87,7 +89,7 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
     thread::spawn(move || {
         for _ in signals.forever() {
             if let Err(err) = main_thread_writer.send(Event::Redraw) {
-                error!("Reize listener failed: {}", err);
+                error!("Resize listener failed: {}", err);
             }
         }
     })
@@ -452,6 +454,18 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     screen.print_prompt_input(&prompt_input, prompt_input.len());
                 }
                 Event::Quit => {
+                    if settings.get(CONFIRM_QUIT)? {
+                        screen.print_info("Confirm quit with ctrl-c");
+                        screen.flush();
+                        let _ = main_thread_read.recv()?; // skip UserInputBuffer event
+                        match main_thread_read.recv()? {
+                            Event::Quit => {}
+                            e => {
+                                session.main_writer.send(e).unwrap();
+                                continue;
+                            }
+                        }
+                    }
                     session.terminate.store(true, Ordering::Relaxed);
                     session.disconnect();
                     break;

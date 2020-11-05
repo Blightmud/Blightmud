@@ -48,6 +48,7 @@ impl Default for Settings {
         settings.insert(TTS_ENABLED.to_string(), true);
         settings.insert(MOUSE_ENABLED.to_string(), true);
         settings.insert(SAVE_HISTORY.to_string(), false);
+        settings.insert(CONFIRM_QUIT.to_string(), true);
         Self { settings }
     }
 }

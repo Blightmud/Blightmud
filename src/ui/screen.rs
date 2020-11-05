@@ -367,7 +367,7 @@ impl Screen {
                         prompt_line,
                         self.goto_prompt(),
                     )
-                        .unwrap();
+                    .unwrap();
                 }
             }
         }

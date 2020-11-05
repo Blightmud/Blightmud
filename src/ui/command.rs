@@ -8,7 +8,7 @@ use std::thread;
 use std::{
     io::stdin,
     path::PathBuf,
-    sync::{atomic::Ordering, mpsc::Sender, Arc, Mutex},
+    sync::{mpsc::Sender, Arc, Mutex},
 };
 use termion::{event::Key, input::TermRead};
 
@@ -411,7 +411,6 @@ pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> threa
     thread::spawn(move || {
         debug!("Input stream spawned");
         let writer = session.main_writer.clone();
-        let terminate = session.terminate.clone();
         let script = session.lua_script.clone();
         let stdin = stdin();
         let mut tts_ctrl = session.tts_ctrl.clone();
@@ -458,9 +457,6 @@ pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> threa
                             .unwrap();
                     }
                 }
-            }
-            if terminate.load(Ordering::Relaxed) {
-                break;
             }
         }
         if session.save_history() {

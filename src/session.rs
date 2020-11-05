@@ -23,7 +23,6 @@ pub struct Session {
     pub gmcp: Arc<AtomicBool>,
     pub main_writer: Sender<Event>,
     pub timer_writer: Sender<TimerEvent>,
-    pub terminate: Arc<AtomicBool>,
     pub telnet_parser: Arc<Mutex<Parser>>,
     pub output_buffer: Arc<Mutex<OutputBuffer>>,
     pub prompt_input: Arc<Mutex<String>>,
@@ -187,7 +186,6 @@ impl SessionBuilder {
             gmcp: Arc::new(AtomicBool::new(false)),
             main_writer: main_writer.clone(),
             timer_writer,
-            terminate: Arc::new(AtomicBool::new(false)),
             telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
                 BUFFER_SIZE,
                 build_compatibility_table(),

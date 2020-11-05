@@ -4,7 +4,7 @@ pub use self::{
     output_buffer::OutputBuffer,
     rw_stream::RwStream,
     tcp_stream::{spawn_receive_thread, spawn_transmit_thread, BUFFER_SIZE},
-    telnet::TelnetHandler,
+    telnet::{TelnetHandler, TelnetMode},
 };
 
 mod check_version;

@@ -276,6 +276,8 @@ impl EventHandler {
                 Ok(())
             }
             Event::InputSent(msg) => {
+                let mut output_buffer = self.session.output_buffer.lock().unwrap();
+                output_buffer.input_sent();
                 screen.print_send(&msg);
                 Ok(())
             }

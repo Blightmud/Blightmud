@@ -12,6 +12,7 @@ pub struct Flags {
     pub matched: bool,
     pub tts_gag: bool,
     pub tts_interrupt: bool,
+    pub separate_receives: bool,
 }
 
 #[derive(Debug, Clone)]

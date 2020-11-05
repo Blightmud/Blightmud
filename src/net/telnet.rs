@@ -9,17 +9,15 @@ use libtelnet_rs::{
 use log::debug;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
-#[derive(Eq, PartialEq)]
-enum TelnetMode {
-    Undefined,
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum TelnetMode {
     TerminatedPrompt,
     UnterminatedPrompt,
-    NoPrompt,
 }
 
 impl Default for TelnetMode {
     fn default() -> Self {
-        TelnetMode::Undefined
+        TelnetMode::UnterminatedPrompt
     }
 }
 
@@ -58,6 +56,8 @@ impl TelnetHandler {
                             if self.mode != TelnetMode::TerminatedPrompt {
                                 debug!("Setting telnet mode: TerminatedPrompt");
                                 self.mode = TelnetMode::TerminatedPrompt;
+                                let mut output_buffer = self.output_buffer.lock().unwrap();
+                                output_buffer.telnet_mode(&self.mode);
                             }
                             let mut buffer = self.output_buffer.lock().unwrap();
                             buffer.buffer_to_prompt(true);
@@ -103,7 +103,7 @@ impl TelnetHandler {
                 TelnetEvents::DataReceive(msg) => {
                     if !msg.is_empty() {
                         if let Ok(mut output_buffer) = self.output_buffer.lock() {
-                            let new_lines = output_buffer.receive(msg.as_slice());
+                            let new_lines = output_buffer.receive(&msg);
                             for line in new_lines {
                                 self.main_writer.send(Event::MudOutput(line)).unwrap();
                             }
@@ -117,20 +117,12 @@ impl TelnetHandler {
     }
 
     pub fn handle_prompt(&mut self) {
-        if let Ok(mut output_buffer) = self.output_buffer.lock() {
-            if self.mode == TelnetMode::Undefined {
-                if output_buffer.is_empty() {
-                    debug!("Setting telnet mode: NoPrompt");
-                    self.mode = TelnetMode::NoPrompt;
-                } else if !output_buffer.is_empty() && output_buffer.len() < 80 {
-                    debug!("Setting telnet mode: UnterminatedPrompt");
-                    self.mode = TelnetMode::UnterminatedPrompt;
+        if self.mode == TelnetMode::UnterminatedPrompt {
+            if let Ok(mut output_buffer) = self.output_buffer.lock() {
+                if output_buffer.len() < 80 {
+                    output_buffer.buffer_to_prompt(false);
+                    self.main_writer.send(Event::Prompt).unwrap();
                 }
-            }
-
-            if self.mode == TelnetMode::UnterminatedPrompt && output_buffer.len() < 80 {
-                output_buffer.buffer_to_prompt(true);
-                self.main_writer.send(Event::Prompt).unwrap();
             }
         }
     }

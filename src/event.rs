@@ -53,6 +53,7 @@ pub enum Event {
     ShowSettings,
     ScrollUp,
     ScrollDown,
+    ScrollTop,
     ScrollBottom,
     StatusAreaHeight(u16),
     StatusLine(usize, String),

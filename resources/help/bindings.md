@@ -54,6 +54,7 @@ The following options are available for `cmd`:
 - `"next_command"`      : Get the next input command
 - `"scroll_up"`         : Scroll output view up
 - `"scroll_down"`       : Scroll output view down
+- `"scroll_top"`        : Scroll output view to the top
 - `"scroll_bottom"`     : Scroll the output view to the bottom
 - `"complete"`          : Perform *tab-completion* on the current word
 
@@ -71,11 +72,14 @@ bind("alt-b", "step_word_left")
 bind("\x1b[1;5D", "step_word_left")
 bind("alt-f", "step_word_right")
 bind("\x1b[1;5C", "step_word_right")
-bind("alt-h", "delete_word_left")
+bind("alt-backspace", "delete_word_left")
 bind("alt-d", "delete_word_right")
 bind("ctrl-a", "step_to_start")
 bind("ctrl-e", "step_to_end")
+bind("ctrl-d", "delete_right")
+bind("ctrl-h", "delete")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
-bind("ctrl-d", "delete_right")
+
+blight:bind("ctrl-s", function () tts:stop() end)
 ```

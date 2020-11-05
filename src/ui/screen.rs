@@ -501,6 +501,13 @@ impl Screen {
         Ok(())
     }
 
+    pub fn scroll_top(&mut self) -> Result<()> {
+        self.scroll_data.0 = true;
+        self.scroll_data.1 = 0;
+        self.draw_scroll()?;
+        Ok(())
+    }
+
     fn draw_scroll(&mut self) -> Result<()> {
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         for i in 0..output_range {

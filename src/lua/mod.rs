@@ -7,6 +7,7 @@ mod constants;
 mod core;
 mod exec_response;
 mod lua_script;
+mod regex;
 mod store_data;
 mod trigger;
 mod tts;

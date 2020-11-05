@@ -140,6 +140,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "timers" => "lua_timers.md",
         "gmcp" => "lua_gmcp.md",
         "msdp" => "msdp.md",
+        "regex" => "regex.md",
         "config_scripts" => "config_scripts.md",
         "scripting" => "scripting.md",
         "settings" => "settings.md",

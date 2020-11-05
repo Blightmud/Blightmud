@@ -357,16 +357,18 @@ impl Screen {
     pub fn print_prompt(&mut self, prompt: &Line) {
         self.tts_ctrl.lock().unwrap().speak_line(&prompt);
         if let Some(prompt_line) = prompt.print_line() {
-            self.history.append(prompt_line);
-            if !self.scroll_data.0 && !prompt_line.is_empty() {
-                write!(
-                    self.screen,
-                    "{}\n{}{}",
-                    termion::cursor::Goto(1, self.output_line),
-                    prompt_line,
-                    self.goto_prompt(),
-                )
-                .unwrap();
+            if !prompt_line.is_empty() {
+                self.history.append(prompt_line);
+                if !self.scroll_data.0 {
+                    write!(
+                        self.screen,
+                        "{}\n{}{}",
+                        termion::cursor::Goto(1, self.output_line),
+                        prompt_line,
+                        self.goto_prompt(),
+                    )
+                        .unwrap();
+                }
             }
         }
     }

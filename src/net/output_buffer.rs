@@ -54,7 +54,7 @@ impl OutputBuffer {
                 } else {
                     let mut line = Line::from(&self.buffer[last_cut..i]);
                     if self.telnet_mode == TelnetMode::UnterminatedPrompt && last_cut == 0 {
-                        line.flags.separate_receives = i > existing_buffer_len;
+                        line.flags.separate_receives = i > existing_buffer_len && existing_buffer_len > 0;
                     }
                     lines.push(line);
                     i + cut_len

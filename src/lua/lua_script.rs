@@ -1024,6 +1024,9 @@ mod lua_script_tests {
     #[test]
     fn test_timer_ids() {
         let (lua, _reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(r#"blight:clear_timers()"#).exec().unwrap();
+        });
         let id = lua.state.context(|ctx| -> u32 {
             ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
                 .call(())
@@ -1062,6 +1065,9 @@ mod lua_script_tests {
             };
         }
 
+        lua.state
+            .context(|ctx| ctx.load(r#"blight:clear_timers()"#).exec().unwrap());
+
         let id1 = lua.state.context(|ctx| -> u32 {
             ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
                 .call(())
@@ -1073,7 +1079,14 @@ mod lua_script_tests {
                 .unwrap()
         });
 
-        assert_eq!(timer_ids!(), vec![id1, id2]);
+        {
+            let mut active_ids = timer_ids!();
+            active_ids.sort_unstable();
+            let mut expected_ids = vec![id1, id2];
+            expected_ids.sort_unstable();
+
+            assert_eq!(active_ids, expected_ids);
+        }
 
         lua.state.context(|ctx| {
             ctx.load(&format!("blight:remove_timer({})", id1))
@@ -1089,7 +1102,14 @@ mod lua_script_tests {
                 .unwrap()
         });
 
-        assert_eq!(timer_ids!(), vec![id3, id2]);
+        {
+            let mut active_ids = timer_ids!();
+            active_ids.sort_unstable();
+            let mut expected_ids = vec![id3, id2];
+            expected_ids.sort_unstable();
+
+            assert_eq!(active_ids, expected_ids);
+        }
 
         lua.state.context(|ctx| {
             ctx.load(&format!("blight:remove_timer({})", id3))

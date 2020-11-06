@@ -6,7 +6,7 @@ input to the mud or output from it.
 ##
 
 ***line:line() -> String***
-Returns the line without excape sequences and color
+Returns the line without escape sequences and color
 
 ##
 

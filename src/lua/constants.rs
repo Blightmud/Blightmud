@@ -10,6 +10,7 @@ pub const COMMAND_BINDING_TABLE: &str = "__cmd_binds";
 
 pub const ALIAS_TABLE_CORE: &str = "__alias_table_core";
 pub const TRIGGER_TABLE_CORE: &str = "__trigger_table_core";
+pub const TIMED_FUNCTION_TABLE_CORE: &str = "__timed_functions_core";
 
 // Core tables
 pub const PROTO_ENABLED_LISTENERS_TABLE: &str = "__protocol_enabled_listeners";

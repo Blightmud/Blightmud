@@ -62,7 +62,11 @@ impl Blight {
     }
 
     fn timer_table(&self) -> &'static str {
-        TIMED_FUNCTION_TABLE
+        if self.core_mode {
+            TIMED_FUNCTION_TABLE_CORE
+        } else {
+            TIMED_FUNCTION_TABLE
+        }
     }
 
     pub fn get_output_lines(&mut self) -> Vec<Line> {
@@ -357,7 +361,12 @@ impl UserData for Blight {
                 let next_index = this.next_index();
                 cb_table.raw_set(next_index, callback)?;
                 this.main_writer
-                    .send(Event::AddTimedEvent(duration, count, next_index as u32))
+                    .send(Event::AddTimedEvent(
+                        duration,
+                        count,
+                        next_index as u32,
+                        this.core_mode,
+                    ))
                     .unwrap();
                 Ok(next_index)
             },
@@ -430,7 +439,7 @@ mod user_data_tests {
         blight.core_mode(true);
         assert_eq!(blight.alias_table(), ALIAS_TABLE_CORE);
         assert_eq!(blight.trigger_table(), TRIGGER_TABLE_CORE);
-        assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE);
+        assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE_CORE);
         blight.core_mode(false);
         assert_eq!(blight.alias_table(), ALIAS_TABLE);
         assert_eq!(blight.trigger_table(), TRIGGER_TABLE);

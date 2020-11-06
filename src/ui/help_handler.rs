@@ -146,6 +146,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "settings" => "settings.md",
         "storage" => "lua_storage.md",
         "colors" => "lua_colors.md",
+        "tasks" => "lua_tasks.md",
     }
 }
 

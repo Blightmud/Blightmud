@@ -37,6 +37,7 @@ fn create_default_lua_state(
 
         globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
         globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
+        globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
 
         globals.set(ALIAS_TABLE, ctx.create_table()?)?;
         globals.set(TRIGGER_TABLE, ctx.create_table()?)?;
@@ -75,6 +76,10 @@ fn create_default_lua_state(
             .load(include_str!("../../resources/lua/msdp.lua"))
             .call::<_, rlua::Value>(())?;
         globals.set("msdp", lua_msdp)?;
+        let lua_tasks = ctx
+            .load(include_str!("../../resources/lua/tasks.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("tasks", lua_tasks)?;
 
         let mut blight: Blight = globals.get("blight")?;
         blight.core_mode(false);
@@ -225,10 +230,16 @@ impl LuaScript {
 
     pub fn run_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
-            match table.get(id)? {
+            let core_table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE_CORE)?;
+            match core_table.get(id)? {
                 rlua::Value::Function(func) => func.call::<_, ()>(()),
-                _ => Ok(()), // ignore recently removed timers
+                _ => {
+                    let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+                    match table.get(id)? {
+                        rlua::Value::Function(func) => func.call::<_, ()>(()),
+                        _ => Ok(()),
+                    }
+                }
             }
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
@@ -1020,6 +1031,9 @@ mod lua_script_tests {
     #[test]
     fn test_timer_ids() {
         let (lua, _reader) = get_lua();
+        lua.state.context(|ctx| {
+            ctx.load(r#"blight:clear_timers()"#).exec().unwrap();
+        });
         let id = lua.state.context(|ctx| -> u32 {
             ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
                 .call(())
@@ -1058,6 +1072,9 @@ mod lua_script_tests {
             };
         }
 
+        lua.state
+            .context(|ctx| ctx.load(r#"blight:clear_timers()"#).exec().unwrap());
+
         let id1 = lua.state.context(|ctx| -> u32 {
             ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
                 .call(())
@@ -1069,7 +1086,14 @@ mod lua_script_tests {
                 .unwrap()
         });
 
-        assert_eq!(timer_ids!(), vec![id1, id2]);
+        {
+            let mut active_ids = timer_ids!();
+            active_ids.sort_unstable();
+            let mut expected_ids = vec![id1, id2];
+            expected_ids.sort_unstable();
+
+            assert_eq!(active_ids, expected_ids);
+        }
 
         lua.state.context(|ctx| {
             ctx.load(&format!("blight:remove_timer({})", id1))
@@ -1085,7 +1109,14 @@ mod lua_script_tests {
                 .unwrap()
         });
 
-        assert_eq!(timer_ids!(), vec![id3, id2]);
+        {
+            let mut active_ids = timer_ids!();
+            active_ids.sort_unstable();
+            let mut expected_ids = vec![id3, id2];
+            expected_ids.sort_unstable();
+
+            assert_eq!(active_ids, expected_ids);
+        }
 
         lua.state.context(|ctx| {
             ctx.load(&format!("blight:remove_timer({})", id3))

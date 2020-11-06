@@ -63,10 +63,12 @@ impl Schedule {
     }
 
     fn run_job(&mut self, callback_id: u32) {
-        let opt_job = self
-            .core_jobs
-            .get_mut(&callback_id)
-            .or(self.jobs.get_mut(&callback_id));
+        let opt_job = if self.core_jobs.contains_key(&callback_id) {
+            self.core_jobs.get_mut(&callback_id)
+        } else {
+            self.jobs.get_mut(&callback_id)
+        };
+
         if let Some(job) = opt_job {
             if let Some(count) = job.count {
                 if count == 0 {
@@ -92,32 +94,36 @@ impl Schedule {
 pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEvent> {
     let (sender, receiver): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
     let thread_sender = sender.clone();
-    thread::spawn(move || {
-        let mut schedule = Schedule::new(main_thread_writer);
-        let receiver = receiver;
-        let sender = thread_sender;
-        let timer = MessageTimer::new(sender);
-        loop {
-            if let Ok(event) = receiver.recv() {
-                match event {
-                    TimerEvent::Create(duration, count, cbid, core) => {
-                        let guard = timer.schedule_repeating(duration, TimerEvent::Trigger(cbid));
-                        schedule.add_job(guard, count, cbid, core);
+    thread::Builder::new()
+        .name("timer-monitor-thread".to_string())
+        .spawn(move || {
+            let mut schedule = Schedule::new(main_thread_writer);
+            let receiver = receiver;
+            let sender = thread_sender;
+            let timer = MessageTimer::new(sender);
+            loop {
+                if let Ok(event) = receiver.recv() {
+                    match event {
+                        TimerEvent::Create(duration, count, cbid, core) => {
+                            let guard =
+                                timer.schedule_repeating(duration, TimerEvent::Trigger(cbid));
+                            schedule.add_job(guard, count, cbid, core);
+                        }
+                        TimerEvent::Trigger(cbid) => {
+                            schedule.run_job(cbid);
+                        }
+                        TimerEvent::Remove(cbid) => {
+                            schedule.remove_job(cbid);
+                        }
+                        TimerEvent::Clear(include_core) => {
+                            schedule.clear_jobs(include_core);
+                        }
+                        TimerEvent::Quit => break,
                     }
-                    TimerEvent::Trigger(cbid) => {
-                        schedule.run_job(cbid);
-                    }
-                    TimerEvent::Remove(cbid) => {
-                        schedule.remove_job(cbid);
-                    }
-                    TimerEvent::Clear(include_core) => {
-                        schedule.clear_jobs(include_core);
-                    }
-                    TimerEvent::Quit => break,
                 }
             }
-        }
-    });
+        })
+        .unwrap();
     sender
 }
 

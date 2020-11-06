@@ -83,13 +83,16 @@ lazy_static! {
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
     let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();
     let main_thread_writer = session.main_writer;
-    thread::spawn(move || {
-        for _ in signals.forever() {
-            if let Err(err) = main_thread_writer.send(Event::Redraw) {
-                error!("Resize listener failed: {}", err);
+    thread::Builder::new()
+        .name("signal-thread".to_string())
+        .spawn(move || {
+            for _ in signals.forever() {
+                if let Err(err) = main_thread_writer.send(Event::Redraw) {
+                    error!("Resize listener failed: {}", err);
+                }
             }
-        }
-    })
+        })
+        .unwrap()
 }
 
 fn start_logging() -> std::io::Result<()> {

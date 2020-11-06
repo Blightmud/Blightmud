@@ -314,17 +314,19 @@ fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
     if !cfg!(test) {
         let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
         let ttx = tx.clone();
-        thread::spawn(move || match TTS::default() {
-            Ok(mut tts) => {
-                if let Err(err) = setup_callbacks(&mut tts, ttx) {
-                    error!("[TTS]: {}", err.to_string());
+        thread::Builder::new()
+            .name("tts-thread".to_string())
+            .spawn(move || match TTS::default() {
+                Ok(mut tts) => {
+                    if let Err(err) = setup_callbacks(&mut tts, ttx) {
+                        error!("[TTS]: {}", err.to_string());
+                    }
+                    if let Err(err) = run_tts(&mut tts, rx) {
+                        error!("[TTS]: {}", err.to_string());
+                    }
                 }
-                if let Err(err) = run_tts(&mut tts, rx) {
-                    error!("[TTS]: {}", err.to_string());
-                }
-            }
-            Err(err) => error!("[TTS]: {}", err.to_string()),
-        });
+                Err(err) => error!("[TTS]: {}", err.to_string()),
+            });
         Some(tx)
     } else {
         None

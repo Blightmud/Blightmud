@@ -408,62 +408,65 @@ fn handle_script_ui_io(
 }
 
 pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        debug!("Input stream spawned");
-        let writer = session.main_writer.clone();
-        let script = session.lua_script.clone();
-        let stdin = stdin();
-        let mut tts_ctrl = session.tts_ctrl.clone();
-        let mut buffer = CommandBuffer::new(tts_ctrl.clone());
-        for server in saved_servers {
-            buffer.completion_tree.insert(&server);
-        }
-        buffer
-            .completion_tree
-            .insert(include_str!("../../resources/completions.txt"));
-
-        if session.save_history() {
-            buffer.history = History::load();
-            buffer.current_index = buffer.history.len();
-            for line in buffer.history.iter() {
-                buffer.completion_tree.insert(&line);
+    thread::Builder::new()
+        .name("input-thread".to_string())
+        .spawn(move || {
+            debug!("Input stream spawned");
+            let writer = session.main_writer.clone();
+            let script = session.lua_script.clone();
+            let stdin = stdin();
+            let mut tts_ctrl = session.tts_ctrl.clone();
+            let mut buffer = CommandBuffer::new(tts_ctrl.clone());
+            for server in saved_servers {
+                buffer.completion_tree.insert(&server);
             }
-        }
+            buffer
+                .completion_tree
+                .insert(include_str!("../../resources/completions.txt"));
 
-        for e in stdin.events() {
-            match e.unwrap() {
-                termion::event::Event::Key(key) => {
-                    parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl);
-                    check_command_binds(key, &mut buffer, &script, &writer);
-                    writer
-                        .send(Event::UserInputBuffer(
-                            buffer.get_buffer(),
-                            buffer.get_pos(),
-                        ))
-                        .unwrap();
+            if session.save_history() {
+                buffer.history = History::load();
+                buffer.current_index = buffer.history.len();
+                for line in buffer.history.iter() {
+                    buffer.completion_tree.insert(&line);
                 }
-                termion::event::Event::Mouse(event) => parse_mouse_event(event, &writer),
-                termion::event::Event::Unsupported(bytes) => {
-                    if let Ok(escape) = String::from_utf8(bytes.clone()) {
-                        check_escape_bindings(
-                            &escape.to_lowercase(),
-                            &mut buffer,
-                            &script,
-                            &writer,
-                        );
-                    } else {
+            }
+
+            for e in stdin.events() {
+                match e.unwrap() {
+                    termion::event::Event::Key(key) => {
+                        parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl);
+                        check_command_binds(key, &mut buffer, &script, &writer);
                         writer
-                            .send(Event::Info(format!("Unknown command: {:?}", bytes)))
+                            .send(Event::UserInputBuffer(
+                                buffer.get_buffer(),
+                                buffer.get_pos(),
+                            ))
                             .unwrap();
+                    }
+                    termion::event::Event::Mouse(event) => parse_mouse_event(event, &writer),
+                    termion::event::Event::Unsupported(bytes) => {
+                        if let Ok(escape) = String::from_utf8(bytes.clone()) {
+                            check_escape_bindings(
+                                &escape.to_lowercase(),
+                                &mut buffer,
+                                &script,
+                                &writer,
+                            );
+                        } else {
+                            writer
+                                .send(Event::Info(format!("Unknown command: {:?}", bytes)))
+                                .unwrap();
+                        }
                     }
                 }
             }
-        }
-        if session.save_history() {
-            buffer.history.save();
-        }
-        debug!("Input stream closing");
-    })
+            if session.save_history() {
+                buffer.history.save();
+            }
+            debug!("Input stream closing");
+        })
+        .unwrap()
 }
 
 fn parse_command(msg: &str) -> Event {

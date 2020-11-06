@@ -6,6 +6,7 @@ mod blight;
 mod constants;
 mod core;
 mod exec_response;
+mod line;
 mod lua_script;
 mod regex;
 mod store_data;

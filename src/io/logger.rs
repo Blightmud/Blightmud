@@ -11,16 +11,8 @@ pub struct Logger {
     file: Option<BufWriter<StripWriter<File>>>,
 }
 
-#[cfg(not(test))]
 fn get_and_ensure_log_dir(host: &str) -> Result<std::path::PathBuf> {
     let path = crate::DATA_DIR.clone().join("logs").join(host);
-    std::fs::create_dir_all(&path).ok();
-    Ok(path)
-}
-
-#[cfg(test)]
-fn get_and_ensure_log_dir(host: &str) -> Result<std::path::PathBuf> {
-    let path = std::path::PathBuf::from("logs").join(host);
     std::fs::create_dir_all(&path).ok();
     Ok(path)
 }

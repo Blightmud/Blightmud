@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
-use log::{error, info};
+use log::{debug, error, info};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
@@ -450,10 +450,12 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 if settings.get(CONFIRM_QUIT)? {
                     screen.print_info("Confirm quit with ctrl-c");
                     screen.flush();
-                    let _ = main_thread_read.recv()?; // skip UserInputBuffer event
+                    let ev = main_thread_read.recv()?; // skip UserInputBuffer event
+                    debug_assert!(matches!(ev, Event::UserInputBuffer(..)));
                     match main_thread_read.recv()? {
                         Event::Quit => {}
                         e => {
+                            debug!("Expected Event::Quit, got Event::{:?}", e);
                             session.main_writer.send(e).unwrap();
                             continue;
                         }

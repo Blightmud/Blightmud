@@ -34,6 +34,7 @@ impl Logger {
             if !line.ends_with('\n') {
                 writer.write_all(b"\n")?;
             }
+            writer.flush()?;
             self.file = Some(writer);
         }
         Ok(())

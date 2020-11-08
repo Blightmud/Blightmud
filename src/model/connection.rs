@@ -34,6 +34,6 @@ pub type Servers = HashMap<String, Connection>;
 
 impl SaveData for Servers {
     fn relative_path() -> PathBuf {
-        PathBuf::from("data/servers.ron")
+        crate::CONFIG_DIR.join("servers.ron")
     }
 }

@@ -55,7 +55,7 @@ impl Default for Settings {
 
 impl SaveData for Settings {
     fn relative_path() -> std::path::PathBuf {
-        crate::DATA_DIR.join("config").join("settings.ron")
+        crate::CONFIG_DIR.join("settings.ron")
     }
 }
 

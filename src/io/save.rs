@@ -10,6 +10,10 @@ use std::path::PathBuf;
 pub trait SaveData: DeserializeOwned + Serialize + Default {
     fn relative_path() -> PathBuf;
 
+    fn is_pretty() -> bool {
+        false
+    }
+
     fn path() -> Result<PathBuf> {
         let path = DATA_DIR.join(Self::relative_path());
 
@@ -43,7 +47,11 @@ pub trait SaveData: DeserializeOwned + Serialize + Default {
 
     fn save(&self) {
         let write_data = || -> Result<()> {
-            let contents = ron::ser::to_string(&self)?;
+            let contents = if Self::is_pretty() {
+                ron::ser::to_string_pretty(&self, Default::default())?
+            } else {
+                ron::ser::to_string(&self)?
+            };
             fs::write(Self::path()?, contents)?;
             Ok(())
         };

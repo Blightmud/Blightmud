@@ -70,6 +70,7 @@ impl UserData for Line {
 }
 
 #[cfg(test)]
+#[allow(unused_macros)]
 mod test_lua_line {
     use rlua::Lua;
 
@@ -89,101 +90,119 @@ mod test_lua_line {
         state
     }
 
+    macro_rules! test_lua {
+        () => {
+            let state = get_lua();
+
+            macro_rules! assert_lua {
+                ($return_type:ty, $lua_code:literal, $expect:expr) => {
+                    assert_eq!(
+                        state.context(|ctx| -> $return_type {
+                            ctx.load(concat!("return ", $lua_code)).call(()).unwrap()
+                        }),
+                        $expect
+                    );
+                };
+            }
+
+            macro_rules! assert_lua_bool {
+                ($lua_code:literal, $expect:expr) => {
+                    assert_lua!(bool, $lua_code, $expect)
+                };
+            }
+
+            macro_rules! assert_lua_string {
+                ($lua_code:literal, $expect:expr) => {
+                    assert_lua!(String, $lua_code, $expect)
+                };
+            }
+
+            macro_rules! global {
+                ($key:literal) => {
+                    state.context(|ctx| ctx.globals().get($key).unwrap())
+                };
+            }
+        };
+    }
+
     #[test]
     fn test_content() {
-        let state = get_lua();
-        assert_eq!(
-            state
-                .context(|ctx| -> String { ctx.load("return test_line:line()").call(()).unwrap() }),
-            "A testing line"
-        );
-        assert_eq!(
-            state.context(|ctx| -> String { ctx.load("return test_line:raw()").call(()).unwrap() }),
-            "\x1b[31mA testing line\x1b[0m"
-        );
+        test_lua!();
+
+        assert_lua_string!("test_line:line()", "A testing line");
+        assert_lua_string!("test_line:raw()", "\x1b[31mA testing line\x1b[0m");
     }
 
     #[test]
     fn test_gag() {
-        let state = get_lua();
-        assert!(
-            !state.context(|ctx| -> bool { ctx.load("return test_line:gag()").call(()).unwrap() })
-        );
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+        test_lua!();
+
+        assert_lua_bool!("test_line:gag()", false);
+        let line: Line = global!("test_line");
         assert!(!line.inner.flags.gag);
-        assert!(state
-            .context(|ctx| -> bool { ctx.load("return test_line:gag(true)").call(()).unwrap() }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+
+        assert_lua_bool!("test_line:gag(true)", true);
+        let line: Line = global!("test_line");
         assert!(line.inner.flags.gag);
     }
 
     #[test]
     fn test_tts_gag() {
-        let state = get_lua();
-        assert!(!state
-            .context(|ctx| -> bool { ctx.load("return test_line:tts_gag()").call(()).unwrap() }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+        test_lua!();
+
+        assert_lua_bool!("test_line:tts_gag()", false);
+
+        let line: Line = global!("test_line");
         assert!(!line.inner.flags.tts_gag);
-        assert!(state.context(|ctx| -> bool {
-            ctx.load("return test_line:tts_gag(true)").call(()).unwrap()
-        }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+        assert_lua_bool!("test_line:tts_gag(true)", true);
+
+        let line: Line = global!("test_line");
         assert!(line.inner.flags.tts_gag);
     }
 
     #[test]
     fn test_tts_interrupt() {
-        let state = get_lua();
-        assert!(!state.context(|ctx| -> bool {
-            ctx.load("return test_line:tts_interrupt()")
-                .call(())
-                .unwrap()
-        }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+        test_lua!();
+
+        assert_lua_bool!("test_line:tts_interrupt()", false);
+
+        let line: Line = global!("test_line");
         assert!(!line.inner.flags.tts_interrupt);
-        assert!(state.context(|ctx| -> bool {
-            ctx.load("return test_line:tts_interrupt(true)")
-                .call(())
-                .unwrap()
-        }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+        assert_lua_bool!("test_line:tts_interrupt(true)", true);
+
+        let line: Line = global!("test_line");
         assert!(line.inner.flags.tts_interrupt);
     }
 
     #[test]
     fn test_skip_log() {
-        let state = get_lua();
-        assert!(!state
-            .context(|ctx| -> bool { ctx.load("return test_line:skip_log()").call(()).unwrap() }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+        test_lua!();
+
+        assert_lua_bool!("test_line:skip_log()", false);
+        let line: Line = global!("test_line");
         assert!(!line.inner.flags.skip_log);
-        assert!(state.context(|ctx| -> bool {
-            ctx.load("return test_line:skip_log(true)")
-                .call(())
-                .unwrap()
-        }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+
+        assert_lua_bool!("test_line:skip_log(true)", true);
+        let line: Line = global!("test_line");
         assert!(line.inner.flags.skip_log);
     }
 
     #[test]
     fn test_matched() {
-        let state = get_lua();
-        assert!(!state
-            .context(|ctx| -> bool { ctx.load("return test_line:matched()").call(()).unwrap() }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+        test_lua!();
+
+        assert_lua_bool!("test_line:matched()", false);
+        let line: Line = global!("test_line");
         assert!(!line.inner.flags.matched);
-        assert!(state.context(|ctx| -> bool {
-            ctx.load("return test_line:matched(true)").call(()).unwrap()
-        }));
-        let line = state.context(|ctx| -> Line { ctx.globals().get("test_line").unwrap() });
+
+        assert_lua_bool!("test_line:matched(true)", true);
+        let line: Line = global!("test_line");
         assert!(line.inner.flags.matched);
     }
 
     #[test]
     fn test_prompt() {
-        let state = get_lua();
-        assert!(!state
-            .context(|ctx| -> bool { ctx.load("return test_line:prompt()").call(()).unwrap() }));
+        test_lua!();
+        assert_lua_bool!("test_line:prompt()", false);
     }
 }

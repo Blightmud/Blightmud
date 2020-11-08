@@ -8,6 +8,7 @@ mod core;
 mod exec_response;
 mod line;
 mod lua_script;
+mod mud;
 mod regex;
 mod store_data;
 mod trigger;

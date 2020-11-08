@@ -1,4 +1,4 @@
-use super::{alias::Alias, regex::RegexLib, trigger::Trigger, util::*};
+use super::{alias::Alias, mud::Mud, regex::RegexLib, trigger::Trigger, util::*};
 use super::{blight::*, tts::Tts, util::expand_tilde};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
@@ -34,6 +34,7 @@ fn create_default_lua_state(
         globals.set("core", core)?;
         globals.set("tts", tts)?;
         globals.set("regex", RegexLib {})?;
+        globals.set("mud", Mud::new())?;
 
         globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
         globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;

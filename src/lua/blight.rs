@@ -96,7 +96,7 @@ impl UserData for Blight {
         });
         methods.add_method(
             "connect",
-            |_, this, (host, port, tls): (String, u16, Option<bool>)| {
+            |_, this, (host, port, tls): (String, u16, bool)| {
                 this.main_writer
                     .send(Event::Connect(Connection { host, port, tls }))
                     .unwrap();

@@ -10,7 +10,7 @@ use std::path::PathBuf;
 pub struct Connection {
     pub host: String,
     pub port: u16,
-    pub tls: Option<bool>,
+    pub tls: bool,
 }
 
 impl Connection {
@@ -18,15 +18,18 @@ impl Connection {
         Self {
             host: host.to_owned(),
             port,
-            tls: Some(tls),
+            tls,
         }
     }
 }
 
 impl fmt::Display for Connection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let tls = self.tls.unwrap_or_else(|| false);
-        write!(f, "Host: {}, Port: {} TLS: {}", self.host, self.port, tls)
+        write!(
+            f,
+            "Host: {}, Port: {} TLS: {}",
+            self.host, self.port, self.tls
+        )
     }
 }
 
@@ -36,7 +39,7 @@ impl SaveData for Servers {
     fn relative_path() -> PathBuf {
         crate::CONFIG_DIR.join("servers.ron")
     }
-    
+
     fn is_pretty() -> bool {
         true
     }

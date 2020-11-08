@@ -36,4 +36,8 @@ impl SaveData for Servers {
     fn relative_path() -> PathBuf {
         crate::CONFIG_DIR.join("servers.ron")
     }
+    
+    fn is_pretty() -> bool {
+        true
+    }
 }

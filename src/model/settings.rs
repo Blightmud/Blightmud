@@ -57,6 +57,10 @@ impl SaveData for Settings {
     fn relative_path() -> std::path::PathBuf {
         crate::CONFIG_DIR.join("settings.ron")
     }
+
+    fn is_pretty() -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

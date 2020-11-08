@@ -5,6 +5,7 @@ use simple_error::bail;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Settings {
     settings: HashMap<String, bool>,
 }

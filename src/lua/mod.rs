@@ -1,6 +1,10 @@
 pub use self::lua_script::LuaScript;
 pub use self::ui_event::UiEvent;
 
+#[cfg(test)]
+#[macro_use]
+mod test_help;
+
 mod alias;
 mod blight;
 mod constants;

@@ -71,27 +71,16 @@ impl UserData for Line {
 
 #[cfg(test)]
 mod test_lua_line {
-    use rlua::Lua;
-
     use super::Line;
     use crate::model::Line as mLine;
 
-    fn get_lua() -> Lua {
-        let state = Lua::new();
-        state.context(|ctx| {
-            ctx.globals()
-                .set(
-                    "test_line",
-                    Line::from(mLine::from("\x1b[31mA testing line\x1b[0m")),
-                )
-                .unwrap();
-        });
-        state
+    fn test_line() -> Line {
+        Line::from(mLine::from("\x1b[31mA testing line\x1b[0m"))
     }
 
     #[test]
     fn test_content() {
-        test_lua!();
+        test_lua!("test_line" => test_line());
 
         assert_lua_string!("test_line:line()", "A testing line");
         assert_lua_string!("test_line:raw()", "\x1b[31mA testing line\x1b[0m");
@@ -99,7 +88,7 @@ mod test_lua_line {
 
     #[test]
     fn test_gag() {
-        test_lua!();
+        test_lua!("test_line" => test_line());
 
         assert_lua_bool!("test_line:gag()", false);
         let line: Line = global!("test_line");
@@ -112,7 +101,7 @@ mod test_lua_line {
 
     #[test]
     fn test_tts_gag() {
-        test_lua!();
+        test_lua!("test_line" => test_line());
 
         assert_lua_bool!("test_line:tts_gag()", false);
 
@@ -126,7 +115,7 @@ mod test_lua_line {
 
     #[test]
     fn test_tts_interrupt() {
-        test_lua!();
+        test_lua!("test_line" => test_line());
 
         assert_lua_bool!("test_line:tts_interrupt()", false);
 
@@ -140,7 +129,7 @@ mod test_lua_line {
 
     #[test]
     fn test_skip_log() {
-        test_lua!();
+        test_lua!("test_line" => test_line());
 
         assert_lua_bool!("test_line:skip_log()", false);
         let line: Line = global!("test_line");
@@ -153,7 +142,7 @@ mod test_lua_line {
 
     #[test]
     fn test_matched() {
-        test_lua!();
+        test_lua!("test_line" => test_line());
 
         assert_lua_bool!("test_line:matched()", false);
         let line: Line = global!("test_line");
@@ -166,7 +155,7 @@ mod test_lua_line {
 
     #[test]
     fn test_prompt() {
-        test_lua!();
+        test_lua!("test_line" => test_line());
         assert_lua_bool!("test_line:prompt()", false);
     }
 }

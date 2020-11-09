@@ -326,7 +326,8 @@ fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
                     }
                 }
                 Err(err) => error!("[TTS]: {}", err.to_string()),
-            }).unwrap();
+            })
+            .unwrap();
         Some(tx)
     } else {
         None

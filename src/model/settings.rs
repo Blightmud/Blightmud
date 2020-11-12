@@ -64,6 +64,12 @@ impl SaveData for Settings {
     }
 }
 
+impl From<HashMap<String, bool>> for Settings {
+    fn from(map: HashMap<String, bool>) -> Self {
+        Self { settings: map }
+    }
+}
+
 #[cfg(test)]
 mod settings_test {
     use super::*;

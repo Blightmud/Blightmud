@@ -1,6 +1,6 @@
 use crate::DATA_DIR;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use log::error;
 use serde::{de::DeserializeOwned, Serialize};
 

@@ -192,7 +192,7 @@ fn main() {
             return;
         }
     } else if let Ok(Some(world)) = matches.opt_get::<String>("w") {
-        let servers = Servers::load();
+        let servers = Servers::try_load().expect("Error loading servers.ron");
         if servers.contains_key(&world) {
             main_writer
                 .send(Event::Connect(servers.get(&world).unwrap().clone()))
@@ -204,7 +204,7 @@ fn main() {
             .unwrap();
     }
 
-    let settings = Settings::load();
+    let settings = Settings::try_load().expect("Error loading settings.ron");
     let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)
@@ -315,29 +315,37 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
 
-            Event::ShowSettings => {
-                let settings = Settings::load();
-                SETTINGS.iter().for_each(|key| {
+            Event::ShowSettings => match Settings::try_load() {
+                Ok(settings) => SETTINGS.iter().for_each(|key| {
                     screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
-                });
-            }
-            Event::ShowSetting(setting) => match Settings::load().get(&setting) {
-                Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
-                Err(error) => screen.print_error(&error.to_string()),
-            },
-            Event::ToggleSetting(setting, toggle) => {
-                let mut settings = Settings::load();
-                let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
-                if let Err(error) = settings.set(&setting, toggle) {
-                    screen.print_error(&error.to_string());
-                } else {
-                    if setting == SAVE_HISTORY {
-                        session.set_save_history(toggle);
-                    }
-                    screen.print_info(&format!("Setting: {} => {}", setting, toggle));
-                    settings.save();
+                }),
+                Err(error) => {
+                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
                 }
-            }
+            },
+            Event::ShowSetting(setting) => match Settings::try_load()?.get(&setting) {
+                Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
+                Err(error) => {
+                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
+                }
+            },
+            Event::ToggleSetting(setting, toggle) => match Settings::try_load() {
+                Ok(mut settings) => {
+                    let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
+                    if let Err(error) = settings.set(&setting, toggle) {
+                        screen.print_error(&error.to_string());
+                    } else {
+                        if setting == SAVE_HISTORY {
+                            session.set_save_history(toggle);
+                        }
+                        screen.print_info(&format!("Setting: {} => {}", setting, toggle));
+                        settings.save();
+                    }
+                }
+                Err(error) => {
+                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
+                }
+            },
             Event::StartLogging(world, force) => {
                 if Settings::load().get(LOGGING_ENABLED)? || force {
                     screen.print_info(&format!("Started logging for: {}", world));

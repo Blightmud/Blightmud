@@ -488,7 +488,7 @@ fn parse_command(msg: &str) -> Event {
             } else {
                 let host = p1.unwrap().to_string();
                 let tls = if let Some(tls) = p3 {
-                    tls == "tls"
+                    matches!(tls, "tls" | "true" | "on" | "enable")
                 } else {
                     false
                 };
@@ -519,7 +519,7 @@ fn parse_command(msg: &str) -> Event {
                 let host = p2.unwrap().to_string();
 
                 let tls = if let Some(tls) = p4 {
-                    tls == "tls"
+                    matches!(tls, "tls" | "true" | "on" | "enable")
                 } else {
                     false
                 };

@@ -286,14 +286,10 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_store_events(
-        &mut self,
-        event: Event,
-        saved_servers: &mut Servers,
-        screen: &mut Screen,
-    ) -> Result {
+    pub fn handle_store_events(&mut self, event: Event, screen: &mut Screen) -> Result {
         match event {
             Event::AddServer(name, connection) => {
+                let mut saved_servers = Servers::load();
                 if saved_servers.contains_key(&name) {
                     self.session.main_writer.send(Event::Error(format!(
                         "Saved server already exists for {}",
@@ -312,6 +308,7 @@ impl EventHandler {
                 Ok(())
             }
             Event::RemoveServer(name) => {
+                let mut saved_servers = Servers::load();
                 if saved_servers.contains_key(&name) {
                     saved_servers.remove(&name);
                     saved_servers.save();
@@ -329,6 +326,7 @@ impl EventHandler {
                 Ok(())
             }
             Event::LoadServer(name) => {
+                let saved_servers = Servers::load();
                 if saved_servers.contains_key(&name) {
                     let connection = saved_servers.get(&name).cloned().unwrap();
                     self.session.main_writer.send(Event::Connect(connection))?;
@@ -339,6 +337,7 @@ impl EventHandler {
                 Ok(())
             }
             Event::ListServers => {
+                let saved_servers = Servers::load();
                 if saved_servers.is_empty() {
                     screen.print_info("There are no saved servers.");
                 } else {

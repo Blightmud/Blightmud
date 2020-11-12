@@ -229,13 +229,11 @@ fn run(
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
-    let mut saved_servers = Servers::load();
 
     let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
     screen.setup()?;
 
-    let _input_thread =
-        spawn_input_thread(session.clone(), saved_servers.keys().cloned().collect());
+    let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
 
     let lua_scripts = {
@@ -294,7 +292,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::RemoveServer(_)
             | Event::LoadServer(_)
             | Event::ListServers => {
-                event_handler.handle_store_events(event, &mut saved_servers, &mut screen)?;
+                event_handler.handle_store_events(event, &mut screen)?;
             }
             Event::MudOutput(_)
             | Event::Output(_)

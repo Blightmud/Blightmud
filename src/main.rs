@@ -22,6 +22,7 @@ use crate::io::SaveData;
 use crate::model::Servers;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
+use crate::tools::patch::migrate_v2_settings_and_servers;
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
@@ -262,6 +263,10 @@ fn run(
     }
 
     check_latest_version(session.main_writer.clone());
+    if cfg!(not(debug_assertions)) {
+        migrate_v2_settings_and_servers(session.main_writer.clone());
+    }
+
     #[cfg(all(not(debug_assertions), target_os = "macos"))]
     {
         if MACOS_DEPRECATED_DIR.exists() {

@@ -224,7 +224,7 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
-    mut settings: Settings,
+    settings: Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
@@ -310,14 +310,18 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
 
-            Event::ShowSettings => SETTINGS.iter().for_each(|key| {
-                screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
-            }),
-            Event::ShowSetting(setting) => match settings.get(&setting) {
+            Event::ShowSettings => {
+                let settings = Settings::load();
+                SETTINGS.iter().for_each(|key| {
+                    screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
+                });
+            }
+            Event::ShowSetting(setting) => match Settings::load().get(&setting) {
                 Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
                 Err(error) => screen.print_error(&error.to_string()),
             },
             Event::ToggleSetting(setting, toggle) => {
+                let mut settings = Settings::load();
                 let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
                 if let Err(error) = settings.set(&setting, toggle) {
                     screen.print_error(&error.to_string());
@@ -326,10 +330,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                         session.set_save_history(toggle);
                     }
                     screen.print_info(&format!("Setting: {} => {}", setting, toggle));
+                    settings.save();
                 }
             }
             Event::StartLogging(world, force) => {
-                if settings.get(LOGGING_ENABLED)? || force {
+                if Settings::load().get(LOGGING_ENABLED)? || force {
                     screen.print_info(&format!("Started logging for: {}", world));
                     session.start_logging(&world)
                 }
@@ -445,7 +450,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 screen.print_prompt_input(&prompt_input, prompt_input.len());
             }
             Event::Quit => {
-                if settings.get(CONFIRM_QUIT)? {
+                if Settings::load().get(CONFIRM_QUIT)? {
                     screen.print_info("Confirm quit with ctrl-c");
                     screen.flush();
                     let _ = main_thread_read.recv()?; // skip UserInputBuffer event
@@ -464,7 +469,6 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
         screen.flush();
     }
     screen.reset()?;
-    settings.save();
     session.close()?;
     Ok(())
 }

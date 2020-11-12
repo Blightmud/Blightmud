@@ -24,25 +24,21 @@ pub trait SaveData: DeserializeOwned + Serialize + Default {
         Ok(path)
     }
 
-    fn load() -> Self {
-        let read_data = || -> Result<Self> {
-            let path = Self::path()?;
-            if path.exists() {
-                let file = fs::File::open(&path)?;
-                let obj = ron::de::from_reader(&file)?;
-                Ok(obj)
-            } else {
-                bail!("Bad path")
-            }
-        };
-
-        match read_data() {
-            Ok(obj) => obj,
-            Err(err) => {
-                error!("Write data error: {}", err.to_string());
-                Self::default()
-            }
+    fn try_load() -> Result<Self> {
+        let path = Self::path()?;
+        if path.exists() {
+            let file = fs::File::open(&path)?;
+            let obj = ron::de::from_reader(&file)?;
+            Ok(obj)
+        } else {
+            Ok(Self::default())
         }
+    }
+
+    fn load() -> Self {
+        Self::try_load()
+            .map_err(|err| error!("Load data error: {}", err))
+            .unwrap_or_default()
     }
 
     fn save(&self) {

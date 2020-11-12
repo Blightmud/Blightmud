@@ -75,6 +75,10 @@ impl TTSController {
         tts_ctrl
     }
 
+    fn reload_settings(&mut self) {
+        self.settings = TTSSettings::load();
+    }
+
     fn send(&self, event: TTSEvent) {
         if let Some(rt) = &self.rt {
             match event {
@@ -93,15 +97,21 @@ impl TTSController {
     pub fn handle(&mut self, event: TTSEvent) {
         match event {
             TTSEvent::ChangeRate(rate) => {
+                self.reload_settings();
                 self.settings.rate += rate;
+                self.settings.save();
                 self.send(event);
             }
             TTSEvent::SetRate(rate) => {
+                self.reload_settings();
                 self.settings.rate = rate;
+                self.settings.save();
                 self.send(event);
             }
             TTSEvent::EchoKeys(enabled) => {
+                self.reload_settings();
                 self.settings.echo_keys = enabled;
+                self.settings.save();
             }
             _ => {
                 self.send(event);
@@ -165,9 +175,6 @@ impl TTSController {
 
     pub fn shutdown(&self) {
         if let Some(rt) = &self.rt {
-            if !cfg!(test) {
-                self.settings.save();
-            }
             rt.send(TTSEvent::Shutdown).ok();
         }
     }

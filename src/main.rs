@@ -56,7 +56,12 @@ lazy_static! {
             data_dir
         }
 
-        #[cfg(debug_assertions)]
+        #[cfg(test)]
+        {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/data")
+        }
+
+        #[cfg(all(not(test), debug_assertions))]
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     };
     pub static ref CONFIG_DIR: PathBuf = {
@@ -72,7 +77,12 @@ lazy_static! {
             config_dir
         }
 
-        #[cfg(debug_assertions)]
+        #[cfg(test)]
+        {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/config")
+        }
+
+        #[cfg(all(not(test), debug_assertions))]
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     };
     pub static ref MACOS_DEPRECATED_DIR: PathBuf = {

@@ -5,14 +5,12 @@ use {
         io::SaveData,
         model::{Connection, Servers, Settings},
         tts::TTSSettings,
+        DATA_DIR,
     },
     lazy_static::lazy_static,
     serde::{Deserialize, Serialize},
     std::{collections::HashMap, path::PathBuf, sync::mpsc::Sender},
 };
-
-#[cfg(not(test))]
-use crate::DATA_DIR;
 
 #[cfg(not(test))]
 lazy_static! {
@@ -134,12 +132,183 @@ pub fn migrate_v2_settings_and_servers(main_writer: Sender<Event>) {
                 TTSSettings::relative_path()
             );
         } else {
-            fs::rename(&*V2_TTS_SETTINGS_PATH, &*TTSSettings::relative_path()).unwrap();
+            TTSSettings::relative_path()
+                .parent()
+                .map(|dir| fs::create_dir_all(&dir));
+            fs::rename(&*V2_TTS_SETTINGS_PATH, &TTSSettings::relative_path()).unwrap();
             send_info!(
                 "Migrated tts_settings.ron from {:?} to {:?}",
                 *V2_TTS_SETTINGS_PATH,
                 TTSSettings::relative_path(),
             );
         }
+    }
+}
+
+#[cfg(test)]
+lazy_static! {
+    pub static ref V2_SERVERS_PATH: PathBuf = DATA_DIR.join("v2_servers.ron");
+    pub static ref V2_SETTINGS_PATH: PathBuf = DATA_DIR.join("v2_settings.ron");
+    pub static ref V2_TTS_SETTINGS_PATH: PathBuf = DATA_DIR.join("v2_tts_settings.ron");
+}
+
+#[cfg(test)]
+#[allow(dead_code)]
+mod patch_test {
+    use {
+        super::*,
+        crate::model::*,
+        std::{io::Write, panic, sync::mpsc},
+    };
+
+    fn setup() {
+        let paths = [
+            TTSSettings::relative_path(),
+            Settings::relative_path(),
+            Servers::relative_path(),
+            DATA_DIR.join("test"),
+        ];
+        for path in paths.iter() {
+            path.parent().map(|dir| fs::create_dir_all(&dir));
+        }
+    }
+
+    fn cleanup() {
+        let _ = fs::remove_dir_all(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test"));
+    }
+
+    fn create_v2_settings_file() {
+        let v2_settings = r#"(settings:{"tts_enabled":true,"logging_enabled":true,"save_history":false,"confirm_quit":false,"mouse_enabled":true})"#;
+        let mut file = fs::File::create(&*V2_SETTINGS_PATH).unwrap();
+        file.write_all(v2_settings.as_bytes()).unwrap();
+    }
+
+    fn create_v2_tts_settings_file() {
+        let v2_tts_settings = r#"(echo_keys:true,rate:5)"#;
+        let mut file = fs::File::create(&*V2_TTS_SETTINGS_PATH).unwrap();
+        file.write_all(v2_tts_settings.as_bytes()).unwrap();
+    }
+
+    fn create_v2_servers_file() {
+        let v2_servers = r#"{"lotr":(host:"lotr-mud.com",port:5555,tls:Some(true)),"starwars":(host:"starwars.mud.com",port:1212,tls:Some(false)),"mymud2":(host:"mud2",port:1234,tls:Some(false)),"mymud":(host:"mud",port:6789,tls:Some(false))}"#;
+        let mut file = fs::File::create(&*V2_SERVERS_PATH).unwrap();
+        file.write_all(v2_servers.as_bytes()).unwrap();
+    }
+
+    macro_rules! assert_event {
+        ($event:expr, $event_type:pat) => {{
+            if !matches!($event, $event_type) {
+                println!("{:?}", $event);
+            }
+            assert!(matches!($event, $event_type));
+        }};
+    }
+
+    #[test]
+    fn test_v2_migrator() {
+        let orig_hook = panic::take_hook();
+        panic::set_hook(Box::new(move |info| {
+            cleanup();
+            orig_hook(info);
+        }));
+
+        let tests = [
+            test_migrate_v2_servers,
+            test_migrate_v2_settings,
+            test_migrate_v2_tts_settings,
+            test_doesnt_migrate_over_existing_settings_file,
+            test_doesnt_migrate_over_existing_tts_settings_file,
+            test_doesnt_migrate_over_existing_servers_file,
+        ];
+
+        for test in tests.iter() {
+            setup();
+            test();
+            cleanup();
+        }
+    }
+
+    fn test_migrate_v2_settings() {
+        create_v2_settings_file();
+
+        let (tx, rx) = mpsc::channel();
+        migrate_v2_settings_and_servers(tx);
+
+        let info = rx.recv().unwrap();
+        assert_event!(info, Event::Info(..));
+
+        let settings = Settings::try_load().unwrap();
+        assert!(settings.get(LOGGING_ENABLED).unwrap());
+        assert!(settings.get(TTS_ENABLED).unwrap());
+        assert!(settings.get(MOUSE_ENABLED).unwrap());
+        assert!(!settings.get(SAVE_HISTORY).unwrap());
+        assert!(!settings.get(CONFIRM_QUIT).unwrap());
+    }
+
+    fn test_migrate_v2_tts_settings() {
+        create_v2_tts_settings_file();
+
+        let (tx, rx) = mpsc::channel();
+        migrate_v2_settings_and_servers(tx);
+
+        let info = rx.recv().unwrap();
+        assert_event!(info, Event::Info(..));
+
+        let settings = TTSSettings::try_load().unwrap();
+        assert!(settings.echo_keys);
+        assert_eq!(5.0, settings.rate);
+    }
+
+    fn test_migrate_v2_servers() {
+        create_v2_servers_file();
+
+        let (tx, rx) = mpsc::channel();
+        migrate_v2_settings_and_servers(tx);
+
+        let info = rx.recv().unwrap();
+        assert_event!(info, Event::Info(..));
+
+        let servers = Servers::try_load().unwrap();
+        let lotr = servers.get("lotr").unwrap();
+        assert!(lotr.tls);
+        assert_eq!(5555, lotr.port);
+        assert_eq!(false, servers.get("mymud").unwrap().tls);
+        assert_eq!(1234, servers.get("mymud2").unwrap().port);
+    }
+
+    fn test_doesnt_migrate_over_existing_settings_file() {
+        create_v2_settings_file();
+        let mut file = fs::File::create(&Settings::relative_path()).unwrap();
+        file.write_all(b"").unwrap();
+
+        let (tx, rx) = mpsc::channel();
+        migrate_v2_settings_and_servers(tx);
+
+        let event = rx.recv().unwrap();
+        assert_event!(event, Event::Error(..));
+    }
+
+    fn test_doesnt_migrate_over_existing_tts_settings_file() {
+        create_v2_tts_settings_file();
+        let mut file = fs::File::create(&TTSSettings::relative_path()).unwrap();
+        file.write_all(b"").unwrap();
+
+        let (tx, rx) = mpsc::channel();
+        migrate_v2_settings_and_servers(tx);
+
+        let event = rx.recv().unwrap();
+        assert_event!(event, Event::Error(..));
+    }
+
+    fn test_doesnt_migrate_over_existing_servers_file() {
+        create_v2_servers_file();
+        let mut file = fs::File::create(&Servers::relative_path()).unwrap();
+        file.write_all(b"").unwrap();
+
+        let (tx, rx) = mpsc::channel();
+        migrate_v2_settings_and_servers(tx);
+
+        let event = rx.recv().unwrap();
+        assert_event!(event, Event::Error(..));
     }
 }

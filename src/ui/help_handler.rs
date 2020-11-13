@@ -141,6 +141,8 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "gmcp" => "lua_gmcp.md",
         "msdp" => "msdp.md",
         "regex" => "regex.md",
+        "line" => "line.md",
+        "mud" => "mud.md",
         "config_scripts" => "config_scripts.md",
         "scripting" => "scripting.md",
         "settings" => "settings.md",

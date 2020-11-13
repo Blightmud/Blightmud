@@ -183,6 +183,10 @@ impl Line {
     pub fn is_empty(&self) -> bool {
         self.content.is_empty()
     }
+
+    pub fn replace_with(&mut self, other: &Line) {
+        self.flags = other.flags.clone();
+    }
 }
 
 #[cfg(test)]

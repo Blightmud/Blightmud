@@ -1,6 +1,5 @@
 use super::{
-    alias::Alias, constants::*, store_data::StoreData, trigger::Trigger, ui_event::UiEvent,
-    util::output_stack_trace,
+    alias::Alias, constants::*, store_data::StoreData, ui_event::UiEvent, util::output_stack_trace,
 };
 use crate::event::Event;
 use crate::{
@@ -8,7 +7,6 @@ use crate::{
     model::{Connection, Line},
     PROJECT_NAME, VERSION,
 };
-use anyhow::Result;
 use chrono::Duration;
 use log::debug;
 use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
@@ -53,14 +51,6 @@ impl Blight {
         }
     }
 
-    fn trigger_table(&self) -> &'static str {
-        if self.core_mode {
-            TRIGGER_TABLE_CORE
-        } else {
-            TRIGGER_TABLE
-        }
-    }
-
     fn timer_table(&self) -> &'static str {
         if self.core_mode {
             TIMED_FUNCTION_TABLE_CORE
@@ -79,13 +69,6 @@ impl Blight {
         let events = self.ui_events.clone();
         self.ui_events.clear();
         events
-    }
-
-    fn create_trigger(&self, regex: &str) -> Result<Trigger, String> {
-        match Trigger::create(&regex) {
-            Ok(trigger) => Ok(trigger),
-            Err(msg) => Err(format!("Failed to parse regex: {}", &msg)),
-        }
     }
 }
 
@@ -274,84 +257,7 @@ impl UserData for Blight {
             ctx.globals().set(this.alias_table(), ctx.create_table()?)?;
             Ok(())
         });
-        methods.add_method_mut(
-            "add_trigger",
-            |ctx, this, (regex, options, callback): (String, rlua::Table, rlua::Function)| {
-                let next_index = this.next_index();
-
-                let trigger_table: rlua::Table = if !options.get("prompt")? {
-                    ctx.globals().get(this.trigger_table())?
-                } else {
-                    ctx.globals().get(PROMPT_TRIGGER_TABLE)?
-                };
-
-                match this.create_trigger(&regex) {
-                    Ok(mut trigger) => {
-                        trigger.gag = options.get("gag")?;
-                        trigger.raw = options.get("raw")?;
-                        trigger.prompt = options.get("prompt")?;
-                        trigger.count = options.get("count").ok().unwrap_or_default();
-                        trigger.enabled = !options.get("enabled")?;
-                        trigger_table.raw_set(next_index, trigger)?;
-                        let trigger_handle: rlua::AnyUserData = trigger_table.get(next_index)?;
-                        trigger_handle.set_user_value(callback)?;
-                    }
-                    Err(msg) => {
-                        output_stack_trace(&this.main_writer, &msg);
-                    }
-                }
-                Ok(next_index)
-            },
-        );
-        methods.add_method("enable_trigger", |ctx, this, (id, enabled): (i32, bool)| {
-            let table: rlua::Table = ctx.globals().raw_get(this.trigger_table())?;
-
-            // Retrieve the callback function
-            let cb: rlua::Function = { table.get::<i32, rlua::AnyUserData>(id)?.get_user_value()? };
-            let mut trigger: Trigger = table.get(id)?;
-            trigger.enabled = enabled;
-            table.raw_set(id, trigger)?;
-
-            // Reset the callback function
-            let trigger_handle: rlua::AnyUserData = table.get(id)?;
-            trigger_handle.set_user_value(cb)?;
-
-            Ok(())
-        });
-        methods.add_method("remove_trigger", |ctx, this, trigger_idx: i32| {
-            let trigger_table: rlua::Table = {
-                let triggers: rlua::Table = ctx.globals().get(this.trigger_table())?;
-                let prompts: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
-                if triggers.contains_key(trigger_idx)? {
-                    triggers
-                } else {
-                    prompts
-                }
-            };
-            trigger_table.set(trigger_idx, rlua::Nil)
-        });
-        methods.add_method("get_triggers", |ctx, this, ()| {
-            let trigger_table: rlua::Table = ctx.globals().get(this.trigger_table())?;
-            let prompt_trigger_table: rlua::Table = ctx.globals().get(PROMPT_TRIGGER_TABLE)?;
-            let mut triggers: BTreeMap<rlua::Integer, Trigger> = BTreeMap::new();
-            let trigger_it = trigger_table.pairs::<rlua::Integer, Trigger>();
-            let prompt_it = prompt_trigger_table.pairs::<rlua::Integer, Trigger>();
-            for pair in trigger_it.chain(prompt_it) {
-                let (id, trigger) = pair?;
-                triggers.insert(id, trigger);
-            }
-            Ok(triggers)
-        });
-        methods.add_method("clear_triggers", |ctx, this, ()| {
-            ctx.globals()
-                .set(this.trigger_table(), ctx.create_table()?)?;
-            ctx.globals()
-                .set(PROMPT_TRIGGER_TABLE, ctx.create_table()?)?;
-            Ok(())
-        });
-        methods.add_method("gag", |ctx, _, _: ()| {
-            ctx.globals().set(GAG_NEXT_TRIGGER_LINE, true)
-        });
+        methods.add_method("is_core_mode", |_, this, ()| Ok(this.core_mode));
         methods.add_method_mut(
             "add_timer",
             |ctx, this, (duration, count, callback): (f32, u32, rlua::Function)| {
@@ -438,11 +344,9 @@ mod user_data_tests {
         let (mut blight, _reader) = get_blight();
         blight.core_mode(true);
         assert_eq!(blight.alias_table(), ALIAS_TABLE_CORE);
-        assert_eq!(blight.trigger_table(), TRIGGER_TABLE_CORE);
         assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE_CORE);
         blight.core_mode(false);
         assert_eq!(blight.alias_table(), ALIAS_TABLE);
-        assert_eq!(blight.trigger_table(), TRIGGER_TABLE);
         assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE);
     }
 

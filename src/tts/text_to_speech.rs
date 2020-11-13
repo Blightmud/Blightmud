@@ -45,13 +45,17 @@ pub struct TTSController {
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct TTSSettings {
-    echo_keys: bool,
-    rate: f32,
+    pub echo_keys: bool,
+    pub rate: f32,
 }
 
 impl SaveData for TTSSettings {
+    fn is_pretty() -> bool {
+        true
+    }
+
     fn relative_path() -> PathBuf {
-        PathBuf::from("data/tts_settings.ron")
+        crate::CONFIG_DIR.join("tts_settings.ron")
     }
 }
 
@@ -75,6 +79,10 @@ impl TTSController {
         tts_ctrl
     }
 
+    fn reload_settings(&mut self) {
+        self.settings = TTSSettings::load();
+    }
+
     fn send(&self, event: TTSEvent) {
         if let Some(rt) = &self.rt {
             match event {
@@ -93,15 +101,21 @@ impl TTSController {
     pub fn handle(&mut self, event: TTSEvent) {
         match event {
             TTSEvent::ChangeRate(rate) => {
+                self.reload_settings();
                 self.settings.rate += rate;
+                self.settings.save();
                 self.send(event);
             }
             TTSEvent::SetRate(rate) => {
+                self.reload_settings();
                 self.settings.rate = rate;
+                self.settings.save();
                 self.send(event);
             }
             TTSEvent::EchoKeys(enabled) => {
+                self.reload_settings();
                 self.settings.echo_keys = enabled;
+                self.settings.save();
             }
             _ => {
                 self.send(event);
@@ -165,9 +179,6 @@ impl TTSController {
 
     pub fn shutdown(&self) {
         if let Some(rt) = &self.rt {
-            if !cfg!(test) {
-                self.settings.save();
-            }
             rt.send(TTSEvent::Shutdown).ok();
         }
     }

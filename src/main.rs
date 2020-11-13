@@ -22,6 +22,7 @@ use crate::io::SaveData;
 use crate::model::Servers;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
+use crate::tools::patch::migrate_v2_settings_and_servers;
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
@@ -55,7 +56,12 @@ lazy_static! {
             data_dir
         }
 
-        #[cfg(debug_assertions)]
+        #[cfg(test)]
+        {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/data")
+        }
+
+        #[cfg(all(not(test), debug_assertions))]
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     };
     pub static ref CONFIG_DIR: PathBuf = {
@@ -71,7 +77,12 @@ lazy_static! {
             config_dir
         }
 
-        #[cfg(debug_assertions)]
+        #[cfg(test)]
+        {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/config")
+        }
+
+        #[cfg(all(not(test), debug_assertions))]
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     };
     pub static ref MACOS_DEPRECATED_DIR: PathBuf = {
@@ -191,7 +202,7 @@ fn main() {
             return;
         }
     } else if let Ok(Some(world)) = matches.opt_get::<String>("w") {
-        let servers = Servers::load();
+        let servers = Servers::try_load().expect("Error loading servers.ron");
         if servers.contains_key(&world) {
             main_writer
                 .send(Event::Connect(servers.get(&world).unwrap().clone()))
@@ -203,7 +214,7 @@ fn main() {
             .unwrap();
     }
 
-    let settings = Settings::load();
+    let settings = Settings::try_load().expect("Error loading settings.ron");
     let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)
@@ -224,18 +235,16 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
-    mut settings: Settings,
+    settings: Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
-    let mut saved_servers = Servers::load();
 
     let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
     screen.setup()?;
 
-    let _input_thread =
-        spawn_input_thread(session.clone(), saved_servers.keys().cloned().collect());
+    let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
 
     let lua_scripts = {
@@ -264,6 +273,10 @@ fn run(
     }
 
     check_latest_version(session.main_writer.clone());
+    if cfg!(not(debug_assertions)) {
+        migrate_v2_settings_and_servers(session.main_writer.clone());
+    }
+
     #[cfg(all(not(debug_assertions), target_os = "macos"))]
     {
         if MACOS_DEPRECATED_DIR.exists() {
@@ -294,7 +307,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::RemoveServer(_)
             | Event::LoadServer(_)
             | Event::ListServers => {
-                event_handler.handle_store_events(event, &mut saved_servers, &mut screen)?;
+                event_handler.handle_store_events(event, &mut screen)?;
             }
             Event::MudOutput(_)
             | Event::Output(_)
@@ -312,26 +325,39 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
 
-            Event::ShowSettings => SETTINGS.iter().for_each(|key| {
-                screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
-            }),
-            Event::ShowSetting(setting) => match settings.get(&setting) {
-                Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
-                Err(error) => screen.print_error(&error.to_string()),
-            },
-            Event::ToggleSetting(setting, toggle) => {
-                let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
-                if let Err(error) = settings.set(&setting, toggle) {
-                    screen.print_error(&error.to_string());
-                } else {
-                    if setting == SAVE_HISTORY {
-                        session.set_save_history(toggle);
-                    }
-                    screen.print_info(&format!("Setting: {} => {}", setting, toggle));
+            Event::ShowSettings => match Settings::try_load() {
+                Ok(settings) => SETTINGS.iter().for_each(|key| {
+                    screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
+                }),
+                Err(error) => {
+                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
                 }
-            }
+            },
+            Event::ShowSetting(setting) => match Settings::try_load()?.get(&setting) {
+                Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
+                Err(error) => {
+                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
+                }
+            },
+            Event::ToggleSetting(setting, toggle) => match Settings::try_load() {
+                Ok(mut settings) => {
+                    let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
+                    if let Err(error) = settings.set(&setting, toggle) {
+                        screen.print_error(&error.to_string());
+                    } else {
+                        if setting == SAVE_HISTORY {
+                            session.set_save_history(toggle);
+                        }
+                        screen.print_info(&format!("Setting: {} => {}", setting, toggle));
+                        settings.save();
+                    }
+                }
+                Err(error) => {
+                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
+                }
+            },
             Event::StartLogging(world, force) => {
-                if settings.get(LOGGING_ENABLED)? || force {
+                if Settings::load().get(LOGGING_ENABLED)? || force {
                     screen.print_info(&format!("Started logging for: {}", world));
                     session.start_logging(&world)
                 }
@@ -447,7 +473,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 screen.print_prompt_input(&prompt_input, prompt_input.len());
             }
             Event::Quit => {
-                if settings.get(CONFIRM_QUIT)? {
+                if Settings::load().get(CONFIRM_QUIT)? {
                     screen.print_info("Confirm quit with ctrl-c");
                     screen.flush();
                     let _ = main_thread_read.recv()?; // skip UserInputBuffer event
@@ -466,7 +492,6 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
         screen.flush();
     }
     screen.reset()?;
-    settings.save();
     session.close()?;
     Ok(())
 }

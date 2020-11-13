@@ -1,4 +1,4 @@
-use crate::model::{Connection, Line};
+use crate::model::{Connection, Line, Servers};
 use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
@@ -407,7 +407,7 @@ fn handle_script_ui_io(
     }
 }
 
-pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> thread::JoinHandle<()> {
+pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
     thread::Builder::new()
         .name("input-thread".to_string())
         .spawn(move || {
@@ -417,7 +417,7 @@ pub fn spawn_input_thread(session: Session, saved_servers: Vec<String>) -> threa
             let stdin = stdin();
             let mut tts_ctrl = session.tts_ctrl.clone();
             let mut buffer = CommandBuffer::new(tts_ctrl.clone());
-            for server in saved_servers {
+            for server in Servers::load().keys() {
                 buffer.completion_tree.insert(&server);
             }
             buffer
@@ -488,7 +488,7 @@ fn parse_command(msg: &str) -> Event {
             } else {
                 let host = p1.unwrap().to_string();
                 let tls = if let Some(tls) = p3 {
-                    tls == "tls"
+                    matches!(tls, "tls" | "true" | "on" | "enable")
                 } else {
                     false
                 };
@@ -519,7 +519,7 @@ fn parse_command(msg: &str) -> Event {
                 let host = p2.unwrap().to_string();
 
                 let tls = if let Some(tls) = p4 {
-                    tls == "tls"
+                    matches!(tls, "tls" | "true" | "on" | "enable")
                 } else {
                     false
                 };

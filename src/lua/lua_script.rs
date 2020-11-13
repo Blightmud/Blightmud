@@ -695,7 +695,7 @@ mod lua_script_tests {
             Event::Connect(Connection {
                 host: "hostname".to_string(),
                 port: 99,
-                tls: None,
+                tls: false,
             }),
         );
         assert_event(
@@ -703,7 +703,7 @@ mod lua_script_tests {
             Event::Connect(Connection {
                 host: "hostname".to_string(),
                 port: 99,
-                tls: Some(false),
+                tls: false,
             }),
         );
         assert_event(
@@ -711,7 +711,7 @@ mod lua_script_tests {
             Event::Connect(Connection {
                 host: "hostname".to_string(),
                 port: 99,
-                tls: Some(true),
+                tls: true,
             }),
         );
     }

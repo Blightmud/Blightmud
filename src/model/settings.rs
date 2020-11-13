@@ -5,6 +5,7 @@ use simple_error::bail;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Settings {
     settings: HashMap<String, bool>,
 }
@@ -55,7 +56,17 @@ impl Default for Settings {
 
 impl SaveData for Settings {
     fn relative_path() -> std::path::PathBuf {
-        crate::DATA_DIR.join("config").join("settings.ron")
+        crate::CONFIG_DIR.join("settings.ron")
+    }
+
+    fn is_pretty() -> bool {
+        true
+    }
+}
+
+impl From<HashMap<String, bool>> for Settings {
+    fn from(map: HashMap<String, bool>) -> Self {
+        Self { settings: map }
     }
 }
 

@@ -502,9 +502,11 @@ impl Screen {
     }
 
     pub fn scroll_top(&mut self) -> Result<()> {
-        self.scroll_data.0 = true;
-        self.scroll_data.1 = 0;
-        self.draw_scroll()?;
+        if self.history.inner.len() as u16 >= self.output_line {
+            self.scroll_data.0 = true;
+            self.scroll_data.1 = 0;
+            self.draw_scroll()?;
+        }
         Ok(())
     }
 

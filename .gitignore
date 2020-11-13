@@ -2,6 +2,7 @@
 /log.txt
 /.vimrc
 /*.lua
+/*.ron
 /data/
 /logs/
 /config/

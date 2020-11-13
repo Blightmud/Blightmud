@@ -329,6 +329,12 @@ fn check_command_binds(
             Key::Ctrl(c) => script.check_bindings(&human_key("ctrl-", c)),
             Key::Alt(c) => script.check_bindings(&human_key("alt-", c)),
             Key::F(n) => script.check_bindings(&format!("f{}", n)),
+            Key::PageUp => script.check_bindings("pageup") || script.check_bindings("page up"),
+            Key::PageDown => {
+                script.check_bindings("pagedown") || script.check_bindings("page down")
+            }
+            Key::Home => script.check_bindings("home"),
+            Key::End => script.check_bindings("end"),
             _ => false,
         }
     }

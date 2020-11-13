@@ -21,9 +21,9 @@ Helpfiles can also be viewed [online](https://github.com/LiquidityC/Blightmud/tr
 - `/list_servers, /ls`                          : List all saved servers
 - `/load <path/to/luafile>`                     : Load a script file
 - `/lua <code>`                                 : Execute Lua code
-- `/disconnect`, `/dc`                            : Disconnect from server
-- `/reconnect`, `/rc`                             : Reconnect to last/current server
-- `/quit`, `/q`                                   : Exit program
+- `/disconnect`, `/dc`                          : Disconnect from server
+- `/reconnect`, `/rc`                           : Reconnect to last/current server
+- `/quit`, `/q`                                 : Exit program
 - `/help`                                       : Help information
 
 ## Additional macros:

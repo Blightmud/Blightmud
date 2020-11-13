@@ -140,7 +140,7 @@ impl EventHandler {
             }
             Event::Connect(Connection { host, port, tls }) => {
                 self.session.disconnect();
-                if self.session.connect(&host, port, tls.unwrap_or_default()) {
+                if self.session.connect(&host, port, tls) {
                     let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
                     spawn_receive_thread(self.session.clone());
                     spawn_transmit_thread(self.session.clone(), reader);
@@ -288,68 +288,88 @@ impl EventHandler {
 
     pub fn handle_store_events(&mut self, event: Event, screen: &mut Screen) -> Result {
         match event {
-            Event::AddServer(name, connection) => {
-                let mut saved_servers = Servers::load();
-                if saved_servers.contains_key(&name) {
-                    self.session.main_writer.send(Event::Error(format!(
-                        "Saved server already exists for {}",
-                        name
-                    )))?;
-                    return Ok(());
-                }
+            Event::AddServer(name, connection) => match Servers::try_load() {
+                Ok(mut saved_servers) => {
+                    if saved_servers.contains_key(&name) {
+                        self.session.main_writer.send(Event::Error(format!(
+                            "Saved server already exists for {}",
+                            name
+                        )))?;
+                        return Ok(());
+                    }
 
-                saved_servers.insert(name.clone(), connection);
-                saved_servers.save();
-
-                self.session
-                    .main_writer
-                    .send(Event::Info(format!("Server added: {}", name)))?;
-
-                Ok(())
-            }
-            Event::RemoveServer(name) => {
-                let mut saved_servers = Servers::load();
-                if saved_servers.contains_key(&name) {
-                    saved_servers.remove(&name);
+                    saved_servers.insert(name.clone(), connection);
                     saved_servers.save();
 
                     self.session
                         .main_writer
-                        .send(Event::Info(format!("Server removed: {}", name)))?;
-                } else {
-                    self.session.main_writer.send(Event::Error(format!(
-                        "Saved server does not exist: {}",
-                        name
-                    )))?;
-                }
+                        .send(Event::Info(format!("Server added: {}", name)))?;
 
-                Ok(())
-            }
-            Event::LoadServer(name) => {
-                let saved_servers = Servers::load();
-                if saved_servers.contains_key(&name) {
-                    let connection = saved_servers.get(&name).cloned().unwrap();
-                    self.session.main_writer.send(Event::Connect(connection))?;
-                } else {
-                    screen.print_error(&format!("Saved server does not exist: {}", name));
+                    Ok(())
                 }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
+            Event::RemoveServer(name) => match Servers::try_load() {
+                Ok(mut saved_servers) => {
+                    if saved_servers.contains_key(&name) {
+                        saved_servers.remove(&name);
+                        saved_servers.save();
 
-                Ok(())
-            }
-            Event::ListServers => {
-                let saved_servers = Servers::load();
-                if saved_servers.is_empty() {
-                    screen.print_info("There are no saved servers.");
-                } else {
-                    screen.print_info("Saved servers:");
-                    screen.print_info("");
-                    for server in saved_servers {
-                        screen.print_info(&format!(" - Name: {}, {}", server.0, server.1));
+                        self.session
+                            .main_writer
+                            .send(Event::Info(format!("Server removed: {}", name)))?;
+                    } else {
+                        self.session.main_writer.send(Event::Error(format!(
+                            "Saved server does not exist: {}",
+                            name
+                        )))?;
                     }
-                }
 
-                Ok(())
-            }
+                    Ok(())
+                }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
+            Event::LoadServer(name) => match Servers::try_load() {
+                Ok(saved_servers) => {
+                    if saved_servers.contains_key(&name) {
+                        let connection = saved_servers.get(&name).cloned().unwrap();
+                        self.session.main_writer.send(Event::Connect(connection))?;
+                    } else {
+                        screen.print_error(&format!("Saved server does not exist: {}", name));
+                    }
+
+                    Ok(())
+                }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
+            Event::ListServers => match Servers::try_load() {
+                Ok(saved_servers) => {
+                    if saved_servers.is_empty() {
+                        screen.print_info("There are no saved servers.");
+                    } else {
+                        screen.print_info("Saved servers:");
+                        screen.print_info("");
+                        for server in saved_servers {
+                            screen.print_info(&format!(" - Name: {}, {}", server.0, server.1));
+                        }
+                    }
+
+                    Ok(())
+                }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
             _ => Err(BadEventRoutingError.into()),
         }
     }

@@ -45,13 +45,17 @@ pub struct TTSController {
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct TTSSettings {
-    echo_keys: bool,
-    rate: f32,
+    pub echo_keys: bool,
+    pub rate: f32,
 }
 
 impl SaveData for TTSSettings {
+    fn is_pretty() -> bool {
+        true
+    }
+
     fn relative_path() -> PathBuf {
-        PathBuf::from("data/tts_settings.ron")
+        crate::CONFIG_DIR.join("tts_settings.ron")
     }
 }
 

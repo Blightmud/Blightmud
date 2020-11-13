@@ -1,5 +1,5 @@
 use super::{alias::Alias, mud::Mud, regex::RegexLib, trigger::Trigger, util::*};
-use super::{blight::*, tts::Tts, util::expand_tilde};
+use super::{blight::*, line::Line as LuaLine, tts::Tts, util::expand_tilde};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
@@ -39,6 +39,9 @@ fn create_default_lua_state(
         globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
         globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
         globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
+
+        globals.set(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table()?)?;
+        globals.set(MUD_INPUT_LISTENER_TABLE, ctx.create_table()?)?;
 
         globals.set(ALIAS_TABLE, ctx.create_table()?)?;
         globals.set(TRIGGER_TABLE, ctx.create_table()?)?;
@@ -121,6 +124,36 @@ impl LuaScript {
                 Ok(lines)
             })
             .unwrap()
+    }
+
+    pub fn on_mud_output(&self, line: &mut Line) {
+        let lline = LuaLine::from(line.clone());
+        if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
+            let table: rlua::Table = ctx.globals().get(MUD_OUTPUT_LISTENER_TABLE)?;
+            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+                let (_, cb) = pair?;
+                let new_line = cb.call::<_, LuaLine>(lline.clone())?;
+                line.replace_with(&new_line.inner);
+            }
+            Ok(())
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
+    }
+
+    pub fn on_mud_input(&self, line: &mut Line) {
+        let lline = LuaLine::from(line.clone());
+        if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
+            let table: rlua::Table = ctx.globals().get(MUD_INPUT_LISTENER_TABLE)?;
+            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+                let (_, cb) = pair?;
+                let new_line = cb.call::<_, LuaLine>(lline.clone())?;
+                line.replace_with(&new_line.inner);
+            }
+            Ok(())
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
     }
 
     pub fn check_for_alias_match(&self, input: &Line) -> bool {

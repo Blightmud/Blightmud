@@ -25,4 +25,5 @@ by typing `/help <category>`.
 - `storage`     Methods for persisting data between sessions
 - `bindings`    Methods for configuring keybindings and adding new ones
 - `tasks`       Library for control of background tasks
+- `mud`         Methods for interacting with the mud
 - `core`        Methods for advanced scripting and telnet protocol control

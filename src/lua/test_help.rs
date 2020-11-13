@@ -26,6 +26,17 @@ macro_rules! test_lua {
     () => {
         let state = rlua::Lua::new();
 
+        #[allow(unused_macros)]
+        macro_rules! run_lua {
+            ($lua_code:literal) => {
+                state.context(|ctx| -> rlua::Result<()> {
+                    ctx.load($lua_code).call::<_,()>(()).unwrap();
+                    Ok(())
+                }).unwrap();
+            };
+        }
+
+        #[allow(unused_macros)]
         macro_rules! assert_lua {
             ($return_type:ty, $lua_code:literal, $expect:expr) => {
                 assert_eq!(

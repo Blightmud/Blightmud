@@ -117,8 +117,9 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::ServerInput(line) => {
+            Event::ServerInput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
+                    script.on_mud_input(&mut line);
                     if !script.check_for_alias_match(&line) {
                         if let Ok(mut logger) = self.session.logger.lock() {
                             if let Some(log_line) = line.log_line() {
@@ -239,6 +240,7 @@ impl EventHandler {
         match event {
             Event::MudOutput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
+                    script.on_mud_output(&mut line);
                     script.check_for_trigger_match(&mut line);
                     screen.print_output(&line);
                     script.get_output_lines().iter().for_each(|l| {

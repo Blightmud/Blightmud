@@ -322,22 +322,24 @@ fn check_command_binds(
     buffer: &mut CommandBuffer,
     script: &Arc<Mutex<LuaScript>>,
     writer: &Sender<Event>,
-) {
+) -> bool {
+    let mut ran = false;
     if let Ok(mut script) = script.lock() {
-        match cmd {
-            Key::Ctrl(c) => {
-                script.check_bindings(&human_key("ctrl-", c));
+        ran = match cmd {
+            Key::Ctrl(c) => script.check_bindings(&human_key("ctrl-", c)),
+            Key::Alt(c) => script.check_bindings(&human_key("alt-", c)),
+            Key::F(n) => script.check_bindings(&format!("f{}", n)),
+            Key::PageUp => script.check_bindings("pageup") || script.check_bindings("page up"),
+            Key::PageDown => {
+                script.check_bindings("pagedown") || script.check_bindings("page down")
             }
-            Key::Alt(c) => {
-                script.check_bindings(&human_key("alt-", c));
-            }
-            Key::F(n) => {
-                script.check_bindings(&format!("f{}", n));
-            }
-            _ => {}
+            Key::Home => script.check_bindings("home"),
+            Key::End => script.check_bindings("end"),
+            _ => false,
         }
     }
     handle_script_ui_io(buffer, script, writer);
+    ran
 }
 
 /// Convert a key combination to a human-readable form.
@@ -435,8 +437,9 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
             for e in stdin.events() {
                 match e.unwrap() {
                     termion::event::Event::Key(key) => {
-                        parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl);
-                        check_command_binds(key, &mut buffer, &script, &writer);
+                        if !check_command_binds(key, &mut buffer, &script, &writer) {
+                            parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl);
+                        }
                         writer
                             .send(Event::UserInputBuffer(
                                 buffer.get_buffer(),

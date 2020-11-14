@@ -256,6 +256,7 @@ impl EventHandler {
             Event::Prompt => {
                 let mut output_buffer = self.session.output_buffer.lock().unwrap();
                 if let Ok(script) = self.session.lua_script.lock() {
+                    script.on_mud_input(&mut output_buffer.prompt);
                     script.check_for_prompt_trigger_match(&mut output_buffer.prompt);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);

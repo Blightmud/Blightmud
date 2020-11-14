@@ -12,9 +12,11 @@ pub struct OutputBuffer {
 
 impl OutputBuffer {
     pub fn new(telnet_mode: &TelnetMode) -> Self {
+        let mut prompt = Line::from("");
+        prompt.flags.prompt = true;
         Self {
             buffer: Vec::with_capacity(BUFFER_SIZE),
-            prompt: Line::from(""),
+            prompt,
             telnet_mode: telnet_mode.clone(),
         }
     }
@@ -26,6 +28,7 @@ impl OutputBuffer {
     pub fn buffer_to_prompt(&mut self, consume_buffer: bool) {
         if !self.buffer.is_empty() {
             self.prompt = Line::from(&self.buffer);
+            self.prompt.flags.prompt = true;
             if consume_buffer {
                 self.buffer.clear();
             }

@@ -292,8 +292,15 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
         }
     }
-
+    let mut quit_pending = false;
     while let Ok(event) = main_thread_read.recv() {
+        if quit_pending {
+            quit_pending = matches!(
+                event,
+                Event::Quit | Event::UserInputBuffer(..) | Event::TimedEvent(..)
+            );
+        }
+
         match event {
             Event::ServerSend(_)
             | Event::ServerInput(_)
@@ -473,17 +480,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 screen.print_prompt_input(&prompt_input, prompt_input.len());
             }
             Event::Quit => {
-                if Settings::load().get(CONFIRM_QUIT)? {
+                if Settings::load().get(CONFIRM_QUIT)? && !quit_pending {
                     screen.print_info("Confirm quit with ctrl-c");
                     screen.flush();
-                    let _ = main_thread_read.recv()?; // skip UserInputBuffer event
-                    match main_thread_read.recv()? {
-                        Event::Quit => {}
-                        e => {
-                            session.main_writer.send(e).unwrap();
-                            continue;
-                        }
-                    }
+                    quit_pending = true;
+                    continue;
                 }
                 session.disconnect();
                 break;

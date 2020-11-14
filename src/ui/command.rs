@@ -123,13 +123,13 @@ impl CommandBuffer {
         cmd
     }
 
-    fn move_left(&mut self) {
+    fn step_left(&mut self) {
         if self.cursor_pos > 0 {
             self.cursor_pos -= 1;
         }
     }
 
-    fn move_right(&mut self) {
+    fn step_right(&mut self) {
         if self.cursor_pos < self.buffer.len() {
             self.cursor_pos += 1;
         }
@@ -143,7 +143,7 @@ impl CommandBuffer {
         self.cursor_pos = self.buffer.len();
     }
 
-    fn move_word_right(&mut self) {
+    fn step_word_right(&mut self) {
         let origin = (self.cursor_pos + 1).min(self.buffer.len());
         self.cursor_pos = if let Some(pos) = self.buffer[origin..].iter().position(|c| *c == ' ') {
             origin + pos
@@ -152,7 +152,7 @@ impl CommandBuffer {
         }
     }
 
-    fn move_word_left(&mut self) {
+    fn step_word_left(&mut self) {
         let origin = self.cursor_pos.max(1) - 1;
         self.cursor_pos = if let Some(pos) = self.buffer[0..origin].iter().rposition(|c| *c == ' ')
         {
@@ -179,7 +179,7 @@ impl CommandBuffer {
 
     fn delete_word_right(&mut self) {
         let origin = self.cursor_pos;
-        self.move_word_right();
+        self.step_word_right();
         if origin != self.cursor_pos {
             self.buffer.drain(origin..self.cursor_pos);
             self.cursor_pos = origin;
@@ -188,7 +188,7 @@ impl CommandBuffer {
 
     fn delete_word_left(&mut self) {
         let origin = self.cursor_pos;
-        self.move_word_left();
+        self.step_word_left();
         if origin != self.cursor_pos {
             self.buffer.drain(self.cursor_pos..origin);
         }
@@ -201,7 +201,7 @@ impl CommandBuffer {
             } else {
                 self.buffer.pop();
             }
-            self.move_left();
+            self.step_left();
         }
     }
 
@@ -212,7 +212,7 @@ impl CommandBuffer {
             self.buffer.insert(self.cursor_pos, c);
         }
         self.completion.clear();
-        self.move_right();
+        self.step_right();
     }
 
     fn tab_complete(&mut self) {
@@ -307,8 +307,8 @@ fn parse_key_event(
         Key::End => writer.send(Event::ScrollBottom).unwrap(),
 
         // Input navigation
-        Key::Left => buffer.move_left(),
-        Key::Right => buffer.move_right(),
+        Key::Left => buffer.step_left(),
+        Key::Right => buffer.step_right(),
         Key::Backspace => buffer.remove(),
         Key::Delete => buffer.delete_right(),
         Key::Up => buffer.previous(),
@@ -382,12 +382,12 @@ fn handle_script_ui_io(
 ) {
     if let Ok(mut script) = script.lock() {
         script.get_ui_events().iter().for_each(|event| match event {
-            UiEvent::StepLeft => buffer.move_left(),
-            UiEvent::StepRight => buffer.move_right(),
+            UiEvent::StepLeft => buffer.step_left(),
+            UiEvent::StepRight => buffer.step_right(),
             UiEvent::StepToStart => buffer.move_to_start(),
             UiEvent::StepToEnd => buffer.move_to_end(),
-            UiEvent::StepWordLeft => buffer.move_word_left(),
-            UiEvent::StepWordRight => buffer.move_word_right(),
+            UiEvent::StepWordLeft => buffer.step_word_left(),
+            UiEvent::StepWordRight => buffer.step_word_right(),
             UiEvent::Remove => buffer.remove(),
             UiEvent::DeleteToEnd => buffer.delete_to_end(),
             UiEvent::DeleteFromStart => buffer.delete_from_start(),
@@ -614,10 +614,10 @@ mod command_test {
         push_string(&mut buffer, "test is test");
         assert_eq!(buffer.get_buffer(), "test is test");
         assert_eq!(buffer.get_pos(), 12);
-        buffer.move_left();
-        buffer.move_left();
-        buffer.move_left();
-        buffer.move_left();
+        buffer.step_left();
+        buffer.step_left();
+        buffer.step_left();
+        buffer.step_left();
         buffer.remove();
         buffer.remove();
         buffer.remove();
@@ -633,7 +633,7 @@ mod command_test {
     fn test_no_zero_index_remove_crash() {
         let mut buffer = get_command();
         buffer.push_key('t');
-        buffer.move_left();
+        buffer.step_left();
         assert_eq!(buffer.get_pos(), 0);
         buffer.remove();
         assert_eq!(buffer.get_pos(), 0);
@@ -680,21 +680,21 @@ mod command_test {
     fn test_input_navigation() {
         let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
-        buffer.move_word_left();
+        buffer.step_word_left();
         assert_eq!(buffer.cursor_pos, 12);
-        buffer.move_word_left();
+        buffer.step_word_left();
         assert_eq!(buffer.cursor_pos, 5);
-        buffer.move_word_left();
+        buffer.step_word_left();
         assert_eq!(buffer.cursor_pos, 0);
-        buffer.move_word_left();
+        buffer.step_word_left();
         assert_eq!(buffer.cursor_pos, 0);
-        buffer.move_word_right();
+        buffer.step_word_right();
         assert_eq!(buffer.cursor_pos, 4);
-        buffer.move_word_right();
+        buffer.step_word_right();
         assert_eq!(buffer.cursor_pos, 11);
-        buffer.move_word_right();
+        buffer.step_word_right();
         assert_eq!(buffer.cursor_pos, 17);
-        buffer.move_word_right();
+        buffer.step_word_right();
         assert_eq!(buffer.cursor_pos, 17);
     }
 
@@ -717,7 +717,7 @@ mod command_test {
         let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
-        buffer.move_word_right();
+        buffer.step_word_right();
         buffer.delete_from_start();
         assert_eq!(buffer.get_buffer(), " random words");
     }
@@ -727,8 +727,8 @@ mod command_test {
         let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
-        buffer.move_word_right();
-        buffer.move_word_right();
+        buffer.step_word_right();
+        buffer.step_word_right();
         buffer.delete_to_end();
         assert_eq!(buffer.get_buffer(), "some random");
     }
@@ -738,7 +738,7 @@ mod command_test {
         let mut buffer = get_command();
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
-        buffer.move_word_right();
+        buffer.step_word_right();
         buffer.delete_right();
         assert_eq!(buffer.get_buffer(), "somerandom words");
         buffer.delete_right();
@@ -756,7 +756,7 @@ mod command_test {
         buffer.delete_word_left();
         assert_eq!(buffer.get_buffer(), "some random ");
         buffer.move_to_start();
-        buffer.move_word_right();
+        buffer.step_word_right();
         buffer.delete_word_left();
         assert_eq!(buffer.get_buffer(), " random ");
     }

@@ -131,14 +131,14 @@ impl LuaScript {
     }
 
     pub fn on_mud_output(&self, line: &mut Line) {
-        let lline = LuaLine::from(line.clone());
+        let mut lline = LuaLine::from(line.clone());
         if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
             let table: rlua::Table = ctx.globals().get(MUD_OUTPUT_LISTENER_TABLE)?;
             for pair in table.pairs::<rlua::Value, rlua::Function>() {
                 let (_, cb) = pair?;
-                let new_line = cb.call::<_, LuaLine>(lline.clone())?;
-                line.replace_with(&new_line.inner);
+                lline = cb.call::<_, LuaLine>(lline)?;
             }
+            line.replace_with(&lline.inner);
             Ok(())
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
@@ -146,14 +146,14 @@ impl LuaScript {
     }
 
     pub fn on_mud_input(&self, line: &mut Line) {
-        let lline = LuaLine::from(line.clone());
+        let mut lline = LuaLine::from(line.clone());
         if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
             let table: rlua::Table = ctx.globals().get(MUD_INPUT_LISTENER_TABLE)?;
             for pair in table.pairs::<rlua::Value, rlua::Function>() {
                 let (_, cb) = pair?;
-                let new_line = cb.call::<_, LuaLine>(lline.clone())?;
-                line.replace_with(&new_line.inner);
+                lline = cb.call::<_, LuaLine>(lline)?;
             }
+            line.replace_with(&lline.inner);
             Ok(())
         }) {
             output_stack_trace(&self.writer, &msg.to_string());

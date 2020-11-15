@@ -15,6 +15,9 @@ operate. For a general user this method should not be needed.
 The provided callback will receive one argument. A line object. See `/help
 line` for information about this object.
 
+The provided line object must be returned at the end of the callback otherwise
+modifications to the line will not be accounted for in later processing.
+
 ##
 
 ***mud:add_input_listener(callback)***
@@ -26,3 +29,6 @@ user this method should not be needed.
 
 The provided callback will receive one argument. A line object. See `/help
 line` for information about this object.
+
+The provided line object must be returned at the end of the callback otherwise
+modifications to the line will not be accounted for in later processing.

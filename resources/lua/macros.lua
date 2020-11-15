@@ -25,7 +25,7 @@ end
 
 local function number_label (number, label)
 	local color = C_RED
-	if number > 0 then
+	if number and number > 0 then
 		color = C_GREEN
 	end
 	return label .. color .. tostring(number) .. C_RESET
@@ -41,7 +41,7 @@ blight:add_alias("^/aliases$", function ()
 end)
 
 blight:add_alias("^/triggers$", function ()
-	for id,trigger in pairs(triggers.getGroup():getTriggers()) do
+	for id,trigger in pairs(trigger.getGroup():getTriggers()) do
 		local enabled = state_label(trigger.enabled, "enabled")
 		local gag = state_label(trigger.gag, "gag")
 		local raw = state_label(trigger.raw, "raw")

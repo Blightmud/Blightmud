@@ -4,6 +4,21 @@ This file lists some of the things that are new between the versions of
 Blightmud. It doesn't list all new features but will always list breaking
 changes where you might need to take action.
 
+## Changes in Blightmud v3.0
+The `blight` module in lua has now been separated into multiple modules. You
+will need to apply the following changes to your scripts.
+
+### Triggers
+
+- `blight:add_trigger(...)` => `trigger.add(...)`
+- `blight:remove_trigger(id)` => `trigger.remove(id)`
+- `blight:clear_triggers()` => `trigger.clear()`
+- `blight:enable_trigger(id, bool)` => `trigger.get(id):enable()` or `trigger.get(id):disable()`
+- `blight:gag` => `Line:gag(true)`
+
+For more info about triggers and lines see `/help trigger` and `/help line`
+There are now exists a group system for triggers for bulk trigger handling.
+
 ## Changes in Blightmud v2.0
 
 ### The GMCP module has been re-worked

@@ -41,15 +41,13 @@ blight:add_alias("^/aliases$", function ()
 end)
 
 blight:add_alias("^/triggers$", function ()
-	local triggers = blight:get_triggers()
-
-	for id,trigger in pairs(triggers) do
+	for id,trigger in pairs(triggers.getGroup():getTriggers()) do
 		local enabled = state_label(trigger.enabled, "enabled")
 		local gag = state_label(trigger.gag, "gag")
 		local raw = state_label(trigger.raw, "raw")
 		local prompt = state_label(trigger.prompt, "prompt")
 		local count = number_label(trigger.count, "count: ")
-		blight:output(string.format("%s :\t" .. C_YELLOW .. "%s" .. C_RESET .. "\t%s\t%s\t%s\t%s\t%s", id, trigger.regex, enabled, gag, raw, prompt, count))
+		blight:output(string.format("%s :\t" .. C_YELLOW .. "%s" .. C_RESET .. "\t%s\t%s\t%s\t%s\t%s", id, trigger.regex:regex(), enabled, gag, raw, prompt, count))
 	end
 end)
 

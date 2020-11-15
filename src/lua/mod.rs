@@ -15,7 +15,6 @@ mod lua_script;
 mod mud;
 mod regex;
 mod store_data;
-mod trigger;
 mod tts;
 mod ui_event;
 pub mod util;

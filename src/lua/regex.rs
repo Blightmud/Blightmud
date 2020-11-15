@@ -1,5 +1,6 @@
 use regex::Regex as Re;
 use rlua::{UserData, UserDataMethods};
+use std::fmt::{Display, Formatter};
 
 pub struct RegexLib;
 
@@ -14,8 +15,15 @@ impl UserData for RegexLib {
     }
 }
 
+#[derive(Clone)]
 pub struct Regex {
     regex: regex::Regex,
+}
+
+impl Display for Regex {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.regex.fmt(f)
+    }
 }
 
 impl UserData for Regex {
@@ -60,6 +68,7 @@ impl UserData for Regex {
                 Ok(re.replacen::<&str>(&src, limit, &replace).to_mut().clone())
             },
         );
+        methods.add_method("regex", |_, this, ()| Ok(this.to_string()));
     }
 }
 

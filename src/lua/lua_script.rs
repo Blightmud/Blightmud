@@ -1,4 +1,4 @@
-use super::{alias::Alias, mud::Mud, regex::RegexLib, trigger::Trigger, util::*};
+use super::{alias::Alias, mud::Mud, regex::RegexLib, util::*};
 use super::{blight::*, line::Line as LuaLine, tts::Tts, util::expand_tilde};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use crate::{event::Event, model::Line};
@@ -84,6 +84,10 @@ fn create_default_lua_state(
             .load(include_str!("../../resources/lua/tasks.lua"))
             .call::<_, rlua::Value>(())?;
         globals.set("tasks", lua_tasks)?;
+        let lua_triggers = ctx
+            .load(include_str!("../../resources/lua/trigger.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("trigger", lua_triggers)?;
 
         let mut blight: Blight = globals.get("blight")?;
         blight.core_mode(false);
@@ -189,77 +193,6 @@ impl LuaScript {
         } else {
             false
         }
-    }
-
-    pub fn check_for_trigger_match(&self, line: &mut Line) {
-        self.check_trigger_match(line, TRIGGER_TABLE_CORE);
-        self.check_trigger_match(line, TRIGGER_TABLE);
-    }
-
-    pub fn check_for_prompt_trigger_match(&self, line: &mut Line) {
-        self.check_trigger_match(line, PROMPT_TRIGGER_TABLE);
-    }
-
-    fn check_trigger_match(&self, line: &mut Line, table: &str) {
-        let input = line.clean_line().to_string();
-        let raw_input = line.line().to_string();
-
-        self.state.context(|ctx| {
-            let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
-            let mut deletes: Vec<u32> = vec![];
-            for pair in trigger_table.pairs::<rlua::Number, rlua::AnyUserData>() {
-                let (trigger_id, trigger) = pair.unwrap();
-                let rust_trigger = &mut trigger.borrow_mut::<Trigger>().unwrap();
-
-                let trigger_captures = if rust_trigger.raw {
-                    rust_trigger.regex.captures(&raw_input)
-                } else {
-                    rust_trigger.regex.captures(&input)
-                };
-
-                if rust_trigger.enabled {
-                    if let Some(caps) = trigger_captures {
-                        let captures: Vec<String> = caps
-                            .iter()
-                            .map(|c| match c {
-                                Some(m) => m.as_str().to_string(),
-                                None => String::new(),
-                            })
-                            .collect();
-
-                        let cb: rlua::Function = trigger.get_user_value().unwrap();
-                        if let Err(msg) = cb.call::<_, ()>((captures, line.print_line())) {
-                            output_stack_trace(&self.writer, &msg.to_string());
-                        }
-
-                        line.flags.matched = true;
-                        line.flags.gag = line.flags.gag
-                            || rust_trigger.gag
-                            || ctx.globals().get(GAG_NEXT_TRIGGER_LINE).unwrap();
-                        line.flags.tts_gag = line.flags.tts_gag
-                            || ctx.globals().get(TTS_GAG_NEXT_TRIGGER_LINE).unwrap();
-
-                        if rust_trigger.count > 0 {
-                            rust_trigger.count -= 1;
-                            if rust_trigger.count == 0 {
-                                deletes.push(trigger_id as u32);
-                            }
-                        }
-
-                        // Reset the gag flag
-                        ctx.globals().set(GAG_NEXT_TRIGGER_LINE, false).unwrap();
-                        ctx.globals().set(TTS_GAG_NEXT_TRIGGER_LINE, false).unwrap();
-                    }
-                }
-            }
-
-            if !deletes.is_empty() {
-                let trigger_table: rlua::Table = ctx.globals().get(table).unwrap();
-                for id in deletes {
-                    trigger_table.set(id, rlua::Nil).unwrap();
-                }
-            }
-        });
     }
 
     pub fn run_timed_function(&mut self, id: u32) {
@@ -409,7 +342,7 @@ mod lua_script_tests {
     use crate::{
         event::Event,
         lua::alias::Alias,
-        lua::trigger::Trigger,
+        lua::regex::Regex,
         model::{Connection, Line},
         PROJECT_NAME, VERSION,
     };
@@ -421,13 +354,14 @@ mod lua_script_tests {
 
     fn test_trigger(line: &str, lua: &LuaScript) -> bool {
         let mut line = Line::from(line);
-        lua.check_for_trigger_match(&mut line);
+        lua.on_mud_output(&mut line);
         line.flags.matched
     }
 
     fn test_prompt_trigger(line: &str, lua: &LuaScript) -> bool {
         let mut line = Line::from(line);
-        lua.check_for_prompt_trigger_match(&mut line);
+        line.flags.prompt = true;
+        lua.on_mud_output(&mut line);
         line.flags.matched
     }
 
@@ -445,7 +379,7 @@ mod lua_script_tests {
     #[test]
     fn test_lua_trigger() {
         let create_trigger_lua = r#"
-        blight:add_trigger("^test$", {gag=true}, function () end)
+        trigger.add("^test$", {gag=true}, function () end)
         "#;
 
         let lua = get_lua().0;
@@ -460,7 +394,7 @@ mod lua_script_tests {
     #[test]
     fn test_lua_counted_trigger() {
         let create_trigger_lua = r#"
-        blight:add_trigger("^test$", {count=3}, function () end)
+        trigger.add("^test$", {count=3}, function () end)
         "#;
 
         let lua = get_lua().0;
@@ -477,7 +411,7 @@ mod lua_script_tests {
     #[test]
     fn test_lua_prompt_trigger() {
         let create_prompt_trigger_lua = r#"
-        blight:add_trigger("^test$", {prompt=true, gag=true}, function () end)
+        trigger.add("^test$", {prompt=true, gag=true}, function () end)
         "#;
 
         let lua = get_lua().0;
@@ -495,18 +429,18 @@ mod lua_script_tests {
         let (ttrig, ptrig) = lua
             .state
             .context(|ctx| -> LuaResult<(u32, u32)> {
-                ctx.load(r#"blight:add_trigger("^test regular$", {}, function () end)"#)
+                ctx.load(r#"trigger.add("^test regular$", {}, function () end)"#)
                     .exec()
                     .unwrap();
-                ctx.load(r#"blight:add_trigger("^test regular$", {}, function () end)"#)
+                ctx.load(r#"trigger.add("^test regular$", {}, function () end)"#)
                     .exec()
                     .unwrap();
                 let ttrig: u32 = ctx
-                    .load(r#"return blight:add_trigger("^test$", {}, function () end)"#)
+                    .load(r#"return trigger.add("^test$", {}, function () end).id"#)
                     .call(())
                     .unwrap();
                 let ptrig: u32 = ctx
-                    .load(r#"return blight:add_trigger("^test$", {prompt=true}, function () end)"#)
+                    .load(r#"return trigger.add("^test$", {prompt=true}, function () end).id"#)
                     .call(())
                     .unwrap();
                 Ok((ttrig, ptrig))
@@ -519,7 +453,7 @@ mod lua_script_tests {
     #[test]
     fn test_lua_raw_trigger() {
         let create_trigger_lua = r#"
-        blight:add_trigger("^\\x1b\\[31mtest\\x1b\\[0m$", {raw=true}, function () end)
+        trigger.add("^\\x1b\\[31mtest\\x1b\\[0m$", {raw=true}, function () end)
         "#;
 
         let (lua, _reader) = get_lua();
@@ -538,11 +472,11 @@ mod lua_script_tests {
             .state
             .context(|ctx| -> LuaResult<(u32, u32)> {
                 let ttrig: u32 = ctx
-                    .load(r#"return blight:add_trigger("^test$", {}, function () end)"#)
+                    .load(r#"return trigger.add("^test$", {}, function () end).id"#)
                     .call(())
                     .unwrap();
                 let ptrig: u32 = ctx
-                    .load(r#"return blight:add_trigger("^test$", {prompt=true}, function () end)"#)
+                    .load(r#"return trigger.add("^test$", {prompt=true}, function () end).id"#)
                     .call(())
                     .unwrap();
                 Ok((ttrig, ptrig))
@@ -553,7 +487,7 @@ mod lua_script_tests {
         assert!(test_prompt_trigger("test", &lua));
 
         lua.state.context(|ctx| {
-            ctx.load(&format!("blight:remove_trigger({})", ttrig))
+            ctx.load(&format!("trigger.remove({})", ttrig))
                 .exec()
                 .unwrap();
         });
@@ -562,7 +496,7 @@ mod lua_script_tests {
         assert!(!test_trigger("test", &lua));
 
         lua.state.context(|ctx| {
-            ctx.load(&format!("blight:remove_trigger({})", ptrig))
+            ctx.load(&format!("trigger.remove({})", ptrig))
                 .exec()
                 .unwrap();
         });
@@ -777,9 +711,9 @@ mod lua_script_tests {
     #[test]
     fn test_conditional_gag() {
         let trigger = r#"
-        blight:add_trigger("^Health (\\d+)$", {}, function (matches)
+        trigger.add("^Health (\\d+)$", {}, function (matches, line)
             if matches[2] == "100" then
-                blight:gag()
+                line:gag(true)
             end
         end)
         "#;
@@ -790,11 +724,11 @@ mod lua_script_tests {
         });
 
         let mut line = Line::from("Health 100");
-        lua.check_for_trigger_match(&mut line);
+        lua.on_mud_output(&mut line);
         assert!(line.flags.gag);
 
         let mut line = Line::from("Health 10");
-        lua.check_for_trigger_match(&mut line);
+        lua.on_mud_output(&mut line);
         assert!(!line.flags.gag);
     }
 
@@ -970,7 +904,7 @@ mod lua_script_tests {
     #[test]
     fn test_mud_output_command() {
         let lua_code = r#"
-        blight:add_trigger("^test trigger$", {}, function () end)
+        trigger.add("^test trigger$", {}, function () end)
         blight:mud_output("test trigger")
         "#;
 
@@ -1031,35 +965,37 @@ mod lua_script_tests {
     #[test]
     fn test_trigger_ids() {
         let (lua, _reader) = get_lua();
-        let id = lua.state.context(|ctx| -> u32 {
-            ctx.load(r#"return blight:add_trigger("test", {}, function () end)"#)
+        lua.state.context(|ctx| {
+            let id = ctx
+                .load(r#"return trigger.add("test", {}, function () end).id"#)
                 .call(())
-                .unwrap()
-        });
+                .unwrap();
 
-        let triggers = lua.state.context(|ctx| -> BTreeMap<u32, Trigger> {
-            ctx.load(r#"return blight:get_triggers()"#)
+            let triggers: BTreeMap<u32, rlua::Table> = ctx
+                .load(r#"return trigger.getGroup():getTriggers()"#)
                 .call(())
-                .unwrap()
-        });
+                .unwrap();
 
-        assert!(triggers.contains_key(&id));
+            assert!(triggers.contains_key(&id));
 
-        let trigger = triggers.get(&id).unwrap();
-        assert_eq!(trigger.regex.to_string(), "test");
-        assert_eq!(trigger.enabled, true);
-        assert_eq!(trigger.gag, false);
-        assert_eq!(trigger.raw, false);
-        assert_eq!(trigger.prompt, false);
+            let trigger: &rlua::Table = triggers.get(&id).unwrap();
+            assert_eq!(
+                trigger.get::<_, Regex>("regex").unwrap().to_string(),
+                "test"
+            );
+            assert_eq!(trigger.get::<_, bool>("enabled").unwrap(), true);
+            assert_eq!(trigger.get::<_, bool>("gag").unwrap(), false);
+            assert_eq!(trigger.get::<_, bool>("raw").unwrap(), false);
+            assert_eq!(trigger.get::<_, bool>("prompt").unwrap(), false);
 
-        let ids = lua.state.context(|ctx| -> BTreeMap<u32, Trigger> {
-            ctx.load(r#"blight:clear_triggers()"#).exec().unwrap();
-            ctx.load(r#"return blight:get_triggers()"#)
+            ctx.load(r#"trigger.clear()"#).exec().unwrap();
+            let ids: BTreeMap<u32, rlua::Table> = ctx
+                .load(r#"return trigger.getGroup():getTriggers()"#)
                 .call(())
-                .unwrap()
-        });
+                .unwrap();
 
-        assert!(ids.is_empty());
+            assert!(ids.is_empty());
+        });
     }
 
     #[test]

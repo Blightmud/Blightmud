@@ -241,7 +241,6 @@ impl EventHandler {
             Event::MudOutput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
                     script.on_mud_output(&mut line);
-                    script.check_for_trigger_match(&mut line);
                     screen.print_output(&line);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
@@ -257,7 +256,6 @@ impl EventHandler {
                 let mut output_buffer = self.session.output_buffer.lock().unwrap();
                 if let Ok(script) = self.session.lua_script.lock() {
                     script.on_mud_output(&mut output_buffer.prompt);
-                    script.check_for_prompt_trigger_match(&mut output_buffer.prompt);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });

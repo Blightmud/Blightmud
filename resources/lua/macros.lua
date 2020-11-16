@@ -2,11 +2,11 @@ local function print_mud_output_usage()
 	blight:output("USAGE: /test <some string to test>")
 end
 
-blight:add_alias("^/test$", function (matches)
+alias.add("^/test$", function (matches)
 	print_mud_output_usage()
 end)
 
-blight:add_alias("^/test (.*)$", function (matches)
+alias.add("^/test (.*)$", function (matches)
 	local line = matches[2]:gsub("%s+", "")
 	if line:len() > 0 then
 		blight:mud_output(line)
@@ -31,34 +31,32 @@ local function number_label (number, label)
 	return label .. color .. tostring(number) .. C_RESET
 end
 
-blight:add_alias("^/aliases$", function ()
-	local aliases = blight:get_aliases()
-
-	for id,alias in pairs(aliases) do
+alias.add("^/aliases$", function ()
+	for id,alias in pairs(alias.getGroup():getAliases()) do
 		local enabled = state_label(alias.enabled, "enabled")
-		blight:output(string.format("%s :\t" .. C_YELLOW .. "%s" .. C_RESET .. "\t%s", id, alias.regex, enabled))
+		blight:output(cformat("%s :\t<yellow>%s<reset>\t%s", id, alias.regex:regex(), enabled))
 	end
 end)
 
-blight:add_alias("^/triggers$", function ()
+alias.add("^/triggers$", function ()
 	for id,trigger in pairs(trigger.getGroup():getTriggers()) do
 		local enabled = state_label(trigger.enabled, "enabled")
 		local gag = state_label(trigger.gag, "gag")
 		local raw = state_label(trigger.raw, "raw")
 		local prompt = state_label(trigger.prompt, "prompt")
 		local count = number_label(trigger.count, "count: ")
-		blight:output(string.format("%s :\t" .. C_YELLOW .. "%s" .. C_RESET .. "\t%s\t%s\t%s\t%s\t%s", id, trigger.regex:regex(), enabled, gag, raw, prompt, count))
+		blight:output(cformat("%s :\t<yellow>%s<reset>\t%s\t%s\t%s\t%s\t%s", id, trigger.regex:regex(), enabled, gag, raw, prompt, count))
 	end
 end)
 
-blight:add_alias("^/tts (on|off)$", function (matches)
+alias.add("^/tts (on|off)$", function (matches)
 	tts:enable(matches[2] == "on")
 end)
 
-blight:add_alias("^/tts_rate ([-\\d]+)$", function (matches)
+alias.add("^/tts_rate ([-\\d]+)$", function (matches)
 	tts:set_rate(matches[2])
 end)
 
-blight:add_alias("^/tts_keypresses (on|off)$", function (matches)
+alias.add("^/tts_keypresses (on|off)$", function (matches)
 	tts:echo_keypresses(matches[2] == "on")
 end)

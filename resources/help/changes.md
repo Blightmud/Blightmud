@@ -13,7 +13,7 @@ will need to apply the following changes to your scripts.
 - `blight:add_trigger(...)` => `trigger.add(...)`
 - `blight:remove_trigger(id)` => `trigger.remove(id)`
 - `blight:clear_triggers()` => `trigger.clear()`
-- `blight:enable_trigger(id, bool)` => `trigger.get(id):enable()` or `trigger.get(id):disable()`
+- `blight:enable_trigger(id, bool)` => `trigger.get(id):setEnabled(bool)`
 - `blight:gag` => `Line:gag(true)`
 
 For more info about triggers and lines see `/help trigger` and `/help line`

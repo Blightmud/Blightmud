@@ -108,7 +108,7 @@ function TriggerGroup:get(id)
 end
 
 function TriggerGroup:getTriggers()
-    return {table.unpack(self.triggers)}
+    return self.triggers
 end
 
 function TriggerGroup:remove(id)

@@ -289,10 +289,14 @@ fn parse_key_event(
 ) {
     match key {
         Key::Char('\n') => {
-            writer
-                .send(Event::InputSent(Line::from(buffer.get_buffer())))
-                .unwrap();
-            writer.send(parse_command(&buffer.submit())).unwrap();
+            let input = Line::from(buffer.get_buffer());
+            match parse_command(&buffer.submit()) {
+                Event::ServerInput(msg) => writer.send(Event::ServerInput(msg)).unwrap(),
+                e => {
+                    writer.send(Event::InputSent(input)).unwrap();
+                    writer.send(e).unwrap();
+                }
+            }
         }
         Key::Char('\t') => buffer.tab_complete(),
         Key::Char(c) => {

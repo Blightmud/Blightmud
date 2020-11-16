@@ -5,7 +5,6 @@ pub use self::ui_event::UiEvent;
 #[macro_use]
 mod test_help;
 
-mod alias;
 mod blight;
 mod constants;
 mod core;

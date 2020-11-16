@@ -4,8 +4,6 @@ use rlua::{UserData, UserDataMethods};
 
 use crate::{event::Event, tts::TTSEvent};
 
-use super::constants::TTS_GAG_NEXT_TRIGGER_LINE;
-
 pub struct Tts {
     writer: Sender<Event>,
 }
@@ -36,9 +34,6 @@ impl UserData for Tts {
         methods.add_method("stop", |_, this, _: ()| {
             this.writer.send(Event::SpeakStop).unwrap();
             Ok(())
-        });
-        methods.add_method("gag", |ctx, _, _: ()| {
-            ctx.globals().set(TTS_GAG_NEXT_TRIGGER_LINE, true)
         });
         methods.add_method("enable", |_, this, enabled: bool| {
             this.writer.send(Event::TTSEnabled(enabled)).unwrap();

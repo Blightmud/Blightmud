@@ -4,14 +4,15 @@
 [![Coverage Status](https://coveralls.io/repos/github/LiquidityC/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/LiquidityC/Blightmud?branch=dev)
 # Blightmud  : A mud client for the terminal
 
-Blightmud has been a passion project of mine for some time. A big user of the old
-but great tinyfugue I always wanted to create my own similar mud client. Even
-though I don't play much muds these days.
+Blightmud has been a passion project of mine for some time. A big user of the
+old but great [tinyfugue](http://tinyfugue.sourceforge.net/) I always wanted to
+create my own similar mud client. Even though I don't play much muds these
+days.
 
 ![screenshot](resources/images/demo.gif)
 
 ## The name?
-The client is written in rust. Some navigating throught the thesaurus brought me to the word 'blight' and here we are.
+The client is written in rust. Some navigating throught the thesaurus brought me to the word **blight** and here we are.
 
 ## Features
 - Completely terminal based (mac and linux)

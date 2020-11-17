@@ -4,7 +4,6 @@ pub use self::ui_event::UiEvent;
 #[cfg(test)]
 #[macro_use]
 mod test_help;
-
 mod blight;
 mod constants;
 mod core;

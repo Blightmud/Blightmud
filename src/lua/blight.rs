@@ -277,10 +277,8 @@ mod user_data_tests {
     fn confirm_core_mode() {
         let (mut blight, _reader) = get_blight();
         blight.core_mode(true);
-        assert_eq!(blight.alias_table(), ALIAS_TABLE_CORE);
         assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE_CORE);
         blight.core_mode(false);
-        assert_eq!(blight.alias_table(), ALIAS_TABLE);
         assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE);
     }
 

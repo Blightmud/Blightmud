@@ -559,9 +559,9 @@ fn parse_command(msg: &str) -> Event {
         Some("/help") => {
             let p1 = iter.next();
             if let Some(hfile) = p1 {
-                Event::ShowHelp(hfile.to_string())
+                Event::ShowHelp(hfile.to_string(), true)
             } else {
-                Event::ShowHelp("help".to_string())
+                Event::ShowHelp("help".to_string(), true)
             }
         }
         Some("/start_log") => {

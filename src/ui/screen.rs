@@ -9,7 +9,12 @@ use std::{
 };
 use termion::{color, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 
-struct ScrollData(bool, usize);
+struct ScrollData {
+    active: bool,
+    pos: usize,
+    lock: bool,
+}
+
 const OUTPUT_START_LINE: u16 = 2;
 
 #[derive(Debug)]
@@ -207,6 +212,10 @@ impl History {
     fn remove_last(&mut self) {
         self.inner.pop_back();
     }
+
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 pub struct Screen {
@@ -247,7 +256,11 @@ impl Screen {
             prompt_line,
             cursor_prompt_pos: 1,
             history: History::new(),
-            scroll_data: ScrollData(false, 0),
+            scroll_data: ScrollData {
+                active: false,
+                pos: 0,
+                lock: false,
+            },
             connection: None,
         })
     }
@@ -296,7 +309,7 @@ impl Screen {
     pub fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
         self.status_area
-            .redraw(&mut self.screen, self.scroll_data.0)?;
+            .redraw(&mut self.screen, self.scroll_data.active)?;
         write!(self.screen, "{}", self.goto_prompt())?;
         Ok(())
     }
@@ -337,7 +350,7 @@ impl Screen {
         self.status_area.set_width(self.width);
         self.status_area.update_pos(self.output_line + 1);
         self.status_area
-            .redraw(&mut self.screen, self.scroll_data.0)?;
+            .redraw(&mut self.screen, self.scroll_data.active)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;
         Ok(())
     }
@@ -359,7 +372,7 @@ impl Screen {
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {
                 self.history.append(prompt_line);
-                if !self.scroll_data.0 {
+                if !self.scroll_data.active {
                     write!(
                         self.screen,
                         "{}\n{}{}",
@@ -415,9 +428,15 @@ impl Screen {
                 self.print_line(&print_line, !line.flags.separate_receives);
             } else {
                 let mut replace_first = !line.flags.separate_receives;
+                let mut count = 0;
+                let cur_line = self.history.len();
                 for l in wrap_line(&print_line, self.width as usize) {
                     self.print_line(&l, replace_first);
                     replace_first = true;
+                    count += 1;
+                }
+                if self.scroll_data.lock && count > self.height {
+                    self.scroll_to(cur_line).ok();
                 }
             }
         }
@@ -425,7 +444,7 @@ impl Screen {
 
     fn print_line(&mut self, line: &str, new_line: bool) {
         self.history.append(&line);
-        if !self.scroll_data.0 {
+        if !self.scroll_data.active {
             write!(
                 self.screen,
                 "{}{}{}{}",
@@ -471,30 +490,44 @@ impl Screen {
         self.tts_ctrl.lock().unwrap().speak_error(output);
     }
 
+    pub fn scroll_to(&mut self, row: usize) -> Result<()> {
+        if row < self.history.len() {
+            self.scroll_data.active = true;
+            self.scroll_data.pos = row;
+            self.draw_scroll()?;
+        }
+        Ok(())
+    }
+
+    pub fn scroll_lock(&mut self, lock: bool) -> Result<()> {
+        self.scroll_data.lock = lock;
+        Ok(())
+    }
+
     pub fn scroll_up(&mut self) -> Result<()> {
         let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
         let history = &self.history.inner;
         if history.len() > output_range as usize {
-            if !self.scroll_data.0 {
-                self.scroll_data.0 = true;
-                self.scroll_data.1 = history.len() - output_range;
+            if !self.scroll_data.active {
+                self.scroll_data.active = true;
+                self.scroll_data.pos = history.len() - output_range;
             }
-            self.scroll_data.0 = true;
-            self.scroll_data.1 -= self.scroll_data.1.min(5);
+            self.scroll_data.active = true;
+            self.scroll_data.pos -= self.scroll_data.pos.min(5);
             self.draw_scroll()?;
         }
         Ok(())
     }
 
     pub fn scroll_down(&mut self) -> Result<()> {
-        if self.scroll_data.0 {
+        if self.scroll_data.active {
             let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
             let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
-            let new_start_index = self.scroll_data.1 + 5;
+            let new_start_index = self.scroll_data.pos + 5;
             if new_start_index >= max_start_index as usize {
                 self.reset_scroll()?;
             } else {
-                self.scroll_data.1 = new_start_index;
+                self.scroll_data.pos = new_start_index;
                 self.draw_scroll()?;
             }
         }
@@ -503,8 +536,8 @@ impl Screen {
 
     pub fn scroll_top(&mut self) -> Result<()> {
         if self.history.inner.len() as u16 >= self.output_line {
-            self.scroll_data.0 = true;
-            self.scroll_data.1 = 0;
+            self.scroll_data.active = true;
+            self.scroll_data.pos = 0;
             self.draw_scroll()?;
         }
         Ok(())
@@ -513,7 +546,7 @@ impl Screen {
     fn draw_scroll(&mut self) -> Result<()> {
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         for i in 0..output_range {
-            let index = self.scroll_data.1 + i as usize;
+            let index = self.scroll_data.pos + i as usize;
             let line_no = OUTPUT_START_LINE + i;
             write!(
                 self.screen,
@@ -529,7 +562,7 @@ impl Screen {
     }
 
     pub fn reset_scroll(&mut self) -> Result<()> {
-        self.scroll_data.0 = false;
+        self.scroll_data.active = false;
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
         if output_start_index >= 0 {

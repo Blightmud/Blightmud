@@ -210,7 +210,7 @@ fn main() {
         }
     } else {
         main_writer
-            .send(Event::ShowHelp("welcome".to_string()))
+            .send(Event::ShowHelp("welcome".to_string(), false))
             .unwrap();
     }
 
@@ -419,6 +419,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     }
                 }
             }
+            Event::ScrollLock(enabled) => screen.scroll_lock(enabled)?,
             Event::ScrollUp => screen.scroll_up()?,
             Event::ScrollDown => screen.scroll_down()?,
             Event::ScrollTop => screen.scroll_top()?,
@@ -446,8 +447,8 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 }
                 session.timer_writer.send(TimerEvent::Clear(true))?;
             }
-            Event::ShowHelp(hfile) => {
-                help_handler.show_help(&hfile)?;
+            Event::ShowHelp(hfile, lock) => {
+                help_handler.show_help(&hfile, lock)?;
             }
             Event::AddTimedEvent(duration, count, id, core) => {
                 session

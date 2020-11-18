@@ -19,9 +19,15 @@ impl HelpHandler {
         Self { writer, files }
     }
 
-    pub fn show_help(&self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn show_help(&self, file: &str, lock: bool) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Drawing helpfile: {}", file);
+        if lock {
+            self.writer.send(Event::ScrollLock(true))?;
+        }
         self.writer.send(self.parse_helpfile(file))?;
+        if lock {
+            self.writer.send(Event::ScrollLock(false))?;
+        }
         Ok(())
     }
 
@@ -188,12 +194,12 @@ mod help_test {
     fn confirm_help_render() {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
         let handler = HelpHandler::new(writer);
-        handler.show_help("nothing").unwrap();
+        handler.show_help("nothing", false).unwrap();
         assert_eq!(
             reader.recv(),
             Ok(Event::Info("No such help file found".to_string()))
         );
-        handler.show_help("help").unwrap();
+        handler.show_help("help", false).unwrap();
         let line = if let Ok(Event::Output(line)) = reader.recv() {
             Some(line)
         } else {

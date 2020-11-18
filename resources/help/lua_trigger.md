@@ -38,7 +38,7 @@ Gets a trigger by its ID. If trigger groups are used, all groups will be searche
 ##
 
 ***trigger.getGroup(id)***
-Gets a trigger group by itd ID.
+Gets a trigger group by its ID.
 
 - `id` ID of the trigger group
 - Returns the `TriggerGroup` with the given ID or `nil` if not found
@@ -65,7 +65,8 @@ Creates a new trigger group
 
 ## Trigger
 
-The trigger object represents an individual trigger. It has the following attributes:
+The trigger object represents an individual trigger. It has the following
+attributes:
 
 - `regex`    A regex object that is matched against (See `/help regex`)
 - `callback` The callback function
@@ -152,15 +153,14 @@ registered internally and thus will not function. Prefer to use `trigger.addGrou
 
 ##
 
-***TriggerGroup:add(regex_or_trigger, options, callback)***
+***TriggerGroup:add(regex_or_trigger[, options, callback])***
 Adds a trigger to the group.
-If `regex_or_trigger` is a `Trigger` object, then it will be added to the group
-and the other two parameters are ignored. Otherwise, a new trigger will be
-created.
+
+The second and third arguments are optional if the first is a `Trigger`.
 
 - `regex_or_trigger` The trigger object to add or a regex string to create a new trigger
-- `options`          Options for the new trigger
-- `callback`         Callback for the new trigger
+- `options`          Options for the new trigger (optional)
+- `callback`         Callback for the new trigger (optional)
 
 ##
 
@@ -175,7 +175,9 @@ Gets a trigger from the group
 ***TriggerGroup:getTriggers()***
 Returns a table of all the triggers in the group.
 
-- Returns a shallow copy of the `triggers` attribute
+- Returns the triggers in the group
+
+Avoid modifying the returned table directly.
 
 ##
 

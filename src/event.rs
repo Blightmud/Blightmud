@@ -119,23 +119,28 @@ impl EventHandler {
             }
             Event::ServerInput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
+                    if !line.flags.gag {
+                        self.session
+                            .main_writer
+                            .send(Event::InputSent(line.clone()))
+                            .unwrap();
+                    }
                     script.on_mud_input(&mut line);
-                    if !script.check_for_alias_match(&line) {
-                        if let Ok(mut logger) = self.session.logger.lock() {
-                            if let Some(log_line) = line.log_line() {
-                                logger.log_line(&format!("> {}", &log_line))?;
-                            }
+                    if let Ok(mut logger) = self.session.logger.lock() {
+                        if let Some(log_line) = line.log_line() {
+                            logger.log_line(&format!("> {}", &log_line))?;
                         }
+                    }
+                    if !line.flags.matched {
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
                             if let TelnetEvents::DataSend(buffer) = parser.send_text(&line.line()) {
                                 self.session.main_writer.send(Event::ServerSend(buffer))?;
                             }
                         }
-                    } else {
-                        script.get_output_lines().iter().for_each(|l| {
-                            screen.print_output(l);
-                        });
                     }
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
                 Ok(())
             }

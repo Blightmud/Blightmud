@@ -1,6 +1,6 @@
-use super::{alias::Alias, mud::Mud, regex::RegexLib, util::*};
 use super::{blight::*, line::Line as LuaLine, tts::Tts, util::expand_tilde};
 use super::{constants::*, core::Core, ui_event::UiEvent};
+use super::{mud::Mud, regex::RegexLib, util::*};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
@@ -36,30 +36,31 @@ fn create_default_lua_state(
         globals.set("regex", RegexLib {})?;
         globals.set("mud", Mud::new())?;
 
-        globals.set(ALIAS_TABLE_CORE, ctx.create_table()?)?;
-        globals.set(TRIGGER_TABLE_CORE, ctx.create_table()?)?;
-        globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
-
         globals.set(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table()?)?;
         globals.set(MUD_INPUT_LISTENER_TABLE, ctx.create_table()?)?;
 
-        globals.set(ALIAS_TABLE, ctx.create_table()?)?;
-        globals.set(TRIGGER_TABLE, ctx.create_table()?)?;
-        globals.set(PROMPT_TRIGGER_TABLE, ctx.create_table()?)?;
         globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
+        globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
         globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
         globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;
         globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
         globals.set(ON_CONNECTION_CALLBACK_TABLE, ctx.create_table()?)?;
         globals.set(ON_DISCONNECT_CALLBACK_TABLE, ctx.create_table()?)?;
 
-        globals.set(GAG_NEXT_TRIGGER_LINE, false)?;
-        globals.set(TTS_GAG_NEXT_TRIGGER_LINE, false)?;
-
         let lua_json = ctx
             .load(include_str!("../../resources/lua/json.lua"))
             .call::<_, rlua::Value>(())?;
         globals.set("json", lua_json)?;
+
+        let lua_triggers = ctx
+            .load(include_str!("../../resources/lua/trigger.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("trigger", lua_triggers)?;
+
+        let lua_aliases = ctx
+            .load(include_str!("../../resources/lua/alias.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("alias", lua_aliases)?;
 
         ctx.load(include_str!("../../resources/lua/defaults.lua"))
             .exec()?;
@@ -84,10 +85,6 @@ fn create_default_lua_state(
             .load(include_str!("../../resources/lua/tasks.lua"))
             .call::<_, rlua::Value>(())?;
         globals.set("tasks", lua_tasks)?;
-        let lua_triggers = ctx
-            .load(include_str!("../../resources/lua/trigger.lua"))
-            .call::<_, rlua::Value>(())?;
-        globals.set("trigger", lua_triggers)?;
 
         let mut blight: Blight = globals.get("blight")?;
         blight.core_mode(false);
@@ -157,41 +154,6 @@ impl LuaScript {
             Ok(())
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
-        }
-    }
-
-    pub fn check_for_alias_match(&self, input: &Line) -> bool {
-        if !input.flags.bypass_script {
-            let mut response = false;
-            self.state.context(|ctx| {
-                for table_name in &[ALIAS_TABLE, ALIAS_TABLE_CORE] {
-                    let alias_table: rlua::Table = ctx.globals().get(*table_name).unwrap();
-                    for pair in alias_table.pairs::<rlua::Value, rlua::AnyUserData>() {
-                        let (_, alias) = pair.unwrap();
-                        let rust_alias = &alias.borrow::<Alias>().unwrap();
-                        let regex = &rust_alias.regex;
-                        if rust_alias.enabled && regex.is_match(input.clean_line()) {
-                            let cb: rlua::Function = alias.get_user_value().unwrap();
-                            let captures: Vec<String> = regex
-                                .captures(input.clean_line())
-                                .unwrap()
-                                .iter()
-                                .map(|c| match c {
-                                    Some(m) => m.as_str().to_string(),
-                                    None => String::new(),
-                                })
-                                .collect();
-                            if let Err(msg) = cb.call::<_, ()>(captures) {
-                                output_stack_trace(&self.writer, &msg.to_string());
-                            }
-                            response = true;
-                        }
-                    }
-                }
-            });
-            response
-        } else {
-            false
         }
     }
 
@@ -341,7 +303,6 @@ mod lua_script_tests {
     use super::LuaScript;
     use crate::{
         event::Event,
-        lua::alias::Alias,
         lua::regex::Regex,
         model::{Connection, Line},
         PROJECT_NAME, VERSION,
@@ -505,10 +466,15 @@ mod lua_script_tests {
         assert!(!test_prompt_trigger("test", &lua));
     }
 
+    fn check_alias_match(lua: &LuaScript, mut line: Line) -> bool {
+        lua.on_mud_input(&mut line);
+        line.flags.matched == true
+    }
+
     #[test]
     fn test_lua_alias() {
         let create_alias_lua = r#"
-        blight:add_alias("^test$", function () end)
+        alias.add("^test$", function () end)
         "#;
 
         let lua = get_lua().0;
@@ -516,14 +482,14 @@ mod lua_script_tests {
             ctx.load(create_alias_lua).exec().unwrap();
         });
 
-        assert!(lua.check_for_alias_match(&Line::from("test")));
-        assert!(!lua.check_for_alias_match(&Line::from(" test")));
+        assert!(check_alias_match(&lua, Line::from("test")));
+        assert!(!check_alias_match(&lua, Line::from(" test")));
     }
 
     #[test]
     fn test_lua_remove_alias() {
         let create_alias_lua = r#"
-        return blight:add_alias("^test$", function () end)
+        return alias.add("^test$", function () end).id
         "#;
 
         let lua = get_lua().0;
@@ -532,13 +498,13 @@ mod lua_script_tests {
             .context(|ctx| ctx.load(create_alias_lua).call(()))
             .unwrap();
 
-        assert!(lua.check_for_alias_match(&Line::from("test")));
+        assert!(check_alias_match(&lua, Line::from("test")));
 
-        let delete_alias = format!("blight:remove_alias({})", index);
+        let delete_alias = format!("alias.remove({})", index);
         lua.state.context(|ctx| {
             ctx.load(&delete_alias).exec().unwrap();
         });
-        assert!(!lua.check_for_alias_match(&Line::from("test")));
+        assert!(!check_alias_match(&lua, Line::from("test")));
     }
 
     #[test]
@@ -678,10 +644,7 @@ mod lua_script_tests {
     fn test_sending() {
         assert_events(
             "blight:send(\"message\")",
-            vec![
-                Event::InputSent(Line::from("message")),
-                Event::ServerInput(Line::from("message")),
-            ],
+            vec![Event::ServerInput(Line::from("message"))],
         );
     }
 
@@ -928,7 +891,6 @@ mod lua_script_tests {
         let (lua, reader) = get_lua();
         lua.state.context(|ctx| ctx.load(lua_code).exec().unwrap());
 
-        assert_eq!(reader.recv(), Ok(Event::InputSent(Line::from("test line"))));
         assert_eq!(
             reader.recv(),
             Ok(Event::ServerInput(Line::from("test line")))
@@ -938,28 +900,31 @@ mod lua_script_tests {
     #[test]
     fn test_alias_ids() {
         let (lua, _reader) = get_lua();
-        let id = lua.state.context(|ctx| -> u32 {
-            ctx.load(r#"return blight:add_alias("test", function () end)"#)
+        lua.state.context(|ctx| {
+            let id = ctx
+                .load(r#"return alias.add("test", function () end).id"#)
                 .call(())
-                .unwrap()
+                .unwrap();
+
+            let aliases: BTreeMap<u32, rlua::Table> = ctx
+                .load(r#"return alias.getGroup():getAliases()"#)
+                .call(())
+                .unwrap();
+
+            assert!(aliases.contains_key(&id));
+
+            let alias: &rlua::Table = aliases.get(&id).unwrap();
+            assert_eq!(alias.get::<_, bool>("enabled").unwrap(), true);
+            assert_eq!(alias.get::<_, Regex>("regex").unwrap().to_string(), "test");
+
+            ctx.load(r#"alias.clear()"#).exec().unwrap();
+            let ids: BTreeMap<u32, rlua::Table> = ctx
+                .load(r#"return alias.getGroup():getAliases()"#)
+                .call(())
+                .unwrap();
+
+            assert!(ids.is_empty());
         });
-
-        let aliases = lua.state.context(|ctx| -> BTreeMap<u32, Alias> {
-            ctx.load(r#"return blight:get_aliases()"#).call(()).unwrap()
-        });
-
-        assert!(aliases.contains_key(&id));
-
-        let alias = aliases.get(&id).unwrap();
-        assert_eq!(alias.regex.to_string(), "test");
-        assert_eq!(alias.enabled, true);
-
-        let ids = lua.state.context(|ctx| -> BTreeMap<u32, Alias> {
-            ctx.load(r#"blight:clear_aliases()"#).exec().unwrap();
-            ctx.load(r#"return blight:get_aliases()"#).call(()).unwrap()
-        });
-
-        assert!(ids.is_empty());
     }
 
     #[test]

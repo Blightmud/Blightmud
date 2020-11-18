@@ -1,6 +1,4 @@
-use super::{
-    alias::Alias, constants::*, store_data::StoreData, ui_event::UiEvent, util::output_stack_trace,
-};
+use super::{constants::*, store_data::StoreData, ui_event::UiEvent};
 use crate::event::Event;
 use crate::{
     io::SaveData,
@@ -41,14 +39,6 @@ impl Blight {
 
     pub fn core_mode(&mut self, mode: bool) {
         self.core_mode = mode;
-    }
-
-    fn alias_table(&self) -> &'static str {
-        if self.core_mode {
-            ALIAS_TABLE_CORE
-        } else {
-            ALIAS_TABLE
-        }
     }
 
     fn timer_table(&self) -> &'static str {
@@ -139,9 +129,6 @@ impl UserData for Blight {
                     line.flags.skip_log = table.get("skip_log")?;
                 }
 
-                this.main_writer
-                    .send(Event::InputSent(line.clone()))
-                    .unwrap();
                 this.main_writer.send(Event::ServerInput(line)).unwrap();
                 Ok(())
             },
@@ -152,9 +139,6 @@ impl UserData for Blight {
         });
         methods.add_method("user_input", |_, this, line: String| {
             let line = Line::from(line);
-            this.main_writer
-                .send(Event::InputSent(line.clone()))
-                .unwrap();
             this.main_writer.send(Event::ServerInput(line)).unwrap();
             Ok(())
         });
@@ -205,56 +189,6 @@ impl UserData for Blight {
         });
         methods.add_method("stop_log", |_, this, _: ()| {
             this.main_writer.send(Event::StopLogging).unwrap();
-            Ok(())
-        });
-        methods.add_method_mut(
-            "add_alias",
-            |ctx, this, (regex, callback): (String, rlua::Function)| {
-                let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
-                let next_index = this.next_index();
-                match Alias::create(&regex) {
-                    Ok(alias) => {
-                        alias_table.raw_set(next_index, alias)?;
-                        let alias_handle: rlua::AnyUserData = alias_table.get(next_index)?;
-                        alias_handle.set_user_value(callback)?;
-                    }
-                    Err(msg) => {
-                        output_stack_trace(&this.main_writer, &msg);
-                    }
-                };
-                Ok(next_index)
-            },
-        );
-        methods.add_method("enable_alias", |ctx, this, (id, enabled): (i32, bool)| {
-            let table: rlua::Table = ctx.globals().raw_get(this.alias_table())?;
-
-            // Retrieve the callback function
-            let cb: rlua::Function = { table.get::<i32, rlua::AnyUserData>(id)?.get_user_value()? };
-            let mut alias: Alias = table.get(id)?;
-            alias.enabled = enabled;
-            table.raw_set(id, alias)?;
-
-            // Reset the callback function
-            let alias_handle: rlua::AnyUserData = table.get(id)?;
-            alias_handle.set_user_value(cb)?;
-
-            Ok(())
-        });
-        methods.add_method("remove_alias", |ctx, this, alias_idx: i32| {
-            let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
-            alias_table.raw_set(alias_idx, rlua::Nil)
-        });
-        methods.add_method("get_aliases", |ctx, this, ()| {
-            let alias_table: rlua::Table = ctx.globals().get(this.alias_table())?;
-            let mut keys: BTreeMap<rlua::Integer, Alias> = BTreeMap::new();
-            for pair in alias_table.pairs::<rlua::Integer, Alias>() {
-                let (id, alias) = pair?;
-                keys.insert(id, alias);
-            }
-            Ok(keys)
-        });
-        methods.add_method("clear_aliases", |ctx, this, ()| {
-            ctx.globals().set(this.alias_table(), ctx.create_table()?)?;
             Ok(())
         });
         methods.add_method("is_core_mode", |_, this, ()| Ok(this.core_mode));
@@ -343,10 +277,8 @@ mod user_data_tests {
     fn confirm_core_mode() {
         let (mut blight, _reader) = get_blight();
         blight.core_mode(true);
-        assert_eq!(blight.alias_table(), ALIAS_TABLE_CORE);
         assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE_CORE);
         blight.core_mode(false);
-        assert_eq!(blight.alias_table(), ALIAS_TABLE);
         assert_eq!(blight.timer_table(), TIMED_FUNCTION_TABLE);
     }
 

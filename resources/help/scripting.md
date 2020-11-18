@@ -15,8 +15,8 @@ by typing `/help <category>`.
 
 ## The following categories of methods exist:
 - `blight`      Methods for input, output, and general client and script manipulation.
-- `aliases`     Custom commands that trigger callback functions.
-- `triggers`    Functions triggered in response to incoming text.
+- `alias`     Custom commands that trigger callback functions.
+- `trigger`    Functions triggered in response to incoming text.
 - `timers`      Functions that execute on a timed delay.
 - `regex`       Regular expressions.
 - `gmcp`        Methods for interacting with the Generic MUD Communication Protocol.

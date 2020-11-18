@@ -580,7 +580,7 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
         let mut print_length = 0;
         let mut print_length_since_space = 0;
         let mut in_escape = false;
-        for (length, c) in line.chars().enumerate() {
+        for (length, c) in line.char_indices() {
             // Check for escape sequences
             if c == '\x1b' {
                 in_escape = true;

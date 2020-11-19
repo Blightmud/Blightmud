@@ -295,7 +295,7 @@ core:subneg_recv(function (proto, data)
 		msdp._subneg_recv(data)
 	end
 end)
-blight:on_disconnect(function ()
+mud.on_disconnect(function ()
 	msdp._reset()
 end)
 

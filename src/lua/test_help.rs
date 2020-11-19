@@ -77,5 +77,21 @@ macro_rules! test_lua {
                 });
             };
         }
+
+        #[allow(unused_macros)]
+        macro_rules! register {
+            ($key:literal) => {
+                state.context(|ctx| ctx.named_registry_value($key).unwrap())
+            };
+        }
+
+        #[allow(unused_macros)]
+        macro_rules! set_register {
+            ($key:literal, $val:expr) => {
+                state.context(|ctx| {
+                    ctx.set_named_registry_value($key, $val).unwrap();
+                });
+            };
+        }
     };
 }

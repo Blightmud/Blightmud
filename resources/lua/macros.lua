@@ -9,7 +9,7 @@ end)
 alias.add("^/test (.*)$", function (matches)
 	local line = matches[2]:gsub("%s+", " ")
 	if line:len() > 0 then
-		blight:mud_output(line)
+		mud.output(line)
 	else
 		print_mud_output_usage()
 	end

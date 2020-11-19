@@ -109,7 +109,7 @@ end)
 core:subneg_recv(function (proto, data)
 	gmcp._subneg_recv(proto, data)
 end)
-blight:on_disconnect(function ()
+mud.on_disconnect(function ()
 	gmcp._reset()
 end)
 

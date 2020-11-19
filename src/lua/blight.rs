@@ -1,10 +1,6 @@
 use super::{constants::*, store_data::StoreData, ui_event::UiEvent};
 use crate::event::Event;
-use crate::{
-    io::SaveData,
-    model::{Connection, Line},
-    PROJECT_NAME, VERSION,
-};
+use crate::{io::SaveData, model::Line, PROJECT_NAME, VERSION};
 use chrono::Duration;
 use log::debug;
 use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
@@ -64,34 +60,19 @@ impl Blight {
 
 impl UserData for Blight {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_method_mut("output", |_, this, strings: Variadic<String>| {
+            this.output_lines.push(Line::from(strings.join(" ")));
+            Ok(())
+        });
         methods.add_method("terminal_dimensions", |_, this, _: ()| {
             Ok(this.screen_dimensions)
         });
-        methods.add_method(
-            "connect",
-            |_, this, (host, port, tls): (String, u16, bool)| {
-                this.main_writer
-                    .send(Event::Connect(Connection { host, port, tls }))
-                    .unwrap();
-                Ok(())
-            },
-        );
         methods.add_method("reset", |_, this, ()| {
             this.main_writer.send(Event::ResetScript).unwrap();
             Ok(())
         });
         methods.add_method("load", |_, this, path: String| {
             this.main_writer.send(Event::LoadScript(path)).unwrap();
-            Ok(())
-        });
-        methods.add_method_mut("output", |_, this, strings: Variadic<String>| {
-            this.output_lines.push(Line::from(strings.join(" ")));
-            Ok(())
-        });
-        methods.add_method("mud_output", |_, this, msg: String| {
-            this.main_writer
-                .send(Event::MudOutput(Line::from(msg)))
-                .unwrap();
             Ok(())
         });
         methods.add_method(
@@ -133,15 +114,6 @@ impl UserData for Blight {
                 Ok(())
             },
         );
-        methods.add_method("send_bytes", |_, this, bytes: Vec<u8>| {
-            this.main_writer.send(Event::ServerSend(bytes)).unwrap();
-            Ok(())
-        });
-        methods.add_method("user_input", |_, this, line: String| {
-            let line = Line::from(line);
-            this.main_writer.send(Event::ServerInput(line)).unwrap();
-            Ok(())
-        });
         methods.add_method("debug", |_, _, strings: Variadic<String>| {
             debug!("{}", strings.join(" "));
             Ok(())
@@ -241,18 +213,6 @@ impl UserData for Blight {
             this.main_writer
                 .send(Event::StatusLine(index, line))
                 .unwrap();
-            Ok(())
-        });
-        methods.add_method("on_connect", |ctx, _, callback: rlua::Function| {
-            let globals = ctx.globals();
-            let table: rlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
-            table.raw_set(table.raw_len() + 1, callback)?;
-            Ok(())
-        });
-        methods.add_method("on_disconnect", |ctx, _, callback: rlua::Function| {
-            let globals = ctx.globals();
-            let table: rlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
-            table.set(table.raw_len() + 1, callback)?;
             Ok(())
         });
         methods.add_method("version", |_, _, _: ()| -> LuaResult<(&str, &str)> {

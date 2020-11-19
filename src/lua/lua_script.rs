@@ -1,4 +1,4 @@
-use super::{blight::*, line::Line as LuaLine, tts::Tts, util::expand_tilde};
+use super::{backend::Backend, blight::*, line::Line as LuaLine, tts::Tts, util::expand_tilde};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{mud::Mud, regex::RegexLib, util::*};
 use crate::{event::Event, model::Line};
@@ -19,6 +19,7 @@ fn create_default_lua_state(
 ) -> Lua {
     let state = unsafe { Lua::new_with_debug() };
 
+    let backend = Backend::new(writer.clone());
     let mut blight = Blight::new(writer.clone());
     let core = match core {
         Some(core) => core,
@@ -30,14 +31,16 @@ fn create_default_lua_state(
     blight.core_mode(true);
     let result = state.context(|ctx| -> LuaResult<()> {
         let globals = ctx.globals();
+
+        ctx.set_named_registry_value(BACKEND, backend)?;
+        ctx.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table()?)?;
+        ctx.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, ctx.create_table()?)?;
+
         globals.set("blight", blight)?;
         globals.set("core", core)?;
         globals.set("tts", tts)?;
         globals.set("regex", RegexLib {})?;
         globals.set("mud", Mud::new())?;
-
-        globals.set(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table()?)?;
-        globals.set(MUD_INPUT_LISTENER_TABLE, ctx.create_table()?)?;
 
         globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
         globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
@@ -130,7 +133,7 @@ impl LuaScript {
     pub fn on_mud_output(&self, line: &mut Line) {
         let mut lline = LuaLine::from(line.clone());
         if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
-            let table: rlua::Table = ctx.globals().get(MUD_OUTPUT_LISTENER_TABLE)?;
+            let table: rlua::Table = ctx.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
             for pair in table.pairs::<rlua::Value, rlua::Function>() {
                 let (_, cb) = pair?;
                 lline = cb.call::<_, LuaLine>(lline)?;
@@ -145,7 +148,7 @@ impl LuaScript {
     pub fn on_mud_input(&self, line: &mut Line) {
         let mut lline = LuaLine::from(line.clone());
         if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
-            let table: rlua::Table = ctx.globals().get(MUD_INPUT_LISTENER_TABLE)?;
+            let table: rlua::Table = ctx.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
             for pair in table.pairs::<rlua::Value, rlua::Function>() {
                 let (_, cb) = pair?;
                 lline = cb.call::<_, LuaLine>(lline)?;
@@ -301,12 +304,7 @@ impl LuaScript {
 #[cfg(test)]
 mod lua_script_tests {
     use super::LuaScript;
-    use crate::{
-        event::Event,
-        lua::regex::Regex,
-        model::{Connection, Line},
-        PROJECT_NAME, VERSION,
-    };
+    use crate::{event::Event, lua::regex::Regex, model::Line, PROJECT_NAME, VERSION};
     use rlua::Result as LuaResult;
     use std::{
         collections::BTreeMap,
@@ -589,34 +587,6 @@ mod lua_script_tests {
     }
 
     #[test]
-    fn test_connect() {
-        assert_event(
-            "blight:connect(\"hostname\", 99)",
-            Event::Connect(Connection {
-                host: "hostname".to_string(),
-                port: 99,
-                tls: false,
-            }),
-        );
-        assert_event(
-            "blight:connect(\"hostname\", 99, false)",
-            Event::Connect(Connection {
-                host: "hostname".to_string(),
-                port: 99,
-                tls: false,
-            }),
-        );
-        assert_event(
-            "blight:connect(\"hostname\", 99, true)",
-            Event::Connect(Connection {
-                host: "hostname".to_string(),
-                port: 99,
-                tls: true,
-            }),
-        );
-    }
-
-    #[test]
     fn test_output() {
         let (lua, _) = get_lua();
         lua.state.context(|ctx| {
@@ -645,14 +615,6 @@ mod lua_script_tests {
         assert_events(
             "blight:send(\"message\")",
             vec![Event::ServerInput(Line::from("message"))],
-        );
-    }
-
-    #[test]
-    fn test_send_bytes() {
-        assert_event(
-            "blight:send_bytes({ 0xff, 0xf1 })",
-            Event::ServerSend(vec![0xff, 0xf1]),
         );
     }
 
@@ -781,13 +743,13 @@ mod lua_script_tests {
     #[test]
     fn test_on_connect_test() {
         let lua_code = r#"
-        blight:on_connect(function (host, port)
+        mud.on_connect(function (host, port)
             blight:output(host .. ":" .. port .. "-1")
         end)
-        blight:on_connect(function (host, port)
+        mud.on_connect(function (host, port)
             blight:output(host .. ":" .. port .. "-2")
         end)
-        blight:on_connect(function (host, port)
+        mud.on_connect(function (host, port)
             blight:output(host .. ":" .. port .. "-3")
         end)
         "#;
@@ -824,13 +786,13 @@ mod lua_script_tests {
     #[test]
     fn test_on_disconnect_test() {
         let lua_code = r#"
-        blight:on_disconnect(function ()
+        mud.on_disconnect(function ()
             blight:output("disconnected1")
         end)
-        blight:on_disconnect(function ()
+        mud.on_disconnect(function ()
             blight:output("disconnected2")
         end)
-        blight:on_disconnect(function ()
+        mud.on_disconnect(function ()
             blight:output("disconnected3")
         end)
         "#;
@@ -861,39 +823,6 @@ mod lua_script_tests {
                 Line::from("disconnected2"),
                 Line::from("disconnected3"),
             ]
-        );
-    }
-
-    #[test]
-    fn test_mud_output_command() {
-        let lua_code = r#"
-        trigger.add("^test trigger$", {}, function () end)
-        blight:mud_output("test trigger")
-        "#;
-
-        let (lua, reader) = get_lua();
-        lua.state.context(|ctx| ctx.load(lua_code).exec().unwrap());
-
-        if let Ok(event) = reader.recv() {
-            assert_eq!(event, Event::MudOutput(Line::from("test trigger")));
-            if let Event::MudOutput(line) = event {
-                test_trigger(&line.to_string(), &lua);
-            }
-        }
-    }
-
-    #[test]
-    fn test_user_input_command() {
-        let lua_code = r#"
-        blight:user_input("test line")
-        "#;
-
-        let (lua, reader) = get_lua();
-        lua.state.context(|ctx| ctx.load(lua_code).exec().unwrap());
-
-        assert_eq!(
-            reader.recv(),
-            Ok(Event::ServerInput(Line::from("test line")))
         );
     }
 

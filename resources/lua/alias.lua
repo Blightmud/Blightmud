@@ -48,7 +48,6 @@ function Alias:checkLine(line)
     local str = line:line()
     local matches = self.regex:match(str)
     if matches then
-        print("Matched:", str)
         self.callback(matches, line)
         line:matched(true)
     end
@@ -173,7 +172,6 @@ function mod.addGroup()
 end
 
 mud.add_input_listener(function(line)
-    print("Got line:", line:line())
     for _, group in pairs(system_alias_groups) do
         group:checkLine(line)
     end

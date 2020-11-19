@@ -172,7 +172,7 @@ function mod.addGroup()
     return ret
 end
 
-mud:add_input_listener(function(line)
+mud.add_input_listener(function(line)
     print("Got line:", line:line())
     for _, group in pairs(system_alias_groups) do
         group:checkLine(line)

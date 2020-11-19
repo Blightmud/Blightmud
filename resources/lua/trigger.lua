@@ -190,7 +190,7 @@ function mod.addGroup()
     return ret
 end
 
-mud:add_output_listener(function(line)
+mud.add_output_listener(function(line)
     for _, group in pairs(system_trigger_groups) do
         group:checkLine(line)
     end

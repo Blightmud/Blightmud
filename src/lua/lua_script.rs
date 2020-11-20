@@ -617,7 +617,7 @@ mod lua_script_tests {
     #[test]
     fn test_sending() {
         assert_events(
-            "blight:send(\"message\")",
+            "mud.send(\"message\")",
             vec![Event::ServerInput(Line::from("message"))],
         );
     }

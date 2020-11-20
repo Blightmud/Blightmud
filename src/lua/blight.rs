@@ -99,21 +99,6 @@ impl UserData for Blight {
             }
             Ok(())
         });
-        methods.add_method(
-            "send",
-            |_, this, (msg, options): (String, Option<rlua::Table>)| {
-                let mut line = Line::from(msg);
-                line.flags.bypass_script = true;
-
-                if let Some(table) = options {
-                    line.flags.gag = table.get("gag")?;
-                    line.flags.skip_log = table.get("skip_log")?;
-                }
-
-                this.main_writer.send(Event::ServerInput(line)).unwrap();
-                Ok(())
-            },
-        );
         methods.add_method("debug", |_, _, strings: Variadic<String>| {
             debug!("{}", strings.join(" "));
             Ok(())

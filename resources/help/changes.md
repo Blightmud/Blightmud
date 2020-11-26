@@ -19,6 +19,25 @@ will need to apply the following changes to your scripts.
 For more info about triggers and lines see `/help trigger` and `/help line`
 There are now exists a group system for triggers for bulk trigger handling.
 
+### Aliases
+
+- `blight:add_alias(...)` => `alias.add(...)`
+- `blight:remove_alias(id)` => `alias.remove(id)`
+- `blight:clear_aliases()` => `alias.clear()`
+- `blight:enable_alias(id, bool)` => `alias.get(id):setEnabled(bool)`
+
+Just as with triggers aliases now have additional functionality through groups.
+See `/help alias` for more information.
+
+### Mud communication
+- `blight:on_connect(...)` => `mud.on_connect(...)`
+- `blight:on_disconnect(...)` => `mud.on_disconnect(...)`
+- `blight:connect(...)` => `mud.connect(...)`
+- `blight:send(...)` => `mud.send(...)`
+- `blight:send_bytes(...)` => `mud.send_bytes(...)`
+- `blight:user_input(...)` => `mud.input(...)`
+- `blight:mud_output(...)` => `mud.output(...)`
+
 ## Changes in Blightmud v2.0
 
 ### The GMCP module has been re-worked

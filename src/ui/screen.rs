@@ -612,9 +612,9 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
                     print_length = print_length_since_space;
                     last_cut = last_space + 1;
                 } else {
-                    lines.push(&line[last_cut..length + 1]);
+                    lines.push(&line[last_cut..length + c.len_utf8()]);
                     print_length = 0;
-                    last_cut = length + 1;
+                    last_cut = length + c.len_utf8();
                 }
             }
         }

@@ -4,11 +4,12 @@ This file lists some of the things that are new between the versions of
 Blightmud. It doesn't list all new features but will always list breaking
 changes where you might need to take action.
 
-## Changes in Blightmud v3.0
+---
+# Changes in Blightmud v3.0
 The `blight` module in lua has now been separated into multiple modules. You
 will need to apply the following changes to your scripts.
 
-### Triggers
+## Triggers
 
 - `blight:add_trigger(...)` => `trigger.add(...)`
 - `blight:remove_trigger(id)` => `trigger.remove(id)`
@@ -19,7 +20,7 @@ will need to apply the following changes to your scripts.
 For more info about triggers and lines see `/help trigger` and `/help line`
 There are now exists a group system for triggers for bulk trigger handling.
 
-### Aliases
+## Aliases
 
 - `blight:add_alias(...)` => `alias.add(...)`
 - `blight:remove_alias(id)` => `alias.remove(id)`
@@ -29,7 +30,7 @@ There are now exists a group system for triggers for bulk trigger handling.
 Just as with triggers aliases now have additional functionality through groups.
 See `/help alias` for more information.
 
-### Mud communication
+## Mud communication
 - `blight:on_connect(...)` => `mud.on_connect(...)`
 - `blight:on_disconnect(...)` => `mud.on_disconnect(...)`
 - `blight:connect(...)` => `mud.connect(...)`
@@ -38,9 +39,10 @@ See `/help alias` for more information.
 - `blight:user_input(...)` => `mud.input(...)`
 - `blight:mud_output(...)` => `mud.output(...)`
 
-## Changes in Blightmud v2.0
+---
+# Changes in Blightmud v2.0
 
-### The GMCP module has been re-worked
+## The GMCP module has been re-worked
 All the gmcp related functionality now resides in the `gmcp` module.
 It's already imported and ready to use. The following changes to your scripts will let you have a smooth transition.
 

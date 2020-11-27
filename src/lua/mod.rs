@@ -13,6 +13,7 @@ mod line;
 mod lua_script;
 mod mud;
 mod regex;
+mod script;
 mod store_data;
 mod tts;
 mod ui_event;

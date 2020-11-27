@@ -67,14 +67,6 @@ impl UserData for Blight {
         methods.add_method("terminal_dimensions", |_, this, _: ()| {
             Ok(this.screen_dimensions)
         });
-        methods.add_method("reset", |_, this, ()| {
-            this.main_writer.send(Event::ResetScript).unwrap();
-            Ok(())
-        });
-        methods.add_method("load", |_, this, path: String| {
-            this.main_writer.send(Event::LoadScript(path)).unwrap();
-            Ok(())
-        });
         methods.add_method(
             "bind",
             |ctx, _, (cmd, callback): (String, rlua::Function)| {

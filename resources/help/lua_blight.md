@@ -1,7 +1,6 @@
-# General Methods
+# The blight module
 
-These methods allow you to interface with the connected server or manipulate
-Blightmud's scripting engine.
+Exposes methods to print to blightmuds output area and bind keys.
 
 ##
 
@@ -22,17 +21,6 @@ blight:output(C_BWHITE .. BG_BLUE .. "White text with blue background" .. C_RESE
 print("Another", BG_BLUE .. "nice" .. C_RESET, "message")
 ```
 For a list of available colors se `/help colors`
-
-##
-
-***blight:load(file)***
-Loads a script file. You can also use the regular 'require' command for this.
-- `file`  The filename of the script to load.
-
-##
-
-***blight:reset()***
-Resets the script engine, clearing the entire Lua environment.
 
 ##
 

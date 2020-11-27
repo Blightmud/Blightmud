@@ -5,15 +5,52 @@ right script depending on what mud you connect to or anything else you find usef
 
 Example config:
 ```lua
-blight:on_connect(function (host, port)
-    if host == "awesome-mud.net" then
-        blight:reset()
-        blight:load("/home/user/ws/scripts/awesome-mud-ai-battle-pwn-system.lua")
-    elseif host == "noob-land.net" then
-        blight:add_timer(3, 0, function ()
-            blight:send("kick bunny")
-            blight:send("get gold")
-        end)
-    end)
+local self = {
+	host = core:read("cur_host"),
+	port = tonumber(core:read("cur_port") or "0"),
+}
+
+local function reload_scripts()
+	blight:status_height(1)
+	blight:status_line(0, "")
+	script.reset()
+	script.load("/home/user/.config/blightmud/config.lua")
+end
+
+local function disconnect()
+	blight:output("[CONFIG]: Clearing scripts")
+	self.host = nil
+	self.port = nil
+	core:store("cur_host", tostring(nil))
+	core:store("cur_port", tostring(nil))
+	reload_scripts()
+end
+
+local function on_connect(host, port)
+	core:store("cur_host", host)
+	core:store("cur_port", tostring(port))
+
+	if host == "the-best-mud.org" then
+		blight:load("~/scripts/the-best-mud/main.lua")
+	elseif host == "spacemud.net" then
+		blight:load("~/scripts/spacemud/main.lua")
+	elseif host == "fantasymud.ly" then
+		blight:load("~/scripts/fantasymud/main.lua")
+	end 
+end
+
+alias.add("^reload$", reload_scripts)
+
+mud.on_connect(function (host, port)
+	on_connect(host, port)
 end)
+
+mud.on_disconnect(function ()
+	blight:output("[CONFIG]: Disconnecting")
+	disconnect()
+end)
+
+if self.host and self.port then
+	on_connect(self.host, self.port)
+end
 ```

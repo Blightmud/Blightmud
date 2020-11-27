@@ -1,4 +1,7 @@
-use super::{backend::Backend, blight::*, line::Line as LuaLine, tts::Tts, util::expand_tilde};
+use super::{
+    backend::Backend, blight::*, line::Line as LuaLine, script::Script, tts::Tts,
+    util::expand_tilde,
+};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{mud::Mud, regex::RegexLib, util::*};
 use crate::{event::Event, model::Line};
@@ -41,6 +44,7 @@ fn create_default_lua_state(
         globals.set("tts", tts)?;
         globals.set("regex", RegexLib {})?;
         globals.set("mud", Mud::new())?;
+        globals.set("script", Script {})?;
 
         globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
         globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
@@ -604,14 +608,14 @@ mod lua_script_tests {
     #[test]
     fn test_load() {
         assert_event(
-            "blight:load(\"/some/fancy/path\")",
+            "script.load(\"/some/fancy/path\")",
             Event::LoadScript("/some/fancy/path".to_string()),
         );
     }
 
     #[test]
     fn test_reset() {
-        assert_event("blight:reset()", Event::ResetScript);
+        assert_event("script.reset()", Event::ResetScript);
     }
 
     #[test]

@@ -137,7 +137,8 @@ local function runTask(task)
     local startTime = os.time()
     debug.sethook(task.coro, function()
         if os.time() > startTime + 2 then
-            error("Too long without yielding", 2)
+			debug.sethook()
+            error("Task has been running for +2 seconds without yielding. Aborting", 2)
         end
     end, "", 500)
     local ret

@@ -63,12 +63,19 @@ function Trigger:checkLine(line)
             line:gag(true)
         end
         line:matched(true)
-
-        self.callback(matches, line)
-
         if self.count and self.count > 0 then
             self.count = self.count - 1
         end
+
+		local startTime = os.time()
+		debug.sethook(function ()
+			if os.time() > startTime + 2 then
+				debug.sethook()
+				error("Trigger callback has been running for +2 seconds. Aborting", 2)
+			end
+		end, "", 500)
+        self.callback(matches, line)
+		debug.sethook()
     end
 end
 

@@ -39,6 +39,10 @@ See `/help alias` for more information.
 - `blight:user_input(...)` => `mud.input(...)`
 - `blight:mud_output(...)` => `mud.output(...)`
 
+## Logging
+- `blight:start_log(...)` => `log.start(...)`
+- `blight:stop_log(...)` => `log.stop(...)`
+
 ## Scripts
 - `blight:load(...)` => `script.load(...)`
 - `blight:reset()` => `script.reset()`

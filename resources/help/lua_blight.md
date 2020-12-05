@@ -29,17 +29,3 @@ Gets the current terminal dimensions (these can change on window resize).
 ```lua
 width, height = blight:terminal_dimensions()
 ```
-
-##
-
-***blight:start_logging(worldname)***
-Start logging to a specified "world" name.
-
-If a log is already started then this command has no effect. So if you choose to use this manual logging then make
-sure automatic logging is disabled. See `/help logging` for more information.
-
-##
-
-***blight:stop_logging()***
-Stop logging
-

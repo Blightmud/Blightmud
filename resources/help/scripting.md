@@ -26,4 +26,5 @@ by typing `/help <module>`.
 - `bindings`    Functions for configuring keybindings and adding new ones
 - `tasks`       Library for control of background tasks
 - `mud`         Functions for interacting with the mud
+- `log`         Functions for logging
 - `core`        Functions for advanced scripting and telnet protocol control

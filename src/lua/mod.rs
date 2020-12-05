@@ -10,6 +10,7 @@ mod constants;
 mod core;
 mod exec_response;
 mod line;
+mod log;
 mod lua_script;
 mod mud;
 mod regex;

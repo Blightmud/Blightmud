@@ -96,6 +96,11 @@ impl Session {
 
     pub fn start_logging(&self, host: &str) {
         if let Ok(mut logger) = self.logger.lock() {
+            self.main_writer
+                .send(Event::Info(
+                    format!("Started logging for: {}", host).to_string(),
+                ))
+                .unwrap();
             logger.start_logging(host).ok();
         }
     }
@@ -252,6 +257,10 @@ mod session_test {
         let (session, reader, _timer_reader) = build_session();
         assert!(!session.logger.lock().unwrap().is_logging());
         session.start_logging("mysteryhost");
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::Info("Started logging for: mysteryhost".to_string()))
+        );
         assert!(session.logger.lock().unwrap().is_logging());
         session.stop_logging();
         assert_eq!(

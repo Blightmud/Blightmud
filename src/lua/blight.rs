@@ -130,16 +130,6 @@ impl UserData for Blight {
                 })
             },
         );
-        methods.add_method("start_log", |_, this, name: String| {
-            this.main_writer
-                .send(Event::StartLogging(name, true))
-                .unwrap();
-            Ok(())
-        });
-        methods.add_method("stop_log", |_, this, _: ()| {
-            this.main_writer.send(Event::StopLogging).unwrap();
-            Ok(())
-        });
         methods.add_method("is_core_mode", |_, this, ()| Ok(this.core_mode));
         methods.add_method_mut(
             "add_timer",

@@ -365,12 +365,10 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             },
             Event::StartLogging(world, force) => {
                 if Settings::load().get(LOGGING_ENABLED)? || force {
-                    screen.print_info(&format!("Started logging for: {}", world));
                     session.start_logging(&world)
                 }
             }
             Event::StopLogging => {
-                screen.print_info("Logging stopped");
                 session.stop_logging();
             }
             Event::EnableProto(proto) => {

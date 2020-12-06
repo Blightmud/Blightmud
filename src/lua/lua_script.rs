@@ -3,7 +3,7 @@ use super::{
     util::expand_tilde,
 };
 use super::{constants::*, core::Core, ui_event::UiEvent};
-use super::{mud::Mud, regex::RegexLib, util::*};
+use super::{log::Log, mud::Mud, regex::RegexLib, util::*};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
@@ -44,6 +44,7 @@ fn create_default_lua_state(
         globals.set("tts", tts)?;
         globals.set("regex", RegexLib {})?;
         globals.set("mud", Mud::new())?;
+        globals.set("log", Log::new())?;
         globals.set("script", Script {})?;
 
         globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
@@ -624,21 +625,6 @@ mod lua_script_tests {
             "mud.send(\"message\")",
             vec![Event::ServerInput(Line::from("message"))],
         );
-    }
-
-    #[test]
-    fn test_logging() {
-        let (lua, reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load("blight:start_log(\"testworld\")").exec().unwrap();
-            ctx.load("blight:stop_log()").exec().unwrap();
-        });
-
-        assert_eq!(
-            reader.recv(),
-            Ok(Event::StartLogging("testworld".to_string(), true))
-        );
-        assert_eq!(reader.recv(), Ok(Event::StopLogging));
     }
 
     #[test]

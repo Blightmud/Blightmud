@@ -2,9 +2,7 @@ use rlua::{UserData, UserDataMethods};
 
 use crate::lua::{backend::Backend, constants::BACKEND};
 
-use super::functions::{
-    add_plugin, get_plugins, load_plugin, remove_plugin, update_plugin,
-};
+use super::functions::{add_plugin, get_plugins, load_plugin, remove_plugin, update_plugin};
 
 pub struct Handler {}
 

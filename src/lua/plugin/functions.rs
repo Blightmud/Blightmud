@@ -1,8 +1,4 @@
-use std::{
-    fs,
-    path::PathBuf,
-    sync::mpsc::Sender,
-};
+use std::{fs, path::PathBuf, sync::mpsc::Sender};
 
 use anyhow::{bail, Result};
 use git2::{
@@ -19,7 +15,7 @@ fn get_plugin_dir() -> PathBuf {
 }
 
 pub fn add_plugin(url: &str) -> Result<()> {
-    if let Some(name) = url.split("/").last() {
+    if let Some(name) = url.split('/').last() {
         let dest = get_plugin_dir().join(name);
         let mut rbuilder = RepoBuilder::new();
         rbuilder.clone_local(CloneLocal::Auto);
@@ -40,14 +36,12 @@ pub fn load_plugin(name: &str, writer: &Sender<Event>) -> Result<()> {
     let path = get_plugin_dir().join(name).join("main.lua");
     if !path.exists() {
         bail!("Plugin '{}' doesn't contain a 'main.lua' file", name);
+    } else if let Some(path_name) = path.to_str() {
+        writer
+            .send(Event::LoadScript(path_name.to_string()))
+            .unwrap();
     } else {
-        if let Some(path_name) = path.to_str() {
-            writer
-                .send(Event::LoadScript(path_name.to_string()))
-                .unwrap();
-        } else {
-            bail!("Invalid plugin path to main.lua");
-        }
+        bail!("Invalid plugin path to main.lua");
     }
     Ok(())
 }

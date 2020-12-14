@@ -97,9 +97,7 @@ impl Session {
     pub fn start_logging(&self, host: &str) {
         if let Ok(mut logger) = self.logger.lock() {
             self.main_writer
-                .send(Event::Info(
-                    format!("Started logging for: {}", host).to_string(),
-                ))
+                .send(Event::Info(format!("Started logging for: {}", host)))
                 .unwrap();
             logger.start_logging(host).ok();
         }

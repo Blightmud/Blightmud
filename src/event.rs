@@ -120,13 +120,8 @@ impl EventHandler {
             }
             Event::ServerInput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
-                    if !line.flags.gag {
-                        self.session
-                            .main_writer
-                            .send(Event::InputSent(line.clone()))
-                            .unwrap();
-                    }
                     script.on_mud_input(&mut line);
+                    screen.print_send(&line);
                     if let Ok(mut logger) = self.session.logger.lock() {
                         if let Some(log_line) = line.log_line() {
                             logger.log_line(&format!("> {}", &log_line))?;

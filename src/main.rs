@@ -11,7 +11,6 @@ mod io;
 mod lua;
 mod model;
 mod net;
-mod plugin;
 mod session;
 mod timer;
 mod tools;
@@ -327,7 +326,6 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 //tts_ctrl.handle_events(event.clone());
                 event_handler.handle_output_events(event, &mut screen)?;
             }
-
             Event::TTSEnabled(enabled) => session.tts_ctrl.lock().unwrap().enabled(enabled),
             Event::Speak(msg, interupt) => session.tts_ctrl.lock().unwrap().speak(&msg, interupt),
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),

@@ -1,7 +1,4 @@
-use super::{
-    backend::Backend, blight::*, line::Line as LuaLine, script::Script, tts::Tts,
-    util::expand_tilde,
-};
+use super::{backend::Backend, blight::*, line::Line as LuaLine, plugin, script::Script, tts::Tts};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{log::Log, mud::Mud, regex::RegexLib, util::*};
 use crate::{event::Event, model::Line};
@@ -46,6 +43,7 @@ fn create_default_lua_state(
         globals.set("mud", Mud::new())?;
         globals.set("log", Log::new())?;
         globals.set("script", Script {})?;
+        globals.set("plugin", plugin::Handler::new())?;
 
         globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
         globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
@@ -93,6 +91,10 @@ fn create_default_lua_state(
             .load(include_str!("../../resources/lua/tasks.lua"))
             .call::<_, rlua::Value>(())?;
         globals.set("tasks", lua_tasks)?;
+        let lua_plugin = ctx
+            .load(include_str!("../../resources/lua/plugins.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("tasks", lua_plugin)?;
 
         let mut blight: Blight = globals.get("blight")?;
         blight.core_mode(false);

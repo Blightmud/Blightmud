@@ -167,7 +167,7 @@ local function runTask(task)
 end
 
 
-blight:add_timer(0.1, 0, function()
+timer.add(0.1, 0, function()
     local somethingRan = false
     for task, timespec in pairs(tasks) do
         if timespec.time < os.time() and not timespec.idle then

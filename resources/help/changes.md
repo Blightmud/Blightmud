@@ -47,6 +47,12 @@ See `/help alias` for more information.
 - `blight:load(...)` => `script.load(...)`
 - `blight:reset()` => `script.reset()`
 
+## Timers
+- `blight:add_timer(...)` => `timer.add(...)`
+- `blight:clear_timers()` => `timer.clear()`
+- `blight:remove_timer(...)` => `timer.remove(...)`
+- `blight:get_timer_ids()` => `timer.get_ids()`
+
 ---
 # Changes in Blightmud v2.0
 

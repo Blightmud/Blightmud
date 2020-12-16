@@ -3,7 +3,7 @@ use super::{
     util::expand_tilde,
 };
 use super::{constants::*, core::Core, ui_event::UiEvent};
-use super::{log::Log, mud::Mud, regex::RegexLib, util::*};
+use super::{log::Log, mud::Mud, regex::RegexLib, timer::Timer, util::*};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{Lua, Result as LuaResult};
@@ -38,6 +38,9 @@ fn create_default_lua_state(
         ctx.set_named_registry_value(BACKEND, backend)?;
         ctx.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table()?)?;
         ctx.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, ctx.create_table()?)?;
+        ctx.set_named_registry_value(TIMED_CALLBACK_TABLE, ctx.create_table()?)?;
+        ctx.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, ctx.create_table()?)?;
+        ctx.set_named_registry_value(TIMED_NEXT_ID, 1)?;
 
         globals.set("blight", blight)?;
         globals.set("core", core)?;
@@ -45,10 +48,9 @@ fn create_default_lua_state(
         globals.set("regex", RegexLib {})?;
         globals.set("mud", Mud::new())?;
         globals.set("log", Log::new())?;
+        globals.set("timer", Timer::new())?;
         globals.set("script", Script {})?;
 
-        globals.set(TIMED_FUNCTION_TABLE, ctx.create_table()?)?;
-        globals.set(TIMED_FUNCTION_TABLE_CORE, ctx.create_table()?)?;
         globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
         globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;
         globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
@@ -171,11 +173,11 @@ impl LuaScript {
 
     pub fn run_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let core_table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE_CORE)?;
+            let core_table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
             match core_table.get(id)? {
                 rlua::Value::Function(func) => func.call::<_, ()>(()),
                 _ => {
-                    let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+                    let table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
                     match table.get(id)? {
                         rlua::Value::Function(func) => func.call::<_, ()>(()),
                         _ => Ok(()),
@@ -189,7 +191,11 @@ impl LuaScript {
 
     pub fn remove_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let table: rlua::Table = ctx.globals().get(TIMED_FUNCTION_TABLE)?;
+            let core_table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
+            let table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
+            if let Err(core_err) = core_table.set(id, rlua::Nil) {
+                return Err(core_err);
+            }
             table.set(id, rlua::Nil)
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
@@ -884,104 +890,5 @@ mod lua_script_tests {
 
             assert!(ids.is_empty());
         });
-    }
-
-    #[test]
-    fn test_timer_ids() {
-        let (lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(r#"blight:clear_timers()"#).exec().unwrap();
-        });
-        let id = lua.state.context(|ctx| -> u32 {
-            ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
-                .call(())
-                .unwrap()
-        });
-
-        let ids = lua.state.context(|ctx| -> Vec<u32> {
-            ctx.load(r#"return blight:get_timer_ids()"#)
-                .call(())
-                .unwrap()
-        });
-
-        assert_eq!(ids, vec![id]);
-
-        let ids = lua.state.context(|ctx| -> Vec<u32> {
-            ctx.load(r#"blight:clear_timers()"#).exec().unwrap();
-            ctx.load(r#"return blight:get_timer_ids()"#)
-                .call(())
-                .unwrap()
-        });
-
-        assert!(ids.is_empty());
-    }
-
-    #[test]
-    fn test_remove_timer() {
-        let (lua, _reader) = get_lua();
-
-        macro_rules! timer_ids {
-            () => {
-                lua.state.context(|ctx| -> Vec<u32> {
-                    ctx.load(r#"return blight:get_timer_ids()"#)
-                        .call(())
-                        .unwrap()
-                })
-            };
-        }
-
-        lua.state
-            .context(|ctx| ctx.load(r#"blight:clear_timers()"#).exec().unwrap());
-
-        let id1 = lua.state.context(|ctx| -> u32 {
-            ctx.load(r#"return blight:add_timer(5, 5, function () end)"#)
-                .call(())
-                .unwrap()
-        });
-        let id2 = lua.state.context(|ctx| -> u32 {
-            ctx.load(r#"return blight:add_timer(15, 15, function () end)"#)
-                .call(())
-                .unwrap()
-        });
-
-        {
-            let mut active_ids = timer_ids!();
-            active_ids.sort_unstable();
-            let mut expected_ids = vec![id1, id2];
-            expected_ids.sort_unstable();
-
-            assert_eq!(active_ids, expected_ids);
-        }
-
-        lua.state.context(|ctx| {
-            ctx.load(&format!("blight:remove_timer({})", id1))
-                .exec()
-                .unwrap();
-        });
-
-        assert_eq!(timer_ids!(), vec![id2]);
-
-        let id3 = lua.state.context(|ctx| -> u32 {
-            ctx.load(r#"return blight:add_timer(30, 30, function () end)"#)
-                .call(())
-                .unwrap()
-        });
-
-        {
-            let mut active_ids = timer_ids!();
-            active_ids.sort_unstable();
-            let mut expected_ids = vec![id3, id2];
-            expected_ids.sort_unstable();
-
-            assert_eq!(active_ids, expected_ids);
-        }
-
-        lua.state.context(|ctx| {
-            ctx.load(&format!("blight:remove_timer({})", id3))
-                .exec()
-                .unwrap();
-        });
-
-        assert_eq!(timer_ids!(), vec![id2]);
     }
 }

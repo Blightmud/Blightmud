@@ -1,5 +1,4 @@
-![Rust](https://github.com/LiquidityC/blightmud/workflows/Rust/badge.svg)
-![Clippy check](https://github.com/LiquidityC/blightmud/workflows/Clippy%20check/badge.svg)
+![Rust](https://github.com/LiquidityC/Blightmud/workflows/Rust/badge.svg)
 ![Security audit](https://github.com/LiquidityC/blightmud/workflows/Security%20audit/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/LiquidityC/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/LiquidityC/Blightmud?branch=dev)
 # Blightmud  : A mud client for the terminal
@@ -32,6 +31,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - Keybindings
     - Text-To-Speech
     - Mouse scrolling (experimental)
+    - Plugins
 - Low resource and fast
 - In client help and manuals
 - Native Text-To-Speech functionality (optional compile)

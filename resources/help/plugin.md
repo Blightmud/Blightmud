@@ -11,10 +11,8 @@ The following macros exist to help manually adding and loading plugins.
 - `/update_plugin <name>`       Update a plugin
 - `/load_plugin <name>`         Load a plugin
 - `/update_plugins`             Update all installed plugins
-
-Plugins that are installed are never loaded automatically. You will need to do
-this by hand or through a script. The reasoning is that different plugins might
-be intended for different muds.
+- `/enable_plugin <name>`       Toggle a plugin on (autoload)
+- `/disable_plugin <name>`      Toggle a plugin off (no autoload)
 
 Plugins are stored in `$CONFIG_DIR/plugins`
 
@@ -54,4 +52,23 @@ Returns a list of all installed plugins
 ***plugin.update(name)***
 Updates a plugin
 
-- `name`    The name of the plugin to update
+- `name`    The name of the plugin
+
+##
+
+***plugin.enable(name)***
+Toggle plugin autoload on (default after install)
+
+- `name`    The name of the plugin
+
+##
+
+***plugin.disable(name)***
+Toggle plugin autoload off
+
+- `name`    The name of the plugin
+
+##
+
+***plugin.enabled() -> {}***
+Returns a list of all enabled (autoloaded) plugins

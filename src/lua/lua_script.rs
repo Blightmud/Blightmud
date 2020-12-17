@@ -102,6 +102,9 @@ fn create_default_lua_state(
         blight.core_mode(false);
         globals.set("blight", blight)?;
 
+        ctx.load(include_str!("../../resources/lua/on_state_created.lua"))
+            .exec()?;
+
         Ok(())
     });
 

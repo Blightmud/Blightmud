@@ -14,7 +14,7 @@ fn get_plugin_dir() -> PathBuf {
     plugin_dir
 }
 
-pub fn add_plugin(url: &str) -> Result<()> {
+pub fn add_plugin(url: &str) -> Result<String> {
     if let Some(name) = url.split('/').last() {
         let dest = get_plugin_dir().join(name);
         let mut rbuilder = RepoBuilder::new();
@@ -25,7 +25,7 @@ pub fn add_plugin(url: &str) -> Result<()> {
                 _ => bail!(err.to_string()),
             }
         } else {
-            Ok(())
+            Ok(name.to_string())
         }
     } else {
         bail!(format!("Invalid plugin repository: {}", url))

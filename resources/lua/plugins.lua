@@ -11,13 +11,22 @@ alias.add("^/add_plugin (.*?)$", function (matches)
     else
         local path = matches[2]
         print("[plugin] Fetching:", path)
-        local result, err = plugin.add(path)
-        if result then
-            print("[plugin] Installed:", path)
+        local name, err = plugin.add(path)
+        if name ~= "" then
+            print("[plugin] Installed:", name)
+            plugin.enable(name)
         else
             print("[plugin] Failed to install plugin:", err)
         end
     end
+end)
+
+alias.add("^/enable_plugin (.*)$", function (matches)
+    plugin.enable(matches[2])
+end)
+
+alias.add("^/disable_plugin (.*)$", function (matches)
+    plugin.disable(matches[2])
 end)
 
 alias.add("^/load_plugin (.*?)$", function (matches)
@@ -33,18 +42,14 @@ alias.add("^/load_plugin (.*?)$", function (matches)
     end
 end)
 
-alias.add("^/update_plugin (.*?)$", function (matches)
-    if #matches == 1 or matches[2] == "" then
-        print("USAGE: /update_plugin <name>")
+alias.add("^/remove_plugin (.*?)$", function (matches)
+    local name = matches[2]
+    print("[plugin] Removing: " .. name)
+    local result, err = plugin.remove(name)
+    if result then
+        print("[plugin] Removed: " .. name)
     else
-        local name = matches[2]
-        print("[plugin] Updating: " .. name)
-        local result, err = plugin.update(name)
-        if result then
-            print("[plugin] Updated: " .. name)
-        else
-            print("[plugin] Failed to update plugin:", err)
-        end
+        print("[plugin] Failed to remove plugin:", err)
     end
 end)
 

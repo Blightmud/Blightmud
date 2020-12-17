@@ -143,6 +143,13 @@ impl From<&Vec<u8>> for Line {
 
 #[allow(dead_code)]
 impl Line {
+    pub fn set_content(&mut self, line: &str) {
+        let (content, clean_content, clean_utf8) = get_content_from(line);
+        self.content = content;
+        self.clean_content = clean_content;
+        self.clean_utf8 = clean_utf8;
+    }
+
     pub fn print_line(&self) -> Option<&str> {
         if !self.flags.gag {
             Some(self.content.as_str())

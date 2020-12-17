@@ -5,11 +5,15 @@ use crate::model::Line as mLine;
 #[derive(Clone)]
 pub struct Line {
     pub inner: mLine,
+    pub replacement: Option<String>,
 }
 
 impl From<mLine> for Line {
     fn from(inner: mLine) -> Self {
-        Self { inner }
+        Self {
+            inner,
+            replacement: None,
+        }
     }
 }
 
@@ -65,6 +69,14 @@ impl UserData for Line {
                 }
                 Ok(this.inner.flags.matched)
             },
+        );
+        methods.add_method_mut("replace", |_, this, line: String| {
+            this.replacement = Some(line);
+            Ok(())
+        });
+        methods.add_method(
+            "replacement",
+            |_, this, _: ()| -> rlua::Result<Option<String>> { Ok(this.replacement.clone()) },
         );
     }
 }
@@ -157,5 +169,21 @@ mod test_lua_line {
     fn test_prompt() {
         test_lua!("test_line" => test_line());
         assert_lua_bool!("test_line:prompt()", false);
+    }
+
+    #[test]
+    fn test_replace() {
+        test_lua!("test_line" => test_line());
+        let line: Line = global!("test_line");
+        assert_eq!(line.replacement, None);
+        assert_lua!(Option<String>, "test_line:replacement()", None);
+        run_lua!("test_line:replace(\"test test\")");
+        assert_lua!(
+            Option<String>,
+            "test_line:replacement()",
+            Some("test test".to_string())
+        );
+        let line: Line = global!("test_line");
+        assert_eq!(line.replacement, Some("test test".to_string()));
     }
 }

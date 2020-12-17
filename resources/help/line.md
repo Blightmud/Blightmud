@@ -44,6 +44,21 @@ Returns if this is a prompt line or not
 
 ##
 
+***line:replace(string)***
+Replaces the content of this line with the provided content.  Repeated calls to
+this method will result in the last calls content becoming the new content for
+the line. This is primarily intended for plugin use and for regular scripting
+utilizing `Line:gag(true)` and `print()` should suffice.
+
+- `string`  The new content for this line
+
+##
+
+***line:replacement() -> String***
+Returns the replacement content for this line or nil if nothing has been set.
+
+##
+
 ***line:matched([val]) -> bool***
 Get or set the `matched` flag on this line. The `matched` flag tells if this line
 has been matched by a trigger or not. If you are writing advanced plugins whith

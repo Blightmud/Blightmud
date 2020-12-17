@@ -152,6 +152,9 @@ impl LuaScript {
                     lline = cb.call::<_, LuaLine>(lline)?;
                 }
                 line.replace_with(&lline.inner);
+                if let Some(replacement) = lline.replacement {
+                    line.set_content(&replacement);
+                }
                 Ok(())
             }) {
                 output_stack_trace(&self.writer, &msg.to_string());
@@ -169,6 +172,9 @@ impl LuaScript {
                     lline = cb.call::<_, LuaLine>(lline)?;
                 }
                 line.replace_with(&lline.inner);
+                if let Some(replacement) = lline.replacement {
+                    line.set_content(&replacement);
+                }
                 Ok(())
             }) {
                 output_stack_trace(&self.writer, &msg.to_string());

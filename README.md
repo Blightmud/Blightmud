@@ -1,5 +1,5 @@
-![Rust](https://github.com/LiquidityC/Blightmud/workflows/Rust/badge.svg)
-![Security audit](https://github.com/LiquidityC/blightmud/workflows/Security%20audit/badge.svg)
+![Rust](https://github.com/Blightmud/Blightmud/workflows/Rust/badge.svg)
+![Security audit](https://github.com/Blightmud/blightmud/workflows/Security%20audit/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/LiquidityC/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/LiquidityC/Blightmud?branch=dev)
 # Blightmud  : A mud client for the terminal
 
@@ -48,7 +48,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 ## Installation
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page
 - **Archlinux/Manjaro**  : Packages are available on AUR
-- **Mac/Homebrew**       : We have a homebrew tap `brew tap LiquidityC/blightmud`
+- **Mac/Homebrew**       : We have a homebrew tap `brew tap Blightmud/blightmud`
 - **Other/Alternative**  : Download source and run `cargo install --path .` from the project root
 - **Windows**            : No native windows support but Blightmud runs fine under WSL
 
@@ -57,11 +57,6 @@ Join our [discord](https://discord.gg/qnxgUC5)
 
 ## Contributing
 All contributions are welcome. Check out [contributing guidelines](CONTRIBUTING.md).
-
-## Contributors
-<a href="https://github.com/LiquidityC/blightmud/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=LiquidityC/blightmud" />
-</a>
 
 ## Side notes
 This is my first rust project that has actually grown a bit. Some things might look silly but thanks to rust they should still be safe. Anywho. If you find some antipattern where you have a better idea I'm more then happy to se the PR and learn some more rustier ways.

@@ -47,7 +47,13 @@ impl HelpHandler {
         if self.files.contains_key(file) {
             let mut md_bytes = vec![];
 
-            let log_path = crate::DATA_DIR.join("logs");
+            let data_dir = crate::DATA_DIR.clone();
+            let log_path = data_dir.join("logs");
+            let datadir = if let Some(str_path) = data_dir.to_str() {
+                str_path
+            } else {
+                "$USER_DATA_DIR"
+            };
             let logdir = if let Some(str_path) = log_path.to_str() {
                 str_path
             } else {
@@ -64,6 +70,7 @@ impl HelpHandler {
                 .file_content(file)
                 .replace("$VERSION", VERSION)
                 .replace("$LOGDIR", logdir)
+                .replace("$DATADIR", datadir)
                 .replace("$CONFIGDIR", config_dir);
 
             let mut options = Options::empty();

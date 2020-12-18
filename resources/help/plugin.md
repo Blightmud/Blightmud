@@ -14,7 +14,7 @@ The following macros exist to help manually adding and loading plugins.
 - `/enable_plugin <name>`       Toggle a plugin on (autoload)
 - `/disable_plugin <name>`      Toggle a plugin off (no autoload)
 
-Plugins are stored in `$CONFIG_DIR/plugins`
+Plugins are stored in `$DATADIR/plugins`
 
 If you are developing a plugin see `/help plugin_developer`
 

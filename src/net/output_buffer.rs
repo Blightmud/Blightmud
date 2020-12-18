@@ -8,6 +8,7 @@ pub struct OutputBuffer {
     buffer: Vec<u8>,
     pub prompt: Line,
     telnet_mode: TelnetMode,
+    new_data: bool,
 }
 
 impl OutputBuffer {
@@ -18,6 +19,7 @@ impl OutputBuffer {
             buffer: Vec::with_capacity(BUFFER_SIZE),
             prompt,
             telnet_mode: telnet_mode.clone(),
+            new_data: false,
         }
     }
 
@@ -35,6 +37,11 @@ impl OutputBuffer {
         } else {
             self.prompt.clear();
         }
+        self.new_data = false;
+    }
+
+    pub fn has_new_data(&self) -> bool {
+        self.new_data
     }
 
     pub fn input_sent(&mut self) {
@@ -46,6 +53,7 @@ impl OutputBuffer {
 
     pub fn receive(&mut self, data: &[u8]) -> Vec<Line> {
         let existing_buffer_len = self.buffer.len();
+        self.new_data = true;
 
         self.buffer.append(&mut Vec::from(data));
 

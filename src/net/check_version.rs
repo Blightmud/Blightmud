@@ -11,7 +11,7 @@ pub fn check_latest_version(main_writer: Sender<Event>) {
     thread::Builder::new()
         .name("check-version-thread".to_string())
         .spawn(move || {
-            let url = "https://api.github.com/repos/blightmud/blightmud/releases/latest";
+            let url = "https://api.github.com/repos/liquidityc/blightmud/releases/latest";
             let mut response_data = Vec::new();
             let mut easy = Easy::new();
             easy.url(url).unwrap();
@@ -31,8 +31,8 @@ pub fn check_latest_version(main_writer: Sender<Event>) {
 
             if let Ok(json) = serde_json::from_slice(&response_data) {
                 let json: serde_json::Value = json;
-                let new: String = json["tag_name"].as_str().unwrap().to_string();
-                let url: String = json["html_url"].as_str().unwrap().to_string();
+                let new: String = json["tag_name"].as_str().unwrap_or_default().to_string();
+                let url: String = json["html_url"].as_str().unwrap_or_default().to_string();
                 let old = format!("v{}", VERSION);
                 if diff_versions(&old, &new) {
                     main_writer

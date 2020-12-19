@@ -13,7 +13,6 @@ pub fn check_latest_version(main_writer: Sender<Event>) {
         .spawn(move || {
             let url = "https://api.github.com/repos/blightmud/blightmud/releases/latest";
             let mut response_data = Vec::new();
-
             let mut easy = Easy::new();
             easy.url(url).unwrap();
             easy.get(true).unwrap();

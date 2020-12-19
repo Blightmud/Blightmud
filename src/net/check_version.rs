@@ -9,7 +9,7 @@ fn diff_versions(old: &str, new: &str) -> bool {
 
 pub fn check_latest_version(main_writer: Sender<Event>) {
     thread::spawn(move || {
-        let url = "https://api.github.com/repos/liquidityc/blightmud/releases/latest";
+        let url = "https://api.github.com/repos/blightmud/blightmud/releases/latest";
         let mut response_data = Vec::new();
 
         let mut easy = Easy::new();

@@ -3,7 +3,7 @@ use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{log::Log, mud::Mud, regex::RegexLib, timer::Timer, util::*};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
-use rlua::{Lua, Result as LuaResult};
+use rlua::{AnyUserData, Lua, Result as LuaResult};
 use std::io::prelude::*;
 use std::{fs::File, sync::mpsc::Sender};
 
@@ -98,9 +98,9 @@ fn create_default_lua_state(
             .call::<_, rlua::Value>(())?;
         globals.set("tasks", lua_plugin)?;
 
-        let mut blight: Blight = globals.get("blight")?;
+        let blight_aud: AnyUserData = globals.get("blight")?;
+        let mut blight = blight_aud.borrow_mut::<Blight>()?;
         blight.core_mode(false);
-        globals.set("blight", blight)?;
 
         ctx.load(include_str!("../../resources/lua/on_state_created.lua"))
             .exec()?;
@@ -134,9 +134,9 @@ impl LuaScript {
     pub fn get_output_lines(&self) -> Vec<Line> {
         self.state
             .context(|ctx| -> LuaResult<Vec<Line>> {
-                let mut blight: Blight = ctx.globals().get("blight")?;
+                let blight_aud: AnyUserData = ctx.globals().get("blight")?;
+                let mut blight = blight_aud.borrow_mut::<Blight>()?;
                 let lines = blight.get_output_lines();
-                ctx.globals().set("blight", blight)?;
                 Ok(lines)
             })
             .unwrap()
@@ -256,9 +256,9 @@ impl LuaScript {
 
     pub fn set_dimensions(&mut self, dim: (u16, u16)) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let mut blight: Blight = ctx.globals().get("blight")?;
+            let blight_aud: AnyUserData = ctx.globals().get("blight")?;
+            let mut blight = blight_aud.borrow_mut::<Blight>()?;
             blight.screen_dimensions = dim;
-            ctx.globals().set("blight", blight)?;
             Ok(())
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
@@ -313,9 +313,9 @@ impl LuaScript {
         match self
             .state
             .context(|ctx| -> Result<Vec<UiEvent>, rlua::Error> {
-                let mut blight: Blight = ctx.globals().get("blight")?;
+                let blight_aud: AnyUserData = ctx.globals().get("blight")?;
+                let mut blight = blight_aud.borrow_mut::<Blight>()?;
                 let events = blight.get_ui_events();
-                ctx.globals().set("blight", blight)?;
                 Ok(events)
             }) {
             Ok(data) => data,

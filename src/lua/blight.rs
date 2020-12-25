@@ -1,9 +1,9 @@
-use super::{constants::*, store_data::StoreData, ui_event::UiEvent};
+use super::{constants::*, ui_event::UiEvent};
 use crate::event::Event;
-use crate::{io::SaveData, model::Line, PROJECT_NAME, VERSION};
+use crate::{model::Line, PROJECT_NAME, VERSION};
 use log::debug;
 use rlua::{Result as LuaResult, UserData, UserDataMethods, Variadic};
-use std::{collections::BTreeMap, sync::mpsc::Sender};
+use std::sync::mpsc::Sender;
 
 #[derive(Clone)]
 pub struct Blight {
@@ -79,41 +79,6 @@ impl UserData for Blight {
             debug!("{}", strings.join(" "));
             Ok(())
         });
-        methods.add_method(
-            "store",
-            |_, _, (id, data): (String, rlua::Value)| -> LuaResult<()> {
-                let data = match data {
-                    rlua::Value::Table(table) => {
-                        let mut map: BTreeMap<String, String> = BTreeMap::new();
-                        let iter = table.pairs();
-                        for entry in iter {
-                            if let Ok((key, value)) = entry {
-                                map.insert(key, value);
-                            }
-                        }
-                        Ok(map)
-                    }
-                    _ => Err(rlua::Error::RuntimeError(
-                        "Bad data! You may only store tables".to_string(),
-                    )),
-                }?;
-
-                let mut store_data = StoreData::load();
-                store_data.insert(id, data);
-                store_data.save();
-                Ok(())
-            },
-        );
-        methods.add_method(
-            "read",
-            |_, _, id: String| -> LuaResult<Option<BTreeMap<String, String>>> {
-                let data = StoreData::load();
-                Ok(match data.get(&id) {
-                    Some(data) => Some(data.clone()),
-                    _ => None,
-                })
-            },
-        );
         methods.add_method("is_core_mode", |_, this, ()| Ok(this.core_mode));
         methods.add_method("status_height", |_, this, height: u16| {
             this.main_writer

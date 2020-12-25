@@ -53,6 +53,12 @@ See `/help alias` for more information.
 - `blight:remove_timer(...)` => `timer.remove(...)`
 - `blight:get_timer_ids()` => `timer.get_ids()`
 
+## Storage
+- `blight:store(...)` => `store.disk_write(...)`
+- `blight:read(...)` => `store.disk_read(...)`
+- `core:store(...)` => `store.session_write(...)`
+- `core:read(...)` => `store.session_read(...)`
+
 ---
 # Changes in Blightmud v2.0
 

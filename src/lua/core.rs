@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::mpsc::Sender};
+use std::sync::mpsc::Sender;
 
 use log::debug;
 use rlua::{Table, UserData, UserDataMethods};
@@ -13,7 +13,6 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct Core {
     main_writer: Sender<Event>,
-    local_storage: HashMap<String, String>,
     next_id: u32,
 }
 
@@ -21,7 +20,6 @@ impl Core {
     pub fn new(writer: Sender<Event>) -> Self {
         Self {
             main_writer: writer,
-            local_storage: HashMap::new(),
             next_id: 0,
         }
     }
@@ -68,24 +66,6 @@ impl UserData for Core {
                 .unwrap();
             Ok(())
         });
-        methods.add_method_mut("store", |_, this, (key, value): (String, String)| {
-            debug!("Storing: {}:{}", key, value);
-            this.local_storage.insert(key, value);
-            Ok(())
-        });
-        methods.add_method(
-            "read",
-            |_, this, key: String| -> Result<Option<String>, rlua::Error> {
-                debug!("Reading: {}", key);
-                Ok(if let Some(val) = this.local_storage.get(&key) {
-                    debug!("Read: {}", val);
-                    Some(val.to_string())
-                } else {
-                    debug!("Read: nothing");
-                    None
-                })
-            },
-        );
         methods.add_method(
             "exec",
             |_, _, cmd: String| -> Result<ExecResponse, rlua::Error> {

@@ -16,7 +16,7 @@ mod mud;
 mod plugin;
 mod regex;
 mod script;
-mod store_data;
+mod store;
 mod timer;
 mod tts;
 mod ui_event;

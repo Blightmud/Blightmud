@@ -1,6 +1,6 @@
 use super::{backend::Backend, blight::*, line::Line as LuaLine, plugin, script::Script, tts::Tts};
 use super::{constants::*, core::Core, ui_event::UiEvent};
-use super::{log::Log, mud::Mud, regex::RegexLib, timer::Timer, util::*};
+use super::{log::Log, mud::Mud, regex::RegexLib, store::Store, timer::Timer, util::*};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use rlua::{AnyUserData, Lua, Result as LuaResult};
@@ -15,15 +15,15 @@ pub struct LuaScript {
 fn create_default_lua_state(
     writer: Sender<Event>,
     dimensions: (u16, u16),
-    core: Option<Core>,
+    store: Option<Store>,
 ) -> Lua {
     let state = unsafe { Lua::new_with_debug() };
 
     let backend = Backend::new(writer.clone());
     let mut blight = Blight::new(writer.clone());
-    let core = match core {
-        Some(core) => core,
-        None => Core::new(writer.clone()),
+    let store = match store {
+        Some(store) => store,
+        None => Store::new(),
     };
     let tts = Tts::new(writer.clone());
 
@@ -40,13 +40,14 @@ fn create_default_lua_state(
         ctx.set_named_registry_value(TIMED_NEXT_ID, 1)?;
 
         globals.set("blight", blight)?;
-        globals.set("core", core)?;
+        globals.set("core", Core::new(writer.clone()))?;
         globals.set("tts", tts)?;
         globals.set("regex", RegexLib {})?;
         globals.set("mud", Mud::new())?;
         globals.set("log", Log::new())?;
         globals.set("timer", Timer::new())?;
         globals.set("script", Script {})?;
+        globals.set(Store::LUA_GLOBAL_NAME, store)?;
         globals.set("plugin", plugin::Handler::new())?;
 
         globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
@@ -124,11 +125,13 @@ impl LuaScript {
     }
 
     pub fn reset(&mut self, dimensions: (u16, u16)) {
-        let core = self
+        let store = self
             .state
-            .context(|ctx| -> Result<Core, rlua::Error> { ctx.globals().get("core") })
+            .context(|ctx| -> Result<Store, rlua::Error> {
+                ctx.globals().get(Store::LUA_GLOBAL_NAME)
+            })
             .ok();
-        self.state = create_default_lua_state(self.writer.clone(), dimensions, core);
+        self.state = create_default_lua_state(self.writer.clone(), dimensions, store);
     }
 
     pub fn get_output_lines(&self) -> Vec<Line> {

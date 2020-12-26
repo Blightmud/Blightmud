@@ -59,17 +59,6 @@ end)
 
 ##
 
-***core:store(key, value)***
-Stores a string value in a session local storage. If blightmud restarts the
-storage will be emptied.
-
-##
-
-***core:read(key) -> String***
-Reads a string value from session storage.
-
-##
-
 ***core:exec(shellcommand) -> ExecResponse***
 Execute a command on the OS
 

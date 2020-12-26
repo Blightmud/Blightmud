@@ -22,7 +22,7 @@ by typing `/help <module>`.
 - `gmcp`        Functions for interacting with the Generic MUD Communication Protocol.
 - `msdp`        Functions for interacting with the Mud Server Data Protocol
 - `status_area` Functions for controlling and printing to the status bar
-- `storage`     Functions for persisting data between sessions
+- `storage`     Functions for persisting data between script restarts or between sessions
 - `bindings`    Functions for configuring keybindings and adding new ones
 - `tasks`       Library for control of background tasks
 - `mud`         Functions for interacting with the mud

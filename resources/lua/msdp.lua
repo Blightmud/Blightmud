@@ -102,8 +102,8 @@ end
 
 function msdp()
 	local self = {
-		enabled = core:read("__msdp_enabled") == "true" or false,
-		content = json.decode(core:read("__msdp_content") or "{}"),
+		enabled = store.session_read("__msdp_enabled") == "true" or false,
+		content = json.decode(store.session_read("__msdp_content") or "{}"),
 		ready_listeners = {},
 		update_listeners = {},
 	}
@@ -143,10 +143,10 @@ function msdp()
 			for k,v in pairs(content) do
 				self.content[k] = v
 			end
-			core:store("__msdp_content", json.encode(self.content))
+			store.session_write("__msdp_content", json.encode(self.content))
 		else
 			self.content = {}
-			core:store("__msdp_content", json.encode(self.content))
+			store.session_write("__msdp_content", json.encode(self.content))
 		end
 	end
 
@@ -233,7 +233,7 @@ function msdp()
 
 	local _on_enable = function ()
 		self.enabled = true
-		core:store("__msdp_enabled", tostring(true))
+		store.session_write("__msdp_enabled", tostring(true))
 		store_content(nil)
 		for _,list in ipairs({
 				"REPORTABLE_VARIABLES",
@@ -264,7 +264,7 @@ function msdp()
 
 	local _reset = function ()
 		self.enabled = false
-		core:store("__msdp_enabled", tostring(false))
+		store.session_write("__msdp_enabled", tostring(false))
 		store_content(nil)
 	end
 

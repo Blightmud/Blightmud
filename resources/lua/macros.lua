@@ -60,3 +60,40 @@ end)
 alias.add("^/tts_keypresses (on|off)$", function (matches)
 	tts:echo_keypresses(matches[2] == "on")
 end)
+
+alias.add("^/settings$", function ()
+	for key, value in pairs(settings.list()) do
+		local key_format = cformat("<yellow>%s<reset>", key)
+		local value_format
+		if value then
+			value_format = cformat("<bgreen>on<reset>")
+		else
+			value_format = cformat("<bred>off<reset>")
+		end
+		blight.output(cformat("[**] %s => %s", key_format, value_format))
+	end
+end)
+
+alias.add("^/set ([^\\s]+)\\s*(on|off)?$", function (matches)
+	local settings_table = settings.list()
+	local key = matches[2]
+	if settings_table[key] == nil then
+		blight.output(cformat("<red>Unknown setting: %s<reset>", key))
+	else
+		local value
+		if matches[3] == "" then
+			value = settings_table[key]
+		else
+			value = matches[3] == "on"
+			settings.set(key, value)
+		end
+		local key_format = cformat("<yellow>%s<reset>", key)
+		local value_format
+		if value then
+			value_format = cformat("<bgreen>on<reset>")
+		else
+			value_format = cformat("<bred>off<reset>")
+		end
+		blight.output(cformat("[**] %s => %s", key_format, value_format))
+	end
+end)

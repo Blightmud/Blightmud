@@ -1,6 +1,8 @@
 use super::{backend::Backend, blight::*, line::Line as LuaLine, plugin, script::Script, tts::Tts};
 use super::{constants::*, core::Core, ui_event::UiEvent};
-use super::{log::Log, mud::Mud, regex::RegexLib, store::Store, timer::Timer, util::*};
+use super::{
+    log::Log, mud::Mud, regex::RegexLib, settings::Settings, store::Store, timer::Timer, util::*,
+};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
 use log::info;
@@ -48,6 +50,7 @@ fn create_default_lua_state(
         globals.set("log", Log::new())?;
         globals.set("timer", Timer::new())?;
         globals.set("script", Script {})?;
+        globals.set(Settings::LUA_GLOBAL_NAME, Settings::new())?;
         globals.set(Store::LUA_GLOBAL_NAME, store)?;
         globals.set("plugin", plugin::Handler::new())?;
 

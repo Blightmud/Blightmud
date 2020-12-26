@@ -577,19 +577,6 @@ fn parse_command(msg: &str) -> Event {
             }
         }
         Some("/stop_log") => Event::StopLogging,
-        Some("/settings") => Event::ShowSettings,
-        Some("/set") => {
-            let p1 = iter.next();
-            let p2 = iter.next();
-
-            if p1 == None && p2 == None {
-                Event::Info("USAGE: /set <setting> or /set <setting> <new_value>".to_string())
-            } else if p2.is_some() && p1.is_some() {
-                Event::ToggleSetting(p1.unwrap().to_string(), p2.unwrap().to_string())
-            } else {
-                Event::ShowSetting(p1.unwrap().to_string())
-            }
-        }
         Some("/quit") | Some("/q") => Event::Quit,
         _ => Event::ServerInput(Line::from(msg)),
     }

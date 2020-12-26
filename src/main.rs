@@ -26,9 +26,7 @@ use crate::tools::patch::migrate_v2_settings_and_servers;
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{
-    Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY, SETTINGS,
-};
+use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -330,38 +328,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::Speak(msg, interupt) => session.tts_ctrl.lock().unwrap().speak(&msg, interupt),
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
-
-            Event::ShowSettings => match Settings::try_load() {
-                Ok(settings) => SETTINGS.iter().for_each(|key| {
-                    screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
-                }),
-                Err(error) => {
-                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
+            Event::SettingChanged(name, value) => {
+                if name == SAVE_HISTORY {
+                    session.set_save_history(value);
                 }
-            },
-            Event::ShowSetting(setting) => match Settings::try_load()?.get(&setting) {
-                Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
-                Err(error) => {
-                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
-                }
-            },
-            Event::ToggleSetting(setting, toggle) => match Settings::try_load() {
-                Ok(mut settings) => {
-                    let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
-                    if let Err(error) = settings.set(&setting, toggle) {
-                        screen.print_error(&error.to_string());
-                    } else {
-                        if setting == SAVE_HISTORY {
-                            session.set_save_history(toggle);
-                        }
-                        screen.print_info(&format!("Setting: {} => {}", setting, toggle));
-                        settings.save();
-                    }
-                }
-                Err(error) => {
-                    screen.print_error(&format!("Error loading settings.ron on line {}", error))
-                }
-            },
+            }
             Event::StartLogging(world, force) => {
                 if Settings::load().get(LOGGING_ENABLED)? || force {
                     session.start_logging(&world)

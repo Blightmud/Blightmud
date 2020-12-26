@@ -149,6 +149,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "tts" => "no_tts.md",
         "status_area" => "lua_status_area.md",
         "alias" => "lua_aliases.md",
+        "config" => "lua_settings.md",
         "script" => "script.md",
         "trigger" => "lua_trigger.md",
         "timers" => "lua_timers.md",

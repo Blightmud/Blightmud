@@ -3,6 +3,7 @@ use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{log::Log, mud::Mud, regex::RegexLib, store::Store, timer::Timer, util::*};
 use crate::{event::Event, model::Line};
 use anyhow::Result;
+use log::info;
 use rlua::{AnyUserData, Lua, Result as LuaResult};
 use std::io::prelude::*;
 use std::{fs::File, sync::mpsc::Sender};
@@ -217,13 +218,20 @@ impl LuaScript {
     }
 
     pub fn load_script(&mut self, path: &str) -> Result<()> {
-        let mut file = File::open(expand_tilde(path).as_ref())?;
+        info!("Loading: {}", path);
+        let file_path = expand_tilde(path);
+        let mut file = File::open(file_path.as_ref())?;
+        let dir = file_path.rsplitn(2, '/').nth(1).unwrap_or("");
         let mut content = String::new();
         file.read_to_string(&mut content)?;
-        if let Err(msg) = self
-            .state
-            .context(|ctx| -> LuaResult<()> { ctx.load(&content).set_name(path)?.exec() })
-        {
+        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
+            let package: rlua::Table = ctx.globals().get("package")?;
+            let ppath = package.get::<&str, String>("path")?;
+            package.set("path", format!("{0}/?.lua;{1}", dir, ppath))?;
+            let result = ctx.load(&content).set_name(dir)?.exec();
+            package.set("path", ppath)?;
+            result
+        }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }
         Ok(())

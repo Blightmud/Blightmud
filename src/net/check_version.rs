@@ -14,9 +14,9 @@ pub fn check_latest_version(main_writer: Sender<Event>) {
             let url = "https://api.github.com/repos/blightmud/blightmud/releases/latest";
             let mut response_data = Vec::new();
             let mut easy = Easy::new();
-            easy.url(url).unwrap();
-            easy.get(true).unwrap();
-            easy.useragent("curl").unwrap();
+            easy.url(url).ok();
+            easy.get(true).ok();
+            easy.useragent("curl").ok();
 
             {
                 let mut transfer = easy.transfer();
@@ -25,7 +25,7 @@ pub fn check_latest_version(main_writer: Sender<Event>) {
                         response_data.extend_from_slice(data);
                         Ok(data.len())
                     })
-                    .unwrap();
+                    .ok();
                 transfer.perform().ok();
             }
 
@@ -50,7 +50,7 @@ pub fn check_latest_version(main_writer: Sender<Event>) {
                 }
             }
         })
-        .unwrap();
+        .ok();
 }
 
 #[cfg(test)]

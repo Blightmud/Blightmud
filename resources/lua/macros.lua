@@ -1,5 +1,5 @@
 local function print_mud_output_usage()
-	blight:output("USAGE: /test <some string to test>")
+	blight.output("USAGE: /test <some string to test>")
 end
 
 alias.add("^/test$", function (matches)
@@ -34,7 +34,7 @@ end
 alias.add("^/aliases$", function ()
 	for id,alias in pairs(alias.getGroup():getAliases()) do
 		local enabled = state_label(alias.enabled, "enabled")
-		blight:output(cformat("%s :\t<yellow>%s<reset>\t%s", id, alias.regex:regex(), enabled))
+		blight.output(cformat("%s :\t<yellow>%s<reset>\t%s", id, alias.regex:regex(), enabled))
 	end
 end)
 
@@ -45,7 +45,7 @@ alias.add("^/triggers$", function ()
 		local raw = state_label(trigger.raw, "raw")
 		local prompt = state_label(trigger.prompt, "prompt")
 		local count = number_label(trigger.count, "count: ")
-		blight:output(cformat("%s :\t<yellow>%s<reset>\t%s\t%s\t%s\t%s\t%s", id, trigger.regex:regex(), enabled, gag, raw, prompt, count))
+		blight.output(cformat("%s :\t<yellow>%s<reset>\t%s\t%s\t%s\t%s\t%s", id, trigger.regex:regex(), enabled, gag, raw, prompt, count))
 	end
 end)
 

@@ -53,9 +53,9 @@ mudding. The following colors are available:
 
 - `C_RESET`
 
-Colors are best used with `blight:output(msg)`
+Colors are best used with `blight.output(msg)`
 ```lua
-blight:output(C_RED .. "Red message" .. C_RESET)
+blight.output(C_RED .. "Red message" .. C_RESET)
 ```
 
 Take not that you are at the mercy of your terminals configuration when it
@@ -68,11 +68,11 @@ If you want to print different things feel free to create your own setups.
 ```lua
 C_ALERT = "\x1b[37;41m"
 C_INFO = C_WHITE .. BG_GREEN
-blight:output(C_ALERT .. "Panic! The white rabbit is here" .. C_RESET)
-blight:output(C_INFO .. "Ok, he left. Everbody relax!" .. C_RESET)
+blight.output(C_ALERT .. "Panic! The white rabbit is here" .. C_RESET)
+blight.output(C_INFO .. "Ok, he left. Everbody relax!" .. C_RESET)
 ```
 
-There is a lot more you can do with ansi escapes in a terminal. All your ideas should probably work through `blight:output(msg)`
+There is a lot more you can do with ansi escapes in a terminal. All your ideas should probably work through `blight.output(msg)`
 
 ## cformat utility
 
@@ -81,7 +81,7 @@ why we provide the `cformat` utility function, which will return a formatted
 string you can use.
 
 ```lua
-blight:output(cformat('This is some <red>red<reset> text.'))
-blight:output(cformat('This is some <red:blue>red on blue<reset> text.'))
-blight:output(cformat('This is some <yellow>%s<reset> text.', 'formatted'))
+blight.output(cformat('This is some <red>red<reset> text.'))
+blight.output(cformat('This is some <red:blue>red on blue<reset> text.'))
+blight.output(cformat('This is some <yellow>%s<reset> text.', 'formatted'))
 ```

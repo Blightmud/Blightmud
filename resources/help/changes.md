@@ -9,6 +9,17 @@ changes where you might need to take action.
 The `blight` module in lua has now been separated into multiple modules. You
 will need to apply the following changes to your scripts.
 
+## Blight module
+
+- `blight:output(...)` => `blight.output(...)`
+- `blight:terminal_dimension(...)` => `blight.terminal_dimension(...)`
+- `blight:bind(...)` => `blight.bind(...)`
+- `blight:unbind(...)` => `blight.unbind(...)`
+- `blight:ui(...)` => `blight.ui(...)`
+- `blight:status_height(...)` => `blight.status_height(...)`
+- `blight:status_line(...)` => `blight.status_line(...)`
+- `blight:version(...)` => `blight.version(...)`
+
 ## Triggers
 
 - `blight:add_trigger(...)` => `trigger.add(...)`

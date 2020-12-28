@@ -30,10 +30,10 @@ local function GMCP()
 
 	local _on_enable = function (proto)
 		if proto == OPT then
-			blight:debug("Sending Core.Hello")
+			blight.debug("Sending Core.Hello")
 			self.gmcp_ready = true
 			store.session_write("__gmcp_ready", "true")
-			local program, version = blight:version()
+			local program, version = blight.version()
 			local hello_obj = {
 				Version=version,
 				Client=program,
@@ -50,7 +50,7 @@ local function GMCP()
 			local msg = utf8.char(unpack(data))
 			local mod, json = parse_gmcp(msg)
 			if self.echo_gmcp then
-				blight:output("[GMCP]: " .. msg)
+				blight.output("[GMCP]: " .. msg)
 			end
 			if self.receivers[mod] ~= nil then
 				self.receivers[mod](json)

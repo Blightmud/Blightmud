@@ -29,10 +29,10 @@ end)
 local count = 0
 timer_id = timer.add(0.5, 3, function ()
     count = count + 1
-    blight:output("And a " .. count)
+    blight.output("And a " .. count)
     if count > 1 then
         -- This should only count to 2 and then show "Timer Removed".
-        blight:output("Timer Removed")
+        blight.output("Timer Removed")
         timer.remove(timer_id)
     end
 end)

@@ -11,14 +11,13 @@ local self = {
 }
 
 local function reload_scripts()
-	blight:status_height(1)
-	blight:status_line(0, "")
+	blight.status_height(1)
+	blight.status_line(0, "")
 	script.reset()
 	script.load("/home/user/.config/blightmud/config.lua")
 end
 
 local function disconnect()
-	blight:output("[CONFIG]: Clearing scripts")
 	self.host = nil
 	self.port = nil
 	core:store("cur_host", tostring(nil))
@@ -31,11 +30,11 @@ local function on_connect(host, port)
 	core:store("cur_port", tostring(port))
 
 	if host == "the-best-mud.org" then
-		blight:load("~/scripts/the-best-mud/main.lua")
+		blight.load("~/scripts/the-best-mud/main.lua")
 	elseif host == "spacemud.net" then
-		blight:load("~/scripts/spacemud/main.lua")
+		blight.load("~/scripts/spacemud/main.lua")
 	elseif host == "fantasymud.ly" then
-		blight:load("~/scripts/fantasymud/main.lua")
+		blight.load("~/scripts/fantasymud/main.lua")
 	end 
 end
 
@@ -46,7 +45,6 @@ mud.on_connect(function (host, port)
 end)
 
 mud.on_disconnect(function ()
-	blight:output("[CONFIG]: Disconnecting")
 	disconnect()
 end)
 

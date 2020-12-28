@@ -547,13 +547,13 @@ mod lua_script_tests {
         let mut lua = get_lua().0;
         let dim: (u16, u16) = lua
             .state
-            .context(|ctx| ctx.load("return blight:terminal_dimensions()").call(()))
+            .context(|ctx| ctx.load("return blight.terminal_dimensions()").call(()))
             .unwrap();
         assert_eq!(dim, (80, 80));
         lua.set_dimensions((70, 70));
         let dim: (u16, u16) = lua
             .state
-            .context(|ctx| ctx.load("return blight:terminal_dimensions()").call(()))
+            .context(|ctx| ctx.load("return blight.terminal_dimensions()").call(()))
             .unwrap();
         assert_eq!(dim, (70, 70));
     }
@@ -595,7 +595,7 @@ mod lua_script_tests {
         let (name, version): (String, String) = lua
             .state
             .context(|ctx| -> LuaResult<(String, String)> {
-                ctx.load("return blight:version()")
+                ctx.load("return blight.version()")
                     .call::<(), (String, String)>(())
             })
             .unwrap();
@@ -627,7 +627,7 @@ mod lua_script_tests {
     fn test_output() {
         let (lua, _) = get_lua();
         lua.state.context(|ctx| {
-            ctx.load("blight:output(\"test\", \"test\")")
+            ctx.load("blight.output(\"test\", \"test\")")
                 .exec()
                 .unwrap();
         });
@@ -681,7 +681,7 @@ mod lua_script_tests {
 
     fn check_color(lua: &LuaScript, output: &str, result: &str) {
         lua.state.context(|ctx| {
-            ctx.load(&format!("blight:output({})", output))
+            ctx.load(&format!("blight.output({})", output))
                 .exec()
                 .unwrap();
         });
@@ -731,17 +731,17 @@ mod lua_script_tests {
     #[test]
     fn test_bindings() {
         let lua_code = r#"
-        blight:bind("ctrl-a", function ()
-            blight:output("ctrl-a")
+        blight.bind("ctrl-a", function ()
+            blight.output("ctrl-a")
         end)
-        blight:bind("f1", function ()
-            blight:output("f1")
+        blight.bind("f1", function ()
+            blight.output("f1")
         end)
-        blight:bind("alt-1", function ()
-            blight:output("alt-1")
+        blight.bind("alt-1", function ()
+            blight.output("alt-1")
         end)
-        blight:bind("\x1b[1;5A", function ()
-            blight:output("ctrl-up")
+        blight.bind("\x1b[1;5A", function ()
+            blight.output("ctrl-up")
         end)
         "#;
 
@@ -766,13 +766,13 @@ mod lua_script_tests {
     fn test_on_connect_test() {
         let lua_code = r#"
         mud.on_connect(function (host, port)
-            blight:output(host .. ":" .. port .. "-1")
+            blight.output(host .. ":" .. port .. "-1")
         end)
         mud.on_connect(function (host, port)
-            blight:output(host .. ":" .. port .. "-2")
+            blight.output(host .. ":" .. port .. "-2")
         end)
         mud.on_connect(function (host, port)
-            blight:output(host .. ":" .. port .. "-3")
+            blight.output(host .. ":" .. port .. "-3")
         end)
         "#;
 
@@ -809,13 +809,13 @@ mod lua_script_tests {
     fn test_on_disconnect_test() {
         let lua_code = r#"
         mud.on_disconnect(function ()
-            blight:output("disconnected1")
+            blight.output("disconnected1")
         end)
         mud.on_disconnect(function ()
-            blight:output("disconnected2")
+            blight.output("disconnected2")
         end)
         mud.on_disconnect(function ()
-            blight:output("disconnected3")
+            blight.output("disconnected3")
         end)
         "#;
 

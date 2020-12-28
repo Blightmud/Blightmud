@@ -18,7 +18,7 @@ Create a new task and schedule it for execution immediately
 Example:
 ```lua
 tasks.spawn(function(a)
-    blight:output(a)
+    blight.output(a)
 end, "Hello World!")
 ```
 
@@ -49,11 +49,11 @@ Pauses execution for a given time
 Example:
 ```lua
 local function someTask()
-    blight:output("Hello")
+    blight.output("Hello")
     tasks.sleep(1)
-    blight:output("World")
+    blight.output("World")
     tasks.sleep(2)
-    blight:output("!")
+    blight.output("!")
 end
 
 tasks.spawn(someTask)
@@ -108,7 +108,7 @@ Same as `tasks.spawn(f, ...)` above
 Example:
 ```lua
 tasks.Task.spawn(function(a)
-    blight:output(a)
+    blight.output(a)
 end, "Hello World!")
 ```
 
@@ -153,7 +153,7 @@ local function someTask()
     while true do
         local data = tasks.yield()
         for _, value in ipairs(data) do
-            blight:output(value)
+            blight.output(value)
         end
     end
 end

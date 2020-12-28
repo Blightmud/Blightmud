@@ -174,7 +174,7 @@ mod patch_test {
     }
 
     fn cleanup() {
-        let _ = fs::remove_dir_all(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test"));
+        let _ = fs::remove_dir_all(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/test"));
     }
 
     fn create_v2_settings_file() {

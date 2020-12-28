@@ -7,7 +7,7 @@ use std::sync::{
 };
 
 use crate::{
-    io::Logger,
+    io::{LogWriter, Logger},
     lua::LuaScript,
     net::MudConnection,
     net::BUFFER_SIZE,
@@ -16,6 +16,9 @@ use crate::{
     tts::TTSController,
     Event,
 };
+
+#[cfg(test)]
+use mockall::automock;
 
 #[derive(Clone)]
 pub struct Session {
@@ -28,10 +31,11 @@ pub struct Session {
     pub prompt_input: Arc<Mutex<String>>,
     pub save_history: Arc<AtomicBool>,
     pub lua_script: Arc<Mutex<LuaScript>>,
-    pub logger: Arc<Mutex<Logger>>,
+    pub logger: Arc<Mutex<dyn LogWriter + Send>>,
     pub tts_ctrl: Arc<Mutex<TTSController>>,
 }
 
+#[cfg_attr(test, automock)]
 impl Session {
     pub fn connect(&mut self, host: &str, port: u16, tls: bool) -> bool {
         let mut connected = false;
@@ -216,7 +220,10 @@ fn build_compatibility_table() -> CompatibilityTable {
 #[cfg(test)]
 mod session_test {
 
-    use super::{Session, SessionBuilder};
+    use mockall::predicate::eq;
+
+    use super::*;
+    use crate::io::MockLogWriter;
     use crate::{event::Event, model::Line, timer::TimerEvent};
     use std::sync::mpsc::{channel, Receiver, Sender};
 
@@ -252,20 +259,26 @@ mod session_test {
 
     #[test]
     fn test_logging() {
-        let (session, reader, _timer_reader) = build_session();
-        assert!(!session.logger.lock().unwrap().is_logging());
+        let (mut session, reader, _timer_reader) = build_session();
+        let mut logger = MockLogWriter::new();
+        logger
+            .expect_start_logging()
+            .with(eq("mysteryhost"))
+            .times(1)
+            .returning(|_| Ok(()));
+        logger.expect_stop_logging().times(1).returning(|| Ok(()));
+        session.logger = Arc::new(Mutex::new(logger));
+
         session.start_logging("mysteryhost");
         assert_eq!(
             reader.recv(),
             Ok(Event::Info("Started logging for: mysteryhost".to_string()))
         );
-        assert!(session.logger.lock().unwrap().is_logging());
         session.stop_logging();
         assert_eq!(
             reader.recv(),
             Ok(Event::Info("Logging stopped".to_string()))
         );
-        assert!(!session.logger.lock().unwrap().is_logging());
     }
 
     #[test]

@@ -22,7 +22,7 @@ local function decode(data)
 				name, value, i = parse_var(i+1)
 				obj[name] = value
 			else
-				blight:output("[MSDP]: Malformed table")
+				blight.output("[MSDP]: Malformed table")
 				i = i + 1
 			end
 		end
@@ -40,7 +40,7 @@ local function decode(data)
 				value, i = parse_val(i+1)
 				table.insert(array, value)
 			else
-				blight:output("[MSDP]: Malformed array")
+				blight.output("[MSDP]: Malformed array")
 				i = i + 1
 			end
 		end

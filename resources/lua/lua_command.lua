@@ -4,7 +4,7 @@
 --
 
 local lua_debug_usage = alias.add("^/lua$", function()
-        blight:output("[!!] Usage: /lua <code>")
+        blight.output("[!!] Usage: /lua <code>")
 end)
 
 local lua_debug_alias = alias.add("^/lua (.*)$", function(matches)
@@ -34,7 +34,7 @@ function display(...)
 			display(arg[i])
 		end
 	else
-		blight:output((prettywrite(arg[1], '  ') or 'nil') .. '\n')
+		blight.output((prettywrite(arg[1], '  ') or 'nil') .. '\n')
 	end
 end
 

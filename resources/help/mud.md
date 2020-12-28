@@ -52,8 +52,8 @@ a server.
 - `callback`   A Lua function to be called upon connection. (host, port)
 
 ```lua
-blight:on_connect(function (host, port)
-    blight:output("Connected to:", host, port)
+blight.on_connect(function (host, port)
+    blight.output("Connected to:", host, port)
 end)
 ```
 
@@ -65,8 +65,8 @@ Registers a callback that is triggered upon disconnecting from a server.
 - `callback`   A Lua function to be called upon disconnect.
 
 ```lua
-blight:on_disconnect(function ()
-    blight:output("Disconnected from server")
+blight.on_disconnect(function ()
+    blight.output("Disconnected from server")
 end)
 ```
 

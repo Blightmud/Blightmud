@@ -154,7 +154,7 @@ mod.system_trigger_groups = {
 local system_trigger_groups = mod.system_trigger_groups
 
 local function getTriggerGroups()
-    if blight:is_core_mode() then
+    if blight.is_core_mode() then
         return system_trigger_groups
     end
     return user_trigger_groups

@@ -68,7 +68,7 @@ Execute a command on the OS
 
 ```lua
 local response = core:exec("curl ipinfo.io/ip")
-blight:output("The ip is: " .. response:stdout())
+blight.output("The ip is: " .. response:stdout())
 ```
 
 ***core:ExecResponse***

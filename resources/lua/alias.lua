@@ -136,7 +136,7 @@ mod.system_alias_groups = {
 local system_alias_groups = mod.system_alias_groups
 
 local function getAliasGroups()
-    if blight:is_core_mode() then
+    if blight.is_core_mode() then
         return system_alias_groups
     end
     return user_alias_groups

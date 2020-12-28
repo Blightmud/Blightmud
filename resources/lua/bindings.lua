@@ -1,5 +1,5 @@
 local function bind(cmd, event)
-	blight:bind(cmd, function () blight:ui(event) end)
+	blight.bind(cmd, function () blight.ui(event) end)
 end
 
 bind("ctrl-p", "previous_command")
@@ -19,4 +19,4 @@ bind("ctrl-h", "delete")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
 
-blight:bind("ctrl-s", function () tts:stop() end)
+blight.bind("ctrl-s", function () tts:stop() end)

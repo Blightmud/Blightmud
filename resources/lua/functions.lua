@@ -13,7 +13,7 @@ function _G.print(...)
 	for _,v in ipairs{...} do
 		table.insert(strings, tostring(v))
 	end
-	blight:output(table.unpack(strings))
+	blight.output(table.unpack(strings))
 end
 
 function cformat(msg, ...)

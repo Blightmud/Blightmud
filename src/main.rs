@@ -58,11 +58,11 @@ lazy_static! {
 
         #[cfg(test)]
         {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/data")
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/test/data")
         }
 
         #[cfg(all(not(test), debug_assertions))]
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/data")
     };
     pub static ref CONFIG_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
@@ -79,11 +79,11 @@ lazy_static! {
 
         #[cfg(test)]
         {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test/config")
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/test/config")
         }
 
         #[cfg(all(not(test), debug_assertions))]
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/config")
     };
     pub static ref MACOS_DEPRECATED_DIR: PathBuf = {
         use crate::lua::util;

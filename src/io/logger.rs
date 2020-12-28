@@ -6,6 +6,20 @@ use std::{
 };
 use strip_ansi_escapes::Writer as StripWriter;
 
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg_attr(test, automock)]
+pub trait LogWriter {
+    fn start_logging(&mut self, host: &str) -> Result<()>;
+
+    fn log_line(&mut self, line: &str) -> Result<()>;
+
+    fn stop_logging(&mut self) -> Result<()>;
+
+    fn is_logging(&self) -> bool;
+}
+
 #[derive(Default)]
 pub struct Logger {
     file: Option<BufWriter<StripWriter<File>>>,
@@ -17,8 +31,8 @@ fn get_and_ensure_log_dir(host: &str) -> Result<std::path::PathBuf> {
     Ok(path)
 }
 
-impl Logger {
-    pub fn start_logging(&mut self, host: &str) -> Result<()> {
+impl LogWriter for Logger {
+    fn start_logging(&mut self, host: &str) -> Result<()> {
         if self.file.is_none() {
             let path = get_and_ensure_log_dir(host)?;
 
@@ -28,7 +42,7 @@ impl Logger {
         Ok(())
     }
 
-    pub fn log_line(&mut self, line: &str) -> Result<()> {
+    fn log_line(&mut self, line: &str) -> Result<()> {
         if let Some(mut writer) = self.file.take() {
             writer.write_all(line.as_bytes())?;
             if !line.ends_with('\n') {
@@ -40,15 +54,14 @@ impl Logger {
         Ok(())
     }
 
-    pub fn stop_logging(&mut self) -> Result<()> {
+    fn stop_logging(&mut self) -> Result<()> {
         if let Some(mut writer) = self.file.take() {
             writer.flush()?;
         }
         Ok(())
     }
 
-    #[cfg(test)]
-    pub fn is_logging(&self) -> bool {
+    fn is_logging(&self) -> bool {
         self.file.is_some()
     }
 }
@@ -56,7 +69,7 @@ impl Logger {
 #[cfg(test)]
 mod logger_tests {
 
-    use super::Logger;
+    use super::*;
 
     #[test]
     fn test_logger() {

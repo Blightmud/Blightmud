@@ -30,7 +30,7 @@ local function GMCP()
 
 	local _on_enable = function (proto)
 		if proto == OPT then
-			blight.debug("Sending Core.Hello")
+            print("[GMCP]: GMCP is ready and available for your current mud")
 			self.gmcp_ready = true
 			store.session_write("__gmcp_ready", "true")
 			local program, version = blight.version()

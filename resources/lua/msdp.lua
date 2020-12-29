@@ -232,6 +232,7 @@ function msdp()
 	end
 
 	local _on_enable = function ()
+        print("[MSDP]: MSDP is ready and available for your current mud")
 		self.enabled = true
 		store.session_write("__msdp_enabled", tostring(true))
 		store_content(nil)

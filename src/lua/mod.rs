@@ -16,6 +16,7 @@ mod mud;
 mod plugin;
 mod regex;
 mod script;
+mod settings;
 mod store;
 mod timer;
 mod tts;

@@ -286,12 +286,19 @@ fn parse_key_event(
     buffer: &mut CommandBuffer,
     writer: &Sender<Event>,
     tts_ctrl: &mut Arc<Mutex<TTSController>>,
+    save_history: bool,
 ) {
     match key {
         Key::Char('\n') => {
             let input = Line::from(buffer.get_buffer());
             match parse_command(&buffer.submit()) {
                 Event::ServerInput(msg) => writer.send(Event::ServerInput(msg)).unwrap(),
+                Event::Quit => {
+                    if save_history {
+                        buffer.history.save();
+                    }
+                    writer.send(Event::Quit).unwrap();
+                }
                 e => {
                     writer.send(Event::InputSent(input)).unwrap();
                     writer.send(e).unwrap();
@@ -304,7 +311,12 @@ fn parse_key_event(
             buffer.push_key(c);
         }
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
-        Key::Ctrl('c') => writer.send(Event::Quit).unwrap(),
+        Key::Ctrl('c') => {
+            if save_history {
+                buffer.history.save();
+            }
+            writer.send(Event::Quit).unwrap();
+        }
         Key::PageUp => writer.send(Event::ScrollUp).unwrap(),
         Key::PageDown => writer.send(Event::ScrollDown).unwrap(),
         Key::Home => writer.send(Event::ScrollTop).unwrap(),
@@ -430,7 +442,8 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                 .completion_tree
                 .insert(include_str!("../../resources/completions.txt"));
 
-            if session.save_history() {
+            let save_history = session.save_history();
+            if save_history {
                 buffer.history = History::load();
                 buffer.current_index = buffer.history.len();
                 for line in buffer.history.iter() {
@@ -442,7 +455,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                 match e.unwrap() {
                     termion::event::Event::Key(key) => {
                         if !check_command_binds(key, &mut buffer, &script, &writer) {
-                            parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl);
+                            parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl, save_history);
                         }
                         writer
                             .send(Event::UserInputBuffer(
@@ -467,9 +480,6 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                         }
                     }
                 }
-            }
-            if session.save_history() {
-                buffer.history.save();
             }
             debug!("Input stream closing");
         })

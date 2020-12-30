@@ -1,6 +1,6 @@
 ![Rust](https://github.com/Blightmud/Blightmud/workflows/Rust/badge.svg)
 ![Security audit](https://github.com/Blightmud/blightmud/workflows/Security%20audit/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/LiquidityC/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/LiquidityC/Blightmud?branch=dev)
+[![Coverage Status](https://coveralls.io/repos/github/Blightmud/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/Blightmud/Blightmud?branch=dev)
 # Blightmud  : A mud client for the terminal
 
 Blightmud has been a passion project of mine for some time. A big user of the

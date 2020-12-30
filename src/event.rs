@@ -4,7 +4,7 @@ use crate::{
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
     tts::TTSEvent,
-    ui::Screen,
+    ui::UserInterface,
     TelnetData,
 };
 use libtelnet_rs::events::TelnetEvents;
@@ -105,7 +105,7 @@ impl EventHandler {
     pub fn handle_server_events(
         &mut self,
         event: Event,
-        screen: &mut Screen,
+        screen: &mut dyn UserInterface,
         transmit_writer: &mut Option<Sender<TelnetData>>,
     ) -> Result {
         match event {
@@ -238,7 +238,7 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_output_events(&self, event: Event, screen: &mut Screen) -> Result {
+    pub fn handle_output_events(&self, event: Event, screen: &mut dyn UserInterface) -> Result {
         self.handle_logging(event.clone())?;
         match event {
             Event::MudOutput(mut line) => {
@@ -290,7 +290,7 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_store_events(&mut self, event: Event, screen: &mut Screen) -> Result {
+    pub fn handle_store_events(&mut self, event: Event, screen: &mut dyn UserInterface) -> Result {
         match event {
             Event::AddServer(name, connection) => match Servers::try_load() {
                 Ok(mut saved_servers) => {
@@ -376,5 +376,104 @@ impl EventHandler {
             },
             _ => Err(BadEventRoutingError.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod event_test {
+
+    use std::sync::{Arc, Mutex};
+
+    use mockall::predicate::eq;
+
+    use crate::{session::SessionBuilder, timer::TimerEvent};
+
+    use crate::io::MockLogWriter;
+    use crate::ui::MockUserInterface;
+
+    use super::*;
+
+    fn build_session() -> (Session, Receiver<Event>, Receiver<TimerEvent>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let (timer_writer, timer_reader): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
+        let session = SessionBuilder::new()
+            .main_writer(writer.clone())
+            .timer_writer(timer_writer.clone())
+            .screen_dimensions((80, 80))
+            .build();
+
+        loop {
+            if reader.try_recv().is_err() {
+                break;
+            }
+        }
+
+        (session, reader, timer_reader)
+    }
+
+    #[test]
+    fn test_event_logging() {
+        let (mut session, _reader, _timer_reader) = build_session();
+        let mut logger = MockLogWriter::new();
+        logger
+            .expect_log_line()
+            .with(eq("prefix test line"))
+            .times(2)
+            .returning(|_| Ok(()));
+        session.logger = Arc::new(Mutex::new(logger));
+        let handler = EventHandler::from(&session);
+        let _ = handler.log_str("prefix ", "test line");
+        let _ = handler.log_line("prefix ", &Line::from("test line"));
+    }
+
+    #[test]
+    fn test_output() {
+        let (mut session, _reader, _timer_reader) = build_session();
+        let mut logger = MockLogWriter::new();
+        logger.expect_log_line().times(5).returning(|_| Ok(()));
+        session.logger = Arc::new(Mutex::new(logger));
+        let handler = EventHandler::from(&session);
+
+        let mut screen = MockUserInterface::new();
+        screen
+            .expect_print_output()
+            .with(eq(Line::from("Output line")))
+            .times(2)
+            .return_const(());
+        screen.expect_print_prompt().times(1).return_const(());
+        screen.expect_print_prompt_input().times(1).return_const(());
+        screen.expect_print_error().times(1).return_const(());
+        screen.expect_print_info().times(1).return_const(());
+        screen
+            .expect_print_send()
+            .with(eq(Line::from("input data")))
+            .times(1)
+            .return_const(());
+
+        let line = Line::from("Output line");
+        assert!(handler
+            .handle_output_events(Event::MudOutput(line.clone()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Output(line.clone()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Prompt, &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(
+                Event::UserInputBuffer(String::from("prompt"), 5),
+                &mut screen
+            )
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Info("info message".to_string()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Error("error message".to_string()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::InputSent(Line::from("input data")), &mut screen)
+            .is_ok());
     }
 }

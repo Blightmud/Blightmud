@@ -9,6 +9,9 @@ use std::{
 };
 use termion::{color, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 
+#[cfg(test)]
+use mockall::automock;
+
 struct ScrollData {
     active: bool,
     pos: usize,
@@ -43,6 +46,27 @@ struct StatusArea {
     end_line: u16,
     width: u16,
     status_lines: Vec<Option<String>>,
+}
+
+#[cfg_attr(test, automock)]
+pub trait UserInterface {
+    fn print_error(&mut self, output: &str);
+    fn print_info(&mut self, output: &str);
+    fn print_output(&mut self, line: &Line);
+    fn print_prompt(&mut self, prompt: &Line);
+    fn print_prompt_input(&mut self, input: &str, pos: usize);
+    fn print_send(&mut self, send: &Line);
+    fn reset(&mut self) -> Result<()>;
+    fn reset_scroll(&mut self) -> Result<()>;
+    fn scroll_down(&mut self) -> Result<()>;
+    fn scroll_lock(&mut self, lock: bool) -> Result<()>;
+    fn scroll_to(&mut self, row: usize) -> Result<()>;
+    fn scroll_top(&mut self) -> Result<()>;
+    fn scroll_up(&mut self) -> Result<()>;
+    fn set_host(&mut self, host: &str, port: u16) -> Result<()>;
+    fn set_status_area_height(&mut self, height: u16) -> Result<()>;
+    fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;
+    fn flush(&mut self);
 }
 
 impl StatusArea {
@@ -232,6 +256,233 @@ pub struct Screen {
     connection: Option<String>,
 }
 
+impl UserInterface for Screen {
+    fn set_status_area_height(&mut self, height: u16) -> Result<()> {
+        let height = height.max(1).min(5);
+        self.status_area.set_height(height, self.height);
+        self.setup()?;
+        Ok(())
+    }
+
+    fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
+        self.status_area.set_status_line(line, info);
+        self.status_area
+            .redraw(&mut self.screen, self.scroll_data.active)?;
+        write!(self.screen, "{}", self.goto_prompt())?;
+        Ok(())
+    }
+
+    fn set_host(&mut self, host: &str, port: u16) -> Result<()> {
+        self.connection = if !host.is_empty() {
+            Some(format!("{}:{}", host, port))
+        } else {
+            None
+        };
+        self.redraw_top_bar()
+    }
+
+    fn reset(&mut self) -> Result<()> {
+        write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion)?;
+        Ok(())
+    }
+
+    fn print_prompt(&mut self, prompt: &Line) {
+        self.tts_ctrl.lock().unwrap().speak_line(&prompt);
+        if let Some(prompt_line) = prompt.print_line() {
+            if !prompt_line.is_empty() {
+                self.history.append(prompt_line);
+                if !self.scroll_data.active {
+                    write!(
+                        self.screen,
+                        "{}\n{}{}",
+                        termion::cursor::Goto(1, self.output_line),
+                        prompt_line,
+                        self.goto_prompt(),
+                    )
+                    .unwrap();
+                }
+            }
+        }
+    }
+
+    fn print_prompt_input(&mut self, input: &str, pos: usize) {
+        // Sanity check
+        debug_assert!(pos <= input.len());
+
+        let mut input = input;
+        let mut pos = pos;
+        let width = self.width as usize;
+        while input.len() >= width && pos >= width {
+            let (_, last) = input.split_at(self.width as usize);
+            input = last;
+            pos -= width;
+        }
+        if input.len() >= width {
+            input = input.split_at(width).0;
+        }
+        self.cursor_prompt_pos = pos as u16 + 1;
+        write!(
+            self.screen,
+            "{}{}{}{}{}{}{}{}{}",
+            termion::cursor::Save,
+            termion::cursor::Goto(1, self.prompt_line),
+            termion::color::Fg(termion::color::Reset),
+            termion::color::Bg(termion::color::Reset),
+            termion::style::Reset,
+            termion::clear::CurrentLine,
+            input,
+            termion::cursor::Restore,
+            self.goto_prompt(),
+        )
+        .unwrap();
+    }
+
+    fn print_output(&mut self, line: &Line) {
+        self.tts_ctrl.lock().unwrap().speak_line(line);
+        if line.flags.separate_receives {
+            self.history.remove_last();
+        }
+        if let Some(print_line) = line.print_line() {
+            if !line.is_utf8() || print_line.trim().is_empty() {
+                self.print_line(&print_line, !line.flags.separate_receives);
+            } else {
+                let mut replace_first = !line.flags.separate_receives;
+                let mut count = 0;
+                let cur_line = self.history.len();
+                for l in wrap_line(&print_line, self.width as usize) {
+                    self.print_line(&l, replace_first);
+                    replace_first = true;
+                    count += 1;
+                }
+                if self.scroll_data.lock && count > self.height {
+                    self.scroll_to(cur_line).ok();
+                }
+            }
+        }
+    }
+
+    fn print_send(&mut self, send: &Line) {
+        if let Some(line) = send.print_line() {
+            self.tts_ctrl.lock().unwrap().speak_input(&line);
+            self.print_line(
+                &format!(
+                    "{}{}> {}{}",
+                    termion::style::Reset,
+                    color::Fg(color::LightYellow),
+                    line,
+                    color::Fg(color::Reset),
+                ),
+                true,
+            );
+        }
+    }
+
+    fn print_info(&mut self, output: &str) {
+        let line = &format!("[**] {}", output);
+        self.print_line(line, true);
+        self.tts_ctrl.lock().unwrap().speak_info(output);
+    }
+
+    fn print_error(&mut self, output: &str) {
+        let line = &format!(
+            "{}[!!] {}{}",
+            color::Fg(color::Red),
+            output,
+            color::Fg(color::Reset)
+        );
+        self.print_line(line, true);
+        self.tts_ctrl.lock().unwrap().speak_error(output);
+    }
+
+    fn scroll_to(&mut self, row: usize) -> Result<()> {
+        if row < self.history.len() {
+            self.scroll_data.active = true;
+            self.scroll_data.pos = row;
+            self.draw_scroll()?;
+        }
+        Ok(())
+    }
+
+    fn scroll_lock(&mut self, lock: bool) -> Result<()> {
+        self.scroll_data.lock = lock;
+        Ok(())
+    }
+
+    fn scroll_up(&mut self) -> Result<()> {
+        let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
+        let history = &self.history.inner;
+        if history.len() > output_range as usize {
+            if !self.scroll_data.active {
+                self.scroll_data.active = true;
+                self.scroll_data.pos = history.len() - output_range;
+            }
+            self.scroll_data.active = true;
+            self.scroll_data.pos -= self.scroll_data.pos.min(5);
+            self.draw_scroll()?;
+        }
+        Ok(())
+    }
+
+    fn scroll_down(&mut self) -> Result<()> {
+        if self.scroll_data.active {
+            let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
+            let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
+            let new_start_index = self.scroll_data.pos + 5;
+            if new_start_index >= max_start_index as usize {
+                self.reset_scroll()?;
+            } else {
+                self.scroll_data.pos = new_start_index;
+                self.draw_scroll()?;
+            }
+        }
+        Ok(())
+    }
+
+    fn scroll_top(&mut self) -> Result<()> {
+        if self.history.inner.len() as u16 >= self.output_line {
+            self.scroll_data.active = true;
+            self.scroll_data.pos = 0;
+            self.draw_scroll()?;
+        }
+        Ok(())
+    }
+
+    fn reset_scroll(&mut self) -> Result<()> {
+        self.scroll_data.active = false;
+        let output_range = self.output_line - OUTPUT_START_LINE + 1;
+        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
+        if output_start_index >= 0 {
+            let output_start_index = output_start_index as usize;
+            for i in 0..output_range {
+                let index = output_start_index + i as usize;
+                let line_no = OUTPUT_START_LINE + i;
+                write!(
+                    self.screen,
+                    "{}{}{}",
+                    termion::cursor::Goto(1, line_no),
+                    termion::clear::CurrentLine,
+                    self.history.inner[index],
+                )?;
+            }
+        } else {
+            for line in &self.history.inner {
+                write!(
+                    self.screen,
+                    "{}\n{}",
+                    termion::cursor::Goto(1, self.output_line),
+                    line,
+                )?;
+            }
+        }
+        self.redraw_status_area()?;
+        Ok(())
+    }
+
+    fn flush(&mut self) {
+        self.screen.flush().unwrap();
+    }
+}
+
 impl Screen {
     pub fn new(
         tts_ctrl: Arc<Mutex<TTSController>>,
@@ -299,28 +550,19 @@ impl Screen {
         }
     }
 
-    pub fn set_status_area_height(&mut self, height: u16) -> Result<()> {
-        let height = height.max(1).min(5);
-        self.status_area.set_height(height, self.height);
-        self.setup()?;
-        Ok(())
-    }
-
-    pub fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
-        self.status_area.set_status_line(line, info);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.active)?;
-        write!(self.screen, "{}", self.goto_prompt())?;
-        Ok(())
-    }
-
-    pub fn set_host(&mut self, host: &str, port: u16) -> Result<()> {
-        self.connection = if !host.is_empty() {
-            Some(format!("{}:{}", host, port))
-        } else {
-            None
-        };
-        self.redraw_top_bar()
+    fn print_line(&mut self, line: &str, new_line: bool) {
+        self.history.append(&line);
+        if !self.scroll_data.active {
+            write!(
+                self.screen,
+                "{}{}{}{}",
+                termion::cursor::Goto(1, self.output_line),
+                if new_line { "\n" } else { "" },
+                &line,
+                self.goto_prompt(),
+            )
+            .unwrap();
+        }
     }
 
     fn redraw_top_bar(&mut self) -> Result<()> {
@@ -362,187 +604,6 @@ impl Screen {
         )
     }
 
-    pub fn reset(&mut self) -> Result<()> {
-        write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion)?;
-        Ok(())
-    }
-
-    pub fn print_prompt(&mut self, prompt: &Line) {
-        self.tts_ctrl.lock().unwrap().speak_line(&prompt);
-        if let Some(prompt_line) = prompt.print_line() {
-            if !prompt_line.is_empty() {
-                self.history.append(prompt_line);
-                if !self.scroll_data.active {
-                    write!(
-                        self.screen,
-                        "{}\n{}{}",
-                        termion::cursor::Goto(1, self.output_line),
-                        prompt_line,
-                        self.goto_prompt(),
-                    )
-                    .unwrap();
-                }
-            }
-        }
-    }
-
-    pub fn print_prompt_input(&mut self, input: &str, pos: usize) {
-        // Sanity check
-        debug_assert!(pos <= input.len());
-
-        let mut input = input;
-        let mut pos = pos;
-        let width = self.width as usize;
-        while input.len() >= width && pos >= width {
-            let (_, last) = input.split_at(self.width as usize);
-            input = last;
-            pos -= width;
-        }
-        if input.len() >= width {
-            input = input.split_at(width).0;
-        }
-        self.cursor_prompt_pos = pos as u16 + 1;
-        write!(
-            self.screen,
-            "{}{}{}{}{}{}{}{}{}",
-            termion::cursor::Save,
-            termion::cursor::Goto(1, self.prompt_line),
-            termion::color::Fg(termion::color::Reset),
-            termion::color::Bg(termion::color::Reset),
-            termion::style::Reset,
-            termion::clear::CurrentLine,
-            input,
-            termion::cursor::Restore,
-            self.goto_prompt(),
-        )
-        .unwrap();
-    }
-
-    pub fn print_output(&mut self, line: &Line) {
-        self.tts_ctrl.lock().unwrap().speak_line(line);
-        if line.flags.separate_receives {
-            self.history.remove_last();
-        }
-        if let Some(print_line) = line.print_line() {
-            if !line.is_utf8() || print_line.trim().is_empty() {
-                self.print_line(&print_line, !line.flags.separate_receives);
-            } else {
-                let mut replace_first = !line.flags.separate_receives;
-                let mut count = 0;
-                let cur_line = self.history.len();
-                for l in wrap_line(&print_line, self.width as usize) {
-                    self.print_line(&l, replace_first);
-                    replace_first = true;
-                    count += 1;
-                }
-                if self.scroll_data.lock && count > self.height {
-                    self.scroll_to(cur_line).ok();
-                }
-            }
-        }
-    }
-
-    fn print_line(&mut self, line: &str, new_line: bool) {
-        self.history.append(&line);
-        if !self.scroll_data.active {
-            write!(
-                self.screen,
-                "{}{}{}{}",
-                termion::cursor::Goto(1, self.output_line),
-                if new_line { "\n" } else { "" },
-                &line,
-                self.goto_prompt(),
-            )
-            .unwrap();
-        }
-    }
-
-    pub fn print_send(&mut self, send: &Line) {
-        if let Some(line) = send.print_line() {
-            self.tts_ctrl.lock().unwrap().speak_input(&line);
-            self.print_line(
-                &format!(
-                    "{}{}> {}{}",
-                    termion::style::Reset,
-                    color::Fg(color::LightYellow),
-                    line,
-                    color::Fg(color::Reset),
-                ),
-                true,
-            );
-        }
-    }
-
-    pub fn print_info(&mut self, output: &str) {
-        let line = &format!("[**] {}", output);
-        self.print_line(line, true);
-        self.tts_ctrl.lock().unwrap().speak_info(output);
-    }
-
-    pub fn print_error(&mut self, output: &str) {
-        let line = &format!(
-            "{}[!!] {}{}",
-            color::Fg(color::Red),
-            output,
-            color::Fg(color::Reset)
-        );
-        self.print_line(line, true);
-        self.tts_ctrl.lock().unwrap().speak_error(output);
-    }
-
-    pub fn scroll_to(&mut self, row: usize) -> Result<()> {
-        if row < self.history.len() {
-            self.scroll_data.active = true;
-            self.scroll_data.pos = row;
-            self.draw_scroll()?;
-        }
-        Ok(())
-    }
-
-    pub fn scroll_lock(&mut self, lock: bool) -> Result<()> {
-        self.scroll_data.lock = lock;
-        Ok(())
-    }
-
-    pub fn scroll_up(&mut self) -> Result<()> {
-        let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
-        let history = &self.history.inner;
-        if history.len() > output_range as usize {
-            if !self.scroll_data.active {
-                self.scroll_data.active = true;
-                self.scroll_data.pos = history.len() - output_range;
-            }
-            self.scroll_data.active = true;
-            self.scroll_data.pos -= self.scroll_data.pos.min(5);
-            self.draw_scroll()?;
-        }
-        Ok(())
-    }
-
-    pub fn scroll_down(&mut self) -> Result<()> {
-        if self.scroll_data.active {
-            let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
-            let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
-            let new_start_index = self.scroll_data.pos + 5;
-            if new_start_index >= max_start_index as usize {
-                self.reset_scroll()?;
-            } else {
-                self.scroll_data.pos = new_start_index;
-                self.draw_scroll()?;
-            }
-        }
-        Ok(())
-    }
-
-    pub fn scroll_top(&mut self) -> Result<()> {
-        if self.history.inner.len() as u16 >= self.output_line {
-            self.scroll_data.active = true;
-            self.scroll_data.pos = 0;
-            self.draw_scroll()?;
-        }
-        Ok(())
-    }
-
     fn draw_scroll(&mut self) -> Result<()> {
         let output_range = self.output_line - OUTPUT_START_LINE + 1;
         for i in 0..output_range {
@@ -559,41 +620,6 @@ impl Screen {
         }
         self.redraw_status_area()?;
         Ok(())
-    }
-
-    pub fn reset_scroll(&mut self) -> Result<()> {
-        self.scroll_data.active = false;
-        let output_range = self.output_line - OUTPUT_START_LINE + 1;
-        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
-        if output_start_index >= 0 {
-            let output_start_index = output_start_index as usize;
-            for i in 0..output_range {
-                let index = output_start_index + i as usize;
-                let line_no = OUTPUT_START_LINE + i;
-                write!(
-                    self.screen,
-                    "{}{}{}",
-                    termion::cursor::Goto(1, line_no),
-                    termion::clear::CurrentLine,
-                    self.history.inner[index],
-                )?;
-            }
-        } else {
-            for line in &self.history.inner {
-                write!(
-                    self.screen,
-                    "{}\n{}",
-                    termion::cursor::Goto(1, self.output_line),
-                    line,
-                )?;
-            }
-        }
-        self.redraw_status_area()?;
-        Ok(())
-    }
-
-    pub fn flush(&mut self) {
-        self.screen.flush().unwrap();
     }
 
     /// Creates the io::Write terminal handler we draw to.

@@ -4,7 +4,7 @@ use log::{error, info};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
-use ui::HelpHandler;
+use ui::{HelpHandler, UserInterface};
 
 mod event;
 mod io;

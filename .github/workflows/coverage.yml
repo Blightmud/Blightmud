@@ -34,7 +34,7 @@ jobs:
         with:
           toolchain: nightly
           override: true
-          components: llvm-tools
+          components: llvm-tools-preview
       - name: Run tests
         run: cargo test
         env:

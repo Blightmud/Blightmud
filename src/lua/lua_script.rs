@@ -103,9 +103,11 @@ fn create_default_lua_state(
             .call::<_, rlua::Value>(())?;
         globals.set("tasks", lua_plugin)?;
 
-        let blight_aud: AnyUserData = globals.get("blight")?;
-        let mut blight = blight_aud.borrow_mut::<Blight>()?;
-        blight.core_mode(false);
+        {
+            let blight_aud: AnyUserData = globals.get("blight")?;
+            let mut blight = blight_aud.borrow_mut::<Blight>()?;
+            blight.core_mode(false);
+        }
 
         ctx.load(include_str!("../../resources/lua/on_state_created.lua"))
             .exec()?;

@@ -15,38 +15,26 @@ impl Settings {
 impl UserData for Settings {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_function("list", |ctx, _: ()| -> Result<Table<'lua>> {
-            let settings =
-                model::Settings::try_load().map_err(|anyhow_err| Error::external(anyhow_err))?;
+            let settings = model::Settings::try_load().map_err(Error::external)?;
             let result = ctx.create_table()?;
             model::SETTINGS.iter().try_for_each(|key| {
-                result.set(
-                    key.to_string(),
-                    settings
-                        .get(key)
-                        .map_err(|anyhow_err| Error::external(anyhow_err))?,
-                )
+                result.set(key.to_string(), settings.get(key).map_err(Error::external)?)
             })?;
             Ok(result)
         });
         methods.add_function("get", |_ctx, key: String| -> Result<bool> {
-            let settings =
-                model::Settings::try_load().map_err(|anyhow_err| Error::external(anyhow_err))?;
-            settings
-                .get(key.as_str())
-                .map_err(|anyhow_err| Error::external(anyhow_err))
+            let settings = model::Settings::try_load().map_err(Error::external)?;
+            settings.get(key.as_str()).map_err(Error::external)
         });
         methods.add_function("set", |ctx, (key, val): (String, bool)| {
-            let mut settings =
-                model::Settings::try_load().map_err(|anyhow_err| Error::external(anyhow_err))?;
-            settings
-                .set(key.as_str(), val)
-                .map_err(|anyhow_err| Error::external(anyhow_err))?;
+            let mut settings = model::Settings::try_load().map_err(Error::external)?;
+            settings.set(key.as_str(), val).map_err(Error::external)?;
             settings.save();
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend
                 .writer
                 .send(Event::SettingChanged(key, val))
-                .map_err(|send_err| Error::external(send_err))?;
+                .map_err(Error::external)?;
             Ok(())
         });
     }

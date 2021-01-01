@@ -44,3 +44,23 @@ impl SaveData for Servers {
         true
     }
 }
+
+#[cfg(test)]
+mod test_connection {
+
+    use super::*;
+
+    #[test]
+    fn confirm_disp() {
+        let conn = Connection::new("host.com", 8080, true);
+        assert_eq!(
+            format!("{}", conn),
+            "Host: host.com, Port: 8080 TLS: true".to_string()
+        );
+        let conn = Connection::new("host.com", 4000, false);
+        assert_eq!(
+            format!("{}", conn),
+            "Host: host.com, Port: 4000 TLS: false".to_string()
+        );
+    }
+}

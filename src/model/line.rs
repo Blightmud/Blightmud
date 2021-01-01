@@ -275,6 +275,8 @@ mod test_line {
     fn test_from_string() {
         let line = Line::from("test".to_string());
         assert_eq!(line.line(), "test");
+        let line = Line::from(&"test".to_string());
+        assert_eq!(line.line(), "test");
     }
 
     #[test]

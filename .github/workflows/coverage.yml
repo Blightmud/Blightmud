@@ -30,20 +30,22 @@ jobs:
         with:
           path: ~/.cargo/bin
           key: ${{ runner.os }}-cargo-bin-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions-rs/toolchain@v1
+      - name: Toolchain setup
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           override: true
           components: llvm-tools-preview
+      - name: Install grcov
+        run: cargo install grcov
       - name: Run tests
         run: cargo test
         env:
-          #CARGO_INCREMENTAL: '0'
           RUSTFLAGS: '-Zinstrument-coverage'
-      - id: coverage
-        uses: actions-rs/grcov@v0.1
+      - id: Run grcov
+        run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing -o coverage.lcov
       - name: Coveralls upload
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ${{ steps.coverage.outputs.report }}
+          path-to-lcov: coverage.lcov

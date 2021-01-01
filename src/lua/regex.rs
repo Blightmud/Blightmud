@@ -61,10 +61,7 @@ impl UserData for Regex {
              (src, replace, count): (String, String, Option<usize>)|
              -> rlua::Result<String> {
                 let re = &this.regex;
-                let limit = match count {
-                    Some(c) => c,
-                    None => 0,
-                };
+                let limit = count.unwrap_or(0);
                 Ok(re.replacen::<&str>(&src, limit, &replace).to_mut().clone())
             },
         );

@@ -2,7 +2,7 @@ use log::error;
 use std::fmt;
 use strip_ansi_escapes::strip as strip_ansi;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Flags {
     pub gag: bool,
     pub skip_log: bool,
@@ -104,16 +104,14 @@ impl From<&String> for Line {
 
 impl From<&[u8]> for Line {
     fn from(line: &[u8]) -> Self {
-        let mut clean_utf8 = true;
         let line = if let Ok(line) = String::from_utf8(line.to_vec()) {
             line
         } else {
-            clean_utf8 = false;
             error!("[Line]: Unparsable bytes : {:?}", line);
             String::from_utf8_lossy(line).to_mut().clone()
         };
 
-        let (content, clean_content, _) = get_content_from(&line);
+        let (content, clean_content, clean_utf8) = get_content_from(&line);
         Self {
             content,
             clean_content,
@@ -125,13 +123,15 @@ impl From<&[u8]> for Line {
 
 impl From<&Vec<u8>> for Line {
     fn from(line: &Vec<u8>) -> Self {
+        let mut clean_utf8 = true;
         let line = if let Ok(line) = String::from_utf8(line.clone()) {
             line
         } else {
+            clean_utf8 = false;
             String::from_utf8_lossy(&line).to_mut().clone()
         };
 
-        let (content, clean_content, clean_utf8) = get_content_from(&line);
+        let (content, clean_content, _) = get_content_from(&line);
         Self {
             content,
             clean_content,
@@ -226,5 +226,71 @@ mod test_line {
         let line = Line::from("\r\rtestline");
         assert_eq!(line.line(), "\r\rtestline");
         assert_eq!(line.clean_line(), "testline");
+    }
+
+    #[test]
+    fn test_bad_utf8() {
+        let line = Line::from("a good line");
+        assert_eq!(line.is_utf8(), true);
+        let line = Line::from(&vec![
+            0xF0, 0xA4, 0xAD, 0xF0, 0xA4, 0xAD, 0xA2, 0xF0, 0xA4, 0xAD, 0xA2, 0xF0, 0xA4, 0xAD,
+            0xA2, 0xF0, 0xA4, 0xAD, 0xA2, 0xF0, 0xA4, 0xAD,
+        ]);
+        assert_eq!(line.is_utf8(), false);
+    }
+
+    #[test]
+    fn test_set_content() {
+        let mut line = Line::from("test");
+        assert_eq!(line.line(), "test");
+        line.set_content("\x1b[32mbatman\x1b[0m");
+        assert_eq!(line.clean_line(), "batman");
+        assert_eq!(line.line(), "\u{1b}[32mbatman\u{1b}[0m");
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut line = Line::from("test");
+        assert_eq!(line.line(), "test");
+        assert_eq!(line.clean_line(), "test");
+        line.clear();
+        assert_eq!(line.line(), "");
+        assert_eq!(line.clean_line(), "");
+    }
+
+    #[test]
+    fn test_line_from_line() {
+        let mut line = Line::from("test");
+        let other = Line::from("test");
+        line.flags.skip_log = true;
+        line.flags.prompt = true;
+        let clone = Line::from(&line);
+        assert_eq!(clone, line);
+        assert_eq!(clone.flags, line.flags);
+        assert_eq!(other, line);
+        assert_ne!(other.flags, line.flags);
+    }
+
+    #[test]
+    fn test_from_string() {
+        let line = Line::from("test".to_string());
+        assert_eq!(line.line(), "test");
+    }
+
+    #[test]
+    fn test_display() {
+        let line = Line::from("test");
+        assert_eq!(format!("{}", line), "test".to_string());
+        let line = Line::from("\x1b[32mbatman\x1b[0m");
+        assert_eq!(format!("{}", line), "\u{1b}[32mbatman\u{1b}[0m".to_string());
+    }
+
+    #[test]
+    fn test_lines() {
+        let line = Line::from("test1\r\ntest2\r\ntest3");
+        let mut it = line.lines();
+        assert_eq!(it.next(), Some("test1"));
+        assert_eq!(it.next(), Some("test2"));
+        assert_eq!(it.next(), Some("test3"));
     }
 }

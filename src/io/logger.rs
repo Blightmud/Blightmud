@@ -25,16 +25,16 @@ pub struct Logger {
     file: Option<BufWriter<StripWriter<File>>>,
 }
 
-fn get_and_ensure_log_dir(host: &str) -> Result<std::path::PathBuf> {
+fn get_and_ensure_log_dir(host: &str) -> std::path::PathBuf {
     let path = crate::DATA_DIR.clone().join("logs").join(host);
     std::fs::create_dir_all(&path).ok();
-    Ok(path)
+    path
 }
 
 impl LogWriter for Logger {
     fn start_logging(&mut self, host: &str) -> Result<()> {
         if self.file.is_none() {
-            let path = get_and_ensure_log_dir(host)?;
+            let path = get_and_ensure_log_dir(host);
 
             let logfile = path.join(format!("{}.log", Local::now().format("%Y%m%d.%H:%M:%S")));
             self.file = Some(BufWriter::new(StripWriter::new(File::create(logfile)?)));

@@ -37,7 +37,7 @@ jobs:
           override: true
           components: llvm-tools-preview
       - name: Install grcov
-        run: cargo install grcov
+        run: if [[ ! -e ~/.cargo/bin/grcov ]]; then cargo install grcov; fi
       - name: Run tests
         run: cargo test
         env:

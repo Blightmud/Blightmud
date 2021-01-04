@@ -50,15 +50,15 @@ alias.add("^/triggers$", function ()
 end)
 
 alias.add("^/tts (on|off)$", function (matches)
-	tts:enable(matches[2] == "on")
+	tts.enable(matches[2] == "on")
 end)
 
 alias.add("^/tts_rate ([-\\d]+)$", function (matches)
-	tts:set_rate(matches[2])
+	tts.set_rate(matches[2])
 end)
 
 alias.add("^/tts_keypresses (on|off)$", function (matches)
-	tts:echo_keypresses(matches[2] == "on")
+	tts.echo_keypresses(matches[2] == "on")
 end)
 
 alias.add("^/settings$", function ()

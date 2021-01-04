@@ -38,7 +38,7 @@ local function GMCP()
 				Version=version,
 				Client=program,
 			}
-			core:subneg_send(201, string_to_bytes("Core.Hello " .. json.encode(hello_obj)))
+			core.subneg_send(201, string_to_bytes("Core.Hello " .. json.encode(hello_obj)))
 			for _,cb in ipairs(self.ready_listeners) do
 				cb()
 			end
@@ -64,7 +64,7 @@ local function GMCP()
 	end
 
 	local register = function (mod)
-		core:subneg_send(OPT, string_to_bytes("Core.Supports.Add [\"" .. mod .. " 1\"]"))
+		core.subneg_send(OPT, string_to_bytes("Core.Supports.Add [\"" .. mod .. " 1\"]"))
 	end
 
 	local receive = function (mod, callback)
@@ -72,7 +72,7 @@ local function GMCP()
 	end
 
 	local send = function (msg)
-		core:subneg_send(OPT, string_to_bytes(msg))
+		core.subneg_send(OPT, string_to_bytes(msg))
 	end
 
 	local on_ready = function (cb)
@@ -102,11 +102,11 @@ end
 local gmcp = GMCP()
 
 -- Register the module
-core:enable_protocol(OPT)
-core:on_protocol_enabled(function (proto) 
+core.enable_protocol(OPT)
+core.on_protocol_enabled(function (proto) 
 	gmcp._on_enable(proto)
 end)
-core:subneg_recv(function (proto, data)
+core.subneg_recv(function (proto, data)
 	gmcp._subneg_recv(proto, data)
 end)
 mud.on_disconnect(function ()

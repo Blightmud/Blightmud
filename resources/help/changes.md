@@ -70,6 +70,31 @@ See `/help alias` for more information.
 - `core:store(...)` => `store.session_write(...)`
 - `core:read(...)` => `store.session_read(...)`
 
+## Core
+- `core:enable_protocol(...)` => `core.enable_protocol(...)`
+- `core:disable_protocol(...)` => `core.disable_protocol(...)`
+- `core:on_protocol_enabled(...)` => `core.on_protocol_enabled(...)`
+- `core:subneg_recv(...)` => `core.subneg_recv(...)`
+- `core:subneg_send(...)` => `core.subneg_send(...)`
+- `core:exec(...)` => `core.exec(...)`
+
+## TTS
+- `tts:speak(...)` => `tts.speak(...)`
+- `tts:speak_direct(...)` => `tts.speak_direct(...)`
+- `tts:stop(...)` => `tts.stop(...)`
+- `tts:enable(...)` => `tts.enable(...)`
+- `tts:set_rate(...)` => `tts.set_rate(...)`
+- `tts:change_rate(...)` => `tts.change_rate(...)`
+- `tts:echo_keypresses(...)` => `tts.echo_keypresses(...)`
+- `tts:step_back(...)` => `tts.step_back(...)`
+- `tts:step_forward(...)` => `tts.step_forward(...)`
+- `tts:scan_back(...)` => `tts.scan_back(...)`
+- `tts:scan_forward(...)` => `tts.scan_forward(...)`
+- `tts:scan_input_back(...)` => `tts.scan_input_back(...)`
+- `tts:scan_input_forward(...)` => `tts.scan_input_forward(...)`
+- `tts:step_begin(...)` => `tts.step_begin(...)`
+- `tts:step_end(...)` => `tts.step_end(...)`
+
 ---
 # Changes in Blightmud v2.0
 

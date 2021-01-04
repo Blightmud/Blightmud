@@ -45,6 +45,13 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 ### Compile with text-to-speech
 - Run `cargo build|run|install --all-features`
 
+In order for this to build correctly you will need to install some additional
+dev dependencies: **libclang** and **libspeechd**. Below are some installation
+commands that might fit your system:
+
+- Ubuntu    `apt install libclang-dev libspeechd-dev speech-dispatcher speech-dispatcher-espeak espeak`
+- Arch      `pacman -S speech-dispatcher espeak`
+
 ## Installation
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page
 - **Archlinux/Manjaro**  : Packages are available on AUR

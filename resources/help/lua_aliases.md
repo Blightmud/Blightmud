@@ -21,7 +21,7 @@ Fetches an alias by ud
 
 ##
 
-***alias.getGroup(id)***
+***alias.get_group(id)***
 Gets an alias group by id
 
 - `id`  The id of the alias group
@@ -42,7 +42,7 @@ Remove all aliases. If groups are being used then they will all be cleared.
 
 ##
 
-***alias.addGroup()***
+***alias.add_group()***
 Creates a new alias group
 
 - Returns the newly created `AliasGroup`
@@ -71,7 +71,7 @@ an alias group.
 
 ##
 
-***alias.Alias.isAlias(object)***
+***alias.Alias.is_alias(object)***
 Tests wether a given table is an alias.
 
 - Returns true or false
@@ -88,21 +88,21 @@ Disable the alias
 
 ##
 
-***Alias:setEnabled(enabled)***
+***Alias:set_enabled(enabled)***
 Sets the `enabled` status of the alias
 
 - `enabled`     True or false
 
 ##
 
-***Alias:isEnabled()***
+***Alias:is_enabled()***
 Check if an alias is enabled
 
 - Returns true or false
 
 ##
 
-***Alias:checkLine(line)***
+***Alias:check_line(line)***
 Runs the alias against a given line. If the alias matches, the callback
 will be executed, count will be lowered, etc.
 Mainly for internal use.
@@ -124,7 +124,7 @@ Don't modify these attributes directly
 
 ***alias.AliasGroup.new(id)***
 Creates a new `AliasGroup` object. Note that the alias group will not be
-registered internally and thus will not function. Prefer to use `alias.addGroup`
+registered internally and thus will not function. Prefer to use `alias.add_group`
 
 - `id`  The id of the new `AliasGroup`
 - Returns an `AliasGroup`
@@ -149,7 +149,7 @@ Gets an alias from the group
 
 ##
 
-***AliasGroup:getAliases()***
+***AliasGroup:get_aliases()***
 Returns a table of all aliases in the group.
 
 - Returns the aliases contained in the group
@@ -161,7 +161,7 @@ Removes all aliases from the group
 
 ##
 
-***AliasGroup:checkLine(line)***
+***AliasGroup:check_line(line)***
 
-Dispatches `Alias:checkLine` calls to all contained aliases.
+Dispatches `Alias:check_line` calls to all contained aliases.
 Mainly used internally.

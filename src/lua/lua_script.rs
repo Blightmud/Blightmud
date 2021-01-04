@@ -863,7 +863,7 @@ mod lua_script_tests {
                 .unwrap();
 
             let aliases: BTreeMap<u32, rlua::Table> = ctx
-                .load(r#"return alias.getGroup():getAliases()"#)
+                .load(r#"return alias.get_group():get_aliases()"#)
                 .call(())
                 .unwrap();
 
@@ -875,7 +875,7 @@ mod lua_script_tests {
 
             ctx.load(r#"alias.clear()"#).exec().unwrap();
             let ids: BTreeMap<u32, rlua::Table> = ctx
-                .load(r#"return alias.getGroup():getAliases()"#)
+                .load(r#"return alias.get_group():get_aliases()"#)
                 .call(())
                 .unwrap();
 
@@ -893,7 +893,7 @@ mod lua_script_tests {
                 .unwrap();
 
             let triggers: BTreeMap<u32, rlua::Table> = ctx
-                .load(r#"return trigger.getGroup():getTriggers()"#)
+                .load(r#"return trigger.get_group():get_triggers()"#)
                 .call(())
                 .unwrap();
 
@@ -911,7 +911,7 @@ mod lua_script_tests {
 
             ctx.load(r#"trigger.clear()"#).exec().unwrap();
             let ids: BTreeMap<u32, rlua::Table> = ctx
-                .load(r#"return trigger.getGroup():getTriggers()"#)
+                .load(r#"return trigger.get_group():get_triggers()"#)
                 .call(())
                 .unwrap();
 

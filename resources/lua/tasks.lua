@@ -37,7 +37,7 @@ function Task.spawn(callable, ...)
     return ret
 end
 
-function Task.spawnLater(time, callable, ...)
+function Task.spawn_later(time, callable, ...)
     local ret = Task.new(callable, ...)
 
     ret:startLater(time)
@@ -45,7 +45,7 @@ function Task.spawnLater(time, callable, ...)
     return ret
 end
 
-function Task.getcurrent()
+function Task.get_current()
     return currentTask
 end
 
@@ -88,7 +88,7 @@ end
 
 
 mod.spawn = Task.spawn
-mod.spawnLater = Task.spawnLater
+mod.spawn_later = Task.spawn_later
 mod.yield = coroutine.yield
 
 
@@ -109,12 +109,12 @@ function mod.idle()
 end
 
 
-function mod.getCurrent()
+function mod.get_current()
     return currentTask
 end
 
 
-function mod.getTasks()
+function mod.get_tasks()
     local ret = {}
 
     local idx = 1
@@ -127,12 +127,12 @@ function mod.getTasks()
 end
 
 
-function mod.isTask(obj)
+function mod.is_task(obj)
     return getmetatable(obj) == Task
 end
 
 
-local function runTask(task)
+local function run_task(task)
     currentTask = task
     local startTime = os.time()
     debug.sethook(task.coro, function()
@@ -172,13 +172,13 @@ timer.add(0.1, 0, function()
     for task, timespec in pairs(tasks) do
         if timespec.time < os.time() and not timespec.idle then
             somethingRan = true
-            runTask(task)
+            run_task(task)
         end
     end
     if not somethingRan then
         for task, timespec in pairs(tasks) do
             if timespec.idle then
-                runTask(task)
+                run_task(task)
                 timespec.idle = nil
             end
         end

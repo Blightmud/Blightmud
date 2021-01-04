@@ -93,7 +93,7 @@ part of at least one trigger group
 
 ##
 
-***trigger.Trigger.isTrigger(object)***
+***trigger.Trigger.is_trigger(object)***
 Tests whether a given table is a trigger
 
 - `object` The table to test
@@ -111,21 +111,21 @@ Disables the trigger
 
 ##
 
-***Trigger:setEnabled(enabled)***
+***Trigger:set_enabled(enabled)***
 Sets the `enabled` status of the trigger
 
 - `enabled` Whether the trigger should be enabled
 
 ##
 
-***Trigger:isEnabled()***
+***Trigger:is_enabled()***
 Returns whether the trigger is enabled
 
 - Returns `true` if the trigger is enabled. `false` otherwise.
 
 ##
 
-***Trigger:checkLine(line)***
+***Trigger:check_line(line)***
 Runs the trigger against a given line. If the trigger matches, the callback
 will be executed, count will be lowered, etc.
 Mainly used internally.
@@ -172,7 +172,7 @@ Gets a trigger from the group
 
 ##
 
-***TriggerGroup:getTriggers()***
+***TriggerGroup:get_triggers()***
 Returns a table of all the triggers in the group.
 
 - Returns the triggers in the group
@@ -193,8 +193,8 @@ Removes all triggers from the group
 
 ##
 
-***TriggerGroup:checkLine(line)***
-Dispatches `Trigger:checkLine` calls to all contained triggers.
+***TriggerGroup:check_line(line)***
+Dispatches `Trigger:check_line` calls to all contained triggers.
 Mainly used internally.
 
 - `line` The `Line` object to pass to the triggers (See `/help line`)

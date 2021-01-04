@@ -28,7 +28,7 @@ function Trigger.new(re, options, callback)
     return ret
 end
 
-function Trigger.isTrigger(obj)
+function Trigger.is_trigger(obj)
     return getmetatable(obj) == Trigger
 end
 
@@ -40,15 +40,15 @@ function Trigger:disable()
     self.enabled = false
 end
 
-function Trigger:setEnabled(flag)
+function Trigger:set_enabled(flag)
     self.enabled = flag
 end
 
-function Trigger:isEnabled()
+function Trigger:is_enabled()
     return self.enabled
 end
 
-function Trigger:checkLine(line)
+function Trigger:check_line(line)
     if line:prompt() ~= self.prompt then return end
     local str
     if self.raw then
@@ -101,7 +101,7 @@ end
 
 function TriggerGroup:add(regex_or_trigger, options, callback)
     local trigger
-    if Trigger.isTrigger(regex_or_trigger) then
+    if Trigger.is_trigger(regex_or_trigger) then
         trigger = regex_or_trigger
     else
         trigger = Trigger.new(regex_or_trigger, options, callback)
@@ -114,7 +114,7 @@ function TriggerGroup:get(id)
     return self.triggers[id]
 end
 
-function TriggerGroup:getTriggers()
+function TriggerGroup:get_triggers()
     return self.triggers
 end
 
@@ -126,10 +126,10 @@ function TriggerGroup:clear()
     self.triggers = {}
 end
 
-function TriggerGroup:checkLine(line)
+function TriggerGroup:check_line(line)
     local toRemove = {}
     for _, trigger in pairs(self.triggers) do
-        trigger:checkLine(line)
+        trigger:check_line(line)
         if trigger.count == 0 then
             toRemove[#toRemove + 1] = trigger.id
         end
@@ -153,7 +153,7 @@ mod.system_trigger_groups = {
 }
 local system_trigger_groups = mod.system_trigger_groups
 
-local function getTriggerGroups()
+local function get_trigger_groups()
     if blight.is_core_mode() then
         return system_trigger_groups
     end
@@ -161,37 +161,37 @@ local function getTriggerGroups()
 end
 
 function mod.add(regex, options, callback)
-    return getTriggerGroups()[1]:add(regex, options, callback)
+    return get_trigger_groups()[1]:add(regex, options, callback)
 end
 
 function mod.get(id)
-    for _, group in pairs(getTriggerGroups()) do
+    for _, group in pairs(get_trigger_groups()) do
         local trigger = group:get(id)
         if trigger then return trigger end
     end
     return nil
 end
 
-function mod.getGroup(id)
+function mod.get_group(id)
     if not id then id = 1 end
-    return getTriggerGroups()[id]
+    return get_trigger_groups()[id]
 end
 
 function mod.remove(id)
-    for _, group in pairs(getTriggerGroups()) do
+    for _, group in pairs(get_trigger_groups()) do
         group:remove(id)
     end
 end
 
 function mod.clear()
-    for _, group in pairs(getTriggerGroups()) do
+    for _, group in pairs(get_trigger_groups()) do
         group:clear()
     end
 end
 
-function mod.addGroup()
+function mod.add_group()
     local ret = TriggerGroup.new(next_group_id)
-    getTriggerGroups()[next_group_id] = ret
+    get_trigger_groups()[next_group_id] = ret
     next_group_id = next_group_id + 1
 
     return ret
@@ -199,10 +199,10 @@ end
 
 mud.add_output_listener(function(line)
     for _, group in pairs(system_trigger_groups) do
-        group:checkLine(line)
+        group:check_line(line)
     end
     for _, group in pairs(user_trigger_groups) do
-        group:checkLine(line)
+        group:check_line(line)
     end
     return line
 end)

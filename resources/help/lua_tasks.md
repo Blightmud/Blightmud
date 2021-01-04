@@ -67,21 +67,21 @@ Stops running the current task until no other tasks run
 
 ##
 
-***tasks.getCurrent()***
+***tasks.get_current()***
 Gets the currently running task
 
 - Returns the `Task` that is currently running (nil if no task is running)
 
 ##
 
-***tasks.getTasks()***
+***tasks.get_tasks()***
 Get all scheduled tasks
 
 - Returns a table of all scheduled tasks
 
 ##
 
-***tasks.isTask(table)***
+***tasks.is_task(table)***
 Tests whether a given table is a `Task`
 
 - `table` The table to test
@@ -114,13 +114,13 @@ end, "Hello World!")
 
 ##
 
-***tasks.Task.spawnLater(time, f, ...)***
-Same as `tasks.spawnLater(time, f, ...)` above
+***tasks.Task.spawn_later(time, f, ...)***
+Same as `tasks.spawn_later(time, f, ...)` above
 
 ##
 
-***tasks.Task.getCurrent()***
-Same as `tasks.getCurrent()` above
+***tasks.Task.get_current()***
+Same as `tasks.get_current()` above
 
 ##
 

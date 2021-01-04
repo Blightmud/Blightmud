@@ -24,7 +24,7 @@ function Alias.new(re, callback)
     return ret
 end
 
-function Alias.isAlias(obj)
+function Alias.is_alias(obj)
     return getmetatable(obj) == Alias
 end
 
@@ -36,15 +36,15 @@ function Alias:disable()
     self.enabled = false
 end
 
-function Alias:setEnabled(flag)
+function Alias:set_enabled(flag)
     self.enabled = flag
 end
 
-function Alias:isEnabled()
+function Alias:is_enabled()
     return self.enabled
 end
 
-function Alias:checkLine(line)
+function Alias:check_line(line)
     local str = line:line()
     local matches = self.regex:match(str)
     if matches then
@@ -83,7 +83,7 @@ end
 
 function AliasGroup:add(regex_or_alias, callback)
     local alias
-    if Alias.isAlias(regex_or_alias) then
+    if Alias.is_alias(regex_or_alias) then
         alias = regex_or_alias
     else
         alias = Alias.new(regex_or_alias, callback)
@@ -96,7 +96,7 @@ function AliasGroup:get(id)
     return self.aliases[id]
 end
 
-function AliasGroup:getAliases()
+function AliasGroup:get_aliases()
     return self.aliases
 end
 
@@ -108,10 +108,10 @@ function AliasGroup:clear()
     self.aliases = {}
 end
 
-function AliasGroup:checkLine(line)
+function AliasGroup:check_line(line)
     local toRemove = {}
     for _, alias in pairs(self.aliases) do
-        alias:checkLine(line)
+        alias:check_line(line)
         if alias.count == 0 then
             toRemove[#toRemove + 1] = alias.id
         end
@@ -135,7 +135,7 @@ mod.system_alias_groups = {
 }
 local system_alias_groups = mod.system_alias_groups
 
-local function getAliasGroups()
+local function get_alias_groups()
     if blight.is_core_mode() then
         return system_alias_groups
     end
@@ -143,37 +143,37 @@ local function getAliasGroups()
 end
 
 function mod.add(regex, callback)
-    return getAliasGroups()[1]:add(regex, callback)
+    return get_alias_groups()[1]:add(regex, callback)
 end
 
 function mod.get(id)
-    for _, group in pairs(getAliasGroups()) do
+    for _, group in pairs(get_alias_groups()) do
         local alias = group:get(id)
         if alias then return alias end
     end
     return nil
 end
 
-function mod.getGroup(id)
+function mod.get_group(id)
     if not id then id = 1 end
-    return getAliasGroups()[id]
+    return get_alias_groups()[id]
 end
 
 function mod.remove(id)
-    for _, group in pairs(getAliasGroups()) do
+    for _, group in pairs(get_alias_groups()) do
         group:remove(id)
     end
 end
 
 function mod.clear()
-    for _, group in pairs(getAliasGroups()) do
+    for _, group in pairs(get_alias_groups()) do
         group:clear()
     end
 end
 
-function mod.addGroup()
+function mod.add_group()
     local ret = AliasGroup.new(next_group_id)
-    getAliasGroups()[next_group_id] = ret
+    get_alias_groups()[next_group_id] = ret
     next_group_id = next_group_id + 1
 
     return ret
@@ -181,10 +181,10 @@ end
 
 mud.add_input_listener(function(line)
     for _, group in pairs(system_alias_groups) do
-        group:checkLine(line)
+        group:check_line(line)
     end
     for _, group in pairs(user_alias_groups) do
-        group:checkLine(line)
+        group:check_line(line)
     end
     return line
 end)

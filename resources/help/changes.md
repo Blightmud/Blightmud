@@ -25,7 +25,7 @@ will need to apply the following changes to your scripts.
 - `blight:add_trigger(...)` => `trigger.add(...)`
 - `blight:remove_trigger(id)` => `trigger.remove(id)`
 - `blight:clear_triggers()` => `trigger.clear()`
-- `blight:enable_trigger(id, bool)` => `trigger.get(id):setEnabled(bool)`
+- `blight:enable_trigger(id, bool)` => `trigger.get(id):set_enabled(bool)`
 - `blight:gag` => `Line:gag(true)`
 
 For more info about triggers and lines see `/help trigger` and `/help line`
@@ -36,7 +36,7 @@ There are now exists a group system for triggers for bulk trigger handling.
 - `blight:add_alias(...)` => `alias.add(...)`
 - `blight:remove_alias(id)` => `alias.remove(id)`
 - `blight:clear_aliases()` => `alias.clear()`
-- `blight:enable_alias(id, bool)` => `alias.get(id):setEnabled(bool)`
+- `blight:enable_alias(id, bool)` => `alias.get(id):set_enabled(bool)`
 
 Just as with triggers aliases now have additional functionality through groups.
 See `/help alias` for more information.

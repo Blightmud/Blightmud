@@ -54,3 +54,18 @@ Before you commit please perform the following tasks:
 - `cargo fmt`
 - `cargo clippy` (ignore the complex main.rs:run() warning for now)
 - `cargo test`
+
+### Naming and casing
+
+#### Rust code:
+- Functions: `snake_case`
+- Structs: `UpperCamelCase`
+- Constants: `SCREAMING_SNAKE_CASE`
+- Modules: `snake_case`
+
+#### Lua API code:
+- Pseudoclasses: `UpperCamelCase`
+- Methods: `snake_case`
+- Functions: `snake_case`
+- Modules: `snake_case`
+- Constants: `SCREAMING_SNAKE_CASE`

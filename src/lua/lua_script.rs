@@ -28,7 +28,7 @@ fn create_default_lua_state(
         Some(store) => store,
         None => Store::new(),
     };
-    let tts = Tts::new(writer.clone());
+    let tts = Tts::new();
 
     blight.screen_dimensions = dimensions;
     blight.core_mode(true);

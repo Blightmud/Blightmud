@@ -9,7 +9,7 @@ they should not be needed.
 
 ##
 
-***core:enable_protocol(proto)***
+***core.enable_protocol(proto)***
 Makes Blightmud respond with `IAC DO PROTO` if the server asks for it.  Take
 not that this method is best called before a client actually connects to a mud.
 All servers don't play as nice if the client isn't quick to respond to a `IAC
@@ -19,14 +19,14 @@ WILL PROTO`.
 
 ##
 
-***core:on_protocol_enabled(callback)***
+***core.on_protocol_enabled(callback)***
 A callback to receive updates when protocols are enabled. This will trigger for
 all protocols so make sure the one you are interested in is the one supplied.
 
 - `callback`  A callback function that takes a u8 as an argument
 
 ```lua
-core:on_protocol_enabled(function (proto)
+core.on_protocol_enabled(function (proto)
     if proto == 201 then -- Check for GMCP
         -- Do your stuff
     end
@@ -35,7 +35,7 @@ end)
 
 ##
 
-***core:subneg_send(proto, data)***
+***core.subneg_send(proto, data)***
 Send a subnegotation to the mud. This will send an `IAC SB proto data IAC SE`
 to the mud.
 
@@ -44,13 +44,13 @@ to the mud.
 
 ##
 
-***core:subneg_recv(callback)***
+***core.subneg_recv(callback)***
 Listen for protocol subnegotiation communication.
 
 - `callback`  A function that takes the protocol and bytes in a table as arguments
 
 ```lua
-core:subneg_recv(function (proto, data)
+core.subneg_recv(function (proto, data)
     if proto == 201 then -- Operator on GMCP
         -- Do stuff with data
     end
@@ -59,7 +59,7 @@ end)
 
 ##
 
-***core:exec(shellcommand) -> ExecResponse***
+***core.exec(shellcommand) -> ExecResponse***
 Execute a command on the OS
 
 - `shellcommand` A command to run in the shell
@@ -67,11 +67,11 @@ Execute a command on the OS
   command. Described below.
 
 ```lua
-local response = core:exec("curl ipinfo.io/ip")
+local response = core.exec("curl ipinfo.io/ip")
 blight.output("The ip is: " .. response:stdout())
 ```
 
-***core:ExecResponse***
+***core.ExecResponse***
 The object returned from the exec
 
 ***ExecResponse:code()***

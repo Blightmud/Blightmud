@@ -135,7 +135,7 @@ function msdp()
 	end
 
 	local function msdp_send(data)
-		core:subneg_send(MSDP, assemble(data))
+		core.subneg_send(MSDP, assemble(data))
 	end
 
 	local function store_content(content)
@@ -285,13 +285,13 @@ function msdp()
 end
 
 local msdp = msdp()
-core:enable_protocol(MSDP)
-core:on_protocol_enabled(function (proto) 
+core.enable_protocol(MSDP)
+core.on_protocol_enabled(function (proto) 
 	if proto == MSDP then
 		msdp._on_enable()
 	end
 end)
-core:subneg_recv(function (proto, data)
+core.subneg_recv(function (proto, data)
 	if proto == MSDP then
 		msdp._subneg_recv(data)
 	end

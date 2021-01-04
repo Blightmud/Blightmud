@@ -566,7 +566,7 @@ mod lua_script_tests {
     #[test]
     fn test_enable_proto() {
         let send_gmcp_lua = r#"
-        core:enable_protocol(200)
+        core.enable_protocol(200)
         "#;
 
         let (lua, reader) = get_lua();
@@ -580,7 +580,7 @@ mod lua_script_tests {
     #[test]
     fn test_proto_send() {
         let send_gmcp_lua = r#"
-        core:subneg_send(201, { 255, 250, 86, 255, 240 })
+        core.subneg_send(201, { 255, 250, 86, 255, 240 })
         "#;
 
         let (lua, reader) = get_lua();

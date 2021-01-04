@@ -90,7 +90,8 @@ lazy_static! {
 }
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
-    let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();
+    let mut signals =
+        signal_hook::iterator::Signals::new(&[signal_hook::consts::SIGWINCH]).unwrap();
     let main_thread_writer = session.main_writer;
     thread::Builder::new()
         .name("signal-thread".to_string())

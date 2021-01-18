@@ -22,7 +22,7 @@ local function decode(data)
 				name, value, i = parse_var(i+1)
 				obj[name] = value
 			else
-				blight:output("[MSDP]: Malformed table")
+				blight.output("[MSDP]: Malformed table")
 				i = i + 1
 			end
 		end
@@ -40,7 +40,7 @@ local function decode(data)
 				value, i = parse_val(i+1)
 				table.insert(array, value)
 			else
-				blight:output("[MSDP]: Malformed array")
+				blight.output("[MSDP]: Malformed array")
 				i = i + 1
 			end
 		end
@@ -102,8 +102,8 @@ end
 
 function msdp()
 	local self = {
-		enabled = core:read("__msdp_enabled") == "true" or false,
-		content = json.decode(core:read("__msdp_content") or "{}"),
+		enabled = store.session_read("__msdp_enabled") == "true" or false,
+		content = json.decode(store.session_read("__msdp_content") or "{}"),
 		ready_listeners = {},
 		update_listeners = {},
 	}
@@ -135,7 +135,7 @@ function msdp()
 	end
 
 	local function msdp_send(data)
-		core:subneg_send(MSDP, assemble(data))
+		core.subneg_send(MSDP, assemble(data))
 	end
 
 	local function store_content(content)
@@ -143,10 +143,10 @@ function msdp()
 			for k,v in pairs(content) do
 				self.content[k] = v
 			end
-			core:store("__msdp_content", json.encode(self.content))
+			store.session_write("__msdp_content", json.encode(self.content))
 		else
 			self.content = {}
-			core:store("__msdp_content", json.encode(self.content))
+			store.session_write("__msdp_content", json.encode(self.content))
 		end
 	end
 
@@ -232,8 +232,9 @@ function msdp()
 	end
 
 	local _on_enable = function ()
+        print("[MSDP]: MSDP is ready and available for your current mud")
 		self.enabled = true
-		core:store("__msdp_enabled", tostring(true))
+		store.session_write("__msdp_enabled", tostring(true))
 		store_content(nil)
 		for _,list in ipairs({
 				"REPORTABLE_VARIABLES",
@@ -264,7 +265,7 @@ function msdp()
 
 	local _reset = function ()
 		self.enabled = false
-		core:store("__msdp_enabled", tostring(false))
+		store.session_write("__msdp_enabled", tostring(false))
 		store_content(nil)
 	end
 
@@ -284,18 +285,18 @@ function msdp()
 end
 
 local msdp = msdp()
-core:enable_protocol(MSDP)
-core:on_protocol_enabled(function (proto) 
+core.enable_protocol(MSDP)
+core.on_protocol_enabled(function (proto) 
 	if proto == MSDP then
 		msdp._on_enable()
 	end
 end)
-core:subneg_recv(function (proto, data)
+core.subneg_recv(function (proto, data)
 	if proto == MSDP then
 		msdp._subneg_recv(data)
 	end
 end)
-blight:on_disconnect(function ()
+mud.on_disconnect(function ()
 	msdp._reset()
 end)
 

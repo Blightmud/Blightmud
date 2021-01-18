@@ -38,7 +38,7 @@ within the Lua state for you to use: https://github.com/rxi/json.lua
 - `callback` The Lua function that will receive <module> updates.
 
 ```lua
-gmcp.receive("Room.Info", function (data) blight:output(data) end)
+gmcp.receive("Room.Info", function (data) blight.output(data) end)
 ```
 
 ##
@@ -65,21 +65,21 @@ to screen
 
 ```lua
 gmcp.on_ready(function ()
-    blight:output("Registering GMCP")
+    blight.output("Registering GMCP")
     gmcp.register("Room")
     gmcp.register("Char")
     gmcp.receive("Room.Info", function (data)
         obj = json.decode(data)
-        blight:output("ROOM NUM: " .. obj["num"])
-        blight:output("ROOM MAP: " .. obj["map"])
+        blight.output("ROOM NUM: " .. obj["num"])
+        blight.output("ROOM MAP: " .. obj["map"])
     end)
     gmcp.receive("Char.Vitals", function (data)
-        blight:output("GMCP: Char.Vitals -> " .. data)
+        blight.output("GMCP: Char.Vitals -> " .. data)
         obj = json.decode(data)
         -- Do stuff with data
     end)
     gmcp.receive("Char.Status", function (data)
-        blight:output("GMCP: Char.Status -> " .. data)
+        blight.output("GMCP: Char.Status -> " .. data)
         obj = json.decode(data)
         -- Do stuff with data
     end)

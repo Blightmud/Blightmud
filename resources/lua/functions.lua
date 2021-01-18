@@ -9,7 +9,11 @@ end
 
 -- Make Lua's `print()` write to Blightmud's output buffer.
 function _G.print(...)
-	blight:output(...)
+	local strings = {}
+	for _,v in ipairs{...} do
+		table.insert(strings, tostring(v))
+	end
+	blight.output(table.unpack(strings))
 end
 
 function cformat(msg, ...)

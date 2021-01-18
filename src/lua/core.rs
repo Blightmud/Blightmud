@@ -1,7 +1,7 @@
-use std::{collections::HashMap, sync::mpsc::Sender};
+use std::sync::mpsc::Sender;
 
 use log::debug;
-use rlua::{Table, UserData, UserDataMethods};
+use rlua::{AnyUserData, Table, UserData, UserDataMethods};
 
 use crate::{event::Event, io::exec};
 
@@ -13,7 +13,6 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct Core {
     main_writer: Sender<Event>,
-    local_storage: HashMap<String, String>,
     next_id: u32,
 }
 
@@ -21,7 +20,6 @@ impl Core {
     pub fn new(writer: Sender<Event>) -> Self {
         Self {
             main_writer: writer,
-            local_storage: HashMap::new(),
             next_id: 0,
         }
     }
@@ -34,29 +32,39 @@ impl Core {
 
 impl UserData for Core {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_method("enable_protocol", |_, this, proto: u8| {
+        methods.add_function("enable_protocol", |ctx, proto: u8| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this = this_aux.borrow_mut::<Core>()?;
             this.main_writer.send(Event::EnableProto(proto)).unwrap();
             Ok(())
         });
-        methods.add_method("disable_protocol", |_, this, proto: u8| {
+        methods.add_function("disable_protocol", |ctx, proto: u8| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this = this_aux.borrow_mut::<Core>()?;
             this.main_writer.send(Event::DisableProto(proto)).unwrap();
             Ok(())
         });
-        methods.add_method_mut("on_protocol_enabled", |ctx, this, cb: rlua::Function| {
+        methods.add_function_mut("on_protocol_enabled", |ctx, cb: rlua::Function| {
             let globals = ctx.globals();
             let table: Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
+            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
             globals.set(PROTO_ENABLED_LISTENERS_TABLE, table)?;
             Ok(())
         });
-        methods.add_method_mut("subneg_recv", |ctx, this, cb: rlua::Function| {
+        methods.add_function_mut("subneg_recv", |ctx, cb: rlua::Function| {
             let globals = ctx.globals();
             let table: Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
+            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
             globals.set(PROTO_SUBNEG_LISTENERS_TABLE, table)?;
             Ok(())
         });
-        methods.add_method_mut("subneg_send", |_, this, (proto, bytes): (u8, Table)| {
+        methods.add_function_mut("subneg_send", |ctx, (proto, bytes): (u8, Table)| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this = this_aux.borrow_mut::<Core>()?;
             let data = bytes
                 .pairs::<i32, u8>()
                 .filter_map(Result::ok)
@@ -68,27 +76,9 @@ impl UserData for Core {
                 .unwrap();
             Ok(())
         });
-        methods.add_method_mut("store", |_, this, (key, value): (String, String)| {
-            debug!("Storing: {}:{}", key, value);
-            this.local_storage.insert(key, value);
-            Ok(())
-        });
-        methods.add_method(
-            "read",
-            |_, this, key: String| -> Result<Option<String>, rlua::Error> {
-                debug!("Reading: {}", key);
-                Ok(if let Some(val) = this.local_storage.get(&key) {
-                    debug!("Read: {}", val);
-                    Some(val.to_string())
-                } else {
-                    debug!("Read: nothing");
-                    None
-                })
-            },
-        );
-        methods.add_method(
+        methods.add_function(
             "exec",
-            |_, _, cmd: String| -> Result<ExecResponse, rlua::Error> {
+            |_, cmd: String| -> Result<ExecResponse, rlua::Error> {
                 match exec(&cmd) {
                     Ok(output) => Ok(ExecResponse::from(output)),
                     Err(err) => Err(rlua::Error::RuntimeError(err.to_string())),

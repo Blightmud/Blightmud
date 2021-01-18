@@ -1,15 +1,12 @@
-pub const ALIAS_TABLE: &str = "__alias_table";
-pub const TRIGGER_TABLE: &str = "__trigger_table";
-pub const PROMPT_TRIGGER_TABLE: &str = "__prompt_trigger_table";
 pub const ON_CONNECTION_CALLBACK_TABLE: &str = "__connection_callback_table";
 pub const ON_DISCONNECT_CALLBACK_TABLE: &str = "__disconnect_callback_table";
-pub const TIMED_FUNCTION_TABLE: &str = "__timed_functions";
-pub const GAG_NEXT_TRIGGER_LINE: &str = "__gag_next";
-pub const TTS_GAG_NEXT_TRIGGER_LINE: &str = "__tts_gag_next";
+pub const TIMED_CALLBACK_TABLE: &str = "__timed_callback_table";
+pub const TIMED_CALLBACK_TABLE_CORE: &str = "__timed_callback_table_core";
+pub const TIMED_NEXT_ID: &str = "__timed_next_id";
 pub const COMMAND_BINDING_TABLE: &str = "__cmd_binds";
-
-pub const ALIAS_TABLE_CORE: &str = "__alias_table_core";
-pub const TRIGGER_TABLE_CORE: &str = "__trigger_table_core";
+pub const MUD_OUTPUT_LISTENER_TABLE: &str = "__output_listeners";
+pub const MUD_INPUT_LISTENER_TABLE: &str = "__input_listeners";
+pub const BACKEND: &str = "__blight_backend_wrapper";
 
 // Core tables
 pub const PROTO_ENABLED_LISTENERS_TABLE: &str = "__protocol_enabled_listeners";

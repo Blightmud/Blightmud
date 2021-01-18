@@ -3,11 +3,11 @@
 -- provides: /lua <lua stuff>
 --
 
-local lua_debug_usage = blight:add_alias("^/lua$", function()
-        blight:output("[!!] Usage: /lua <code>")
+local lua_debug_usage = alias.add("^/lua$", function()
+        blight.output("[!!] Usage: /lua <code>")
 end)
 
-local lua_debug_alias = blight:add_alias("^/lua (.*)$", function(matches)
+local lua_debug_alias = alias.add("^/lua (.*)$", function(matches)
 	local f, e = load("return "..matches[2])
 	if not f then
 		f, e = assert(load(matches[2]))
@@ -34,7 +34,7 @@ function display(...)
 			display(arg[i])
 		end
 	else
-		blight:output((prettywrite(arg[1], '  ') or 'nil') .. '\n')
+		blight.output((prettywrite(arg[1], '  ') or 'nil') .. '\n')
 	end
 end
 

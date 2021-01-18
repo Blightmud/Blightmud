@@ -4,7 +4,7 @@ use crate::{
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
     tts::TTSEvent,
-    ui::Screen,
+    ui::UserInterface,
     TelnetData,
 };
 use libtelnet_rs::events::TelnetEvents;
@@ -39,7 +39,7 @@ pub enum Event {
     DisableProto(u8),
     ProtoSubnegRecv(u8, Vec<u8>),
     ProtoSubnegSend(u8, Vec<u8>),
-    AddTimedEvent(chrono::Duration, Option<u32>, u32),
+    AddTimedEvent(chrono::Duration, Option<u32>, u32, bool),
     TimedEvent(u32),
     DropTimedEvent(u32),
     ClearTimers,
@@ -48,15 +48,15 @@ pub enum Event {
     ResetScript,
     StartLogging(String, bool),
     StopLogging,
-    ToggleSetting(String, String),
-    ShowSetting(String),
-    ShowSettings,
+    SettingChanged(String, bool),
+    ScrollLock(bool),
     ScrollUp,
     ScrollDown,
+    ScrollTop,
     ScrollBottom,
     StatusAreaHeight(u16),
     StatusLine(usize, String),
-    ShowHelp(String),
+    ShowHelp(String, bool),
     TTSEnabled(bool),
     Speak(String, bool),
     SpeakStop,
@@ -103,7 +103,7 @@ impl EventHandler {
     pub fn handle_server_events(
         &mut self,
         event: Event,
-        screen: &mut Screen,
+        screen: &mut dyn UserInterface,
         transmit_writer: &mut Option<Sender<TelnetData>>,
     ) -> Result {
         match event {
@@ -116,30 +116,33 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::ServerInput(line) => {
+            Event::ServerInput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
-                    if !script.check_for_alias_match(&line) {
-                        if let Ok(mut logger) = self.session.logger.lock() {
-                            if let Some(log_line) = line.log_line() {
-                                logger.log_line(&format!("> {}", &log_line))?;
-                            }
+                    let mut output_buffer = self.session.output_buffer.lock().unwrap();
+                    output_buffer.input_sent();
+                    script.on_mud_input(&mut line);
+                    screen.print_send(&line);
+                    if let Ok(mut logger) = self.session.logger.lock() {
+                        if let Some(log_line) = line.log_line() {
+                            logger.log_line(&format!("> {}", &log_line))?;
                         }
+                    }
+                    if !line.flags.matched {
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
                             if let TelnetEvents::DataSend(buffer) = parser.send_text(&line.line()) {
                                 self.session.main_writer.send(Event::ServerSend(buffer))?;
                             }
                         }
-                    } else {
-                        script.get_output_lines().iter().for_each(|l| {
-                            screen.print_output(l);
-                        });
                     }
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
                 Ok(())
             }
             Event::Connect(Connection { host, port, tls }) => {
                 self.session.disconnect();
-                if self.session.connect(&host, port, tls.unwrap_or_default()) {
+                if self.session.connect(&host, port, tls) {
                     let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
                     spawn_receive_thread(self.session.clone());
                     spawn_transmit_thread(self.session.clone(), reader);
@@ -233,12 +236,12 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_output_events(&self, event: Event, screen: &mut Screen) -> Result {
+    pub fn handle_output_events(&self, event: Event, screen: &mut dyn UserInterface) -> Result {
         self.handle_logging(event.clone())?;
         match event {
             Event::MudOutput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
-                    script.check_for_trigger_match(&mut line);
+                    script.on_mud_output(&mut line);
                     screen.print_output(&line);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
@@ -253,7 +256,7 @@ impl EventHandler {
             Event::Prompt => {
                 let mut output_buffer = self.session.output_buffer.lock().unwrap();
                 if let Ok(script) = self.session.lua_script.lock() {
-                    script.check_for_prompt_trigger_match(&mut output_buffer.prompt);
+                    script.on_mud_output(&mut output_buffer.prompt);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });
@@ -285,72 +288,190 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_store_events(
-        &mut self,
-        event: Event,
-        saved_servers: &mut Servers,
-        screen: &mut Screen,
-    ) -> Result {
+    pub fn handle_store_events(&mut self, event: Event, screen: &mut dyn UserInterface) -> Result {
         match event {
-            Event::AddServer(name, connection) => {
-                if saved_servers.contains_key(&name) {
-                    self.session.main_writer.send(Event::Error(format!(
-                        "Saved server already exists for {}",
-                        name
-                    )))?;
-                    return Ok(());
-                }
+            Event::AddServer(name, connection) => match Servers::try_load() {
+                Ok(mut saved_servers) => {
+                    if saved_servers.contains_key(&name) {
+                        self.session.main_writer.send(Event::Error(format!(
+                            "Saved server already exists for {}",
+                            name
+                        )))?;
+                        return Ok(());
+                    }
 
-                saved_servers.insert(name.clone(), connection);
-                saved_servers.save();
-
-                self.session
-                    .main_writer
-                    .send(Event::Info(format!("Server added: {}", name)))?;
-
-                Ok(())
-            }
-            Event::RemoveServer(name) => {
-                if saved_servers.contains_key(&name) {
-                    saved_servers.remove(&name);
+                    saved_servers.insert(name.clone(), connection);
                     saved_servers.save();
 
                     self.session
                         .main_writer
-                        .send(Event::Info(format!("Server removed: {}", name)))?;
-                } else {
-                    self.session.main_writer.send(Event::Error(format!(
-                        "Saved server does not exist: {}",
-                        name
-                    )))?;
-                }
+                        .send(Event::Info(format!("Server added: {}", name)))?;
 
-                Ok(())
-            }
-            Event::LoadServer(name) => {
-                if saved_servers.contains_key(&name) {
-                    let connection = saved_servers.get(&name).cloned().unwrap();
-                    self.session.main_writer.send(Event::Connect(connection))?;
-                } else {
-                    screen.print_error(&format!("Saved server does not exist: {}", name));
+                    Ok(())
                 }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
+            Event::RemoveServer(name) => match Servers::try_load() {
+                Ok(mut saved_servers) => {
+                    if saved_servers.contains_key(&name) {
+                        saved_servers.remove(&name);
+                        saved_servers.save();
 
-                Ok(())
-            }
-            Event::ListServers => {
-                if saved_servers.is_empty() {
-                    screen.print_info("There are no saved servers.");
-                } else {
-                    screen.print_info("Saved servers:");
-                    screen.print_info("");
-                    for server in saved_servers {
-                        screen.print_info(&format!(" - Name: {}, {}", server.0, server.1));
+                        self.session
+                            .main_writer
+                            .send(Event::Info(format!("Server removed: {}", name)))?;
+                    } else {
+                        self.session.main_writer.send(Event::Error(format!(
+                            "Saved server does not exist: {}",
+                            name
+                        )))?;
                     }
-                }
 
-                Ok(())
-            }
+                    Ok(())
+                }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
+            Event::LoadServer(name) => match Servers::try_load() {
+                Ok(saved_servers) => {
+                    if saved_servers.contains_key(&name) {
+                        let connection = saved_servers.get(&name).cloned().unwrap();
+                        self.session.main_writer.send(Event::Connect(connection))?;
+                    } else {
+                        screen.print_error(&format!("Saved server does not exist: {}", name));
+                    }
+
+                    Ok(())
+                }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
+            Event::ListServers => match Servers::try_load() {
+                Ok(saved_servers) => {
+                    if saved_servers.is_empty() {
+                        screen.print_info("There are no saved servers.");
+                    } else {
+                        screen.print_info("Saved servers:");
+                        screen.print_info("");
+                        for server in saved_servers {
+                            screen.print_info(&format!(" - Name: {}, {}", server.0, server.1));
+                        }
+                    }
+
+                    Ok(())
+                }
+                Err(err) => {
+                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
+                    Ok(())
+                }
+            },
             _ => Err(BadEventRoutingError.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod event_test {
+
+    use std::sync::{Arc, Mutex};
+
+    use mockall::predicate::eq;
+
+    use crate::{session::SessionBuilder, timer::TimerEvent};
+
+    use crate::io::MockLogWriter;
+    use crate::ui::MockUserInterface;
+
+    use super::*;
+
+    fn build_session() -> (Session, Receiver<Event>, Receiver<TimerEvent>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let (timer_writer, timer_reader): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
+        let session = SessionBuilder::new()
+            .main_writer(writer.clone())
+            .timer_writer(timer_writer.clone())
+            .screen_dimensions((80, 80))
+            .build();
+
+        loop {
+            if reader.try_recv().is_err() {
+                break;
+            }
+        }
+
+        (session, reader, timer_reader)
+    }
+
+    #[test]
+    fn test_event_logging() {
+        let (mut session, _reader, _timer_reader) = build_session();
+        let mut logger = MockLogWriter::new();
+        logger
+            .expect_log_line()
+            .with(eq("prefix test line"))
+            .times(2)
+            .returning(|_| Ok(()));
+        session.logger = Arc::new(Mutex::new(logger));
+        let handler = EventHandler::from(&session);
+        let _ = handler.log_str("prefix ", "test line");
+        let _ = handler.log_line("prefix ", &Line::from("test line"));
+    }
+
+    #[test]
+    fn test_output() {
+        let (mut session, _reader, _timer_reader) = build_session();
+        let mut logger = MockLogWriter::new();
+        logger.expect_log_line().times(5).returning(|_| Ok(()));
+        session.logger = Arc::new(Mutex::new(logger));
+        let handler = EventHandler::from(&session);
+
+        let mut screen = MockUserInterface::new();
+        screen
+            .expect_print_output()
+            .with(eq(Line::from("Output line")))
+            .times(2)
+            .return_const(());
+        screen.expect_print_prompt().times(1).return_const(());
+        screen.expect_print_prompt_input().times(1).return_const(());
+        screen.expect_print_error().times(1).return_const(());
+        screen.expect_print_info().times(1).return_const(());
+        screen
+            .expect_print_send()
+            .with(eq(Line::from("input data")))
+            .times(1)
+            .return_const(());
+
+        let line = Line::from("Output line");
+        assert!(handler
+            .handle_output_events(Event::MudOutput(line.clone()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Output(line.clone()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Prompt, &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(
+                Event::UserInputBuffer(String::from("prompt"), 5),
+                &mut screen
+            )
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Info("info message".to_string()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::Error("error message".to_string()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_output_events(Event::InputSent(Line::from("input data")), &mut screen)
+            .is_ok());
     }
 }

@@ -9,3 +9,14 @@ pub fn exec(cmd: &str) -> Result<Output> {
         Err(err) => bail!(err),
     }
 }
+
+#[cfg(test)]
+mod test_exec {
+
+    use super::*;
+
+    #[test]
+    fn test() {
+        assert_eq!(b"test\n".to_vec(), exec("echo 'test'").unwrap().stdout);
+    }
+}

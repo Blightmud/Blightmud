@@ -10,7 +10,7 @@ use std::path::PathBuf;
 pub struct Connection {
     pub host: String,
     pub port: u16,
-    pub tls: Option<bool>,
+    pub tls: bool,
 }
 
 impl Connection {
@@ -18,15 +18,18 @@ impl Connection {
         Self {
             host: host.to_owned(),
             port,
-            tls: Some(tls),
+            tls,
         }
     }
 }
 
 impl fmt::Display for Connection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let tls = self.tls.unwrap_or_else(|| false);
-        write!(f, "Host: {}, Port: {} TLS: {}", self.host, self.port, tls)
+        write!(
+            f,
+            "Host: {}, Port: {} TLS: {}",
+            self.host, self.port, self.tls
+        )
     }
 }
 
@@ -34,6 +37,30 @@ pub type Servers = HashMap<String, Connection>;
 
 impl SaveData for Servers {
     fn relative_path() -> PathBuf {
-        PathBuf::from("data/servers.ron")
+        crate::CONFIG_DIR.join("servers.ron")
+    }
+
+    fn is_pretty() -> bool {
+        true
+    }
+}
+
+#[cfg(test)]
+mod test_connection {
+
+    use super::*;
+
+    #[test]
+    fn confirm_disp() {
+        let conn = Connection::new("host.com", 8080, true);
+        assert_eq!(
+            format!("{}", conn),
+            "Host: host.com, Port: 8080 TLS: true".to_string()
+        );
+        let conn = Connection::new("host.com", 4000, false);
+        assert_eq!(
+            format!("{}", conn),
+            "Host: host.com, Port: 4000 TLS: false".to_string()
+        );
     }
 }

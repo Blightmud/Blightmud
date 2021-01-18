@@ -19,9 +19,15 @@ impl HelpHandler {
         Self { writer, files }
     }
 
-    pub fn show_help(&self, file: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn show_help(&self, file: &str, lock: bool) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Drawing helpfile: {}", file);
+        if lock {
+            self.writer.send(Event::ScrollLock(true))?;
+        }
         self.writer.send(self.parse_helpfile(file))?;
+        if lock {
+            self.writer.send(Event::ScrollLock(false))?;
+        }
         Ok(())
     }
 
@@ -41,7 +47,13 @@ impl HelpHandler {
         if self.files.contains_key(file) {
             let mut md_bytes = vec![];
 
-            let log_path = crate::DATA_DIR.join("logs");
+            let data_dir = crate::DATA_DIR.clone();
+            let log_path = data_dir.join("logs");
+            let datadir = if let Some(str_path) = data_dir.to_str() {
+                str_path
+            } else {
+                "$USER_DATA_DIR"
+            };
             let logdir = if let Some(str_path) = log_path.to_str() {
                 str_path
             } else {
@@ -58,6 +70,7 @@ impl HelpHandler {
                 .file_content(file)
                 .replace("$VERSION", VERSION)
                 .replace("$LOGDIR", logdir)
+                .replace("$DATADIR", datadir)
                 .replace("$CONFIGDIR", config_dir);
 
             let mut options = Options::empty();
@@ -135,17 +148,25 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         #[cfg(not(feature = "tts"))]
         "tts" => "no_tts.md",
         "status_area" => "lua_status_area.md",
-        "aliases" => "lua_aliases.md",
-        "triggers" => "lua_triggers.md",
+        "alias" => "lua_aliases.md",
+        "config" => "lua_settings.md",
+        "script" => "script.md",
+        "trigger" => "lua_trigger.md",
         "timers" => "lua_timers.md",
         "gmcp" => "lua_gmcp.md",
         "msdp" => "msdp.md",
         "regex" => "regex.md",
+        "line" => "line.md",
+        "mud" => "mud.md",
+        "log" => "log.md",
         "config_scripts" => "config_scripts.md",
         "scripting" => "scripting.md",
         "settings" => "settings.md",
         "storage" => "lua_storage.md",
         "colors" => "lua_colors.md",
+        "tasks" => "lua_tasks.md",
+        "plugin" => "plugin.md",
+        "plugin_developer" => "plugin_developer.md",
     }
 }
 
@@ -185,12 +206,12 @@ mod help_test {
     fn confirm_help_render() {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
         let handler = HelpHandler::new(writer);
-        handler.show_help("nothing").unwrap();
+        handler.show_help("nothing", false).unwrap();
         assert_eq!(
             reader.recv(),
             Ok(Event::Info("No such help file found".to_string()))
         );
-        handler.show_help("help").unwrap();
+        handler.show_help("help", false).unwrap();
         let line = if let Ok(Event::Output(line)) = reader.recv() {
             Some(line)
         } else {

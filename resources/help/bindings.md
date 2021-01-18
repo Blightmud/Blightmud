@@ -12,7 +12,7 @@ You may also bind on escape sequences. For example `\x1b[1;5A` (ctrl-up). When
 unbound, blightmud will echo these commands to the output when pressed. This
 will make it easy for you to find the escape sequence you want to bind.
 
-***blight:bind(cmd, callback)***
+***blight.bind(cmd, callback)***
 Is the command to use when creating a binding.
 
 `cmd` has to be in the following format:
@@ -22,19 +22,19 @@ Is the command to use when creating a binding.
 - Or an escape sequence such as `\x1b[1;5A`
 
 ```lua
-blight:bind("f1", function ()
-    blight:send("kick " .. target)
+blight.bind("f1", function ()
+    blight.send("kick " .. target)
 end)
-blight:bind("\x1b[1;5D", function ()
-    blight:ui("step_word_left")
+blight.bind("\x1b[1;5D", function ()
+    blight.ui("step_word_left")
 end)
 ```
 
-***blight:unbind(cmd)***
+***blight.unbind(cmd)***
 Is the command to use when you want to remove a binding
 You can't unbind `Ctrl-c` or `Ctrl-l`
 
-***blight:ui(cmd)***
+***blight.ui(cmd)***
 Allows for interactions with the UI.
 
 The following options are available for `cmd`:
@@ -54,15 +54,16 @@ The following options are available for `cmd`:
 - `"next_command"`      : Get the next input command
 - `"scroll_up"`         : Scroll output view up
 - `"scroll_down"`       : Scroll output view down
+- `"scroll_top"`        : Scroll output view to the top
 - `"scroll_bottom"`     : Scroll the output view to the bottom
 - `"complete"`          : Perform *tab-completion* on the current word
 
 What follows is the default configuration that blightmud starts with. You can
-override this as you please using `blight:unbind` and `blight:bind`
+override this as you please using `blight.unbind` and `blight.bind`
 
 ```lua
 local function bind(cmd, event)
-	blight:bind(cmd, function () blight:ui(event) end)
+	blight.bind(cmd, function () blight.ui(event) end)
 end
 
 bind("ctrl-p", "previous_command")
@@ -71,11 +72,16 @@ bind("alt-b", "step_word_left")
 bind("\x1b[1;5D", "step_word_left")
 bind("alt-f", "step_word_right")
 bind("\x1b[1;5C", "step_word_right")
-bind("alt-h", "delete_word_left")
+bind("alt-backspace", "delete_word_left")
 bind("alt-d", "delete_word_right")
 bind("ctrl-a", "step_to_start")
+bind("ctrl-b", "step_left")
 bind("ctrl-e", "step_to_end")
+bind("ctrl-f", "step_right")
+bind("ctrl-d", "delete_right")
+bind("ctrl-h", "delete")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
-bind("ctrl-d", "delete_right")
+
+blight.bind("ctrl-s", function () tts:stop() end)
 ```

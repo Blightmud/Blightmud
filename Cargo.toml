@@ -1,6 +1,6 @@
 [package]
 name = "blightmud"
-version = "2.3.4"
+version = "3.0.0"
 description = "A terminal mud-client"
 readme = "README.md"
 license = "GPL3"
@@ -11,29 +11,34 @@ edition = "2018"
 text-to-speech = ["tts"]
 
 [dependencies]
-libtelnet-rs = "1.1.1"
+libtelnet-rs = "1.1.2"
 termion = "1.5.5"
 log = "0.4.11"
 simple-logging = "2.0.2"
 chrono = "0.4.19"
-signal-hook = "0.1.16"
+signal-hook = "0.3.2"
 rlua = "0.17.0"
-regex = "1.4.1"
+regex = "1.4.2"
 strip-ansi-escapes = "0.1.0"
 timer = "0.2.0"
-flate2 = "1.0.18"
-mdcat = { version = "0.22.1", default-features = false }
+flate2 = "1.0.19"
+mdcat = { version = "0.22.2", default-features = false }
 pulldown-cmark = "0.8.0"
-syntect = "4.4.0"
-serde = { version = "1.0.117", features = ['derive'] }
-ron = "0.6.2"
-anyhow = "1.0.33"
+syntect = "4.5.0"
+serde = { version = "1.0.118", features = ['derive'] }
+ron = "0.6.4"
+anyhow = "1.0.37"
 lazy_static = "1.4.0"
-rs-complete = "1.1.0"
+rs-complete = "1.1.1"
 simple-error = "0.2.2"
 getopts = "0.2.21"
 curl = "0.4.34"
 human-panic = "1.0.3"
-native-tls = "0.2.4"
-tts = { version = "0.10.1", optional = true }
-serde_json = "1.0.59"
+native-tls = "0.2.7"
+tts = { version = "0.13.1", optional = true }
+serde_json = "1.0.61"
+git2 = "0.13.15"
+
+[dev-dependencies]
+mockall = "0.9.0"
+mockall_double = "0.2.0"

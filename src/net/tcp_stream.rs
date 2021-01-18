@@ -67,32 +67,35 @@ impl From<&Session> for MudReceiver {
 }
 
 pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        let mut mud_receiver = MudReceiver::from(&session);
-        let writer = &session.main_writer;
-        let mut telnet_handler = TelnetHandler::new(session.clone());
-        let connection_id = session.connection_id();
+    thread::Builder::new()
+        .name("tcp-receive-thread".to_string())
+        .spawn(move || {
+            let mut mud_receiver = MudReceiver::from(&session);
+            let writer = &session.main_writer;
+            let mut telnet_handler = TelnetHandler::new(session.clone());
+            let connection_id = session.connection_id();
 
-        debug!("Receive stream spawned");
-        let mut remaining_bytes = None;
-        loop {
-            if let Some(bytes) = remaining_bytes {
-                mud_receiver.open_zlib_stream(bytes);
+            debug!("Receive stream spawned");
+            let mut remaining_bytes = None;
+            loop {
+                if let Some(bytes) = remaining_bytes {
+                    mud_receiver.open_zlib_stream(bytes);
+                }
+
+                let bytes = mud_receiver.read_bytes();
+                if bytes.is_empty() {
+                    writer
+                        .send(Event::Info("Connection closed".to_string()))
+                        .unwrap();
+                    writer.send(Event::Disconnect(connection_id)).unwrap();
+                    break;
+                }
+
+                remaining_bytes = telnet_handler.parse(&bytes);
             }
-
-            let bytes = mud_receiver.read_bytes();
-            if bytes.is_empty() {
-                writer
-                    .send(Event::Info("Connection closed".to_string()))
-                    .unwrap();
-                writer.send(Event::Disconnect(connection_id)).unwrap();
-                break;
-            }
-
-            remaining_bytes = telnet_handler.parse(&bytes);
-        }
-        debug!("Receive stream closing");
-    })
+            debug!("Receive stream closing");
+        })
+        .unwrap()
 }
 
 pub fn spawn_transmit_thread(
@@ -100,19 +103,22 @@ pub fn spawn_transmit_thread(
     transmit_read: Receiver<Option<Vec<u8>>>,
 ) -> thread::JoinHandle<()> {
     let connection = session.connection.lock().unwrap().clone();
-    thread::spawn(move || {
-        let mut connection = connection;
-        let transmit_read = transmit_read;
-        let connection_id = session.connection_id();
-        debug!("Transmit stream spawned");
-        while let Ok(Some(data)) = transmit_read.recv() {
-            if let Err(info) = connection.write_all(data.as_slice()) {
-                session.disconnect();
-                let error = format!("Failed to write to socket: {}", info).to_string();
-                session.send_event(Event::Error(error));
-                session.send_event(Event::Disconnect(connection_id));
+    thread::Builder::new()
+        .name("tcp-send-thread".to_string())
+        .spawn(move || {
+            let mut connection = connection;
+            let transmit_read = transmit_read;
+            let connection_id = session.connection_id();
+            debug!("Transmit stream spawned");
+            while let Ok(Some(data)) = transmit_read.recv() {
+                if let Err(info) = connection.write_all(data.as_slice()) {
+                    session.disconnect();
+                    let error = format!("Failed to write to socket: {}", info).to_string();
+                    session.send_event(Event::Error(error));
+                    session.send_event(Event::Disconnect(connection_id));
+                }
             }
-        }
-        debug!("Transmit stream closing");
-    })
+            debug!("Transmit stream closing");
+        })
+        .unwrap()
 }

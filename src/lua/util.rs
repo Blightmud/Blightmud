@@ -14,8 +14,8 @@ pub fn output_stack_trace(writer: &Sender<Event>, error: &str) {
 
 /// "~/blightmud" => "/home/yourname/blightmud"
 pub fn expand_tilde(path: &str) -> Cow<str> {
-    if path.starts_with('~') {
-        Cow::from(env::var("HOME").expect("$HOME must be set") + &path[1..])
+    if let Some(sub_path) = path.strip_prefix('~') {
+        Cow::from(env::var("HOME").expect("$HOME must be set") + sub_path)
     } else {
         Cow::from(path)
     }

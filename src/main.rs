@@ -2,12 +2,9 @@ use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
 use std::path::PathBuf;
-use std::sync::{
-    atomic::Ordering,
-    mpsc::{channel, Receiver, Sender},
-};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
-use ui::HelpHandler;
+use ui::{HelpHandler, UserInterface};
 
 mod event;
 mod io;
@@ -25,10 +22,11 @@ use crate::io::SaveData;
 use crate::model::Servers;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
+use crate::tools::patch::migrate_v2_settings_and_servers;
 use crate::ui::{spawn_input_thread, Screen};
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY, SETTINGS};
+use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -56,8 +54,13 @@ lazy_static! {
             data_dir
         }
 
-        #[cfg(debug_assertions)]
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        #[cfg(test)]
+        {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/test/data")
+        }
+
+        #[cfg(all(not(test), debug_assertions))]
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/data")
     };
     pub static ref CONFIG_DIR: PathBuf = {
         #[cfg(not(debug_assertions))]
@@ -72,8 +75,13 @@ lazy_static! {
             config_dir
         }
 
-        #[cfg(debug_assertions)]
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        #[cfg(test)]
+        {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/test/config")
+        }
+
+        #[cfg(all(not(test), debug_assertions))]
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/config")
     };
     pub static ref MACOS_DEPRECATED_DIR: PathBuf = {
         use crate::lua::util;
@@ -82,15 +90,19 @@ lazy_static! {
 }
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
-    let signals = signal_hook::iterator::Signals::new(&[signal_hook::SIGWINCH]).unwrap();
+    let mut signals =
+        signal_hook::iterator::Signals::new(&[signal_hook::consts::SIGWINCH]).unwrap();
     let main_thread_writer = session.main_writer;
-    thread::spawn(move || {
-        for _ in signals.forever() {
-            if let Err(err) = main_thread_writer.send(Event::Redraw) {
-                error!("Reize listener failed: {}", err);
+    thread::Builder::new()
+        .name("signal-thread".to_string())
+        .spawn(move || {
+            for _ in signals.forever() {
+                if let Err(err) = main_thread_writer.send(Event::Redraw) {
+                    error!("Resize listener failed: {}", err);
+                }
             }
-        }
-    })
+        })
+        .unwrap()
 }
 
 fn start_logging() -> std::io::Result<()> {
@@ -189,7 +201,7 @@ fn main() {
             return;
         }
     } else if let Ok(Some(world)) = matches.opt_get::<String>("w") {
-        let servers = Servers::load();
+        let servers = Servers::try_load().expect("Error loading servers.ron");
         if servers.contains_key(&world) {
             main_writer
                 .send(Event::Connect(servers.get(&world).unwrap().clone()))
@@ -197,11 +209,11 @@ fn main() {
         }
     } else {
         main_writer
-            .send(Event::ShowHelp("welcome".to_string()))
+            .send(Event::ShowHelp("welcome".to_string(), false))
             .unwrap();
     }
 
-    let settings = Settings::load();
+    let settings = Settings::try_load().expect("Error loading settings.ron");
     let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)
@@ -222,18 +234,16 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
-    mut settings: Settings,
+    settings: Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
-    let mut saved_servers = Servers::load();
 
     let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
     screen.setup()?;
 
-    let _input_thread =
-        spawn_input_thread(session.clone(), saved_servers.keys().cloned().collect());
+    let _input_thread = spawn_input_thread(session.clone());
     let _signal_thread = register_terminal_resize_listener(session.clone());
 
     let lua_scripts = {
@@ -262,6 +272,10 @@ fn run(
     }
 
     check_latest_version(session.main_writer.clone());
+    if cfg!(not(debug_assertions)) {
+        migrate_v2_settings_and_servers(session.main_writer.clone());
+    }
+
     #[cfg(all(not(debug_assertions), target_os = "macos"))]
     {
         if MACOS_DEPRECATED_DIR.exists() {
@@ -277,191 +291,178 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
         }
     }
-
-    loop {
-        if session.terminate.load(Ordering::Relaxed) {
-            break;
+    let mut quit_pending = false;
+    while let Ok(event) = main_thread_read.recv() {
+        if quit_pending {
+            quit_pending = matches!(
+                event,
+                Event::Quit | Event::UserInputBuffer(..) | Event::TimedEvent(..)
+            );
         }
-        if let Ok(event) = main_thread_read.recv() {
-            match event {
-                Event::ServerSend(_)
-                | Event::ServerInput(_)
-                | Event::Connect(_)
-                | Event::Connected
-                | Event::Reconnect
-                | Event::Disconnect(_) => {
-                    event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
-                }
-                Event::AddServer(_, _)
-                | Event::RemoveServer(_)
-                | Event::LoadServer(_)
-                | Event::ListServers => {
-                    event_handler.handle_store_events(event, &mut saved_servers, &mut screen)?;
-                }
-                Event::MudOutput(_)
-                | Event::Output(_)
-                | Event::Prompt
-                | Event::Error(_)
-                | Event::Info(_)
-                | Event::InputSent(_)
-                | Event::UserInputBuffer(_, _) => {
-                    //tts_ctrl.handle_events(event.clone());
-                    event_handler.handle_output_events(event, &mut screen)?;
-                }
 
-                Event::TTSEnabled(enabled) => session.tts_ctrl.lock().unwrap().enabled(enabled),
-                Event::Speak(msg, interupt) => {
-                    session.tts_ctrl.lock().unwrap().speak(&msg, interupt)
+        match event {
+            Event::ServerSend(_)
+            | Event::ServerInput(_)
+            | Event::Connect(_)
+            | Event::Connected
+            | Event::Reconnect
+            | Event::Disconnect(_) => {
+                event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
+            }
+            Event::AddServer(_, _)
+            | Event::RemoveServer(_)
+            | Event::LoadServer(_)
+            | Event::ListServers => {
+                event_handler.handle_store_events(event, &mut screen)?;
+            }
+            Event::MudOutput(_)
+            | Event::Output(_)
+            | Event::Prompt
+            | Event::Error(_)
+            | Event::Info(_)
+            | Event::InputSent(_)
+            | Event::UserInputBuffer(_, _) => {
+                //tts_ctrl.handle_events(event.clone());
+                event_handler.handle_output_events(event, &mut screen)?;
+            }
+            Event::TTSEnabled(enabled) => session.tts_ctrl.lock().unwrap().enabled(enabled),
+            Event::Speak(msg, interupt) => session.tts_ctrl.lock().unwrap().speak(&msg, interupt),
+            Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
+            Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
+            Event::SettingChanged(name, value) => {
+                if name == SAVE_HISTORY {
+                    session.set_save_history(value);
                 }
-                Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
-                Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
-
-                Event::ShowSettings => SETTINGS.iter().for_each(|key| {
-                    screen.print_info(&format!("{} => {}", key, settings.get(key).unwrap()));
-                }),
-                Event::ShowSetting(setting) => match settings.get(&setting) {
-                    Ok(value) => screen.print_info(&format!("Setting: {} => {}", setting, value)),
-                    Err(error) => screen.print_error(&error.to_string()),
-                },
-                Event::ToggleSetting(setting, toggle) => {
-                    let toggle = matches!(toggle.as_str(), "on" | "true" | "enabled");
-                    if let Err(error) = settings.set(&setting, toggle) {
-                        screen.print_error(&error.to_string());
-                    } else {
-                        if setting == SAVE_HISTORY {
-                            session.set_save_history(toggle);
-                        }
-                        screen.print_info(&format!("Setting: {} => {}", setting, toggle));
-                    }
+            }
+            Event::StartLogging(world, force) => {
+                if Settings::load().get(LOGGING_ENABLED)? || force {
+                    session.start_logging(&world)
                 }
-                Event::StartLogging(world, force) => {
-                    if settings.get(LOGGING_ENABLED)? || force {
-                        screen.print_info(&format!("Started logging for: {}", world));
-                        session.start_logging(&world)
-                    }
-                }
-                Event::StopLogging => {
-                    screen.print_info("Logging stopped");
-                    session.stop_logging();
-                }
-                Event::EnableProto(proto) => {
-                    if let Ok(mut parser) = session.telnet_parser.lock() {
-                        parser.options.support(proto);
-                        if session.connected() {
-                            if let Some(TelnetEvents::DataSend(data)) = parser._do(proto) {
-                                session.main_writer.send(Event::ServerSend(data)).unwrap();
-                            }
-                        }
-                    }
-                }
-                Event::DisableProto(proto) => {
-                    if let Ok(mut parser) = session.telnet_parser.lock() {
-                        let mut opt = parser.options.get_option(proto);
-                        opt.local = false;
-                        opt.remote = false;
-                        parser.options.set_option(proto, opt);
-                        if session.connected() {
-                            if let Some(TelnetEvents::DataSend(data)) = parser._dont(proto) {
-                                session.main_writer.send(Event::ServerSend(data)).unwrap();
-                            }
-                        }
-                    }
-                }
-                Event::ProtoEnabled(proto) => {
-                    if let Ok(mut lua) = session.lua_script.lock() {
-                        lua.proto_enabled(proto);
-                        lua.get_output_lines().iter().for_each(|l| {
-                            screen.print_output(l);
-                        });
-                    }
-                }
-                Event::ProtoSubnegRecv(proto, data) => {
-                    if let Ok(mut script) = session.lua_script.lock() {
-                        script.proto_subneg(proto, &data);
-                        script.get_output_lines().iter().for_each(|l| {
-                            screen.print_output(l);
-                        });
-                    }
-                }
-                Event::ProtoSubnegSend(proto, data) => {
-                    if let Ok(mut parser) = session.telnet_parser.lock() {
-                        if let Some(TelnetEvents::DataSend(data)) =
-                            parser.subnegotiation(proto, data)
-                        {
+            }
+            Event::StopLogging => {
+                session.stop_logging();
+            }
+            Event::EnableProto(proto) => {
+                if let Ok(mut parser) = session.telnet_parser.lock() {
+                    parser.options.support(proto);
+                    if session.connected() {
+                        if let Some(TelnetEvents::DataSend(data)) = parser._do(proto) {
                             session.main_writer.send(Event::ServerSend(data)).unwrap();
                         }
                     }
                 }
-                Event::ScrollUp => screen.scroll_up()?,
-                Event::ScrollDown => screen.scroll_down()?,
-                Event::ScrollBottom => screen.reset_scroll()?,
-                Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
-                Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
-                Event::LoadScript(path) => {
-                    info!("Loading script: {}", path);
-                    let mut lua = session.lua_script.lock().unwrap();
-                    if let Err(err) = lua.load_script(&path) {
-                        screen.print_error(&format!("Failed to load file: {}", err));
-                    } else {
-                        screen.print_info(&format!("Loaded script: {}", path));
-                        lua.get_output_lines().iter().for_each(|l| {
-                            screen.print_output(l);
-                        });
+            }
+            Event::DisableProto(proto) => {
+                if let Ok(mut parser) = session.telnet_parser.lock() {
+                    let mut opt = parser.options.get_option(proto);
+                    opt.local = false;
+                    opt.remote = false;
+                    parser.options.set_option(proto, opt);
+                    if session.connected() {
+                        if let Some(TelnetEvents::DataSend(data)) = parser._dont(proto) {
+                            session.main_writer.send(Event::ServerSend(data)).unwrap();
+                        }
                     }
                 }
-                Event::ResetScript => {
-                    info!("Clearing scripts");
-                    screen.print_info("Clearing scripts...");
-                    if let Ok(mut script) = session.lua_script.lock() {
-                        script.reset((screen.width, screen.height));
-                        screen.print_info("Done");
-                    }
-                    session.timer_writer.send(TimerEvent::Clear)?;
+            }
+            Event::ProtoEnabled(proto) => {
+                if let Ok(mut lua) = session.lua_script.lock() {
+                    lua.proto_enabled(proto);
+                    lua.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
-                Event::ShowHelp(hfile) => {
-                    help_handler.show_help(&hfile)?;
+            }
+            Event::ProtoSubnegRecv(proto, data) => {
+                if let Ok(mut script) = session.lua_script.lock() {
+                    script.proto_subneg(proto, &data);
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
-                Event::AddTimedEvent(duration, count, id) => {
-                    session
-                        .timer_writer
-                        .send(TimerEvent::Create(duration, count, id))?;
-                }
-                Event::TimedEvent(id) => {
-                    if let Ok(mut script) = session.lua_script.lock() {
-                        script.run_timed_function(id);
-                        script.get_output_lines().iter().for_each(|l| {
-                            screen.print_output(l);
-                        });
+            }
+            Event::ProtoSubnegSend(proto, data) => {
+                if let Ok(mut parser) = session.telnet_parser.lock() {
+                    if let Some(TelnetEvents::DataSend(data)) = parser.subnegotiation(proto, data) {
+                        session.main_writer.send(Event::ServerSend(data)).unwrap();
                     }
                 }
-                Event::DropTimedEvent(id) => {
-                    session.lua_script.lock().unwrap().remove_timed_function(id);
+            }
+            Event::ScrollLock(enabled) => screen.scroll_lock(enabled)?,
+            Event::ScrollUp => screen.scroll_up()?,
+            Event::ScrollDown => screen.scroll_down()?,
+            Event::ScrollTop => screen.scroll_top()?,
+            Event::ScrollBottom => screen.reset_scroll()?,
+            Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
+            Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
+            Event::LoadScript(path) => {
+                info!("Loading script: {}", path);
+                let mut lua = session.lua_script.lock().unwrap();
+                if let Err(err) = lua.load_script(&path) {
+                    screen.print_error(&format!("Failed to load file: {}", err));
+                } else {
+                    screen.print_info(&format!("Loaded script: {}", path));
+                    lua.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
-                Event::ClearTimers => {
-                    session.timer_writer.send(TimerEvent::Clear)?;
+            }
+            Event::ResetScript => {
+                info!("Clearing scripts");
+                screen.print_info("Clearing scripts...");
+                if let Ok(mut script) = session.lua_script.lock() {
+                    script.reset((screen.width, screen.height));
+                    screen.print_info("Done");
                 }
-                Event::RemoveTimer(idx) => {
-                    session.timer_writer.send(TimerEvent::Remove(idx))?;
+                session.timer_writer.send(TimerEvent::Clear(true))?;
+            }
+            Event::ShowHelp(hfile, lock) => {
+                help_handler.show_help(&hfile, lock)?;
+            }
+            Event::AddTimedEvent(duration, count, id, core) => {
+                session
+                    .timer_writer
+                    .send(TimerEvent::Create(duration, count, id, core))?;
+            }
+            Event::TimedEvent(id) => {
+                if let Ok(mut script) = session.lua_script.lock() {
+                    script.run_timed_function(id);
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
-                Event::Redraw => {
-                    screen.setup()?;
-                    if let Ok(mut script) = session.lua_script.lock() {
-                        script.set_dimensions((screen.width, screen.height));
-                    }
-                    let prompt_input = session.prompt_input.lock().unwrap();
-                    screen.print_prompt_input(&prompt_input, prompt_input.len());
+            }
+            Event::DropTimedEvent(id) => {
+                session.lua_script.lock().unwrap().remove_timed_function(id);
+            }
+            Event::ClearTimers => {
+                session.timer_writer.send(TimerEvent::Clear(false))?;
+            }
+            Event::RemoveTimer(idx) => {
+                session.timer_writer.send(TimerEvent::Remove(idx))?;
+            }
+            Event::Redraw => {
+                screen.setup()?;
+                if let Ok(mut script) = session.lua_script.lock() {
+                    script.set_dimensions((screen.width, screen.height));
                 }
-                Event::Quit => {
-                    session.terminate.store(true, Ordering::Relaxed);
-                    session.disconnect();
-                    break;
+                let prompt_input = session.prompt_input.lock().unwrap();
+                screen.print_prompt_input(&prompt_input, prompt_input.len());
+            }
+            Event::Quit => {
+                if Settings::load().get(CONFIRM_QUIT)? && !quit_pending {
+                    screen.print_info("Confirm quit with ctrl-c");
+                    screen.flush();
+                    quit_pending = true;
+                    continue;
                 }
-            };
-            screen.flush();
-        }
+                session.disconnect();
+                break;
+            }
+        };
+        screen.flush();
     }
     screen.reset()?;
-    settings.save();
     session.close()?;
     Ok(())
 }

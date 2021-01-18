@@ -6,29 +6,35 @@ use std::{
 };
 use strip_ansi_escapes::Writer as StripWriter;
 
+#[cfg(test)]
+use mockall::automock;
+
+#[cfg_attr(test, automock)]
+pub trait LogWriter {
+    fn start_logging(&mut self, host: &str) -> Result<()>;
+
+    fn log_line(&mut self, line: &str) -> Result<()>;
+
+    fn stop_logging(&mut self) -> Result<()>;
+
+    fn is_logging(&self) -> bool;
+}
+
 #[derive(Default)]
 pub struct Logger {
     file: Option<BufWriter<StripWriter<File>>>,
 }
 
-#[cfg(not(test))]
-fn get_and_ensure_log_dir(host: &str) -> Result<std::path::PathBuf> {
+fn get_and_ensure_log_dir(host: &str) -> std::path::PathBuf {
     let path = crate::DATA_DIR.clone().join("logs").join(host);
     std::fs::create_dir_all(&path).ok();
-    Ok(path)
+    path
 }
 
-#[cfg(test)]
-fn get_and_ensure_log_dir(host: &str) -> Result<std::path::PathBuf> {
-    let path = std::path::PathBuf::from("logs").join(host);
-    std::fs::create_dir_all(&path).ok();
-    Ok(path)
-}
-
-impl Logger {
-    pub fn start_logging(&mut self, host: &str) -> Result<()> {
+impl LogWriter for Logger {
+    fn start_logging(&mut self, host: &str) -> Result<()> {
         if self.file.is_none() {
-            let path = get_and_ensure_log_dir(host)?;
+            let path = get_and_ensure_log_dir(host);
 
             let logfile = path.join(format!("{}.log", Local::now().format("%Y%m%d.%H:%M:%S")));
             self.file = Some(BufWriter::new(StripWriter::new(File::create(logfile)?)));
@@ -36,26 +42,26 @@ impl Logger {
         Ok(())
     }
 
-    pub fn log_line(&mut self, line: &str) -> Result<()> {
+    fn log_line(&mut self, line: &str) -> Result<()> {
         if let Some(mut writer) = self.file.take() {
             writer.write_all(line.as_bytes())?;
             if !line.ends_with('\n') {
                 writer.write_all(b"\n")?;
             }
+            writer.flush()?;
             self.file = Some(writer);
         }
         Ok(())
     }
 
-    pub fn stop_logging(&mut self) -> Result<()> {
+    fn stop_logging(&mut self) -> Result<()> {
         if let Some(mut writer) = self.file.take() {
             writer.flush()?;
         }
         Ok(())
     }
 
-    #[cfg(test)]
-    pub fn is_logging(&self) -> bool {
+    fn is_logging(&self) -> bool {
         self.file.is_some()
     }
 }
@@ -63,7 +69,7 @@ impl Logger {
 #[cfg(test)]
 mod logger_tests {
 
-    use super::Logger;
+    use super::*;
 
     #[test]
     fn test_logger() {

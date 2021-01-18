@@ -5,8 +5,8 @@ local function GMCP()
 	local self = {
 		receivers = {},
 		ready_listeners = {},
-		echo_gmcp = core:read("__echo_gmcp") == "true",
-		gmcp_ready = core:read("__gmcp_ready") == "true",
+		echo_gmcp = store.session_read("__echo_gmcp") == "true",
+		gmcp_ready = store.session_read("__gmcp_ready") == "true",
 	}
 
 	local function parse_gmcp(msg)
@@ -30,15 +30,15 @@ local function GMCP()
 
 	local _on_enable = function (proto)
 		if proto == OPT then
-			blight:debug("Sending Core.Hello")
+            print("[GMCP]: GMCP is ready and available for your current mud")
 			self.gmcp_ready = true
-			core:store("__gmcp_ready", "true")
-			program, version = blight:version()
+			store.session_write("__gmcp_ready", "true")
+			local program, version = blight.version()
 			local hello_obj = {
 				Version=version,
 				Client=program,
 			}
-			core:subneg_send(201, string_to_bytes("Core.Hello " .. json.encode(hello_obj)))
+			core.subneg_send(201, string_to_bytes("Core.Hello " .. json.encode(hello_obj)))
 			for _,cb in ipairs(self.ready_listeners) do
 				cb()
 			end
@@ -50,7 +50,7 @@ local function GMCP()
 			local msg = utf8.char(unpack(data))
 			local mod, json = parse_gmcp(msg)
 			if self.echo_gmcp then
-				blight:output("[GMCP]: " .. msg)
+				blight.output("[GMCP]: " .. msg)
 			end
 			if self.receivers[mod] ~= nil then
 				self.receivers[mod](json)
@@ -59,12 +59,12 @@ local function GMCP()
 	end
 
 	local echo = function (enabled)
-		core:store("__echo_gmcp", tostring(enabled))
+		store.session_write("__echo_gmcp", tostring(enabled))
 		self.echo_gmcp = enabled
 	end
 
 	local register = function (mod)
-		core:subneg_send(OPT, string_to_bytes("Core.Supports.Add [\"" .. mod .. " 1\"]"))
+		core.subneg_send(OPT, string_to_bytes("Core.Supports.Add [\"" .. mod .. " 1\"]"))
 	end
 
 	local receive = function (mod, callback)
@@ -72,7 +72,7 @@ local function GMCP()
 	end
 
 	local send = function (msg)
-		core:subneg_send(OPT, string_to_bytes(msg))
+		core.subneg_send(OPT, string_to_bytes(msg))
 	end
 
 	local on_ready = function (cb)
@@ -84,7 +84,7 @@ local function GMCP()
 
 	local _reset = function ()
 		self.gmcp_ready = false
-		core:store("__gmcp_ready", tostring(false))
+		store.session_write("__gmcp_ready", tostring(false))
 	end
 
 	return {
@@ -102,14 +102,14 @@ end
 local gmcp = GMCP()
 
 -- Register the module
-core:enable_protocol(OPT)
-core:on_protocol_enabled(function (proto) 
+core.enable_protocol(OPT)
+core.on_protocol_enabled(function (proto) 
 	gmcp._on_enable(proto)
 end)
-core:subneg_recv(function (proto, data)
+core.subneg_recv(function (proto, data)
 	gmcp._subneg_recv(proto, data)
 end)
-blight:on_disconnect(function ()
+mud.on_disconnect(function ()
 	gmcp._reset()
 end)
 

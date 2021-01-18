@@ -1,9 +1,6 @@
 /target
-/log.txt
 /.vimrc
 /*.lua
-/data/
-/logs/
-/config/
-/store/
+/*.ron
 /tags
+/.run/

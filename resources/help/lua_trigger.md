@@ -37,7 +37,7 @@ Gets a trigger by its ID. If trigger groups are used, all groups will be searche
 
 ##
 
-***trigger.getGroup(id)***
+***trigger.get_group(id)***
 Gets a trigger group by its ID.
 
 - `id` ID of the trigger group
@@ -58,7 +58,7 @@ Deletes all triggers. If trigger groups are used, they will all be cleared
 
 ##
 
-***trigger.addGroup()***
+***trigger.add_group()***
 Creates a new trigger group
 
 - Returns the newly created `TriggerGroup`

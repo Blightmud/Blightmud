@@ -76,6 +76,7 @@ function AliasGroup.new(id)
     local ret = setmetatable({}, AliasGroup)
 
     ret.id = id
+    ret.enabled = true
     ret.aliases = {}
 
     return ret
@@ -108,8 +109,27 @@ function AliasGroup:clear()
     self.aliases = {}
 end
 
+function AliasGroup:is_enabled()
+    return self.enabled
+end
+
+function AliasGroup:set_enabled(flag)
+    self.enabled = flag
+end
+
+function AliasGroup:enable()
+    self.enabled = true
+end
+
+function AliasGroup:disable()
+    self.enabled = false
+end
+
 function AliasGroup:check_line(line)
     local toRemove = {}
+    if not self.enabled then
+        return
+    end
     for _, alias in pairs(self.aliases) do
         alias:check_line(line)
         if alias.count == 0 then

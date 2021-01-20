@@ -162,7 +162,7 @@ Removes all aliases from the group
 ##
 
 ***AliasGroup:is_enabled()***
-Returns if this group is enabled or not.
+Returns if this group is enabled
 
 ##
 

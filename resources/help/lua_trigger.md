@@ -59,13 +59,13 @@ Deletes all triggers. If trigger groups are used, they will all be cleared
 ##
 
 ***TriggerGroup:is_enabled()***
-Returns if this group is enabled or not.
+Returns if this group is enabled
 
 ##
 
 ***TriggerGroup:set_enabled(flag)***
 Toggle enabled state for this group.
-A groups enabled state is separate from it's contained aliases.
+A groups enabled state is separate from it's contained triggers.
 
 - `flag`     true or false
 

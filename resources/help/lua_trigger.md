@@ -59,7 +59,7 @@ Deletes all triggers. If trigger groups are used, they will all be cleared
 ##
 
 ***TriggerGroup:is_enabled()***
-Returns if this group is enabled
+Returns whether this group is enabled
 
 ##
 

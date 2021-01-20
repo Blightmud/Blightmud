@@ -1,6 +1,6 @@
 [package]
 name = "blightmud"
-version = "3.0.0"
+version = "3.0.1"
 description = "A terminal mud-client"
 readme = "README.md"
 license = "GPL3"
@@ -13,24 +13,24 @@ text-to-speech = ["tts"]
 [dependencies]
 libtelnet-rs = "1.1.2"
 termion = "1.5.5"
-log = "0.4.11"
+log = "0.4.13"
 simple-logging = "2.0.2"
 chrono = "0.4.19"
-signal-hook = "0.3.2"
+signal-hook = "0.3.4"
 rlua = "0.17.0"
-regex = "1.4.2"
+regex = "1.4.3"
 strip-ansi-escapes = "0.1.0"
 timer = "0.2.0"
 flate2 = "1.0.19"
 mdcat = { version = "0.22.2", default-features = false }
 pulldown-cmark = "0.8.0"
 syntect = "4.5.0"
-serde = { version = "1.0.118", features = ['derive'] }
+serde = { version = "1.0.120", features = ['derive'] }
 ron = "0.6.4"
-anyhow = "1.0.37"
+anyhow = "1.0.38"
 lazy_static = "1.4.0"
 rs-complete = "1.1.1"
-simple-error = "0.2.2"
+simple-error = "0.2.3"
 getopts = "0.2.21"
 curl = "0.4.34"
 human-panic = "1.0.3"

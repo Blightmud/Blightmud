@@ -94,6 +94,7 @@ function TriggerGroup.new(id)
     local ret = setmetatable({}, TriggerGroup)
 
     ret.id = id
+    ret.enabled = true
     ret.triggers = {}
 
     return ret
@@ -126,8 +127,27 @@ function TriggerGroup:clear()
     self.triggers = {}
 end
 
+function TriggerGroup:is_enabled()
+    return self.enabled
+end
+
+function TriggerGroup:set_enabled(flag)
+    self.enabled = flag
+end
+
+function TriggerGroup:enable()
+    self.enabled = true
+end
+
+function TriggerGroup:disable()
+    self.enabled = false
+end
+
 function TriggerGroup:check_line(line)
     local toRemove = {}
+    if not self.enabled then
+        return
+    end
     for _, trigger in pairs(self.triggers) do
         trigger:check_line(line)
         if trigger.count == 0 then

@@ -161,6 +161,29 @@ Removes all aliases from the group
 
 ##
 
+***AliasGroup:is_enabled()***
+Returns whether this group is enabled
+
+##
+
+***AliasGroup:set_enabled(flag)***
+Toggle enabled state for this group.
+A groups enabled state is separate from it's contained aliases.
+
+- `flag`     true or false
+
+##
+
+***AliasGroup:disable()***
+Disable the group
+
+##
+
+***AliasGroup:enable()***
+Disable the group
+
+##
+
 ***AliasGroup:check_line(line)***
 
 Dispatches `Alias:check_line` calls to all contained aliases.

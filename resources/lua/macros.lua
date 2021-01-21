@@ -32,14 +32,14 @@ local function number_label (number, label)
 end
 
 alias.add("^/aliases$", function ()
-	for id,alias in pairs(alias.getGroup():getAliases()) do
+	for id,alias in pairs(alias.get_group():get_aliases()) do
 		local enabled = state_label(alias.enabled, "enabled")
 		blight.output(cformat("%s :\t<yellow>%s<reset>\t%s", id, alias.regex:regex(), enabled))
 	end
 end)
 
 alias.add("^/triggers$", function ()
-	for id,trigger in pairs(trigger.getGroup():getTriggers()) do
+	for id,trigger in pairs(trigger.get_group():get_triggers()) do
 		local enabled = state_label(trigger.enabled, "enabled")
 		local gag = state_label(trigger.gag, "gag")
 		local raw = state_label(trigger.raw, "raw")

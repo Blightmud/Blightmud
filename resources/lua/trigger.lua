@@ -21,7 +21,10 @@ function Trigger.new(re, options, callback)
     ret.raw = options.raw or false
     ret.prompt = options.prompt or false
     ret.count = options.count or nil
-    ret.enabled = options.enabled or true
+    ret.enabled = true
+    if options.enabled ~= nil then
+        ret.enabled = options.enabled
+    end
     ret.id = next_id
     next_id = next_id + 1
 
@@ -49,6 +52,9 @@ function Trigger:is_enabled()
 end
 
 function Trigger:check_line(line)
+    if not self.enabled then
+        return
+    end
     if line:prompt() ~= self.prompt then return end
     local str
     if self.raw then
@@ -144,10 +150,10 @@ function TriggerGroup:disable()
 end
 
 function TriggerGroup:check_line(line)
-    local toRemove = {}
     if not self.enabled then
         return
     end
+    local toRemove = {}
     for _, trigger in pairs(self.triggers) do
         trigger:check_line(line)
         if trigger.count == 0 then

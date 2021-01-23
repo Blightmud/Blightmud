@@ -45,6 +45,9 @@ function Alias:is_enabled()
 end
 
 function Alias:check_line(line)
+    if not self.enabled then
+        return
+    end
     local str = line:line()
     local matches = self.regex:match(str)
     if matches then
@@ -126,10 +129,10 @@ function AliasGroup:disable()
 end
 
 function AliasGroup:check_line(line)
-    local toRemove = {}
     if not self.enabled then
         return
     end
+    local toRemove = {}
     for _, alias in pairs(self.aliases) do
         alias:check_line(line)
         if alias.count == 0 then

@@ -38,6 +38,8 @@ jobs:
           components: llvm-tools-preview
       - name: Install grcov
         run: if [[ ! -e ~/.cargo/bin/grcov ]]; then cargo install grcov; fi
+      - name: Installing dependencies
+        run: sudo apt-get install libasound2-dev
       - name: Run tests
         run: cargo test
         env:

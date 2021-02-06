@@ -1,4 +1,7 @@
-use super::{backend::Backend, blight::*, line::Line as LuaLine, plugin, script::Script, tts::Tts};
+use super::{
+    audio::Audio, backend::Backend, blight::*, line::Line as LuaLine, plugin, script::Script,
+    tts::Tts,
+};
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{
     log::Log, mud::Mud, regex::RegexLib, settings::Settings, store::Store, timer::Timer, util::*,
@@ -53,6 +56,7 @@ fn create_default_lua_state(
         globals.set(Settings::LUA_GLOBAL_NAME, Settings::new())?;
         globals.set(Store::LUA_GLOBAL_NAME, store)?;
         globals.set("plugin", plugin::Handler::new())?;
+        globals.set("audio", Audio {})?;
 
         globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
         globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;

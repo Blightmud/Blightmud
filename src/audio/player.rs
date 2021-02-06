@@ -5,7 +5,7 @@ use rodio::{Sink, Source};
 
 pub struct Player {
     _stream: Option<rodio::OutputStream>,
-    _handle: Option<rodio::OutputStreamHandle>,
+    handle: Option<rodio::OutputStreamHandle>,
     music: Option<Sink>,
     sfx: Option<Sink>,
 }
@@ -25,13 +25,18 @@ impl Player {
 
         Self {
             _stream: stream,
-            _handle: handle,
+            handle,
             music,
             sfx,
         }
     }
 
-    pub fn play_music(&self, fpath: &str, repeat: bool) -> Result<()> {
+    pub fn play_music(&mut self, fpath: &str, repeat: bool) -> Result<()> {
+        if self.music.is_none() {
+            if let Some(handle) = &self.handle {
+                self.music = rodio::Sink::try_new(&handle).ok();
+            }
+        }
         if let Some(music) = &self.music {
             let file = File::open(fpath)?;
             let source = rodio::Decoder::new(BufReader::new(file))?;
@@ -40,18 +45,22 @@ impl Player {
             } else {
                 music.append(source);
             }
+            music.play();
         }
         Ok(())
     }
 
-    pub fn stop_music(&self) -> Result<()> {
-        if let Some(music) = &self.music {
-            music.stop();
-        }
+    pub fn stop_music(&mut self) -> Result<()> {
+        self.music = None;
         Ok(())
     }
 
-    pub fn play_sfx(&self, fpath: &str) -> Result<()> {
+    pub fn play_sfx(&mut self, fpath: &str) -> Result<()> {
+        if self.sfx.is_none() {
+            if let Some(handle) = &self.handle {
+                self.sfx = rodio::Sink::try_new(&handle).ok();
+            }
+        }
         if let Some(sfx) = &self.sfx {
             let file = File::open(fpath)?;
             let source = rodio::Decoder::new(BufReader::new(file))?;
@@ -60,10 +69,8 @@ impl Player {
         Ok(())
     }
 
-    pub fn stop_sfx(&self) -> Result<()> {
-        if let Some(sfx) = &self.sfx {
-            sfx.stop();
-        }
+    pub fn stop_sfx(&mut self) -> Result<()> {
+        self.sfx = None;
         Ok(())
     }
 }

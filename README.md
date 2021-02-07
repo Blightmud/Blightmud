@@ -29,6 +29,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - Persistent storage
     - Session storage
     - Keybindings
+    - Audio playback (music/ambiance and sound effects)
     - Text-To-Speech
     - Mouse scrolling (experimental)
     - Plugins

@@ -61,6 +61,10 @@ pub enum Event {
     Speak(String, bool),
     SpeakStop,
     TTSEvent(TTSEvent),
+    PlayMusic(String, bool),
+    StopMusic,
+    PlaySFX(String),
+    StopSFX,
     Redraw,
     Quit,
 }
@@ -79,7 +83,7 @@ impl From<&Session> for EventHandler {
     }
 }
 
-struct BadEventRoutingError;
+pub struct BadEventRoutingError;
 
 impl std::fmt::Debug for BadEventRoutingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

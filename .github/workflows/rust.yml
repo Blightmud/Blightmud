@@ -83,7 +83,7 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Installing dependencies
-      run: sudo apt-get install libspeechd-dev
+      run: sudo apt-get install libspeechd-dev libasound2-dev
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
@@ -109,6 +109,8 @@ jobs:
           ~/.cargo/bin
           target
         key: ${{ runner.os }}-cargo-no-tts-${{ hashFiles('**/Cargo.lock') }}
+    - name: Installing dependencies
+      run: sudo apt-get install libasound2-dev
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check

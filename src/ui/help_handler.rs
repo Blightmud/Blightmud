@@ -158,6 +158,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "regex" => "regex.md",
         "line" => "line.md",
         "mud" => "mud.md",
+        "audio" => "audio.md",
         "log" => "log.md",
         "config_scripts" => "config_scripts.md",
         "scripting" => "scripting.md",

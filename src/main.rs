@@ -1,3 +1,4 @@
+use audio::Player;
 use lazy_static::lazy_static;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
@@ -6,6 +7,7 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
 use ui::{HelpHandler, UserInterface};
 
+mod audio;
 mod event;
 mod io;
 mod lua;
@@ -240,6 +242,7 @@ fn run(
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
+    let mut player = Player::new();
     let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
     screen.setup()?;
 
@@ -324,6 +327,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::UserInputBuffer(_, _) => {
                 //tts_ctrl.handle_events(event.clone());
                 event_handler.handle_output_events(event, &mut screen)?;
+            }
+            Event::PlayMusic(_, _) | Event::StopMusic | Event::PlaySFX(_) | Event::StopSFX => {
+                if let Err(err) = audio::handle_audio_event(event, &mut player) {
+                    screen.print_error(&err.to_string())
+                }
             }
             Event::TTSEnabled(enabled) => session.tts_ctrl.lock().unwrap().enabled(enabled),
             Event::Speak(msg, interupt) => session.tts_ctrl.lock().unwrap().speak(&msg, interupt),

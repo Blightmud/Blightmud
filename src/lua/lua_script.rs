@@ -1,6 +1,6 @@
 use super::{
     audio::Audio, backend::Backend, blight::*, line::Line as LuaLine, plugin, script::Script,
-    tts::Tts,
+    socket::SocketLib, tts::Tts,
 };
 use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{
@@ -57,6 +57,7 @@ fn create_default_lua_state(
         globals.set(Store::LUA_GLOBAL_NAME, store)?;
         globals.set("plugin", plugin::Handler::new())?;
         globals.set("audio", Audio {})?;
+        globals.set("socket", SocketLib {})?;
 
         globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
         globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;

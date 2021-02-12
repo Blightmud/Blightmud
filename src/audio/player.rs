@@ -1,6 +1,7 @@
 use std::{fs::File, io::BufReader};
 
 use anyhow::Result;
+use cpal::traits::HostTrait;
 use rodio::{Sink, Source};
 
 pub struct Player {
@@ -16,11 +17,15 @@ impl Player {
         let mut sfx = None;
         let mut stream = None;
         let mut handle = None;
-        if let Ok((ostream, ohandle)) = rodio::OutputStream::try_default() {
-            music = rodio::Sink::try_new(&ohandle).ok();
-            sfx = rodio::Sink::try_new(&ohandle).ok();
-            stream = Some(ostream);
-            handle = Some(ohandle);
+
+        let host = cpal::default_host();
+        if host.default_output_device().is_some() {
+            if let Ok((ostream, ohandle)) = rodio::OutputStream::try_default() {
+                music = rodio::Sink::try_new(&ohandle).ok();
+                sfx = rodio::Sink::try_new(&ohandle).ok();
+                stream = Some(ostream);
+                handle = Some(ohandle);
+            }
         }
 
         Self {

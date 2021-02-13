@@ -185,7 +185,6 @@ version = "3.1.0"
 dependencies = [
  "anyhow",
  "chrono",
- "cpal",
  "curl",
  "flate2",
  "getopts",
@@ -1994,8 +1993,7 @@ dependencies = [
 [[package]]
 name = "rodio"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9683532495146e98878d4948fa1a1953f584cd923f2a5f5c26b7a8701b56943"
+source = "git+https://github.com/LiquidityC/rodio#b4d812069bf81311e299ef0a81feb81022a96654"
 dependencies = [
  "claxon",
  "cpal",

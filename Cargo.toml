@@ -9,6 +9,7 @@ edition = "2018"
 
 [features]
 text-to-speech = ["tts"]
+audio = []
 
 [dependencies]
 libtelnet-rs = "1.1.2"

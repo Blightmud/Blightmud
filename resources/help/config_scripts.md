@@ -6,8 +6,8 @@ right script depending on what mud you connect to or anything else you find usef
 Example config:
 ```lua
 local self = {
-	host = core:read("cur_host"),
-	port = tonumber(core:read("cur_port") or "0"),
+	host = store.session_read("cur_host"),
+	port = tonumber(store.session_read("cur_port") or "0"),
 }
 
 local function reload_scripts()
@@ -20,14 +20,14 @@ end
 local function disconnect()
 	self.host = nil
 	self.port = nil
-	core:store("cur_host", tostring(nil))
-	core:store("cur_port", tostring(nil))
+	store.session_write("cur_host", tostring(nil))
+	store.session_write("cur_port", tostring(nil))
 	reload_scripts()
 end
 
 local function on_connect(host, port)
-	core:store("cur_host", host)
-	core:store("cur_port", tostring(port))
+	store.session_write("cur_host", host)
+	store.session_write("cur_port", tostring(port))
 
 	if host == "the-best-mud.org" then
 		blight.load("~/scripts/the-best-mud/main.lua")

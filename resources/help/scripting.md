@@ -29,5 +29,6 @@ by typing `/help <module>`.
 - `mud`         Functions for interacting with the mud
 - `log`         Functions for logging
 - `core`        Functions for advanced scripting and telnet protocol control
+- `socket`      Functions to handle opening and sending data over a socket
 - `audio`       Functions to handle audio
 - `plugin`      Plugin handling

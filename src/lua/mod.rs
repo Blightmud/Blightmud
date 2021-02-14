@@ -18,6 +18,7 @@ mod plugin;
 mod regex;
 mod script;
 mod settings;
+mod socket;
 mod store;
 mod timer;
 mod tts;

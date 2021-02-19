@@ -295,10 +295,10 @@ fn run_tts(tts: &mut TTS, rx: Receiver<TTSEvent>) -> Result<()> {
                 tts.stop().unwrap();
             }
             TTSEvent::SetRate(rate) => {
-                tts.set_rate(rate.min(100.0).max(-100.0))?;
+                tts.set_rate(rate.clamp(-100.0, 100.0))?;
             }
             TTSEvent::ChangeRate(increment) => {
-                tts.set_rate((tts.get_rate()? + increment).min(100.0).max(-100.0))?;
+                tts.set_rate((tts.get_rate()? + increment).clamp(-100.0, 100.0))?;
             }
             TTSEvent::Shutdown => {
                 tts.stop().unwrap();

@@ -71,7 +71,7 @@ pub trait UserInterface {
 
 impl StatusArea {
     fn new(height: u16, start_line: u16, width: u16) -> Self {
-        let height = height.min(5).max(1);
+        let height = height.clamp(1, 5);
         let end_line = start_line + height - 1;
         Self {
             start_line,
@@ -83,8 +83,7 @@ impl StatusArea {
 
     fn set_height(&mut self, height: u16, start_line: u16) {
         self.clear();
-        self.status_lines
-            .resize(height.min(5).max(1) as usize, None);
+        self.status_lines.resize(height.clamp(1, 5) as usize, None);
         self.update_pos(start_line);
     }
 

@@ -83,7 +83,7 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Installing dependencies
-      run: sudo apt-get install libspeechd-dev libasound2-dev
+      run: sudo apt-get install libspeechd-dev libasound2-dev && rustup update stable
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check
@@ -110,7 +110,7 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-no-tts-${{ hashFiles('**/Cargo.lock') }}
     - name: Installing dependencies
-      run: sudo apt-get install libasound2-dev
+      run: sudo apt-get install libasound2-dev && rustup update stable
     - name: Formatting
       run: cargo fmt -- --check
     - name: Check

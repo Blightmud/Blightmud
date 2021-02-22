@@ -85,6 +85,8 @@ fn create_default_lua_state(
             .exec()?;
         ctx.load(include_str!("../../resources/lua/macros.lua"))
             .exec()?;
+        ctx.load(include_str!("../../resources/lua/plugins.lua"))
+            .exec()?;
 
         let lua_gmcp = ctx
             .load(include_str!("../../resources/lua/gmcp.lua"))
@@ -98,10 +100,6 @@ fn create_default_lua_state(
             .load(include_str!("../../resources/lua/tasks.lua"))
             .call::<_, rlua::Value>(())?;
         globals.set("tasks", lua_tasks)?;
-        let lua_plugin = ctx
-            .load(include_str!("../../resources/lua/plugins.lua"))
-            .call::<_, rlua::Value>(())?;
-        globals.set("tasks", lua_plugin)?;
 
         {
             let blight_aud: AnyUserData = globals.get("blight")?;

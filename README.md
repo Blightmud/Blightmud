@@ -33,6 +33,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
     - Text-To-Speech
     - Mouse scrolling (experimental)
     - Plugins
+    - Sockets (TCP connecting and sending only)
 - Low resource and fast
 - In client help and manuals
 - Native Text-To-Speech functionality (optional compile)
@@ -56,7 +57,7 @@ commands that might fit your system:
 ## Installation
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page
 - **Archlinux/Manjaro**  : Packages are available on AUR
-- **Mac/Homebrew**       : We have a homebrew tap `brew tap Blightmud/blightmud`
+- **Mac/Homebrew**       : We have a homebrew tap `brew tap Blightmud/blightmud` (intel only, if you're on Apple Silcon (darwin) compiling is the best option)
 - **Other/Alternative**  : Download source and run `cargo install --path .` from the project root
 - **Windows**            : No native windows support but Blightmud runs fine under WSL
 

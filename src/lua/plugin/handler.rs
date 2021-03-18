@@ -18,11 +18,11 @@ impl Handler {
 
 impl UserData for Handler {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.add_function("add", |_, url: String| -> rlua::Result<(String, String)> {
-            match add_plugin(&url) {
-                Ok(name) => Ok((name, String::new())),
-                Err(err) => Ok(("".to_string(), err.to_string())),
-            }
+        methods.add_function("add", |ctx, url: String| {
+            let backend: Backend = ctx.named_registry_value(BACKEND)?;
+            let writer = backend.writer;
+            add_plugin(writer, &url);
+            Ok(())
         });
         methods.add_function(
             "load",
@@ -48,16 +48,12 @@ impl UserData for Handler {
         methods.add_function("get_all", |_, ()| -> rlua::Result<Vec<String>> {
             Ok(get_plugins())
         });
-        methods.add_function(
-            "update",
-            |_, name: String| -> rlua::Result<(bool, String)> {
-                if let Err(err) = update_plugin(&name) {
-                    Ok((false, err.to_string()))
-                } else {
-                    Ok((true, String::new()))
-                }
-            },
-        );
+        methods.add_function("update", |ctx, name: String| {
+            let backend: Backend = ctx.named_registry_value(BACKEND)?;
+            let writer = backend.writer;
+            update_plugin(writer, &name);
+            Ok(())
+        });
         methods.add_function("enable", |_, name: String| {
             if get_plugins().contains(&name) {
                 let mut auto = AutoLoadPlugins::load();

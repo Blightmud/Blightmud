@@ -45,7 +45,10 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - Run `cargo run` to run
 
 ### Compile with text-to-speech
-- Run `cargo build|run|install --all-features`
+
+- Install rust
+- Run `cargo build --all-features` to compile
+- Run `cargo run --all-features` to run
 
 In order for this to build correctly you will need to install some additional
 dev dependencies: **libclang** and **libspeechd**. Below are some installation

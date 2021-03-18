@@ -1,6 +1,6 @@
 use crate::{event::Event, model::Line, VERSION};
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
 use log::debug;
@@ -31,22 +31,49 @@ impl HelpHandler {
         Ok(())
     }
 
+    fn read_from_file(&self, file: &str) -> Cow<str> {
+        Cow::from(fs::read_to_string(file).unwrap_or_else(|_| panic!("Can't find {}", file)))
+    }
+
     /// Load helpfiles from disk in debug mode, from memory otherwise.
     fn file_content(&self, file: &str) -> Cow<str> {
         if cfg!(debug_assertions) {
-            Cow::from(
-                fs::read_to_string(self.files[file])
-                    .unwrap_or_else(|_| panic!("Can't find {}", file)),
-            )
+            self.read_from_file(self.files[file])
         } else {
             Cow::from(self.files[file])
         }
     }
 
-    fn parse_helpfile(&self, file: &str) -> Event {
-        if self.files.contains_key(file) {
-            let mut md_bytes = vec![];
+    fn get_plugin_helpfile_path(&self, file: &str) -> PathBuf {
+        crate::DATA_DIR.join("plugins").join(file).join("README.md")
+    }
 
+    fn parse_markdown(&self, file_content: &str) -> Event {
+        let mut options = Options::empty();
+        options.insert(Options::ENABLE_TASKLISTS);
+        options.insert(Options::ENABLE_STRIKETHROUGH);
+
+        let parser = Parser::new_ext(file_content, options);
+
+        // Useless as files are embedded into binary.
+        let base_dir = Path::new("/");
+
+        let mut md_bytes = vec![];
+        let env = mdcat::Environment::for_local_directory(&base_dir).unwrap();
+        if mdcat::push_tty(&md_settings(), &env, &mut md_bytes, parser).is_ok() {
+            if let Ok(md_string) = String::from_utf8(md_bytes) {
+                Event::Output(Line::from(format!("\n\n{}", md_string)))
+            } else {
+                Event::Info("Error parsing help file".to_string())
+            }
+        } else {
+            Event::Info("Error parsing help file".to_string())
+        }
+    }
+
+    fn parse_helpfile(&self, file: &str) -> Event {
+        let plugin_help_path = self.get_plugin_helpfile_path(file);
+        if self.files.contains_key(file) {
             let data_dir = crate::DATA_DIR.clone();
             let log_path = data_dir.join("logs");
             let datadir = if let Some(str_path) = data_dir.to_str() {
@@ -73,24 +100,13 @@ impl HelpHandler {
                 .replace("$DATADIR", datadir)
                 .replace("$CONFIGDIR", config_dir);
 
-            let mut options = Options::empty();
-            options.insert(Options::ENABLE_TASKLISTS);
-            options.insert(Options::ENABLE_STRIKETHROUGH);
-
-            let parser = Parser::new_ext(&file_content, options);
-
-            // Useless as files are embedded into binary.
-            let base_dir = Path::new("/");
-
-            let env = mdcat::Environment::for_local_directory(&base_dir).unwrap();
-            if mdcat::push_tty(&md_settings(), &env, &mut md_bytes, parser).is_ok() {
-                if let Ok(md_string) = String::from_utf8(md_bytes) {
-                    Event::Output(Line::from(format!("\n\n{}", md_string)))
-                } else {
-                    Event::Info("Error parsing help file".to_string())
-                }
+            self.parse_markdown(&file_content)
+        } else if plugin_help_path.exists() {
+            if let Some(path) = plugin_help_path.to_str() {
+                let content = self.read_from_file(&path);
+                self.parse_markdown(&content)
             } else {
-                Event::Info("Error parsing help file".to_string())
+                Event::Info(format!("Invalid helpfile for plugin: {}", file))
             }
         } else {
             Event::Info("No such help file found".to_string())

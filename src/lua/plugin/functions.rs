@@ -79,9 +79,9 @@ pub fn update_plugin(name: &str) -> Result<()> {
     if path.is_dir() {
         let repo = Repository::discover(path)?;
         let mut origin_remote = repo.find_remote("origin")?;
-        origin_remote.fetch(&["master"], None, None)?;
+        origin_remote.fetch(&["main"], None, None)?;
 
-        let oid = repo.refname_to_id("refs/remotes/origin/master")?;
+        let oid = repo.refname_to_id("refs/remotes/origin/main")?;
         let object = repo.find_object(oid, None)?;
         repo.reset(&object, git2::ResetType::Hard, None)?;
     } else {

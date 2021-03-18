@@ -20,6 +20,6 @@ how it works.
 Make your plugin available in a git repository. There are numerous options for
 this so I don't think it needs further explanation.
 
-Blightmud will always update (git pull) from the `master` branch. So making
+Blightmud will always update (git pull) from the `main` branch. So making
 this your 'stable' branch and handling development on another branch is a good
 tip.

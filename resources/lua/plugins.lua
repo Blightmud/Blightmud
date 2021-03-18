@@ -10,14 +10,7 @@ alias.add("^/add_plugin (.*?)$", function (matches)
         print("USAGE: /add_plugin <url|path>")
     else
         local path = matches[2]
-        print("[plugin] Fetching:", path)
-        local name, err = plugin.add(path)
-        if name ~= "" then
-            print("[plugin] Installed:", name)
-            plugin.enable(name)
-        else
-            print("[plugin] Failed to install plugin:", err)
-        end
+        plugin.add(path)
     end
 end)
 
@@ -56,12 +49,6 @@ end)
 alias.add("^/update_plugins$", function ()
     local plugins = plugin.get_all()
     for _,name in ipairs(plugins) do
-        print("[plugin] Updating:", name)
-        local result, err = plugin.update(name)
-        if result then
-            print("[plugin] Updated:", name)
-        else
-            print("[plugin] Failed to update plugin:", err)
-        end
+        plugin.update(name)
     end
 end)

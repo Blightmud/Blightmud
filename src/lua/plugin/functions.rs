@@ -14,22 +14,73 @@ fn get_plugin_dir() -> PathBuf {
     plugin_dir
 }
 
-pub fn add_plugin(url: &str) -> Result<String> {
-    if let Some(name) = url.split('/').last() {
-        let dest = get_plugin_dir().join(name);
-        let mut rbuilder = RepoBuilder::new();
-        rbuilder.clone_local(CloneLocal::Auto);
-        if let Err(err) = rbuilder.clone(&url, &dest) {
-            match err.code() {
-                git2::ErrorCode::Exists => bail!("Plugin already exists".to_string()),
-                _ => bail!(err.to_string()),
+pub fn add_plugin(main_writer: Sender<Event>, url: &str) {
+    let url = url.to_string();
+    std::thread::spawn(move || {
+        if let Some(name) = url.split('/').last() {
+            let dest = get_plugin_dir().join(name);
+            let mut rbuilder = RepoBuilder::new();
+            rbuilder.clone_local(CloneLocal::Auto);
+            main_writer
+                .send(Event::Info(format!(
+                    "Downloading plugin: {} from {}",
+                    name, url
+                )))
+                .unwrap();
+            if let Err(err) = rbuilder.clone(&url, &dest) {
+                match err.code() {
+                    git2::ErrorCode::Exists => main_writer
+                        .send(Event::Error("Plugin already exists".to_string()))
+                        .unwrap(),
+                    _ => main_writer.send(Event::Error(err.to_string())).unwrap(),
+                }
+            } else {
+                main_writer
+                    .send(Event::Info(format!("Downloaded plugin: {}", name)))
+                    .unwrap();
             }
         } else {
-            Ok(name.to_string())
+            main_writer
+                .send(Event::Error(format!("Invalid plugin repository: {}", url)))
+                .unwrap();
         }
-    } else {
-        bail!(format!("Invalid plugin repository: {}", url))
-    }
+    });
+}
+
+pub fn update_plugin(main_writer: Sender<Event>, name: &str) {
+    let name = name.to_string();
+    std::thread::spawn(move || {
+        let updater = || -> Result<()> {
+            let path = get_plugin_dir().join(&name);
+            if path.is_dir() {
+                let repo = Repository::discover(path)?;
+                let mut origin_remote = repo.find_remote("origin")?;
+                origin_remote.fetch(&["master"], None, None)?;
+
+                let oid = repo.refname_to_id("refs/remotes/origin/master")?;
+                let object = repo.find_object(oid, None)?;
+                repo.reset(&object, git2::ResetType::Hard, None)?;
+                Ok(())
+            } else {
+                bail!("Invalid plugin name");
+            }
+        };
+        main_writer
+            .send(Event::Info(format!("Updating plugin: {}", &name)))
+            .unwrap();
+        if let Err(err) = updater() {
+            main_writer
+                .send(Event::Error(format!(
+                    "Plugin update failed: {}",
+                    err.to_string()
+                )))
+                .unwrap();
+        } else {
+            main_writer
+                .send(Event::Info(format!("Updated plugin: {}", &name)))
+                .unwrap();
+        }
+    });
 }
 
 pub fn load_plugin(name: &str, writer: &Sender<Event>) -> Result<()> {
@@ -72,20 +123,4 @@ pub fn get_plugins() -> Vec<String> {
         }
     }
     plugins
-}
-
-pub fn update_plugin(name: &str) -> Result<()> {
-    let path = get_plugin_dir().join(name);
-    if path.is_dir() {
-        let repo = Repository::discover(path)?;
-        let mut origin_remote = repo.find_remote("origin")?;
-        origin_remote.fetch(&["master"], None, None)?;
-
-        let oid = repo.refname_to_id("refs/remotes/origin/master")?;
-        let object = repo.find_object(oid, None)?;
-        repo.reset(&object, git2::ResetType::Hard, None)?;
-    } else {
-        bail!("Invalid plugin name");
-    }
-    Ok(())
 }

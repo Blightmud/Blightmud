@@ -12,34 +12,34 @@ text-to-speech = ["tts"]
 
 [dependencies]
 libtelnet-rs = "1.1.2"
-termion = "1.5.5"
-log = "0.4.13"
+termion = "1.5.6"
+log = "0.4.14"
 simple-logging = "2.0.2"
 chrono = "0.4.19"
-signal-hook = "0.3.4"
+signal-hook = "0.3.7"
 rlua = "0.17.0"
-regex = "1.4.3"
+regex = "1.4.5"
 strip-ansi-escapes = "0.1.0"
 timer = "0.2.0"
-flate2 = "1.0.19"
-mdcat = { version = "0.22.2", default-features = false }
+flate2 = "1.0.20"
+mdcat = { version = "0.22.3", default-features = false }
 pulldown-cmark = "0.8.0"
 syntect = "4.5.0"
-serde = { version = "1.0.120", features = ['derive'] }
+serde = { version = "1.0.125", features = ['derive'] }
 ron = "0.6.4"
-anyhow = "1.0.38"
+anyhow = "1.0.40"
 lazy_static = "1.4.0"
 rs-complete = "1.1.1"
 simple-error = "0.2.3"
 getopts = "0.2.21"
-curl = "0.4.34"
+curl = "0.4.35"
 human-panic = "1.0.3"
 native-tls = "0.2.7"
-tts = { version = "0.13.1", optional = true }
-serde_json = "1.0.61"
-git2 = "0.13.15"
-rodio = "0.13.0"
+tts = { version = "0.15.2", optional = true }
+serde_json = "1.0.64"
+git2 = "0.13.17"
+rodio = "0.13.1"
 
 [dev-dependencies]
-mockall = "0.9.0"
+mockall = "0.9.1"
 mockall_double = "0.2.0"

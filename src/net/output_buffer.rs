@@ -170,8 +170,7 @@ mod output_buffer_tests {
         assert_eq!(iter.next(), Some(&Line::from("word1")));
         assert_eq!(iter.next(), Some(&Line::from("\r\rword2")));
         assert_eq!(iter.next(), Some(&Line::from("word3")));
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("prompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("prompt"));
         assert!(buffer.buffer.is_empty());
     }
 
@@ -184,7 +183,6 @@ mod output_buffer_tests {
         let line = iter.next().unwrap();
         assert_eq!(line.line(), "   \rword1");
         assert_eq!(line.clean_line(), "   word1");
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("\r\rprompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("\r\rprompt"));
     }
 }

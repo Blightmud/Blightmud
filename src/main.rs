@@ -317,7 +317,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
             Event::MudOutput(_)
             | Event::Output(_)
-            | Event::Prompt
+            | Event::Prompt(_)
             | Event::Error(_)
             | Event::Info(_)
             | Event::InputSent(_)

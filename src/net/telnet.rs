@@ -61,9 +61,9 @@ impl TelnetHandler {
                             }
                             let mut buffer = self.output_buffer.lock().unwrap();
                             if buffer.has_new_data() {
-                                buffer.buffer_to_prompt(true);
-                                debug!("IAC prompt: {}", buffer.prompt);
-                                self.main_writer.send(Event::Prompt).unwrap();
+                                let prompt = buffer.buffer_to_prompt(true);
+                                debug!("IAC prompt: {}", prompt);
+                                self.main_writer.send(Event::Prompt(prompt)).unwrap();
                             } else {
                                 // Just flush
                                 buffer.buffer_to_prompt(true);
@@ -125,9 +125,9 @@ impl TelnetHandler {
     pub fn handle_prompt(&mut self) {
         if self.mode == TelnetMode::UnterminatedPrompt {
             if let Ok(mut output_buffer) = self.output_buffer.lock() {
-                output_buffer.buffer_to_prompt(false);
-                debug!("END prompt: {}", output_buffer.prompt);
-                self.main_writer.send(Event::Prompt).unwrap();
+                let prompt = output_buffer.buffer_to_prompt(false);
+                debug!("END prompt: {}", prompt);
+                self.main_writer.send(Event::Prompt(prompt)).unwrap();
             }
         }
     }

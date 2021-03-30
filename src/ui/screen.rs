@@ -232,8 +232,8 @@ impl History {
         self.drain();
     }
 
-    fn remove_last(&mut self) {
-        self.inner.pop_back();
+    fn remove_last(&mut self) -> Option<String> {
+        self.inner.pop_back()
     }
 
     fn len(&self) -> usize {
@@ -339,18 +339,20 @@ impl UserInterface for Screen {
     fn print_output(&mut self, line: &Line) {
         self.tts_ctrl.lock().unwrap().speak_line(line);
         if line.flags.separate_receives {
-            self.history.remove_last();
+            if let Some(prefix) = self.history.remove_last() {
+                debug_assert!(line.print_line().unwrap().starts_with(&prefix));
+            }
         }
         if let Some(print_line) = line.print_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {
                 self.print_line(&print_line, !line.flags.separate_receives);
             } else {
-                let mut replace_first = !line.flags.separate_receives;
+                let mut new_line = !line.flags.separate_receives;
                 let mut count = 0;
                 let cur_line = self.history.len();
                 for l in wrap_line(&print_line, self.width as usize) {
-                    self.print_line(&l, replace_first);
-                    replace_first = true;
+                    self.print_line(&l, new_line);
+                    new_line = true;
                     count += 1;
                 }
                 if self.scroll_data.lock && count > self.height {

@@ -6,18 +6,14 @@ use super::{tcp_stream::BUFFER_SIZE, telnet::TelnetMode};
 
 pub struct OutputBuffer {
     buffer: Vec<u8>,
-    pub prompt: Line,
     telnet_mode: TelnetMode,
     new_data: bool,
 }
 
 impl OutputBuffer {
     pub fn new(telnet_mode: &TelnetMode) -> Self {
-        let mut prompt = Line::from("");
-        prompt.flags.prompt = true;
         Self {
             buffer: Vec::with_capacity(BUFFER_SIZE),
-            prompt,
             telnet_mode: telnet_mode.clone(),
             new_data: false,
         }
@@ -27,17 +23,18 @@ impl OutputBuffer {
         self.telnet_mode = mode.clone();
     }
 
-    pub fn buffer_to_prompt(&mut self, consume_buffer: bool) {
-        if !self.buffer.is_empty() {
-            self.prompt = Line::from(&self.buffer);
-            self.prompt.flags.prompt = true;
-            if consume_buffer {
-                self.buffer.clear();
-            }
+    pub fn buffer_to_prompt(&mut self, consume_buffer: bool) -> Line {
+        let mut prompt = if !self.buffer.is_empty() {
+            Line::from(&self.buffer)
         } else {
-            self.prompt.clear();
+            Line::from("")
+        };
+        prompt.flags.prompt = true;
+        if consume_buffer {
+            self.buffer.clear();
         }
         self.new_data = false;
+        prompt
     }
 
     pub fn has_new_data(&self) -> bool {
@@ -90,7 +87,6 @@ impl OutputBuffer {
 
     pub fn clear(&mut self) {
         self.buffer.clear();
-        self.prompt.clear();
         self.telnet_mode = TelnetMode::default();
     }
 
@@ -113,8 +109,7 @@ mod output_buffer_tests {
         let lines = buffer.receive(b"Some misc output\r\nfollowed by some more output\r\nprompt");
         assert_eq!(lines.len(), 2);
         assert!(!buffer.is_empty());
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("prompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("prompt"));
         assert!(buffer.is_empty());
     }
 
@@ -139,8 +134,7 @@ mod output_buffer_tests {
         assert_eq!(iter.next(), Some(&Line::from("word1")));
         assert_eq!(iter.next(), Some(&Line::from("word2")));
         assert_eq!(iter.next(), Some(&Line::from("word3")));
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("prompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("prompt"));
         assert!(buffer.buffer.is_empty());
     }
 
@@ -152,8 +146,7 @@ mod output_buffer_tests {
         assert_eq!(iter.next(), Some(&Line::from("word1")));
         assert_eq!(iter.next(), Some(&Line::from("word2")));
         assert_eq!(iter.next(), Some(&Line::from("word3")));
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("prompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("prompt"));
         assert!(buffer.buffer.is_empty());
     }
 
@@ -165,8 +158,7 @@ mod output_buffer_tests {
         assert_eq!(iter.next(), Some(&Line::from("word1")));
         assert_eq!(iter.next(), Some(&Line::from("word2")));
         assert_eq!(iter.next(), Some(&Line::from("word3")));
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("prompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("prompt"));
         assert!(buffer.buffer.is_empty());
     }
 
@@ -178,8 +170,7 @@ mod output_buffer_tests {
         assert_eq!(iter.next(), Some(&Line::from("word1")));
         assert_eq!(iter.next(), Some(&Line::from("\r\rword2")));
         assert_eq!(iter.next(), Some(&Line::from("word3")));
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("prompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("prompt"));
         assert!(buffer.buffer.is_empty());
     }
 
@@ -192,7 +183,24 @@ mod output_buffer_tests {
         let line = iter.next().unwrap();
         assert_eq!(line.line(), "   \rword1");
         assert_eq!(line.clean_line(), "   word1");
-        buffer.buffer_to_prompt(true);
-        assert_eq!(buffer.prompt, Line::from("\r\rprompt"));
+        assert_eq!(buffer.buffer_to_prompt(true), Line::from("\r\rprompt"));
+    }
+
+    #[test]
+    fn test_separate_receives() {
+        let mut buffer = OutputBuffer::new(&TelnetMode::UnterminatedPrompt);
+        let first_lines = buffer.receive(b"line 1\nline 2\r\nline 3\n\rMaybe a prompt...");
+        assert_eq!(buffer.buffer_to_prompt(false), Line::from("Maybe a prompt..."));
+        let second_lines = buffer.receive(b" but no, it isn't a prompt\nline 4\r\nline 5\n\rDefinitely a prompt");
+        assert_eq!(buffer.buffer_to_prompt(false), Line::from("Definitely a prompt"));
+
+        let mut iter = first_lines.iter().chain(second_lines.iter());
+        assert_eq!(iter.next(), Some(&Line::from("line 1")));
+        assert_eq!(iter.next(), Some(&Line::from("line 2")));
+        assert_eq!(iter.next(), Some(&Line::from("line 3")));
+        assert_eq!(iter.next(), Some(&Line::from("Maybe a prompt... but no, it isn't a prompt")));
+        assert_eq!(iter.next(), Some(&Line::from("line 4")));
+        assert_eq!(iter.next(), Some(&Line::from("line 5")));
+        assert_eq!(iter.next(), None);
     }
 }

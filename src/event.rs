@@ -17,7 +17,7 @@ use std::{
 #[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Event {
-    Prompt,
+    Prompt(Line),
     ServerSend(Vec<u8>),
     InputSent(Line),
     ServerInput(Line),
@@ -230,10 +230,8 @@ impl EventHandler {
             Event::MudOutput(line) | Event::Output(line) => self.log_line("", &line),
             Event::Error(line) => self.log_str("[!!] ", &line),
             Event::Info(line) => self.log_str("[**] ", &line),
-            Event::Prompt => {
-                if let Ok(output_buffer) = self.session.output_buffer.lock() {
-                    self.log_line("", &output_buffer.prompt)?;
-                }
+            Event::Prompt(prompt) => {
+                self.log_line("", &prompt)?;
                 Ok(())
             }
             _ => Ok(()),
@@ -257,15 +255,14 @@ impl EventHandler {
                 screen.print_output(&line);
                 Ok(())
             }
-            Event::Prompt => {
-                let mut output_buffer = self.session.output_buffer.lock().unwrap();
+            Event::Prompt(mut prompt) => {
                 if let Ok(script) = self.session.lua_script.lock() {
-                    script.on_mud_output(&mut output_buffer.prompt);
+                    script.on_mud_output(&mut prompt);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });
                 }
-                screen.print_prompt(&output_buffer.prompt);
+                screen.print_prompt(&prompt);
                 Ok(())
             }
             Event::UserInputBuffer(input_buffer, pos) => {
@@ -460,7 +457,7 @@ mod event_test {
             .handle_output_events(Event::Output(line.clone()), &mut screen)
             .is_ok());
         assert!(handler
-            .handle_output_events(Event::Prompt, &mut screen)
+            .handle_output_events(Event::Prompt(Line::from("")), &mut screen)
             .is_ok());
         assert!(handler
             .handle_output_events(

@@ -127,9 +127,7 @@ impl EventHandler {
                     script.on_mud_input(&mut line);
                     screen.print_send(&line);
                     if let Ok(mut logger) = self.session.logger.lock() {
-                        if let Some(log_line) = line.log_line() {
-                            logger.log_line(&format!("> {}", &log_line))?;
-                        }
+                        logger.log_line("> ", &line)?;
                     }
                     if !line.flags.matched {
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
@@ -211,16 +209,14 @@ impl EventHandler {
 
     fn log_line(&self, prefix: &str, line: &Line) -> Result {
         if let Ok(mut logger) = self.session.logger.lock() {
-            if let Some(log_line) = line.log_line() {
-                logger.log_line(&format!("{}{}", prefix, log_line))?;
-            }
+            logger.log_line(prefix, line)?;
         }
         Ok(())
     }
 
     fn log_str(&self, prefix: &str, line: &str) -> Result {
         if let Ok(mut logger) = self.session.logger.lock() {
-            logger.log_line(&format!("{}{}", prefix, line))?;
+            logger.log_str(&format!("{}{}", prefix, line))?;
         }
         Ok(())
     }
@@ -415,10 +411,13 @@ mod event_test {
         let (mut session, _reader, _timer_reader) = build_session();
         let mut logger = MockLogWriter::new();
         logger
-            .expect_log_line()
+            .expect_log_str()
             .with(eq("prefix test line"))
-            .times(2)
             .returning(|_| Ok(()));
+        logger
+            .expect_log_line()
+            .with(eq("prefix "), eq(Line::from("test line")))
+            .returning(|_, _| Ok(()));
         session.logger = Arc::new(Mutex::new(logger));
         let handler = EventHandler::from(&session);
         let _ = handler.log_str("prefix ", "test line");
@@ -429,7 +428,8 @@ mod event_test {
     fn test_output() {
         let (mut session, _reader, _timer_reader) = build_session();
         let mut logger = MockLogWriter::new();
-        logger.expect_log_line().times(5).returning(|_| Ok(()));
+        logger.expect_log_line().times(3).returning(|_, _| Ok(()));
+        logger.expect_log_str().times(2).returning(|_| Ok(()));
         session.logger = Arc::new(Mutex::new(logger));
         let handler = EventHandler::from(&session);
 

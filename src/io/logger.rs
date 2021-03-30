@@ -9,11 +9,15 @@ use strip_ansi_escapes::Writer as StripWriter;
 #[cfg(test)]
 use mockall::automock;
 
+use crate::model::Line;
+
 #[cfg_attr(test, automock)]
 pub trait LogWriter {
     fn start_logging(&mut self, host: &str) -> Result<()>;
 
-    fn log_line(&mut self, line: &str) -> Result<()>;
+    fn log_str(&mut self, line: &str) -> Result<()>;
+
+    fn log_line(&mut self, prefix: &str, line: &Line) -> Result<()>;
 
     fn stop_logging(&mut self) -> Result<()>;
 
@@ -42,7 +46,7 @@ impl LogWriter for Logger {
         Ok(())
     }
 
-    fn log_line(&mut self, line: &str) -> Result<()> {
+    fn log_str(&mut self, line: &str) -> Result<()> {
         if let Some(mut writer) = self.file.take() {
             writer.write_all(line.as_bytes())?;
             if !line.ends_with('\n') {
@@ -52,6 +56,14 @@ impl LogWriter for Logger {
             self.file = Some(writer);
         }
         Ok(())
+    }
+
+    fn log_line(&mut self, prefix: &str, line: &Line) -> Result<()> {
+        if let Some(line) = line.log_line() {
+            self.log_str(&format!("{}{}", prefix, &line))
+        } else {
+            Ok(())
+        }
     }
 
     fn stop_logging(&mut self) -> Result<()> {

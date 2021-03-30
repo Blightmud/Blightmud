@@ -164,7 +164,7 @@ fn main() {
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
-        Err(f) => panic!(f.to_string()),
+        Err(f) => panic!("{}", f.to_string()),
     };
 
     if matches.opt_present("h") {
@@ -317,7 +317,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
             Event::MudOutput(_)
             | Event::Output(_)
-            | Event::Prompt
+            | Event::Prompt(_)
             | Event::Error(_)
             | Event::Info(_)
             | Event::InputSent(_)

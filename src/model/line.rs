@@ -163,9 +163,7 @@ impl Line {
     }
 
     pub fn log_line(&self) -> Option<&str> {
-        if self.flags.prompt && self.content.is_empty() {
-            None
-        } else if self.flags.skip_log {
+        if self.flags.skip_log || (self.flags.prompt && self.content.is_empty()) {
             None
         } else {
             Some(self.clean_content.as_str())

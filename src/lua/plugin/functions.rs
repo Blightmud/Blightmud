@@ -112,12 +112,10 @@ pub fn remove_plugin(name: &str) -> Result<()> {
 pub fn get_plugins() -> Vec<String> {
     let mut plugins = vec![];
     if let Ok(paths) = fs::read_dir(get_plugin_dir()) {
-        for path in paths {
-            if let Ok(path) = path {
-                if path.path().is_dir() {
-                    if let Some(name) = path.file_name().to_str() {
-                        plugins.push(name.to_string());
-                    }
+        for path in paths.flatten() {
+            if path.path().is_dir() {
+                if let Some(name) = path.file_name().to_str() {
+                    plugins.push(name.to_string());
                 }
             }
         }

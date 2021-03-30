@@ -38,19 +38,15 @@ impl UserData for Regex {
             "match",
             |_, this, src: String| -> rlua::Result<Option<Vec<String>>> {
                 let re = &this.regex;
-                let matches = if let Some(captures) = re.captures(&src) {
-                    Some(
-                        captures
-                            .iter()
-                            .map(|c| match c {
-                                Some(m) => m.as_str().to_string(),
-                                None => String::new(),
-                            })
-                            .collect(),
-                    )
-                } else {
-                    None
-                };
+                let matches = re.captures(&src).map(|captures| {
+                    captures
+                        .iter()
+                        .map(|c| match c {
+                            Some(m) => m.as_str().to_string(),
+                            None => String::new(),
+                        })
+                        .collect()
+                });
                 Ok(matches)
             },
         );

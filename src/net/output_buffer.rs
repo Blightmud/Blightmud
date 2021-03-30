@@ -190,15 +190,25 @@ mod output_buffer_tests {
     fn test_separate_receives() {
         let mut buffer = OutputBuffer::new(&TelnetMode::UnterminatedPrompt);
         let first_lines = buffer.receive(b"line 1\nline 2\r\nline 3\n\rMaybe a prompt...");
-        assert_eq!(buffer.buffer_to_prompt(false), Line::from("Maybe a prompt..."));
-        let second_lines = buffer.receive(b" but no, it isn't a prompt\nline 4\r\nline 5\n\rDefinitely a prompt");
-        assert_eq!(buffer.buffer_to_prompt(false), Line::from("Definitely a prompt"));
+        assert_eq!(
+            buffer.buffer_to_prompt(false),
+            Line::from("Maybe a prompt...")
+        );
+        let second_lines =
+            buffer.receive(b" but no, it isn't a prompt\nline 4\r\nline 5\n\rDefinitely a prompt");
+        assert_eq!(
+            buffer.buffer_to_prompt(false),
+            Line::from("Definitely a prompt")
+        );
 
         let mut iter = first_lines.iter().chain(second_lines.iter());
         assert_eq!(iter.next(), Some(&Line::from("line 1")));
         assert_eq!(iter.next(), Some(&Line::from("line 2")));
         assert_eq!(iter.next(), Some(&Line::from("line 3")));
-        assert_eq!(iter.next(), Some(&Line::from("Maybe a prompt... but no, it isn't a prompt")));
+        assert_eq!(
+            iter.next(),
+            Some(&Line::from("Maybe a prompt... but no, it isn't a prompt"))
+        );
         assert_eq!(iter.next(), Some(&Line::from("line 4")));
         assert_eq!(iter.next(), Some(&Line::from("line 5")));
         assert_eq!(iter.next(), None);

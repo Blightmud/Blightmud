@@ -6,6 +6,7 @@ readme = "README.md"
 license = "GPL3"
 authors = ["Linus Probert"]
 edition = "2018"
+build = "build.rs"
 
 [features]
 text-to-speech = ["tts"]

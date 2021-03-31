@@ -32,6 +32,9 @@ use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, 
 use net::check_latest_version;
 use tools::register_panic_hook;
 
+#[cfg(debug_assertions)]
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("GIT_HASH"));
+#[cfg(not(debug_assertions))]
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROJECT_NAME: &str = "Blightmud";
 

@@ -83,3 +83,37 @@ impl UserData for Handler {
         });
     }
 }
+
+#[cfg(test)]
+mod test_plugin {
+    use rlua::Lua;
+
+    use super::Handler;
+
+    fn get_lua_state() -> Lua {
+        let plugin = Handler::new();
+        let lua = Lua::new();
+        lua.context(|ctx| {
+            ctx.globals().set("plugin", plugin).unwrap();
+        });
+        lua
+    }
+
+    #[test]
+    fn test_dir() {
+        let lua = get_lua_state();
+        assert!(lua
+            .context(|ctx| -> String { ctx.load("return plugin.dir()").call(()).unwrap() })
+            .ends_with(".run/test/data/plugins"));
+    }
+
+    #[test]
+    fn test_named_dir() {
+        let lua = get_lua_state();
+        assert!(lua
+            .context(|ctx| -> String {
+                ctx.load("return plugin.dir(\"awesome\")").call(()).unwrap()
+            })
+            .ends_with(".run/test/data/plugins/awesome"));
+    }
+}

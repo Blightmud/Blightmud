@@ -106,5 +106,11 @@ impl UserData for Blight {
         methods.add_function("version", |_, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))
         });
+        methods.add_function("config_dir", |_, ()| -> rlua::Result<String> {
+            Ok(crate::CONFIG_DIR.to_string_lossy().to_string())
+        });
+        methods.add_function("data_dir", |_, ()| -> rlua::Result<String> {
+            Ok(crate::DATA_DIR.to_string_lossy().to_string())
+        });
     }
 }

@@ -4,7 +4,9 @@ use crate::io::SaveData;
 use crate::lua::{backend::Backend, constants::BACKEND};
 
 use super::{
-    functions::{add_plugin, get_plugins, load_plugin, remove_plugin, update_plugin},
+    functions::{
+        add_plugin, get_plugin_dir, get_plugins, load_plugin, remove_plugin, update_plugin,
+    },
     settings::AutoLoadPlugins,
 };
 
@@ -71,6 +73,13 @@ impl UserData for Handler {
         methods.add_function("enabled", |_, _: ()| -> rlua::Result<Vec<String>> {
             let autoloaded = AutoLoadPlugins::load();
             Ok(autoloaded.iter().cloned().collect())
+        });
+        methods.add_function("dir", |_, name: Option<String>| -> rlua::Result<String> {
+            if let Some(name) = name {
+                Ok(get_plugin_dir().join(name).to_string_lossy().to_string())
+            } else {
+                Ok(get_plugin_dir().to_string_lossy().to_string())
+            }
         });
     }
 }

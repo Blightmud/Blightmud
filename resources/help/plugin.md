@@ -72,3 +72,10 @@ Toggle plugin autoload off
 
 ***plugin.enabled() -> {}***
 Returns a list of all enabled (autoloaded) plugins
+
+##
+
+***plugin.dir(plugin) -> Path***
+Returns the path to blightmuds root plugin dir or the path to a given plugin.
+
+- `plugin`  The name of a plugin, *optional*.

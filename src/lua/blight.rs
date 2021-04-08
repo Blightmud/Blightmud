@@ -106,5 +106,60 @@ impl UserData for Blight {
         methods.add_function("version", |_, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))
         });
+        methods.add_function("config_dir", |_, ()| -> rlua::Result<String> {
+            Ok(crate::CONFIG_DIR.to_string_lossy().to_string())
+        });
+        methods.add_function("data_dir", |_, ()| -> rlua::Result<String> {
+            Ok(crate::DATA_DIR.to_string_lossy().to_string())
+        });
+    }
+}
+
+#[cfg(test)]
+mod test_blight {
+    use std::sync::mpsc::{channel, Receiver, Sender};
+
+    use rlua::Lua;
+
+    use crate::event::Event;
+
+    use super::Blight;
+    use crate::{PROJECT_NAME, VERSION};
+
+    fn get_lua_state() -> (Lua, Receiver<Event>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let blight = Blight::new(writer);
+        let lua = Lua::new();
+        lua.context(|ctx| {
+            ctx.globals().set("blight", blight).unwrap();
+        });
+        (lua, reader)
+    }
+
+    #[test]
+    fn test_config_dir() {
+        let (lua, _reader) = get_lua_state();
+        assert!(lua
+            .context(|ctx| -> String { ctx.load("return blight.config_dir()").call(()).unwrap() })
+            .ends_with(".run/test/config"));
+    }
+
+    #[test]
+    fn test_data_dir() {
+        let (lua, _reader) = get_lua_state();
+        assert!(lua
+            .context(|ctx| -> String { ctx.load("return blight.data_dir()").call(()).unwrap() })
+            .ends_with(".run/test/data"));
+    }
+
+    #[test]
+    fn test_version() {
+        let (lua, _reader) = get_lua_state();
+        assert_eq!(
+            lua.context(|ctx| -> (String, String) {
+                ctx.load("return blight.version()").call(()).unwrap()
+            }),
+            (PROJECT_NAME.to_string(), VERSION.to_string())
+        );
     }
 }

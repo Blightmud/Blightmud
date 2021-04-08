@@ -4,7 +4,9 @@ use crate::io::SaveData;
 use crate::lua::{backend::Backend, constants::BACKEND};
 
 use super::{
-    functions::{add_plugin, get_plugins, load_plugin, remove_plugin, update_plugin},
+    functions::{
+        add_plugin, get_plugin_dir, get_plugins, load_plugin, remove_plugin, update_plugin,
+    },
     settings::AutoLoadPlugins,
 };
 
@@ -72,5 +74,46 @@ impl UserData for Handler {
             let autoloaded = AutoLoadPlugins::load();
             Ok(autoloaded.iter().cloned().collect())
         });
+        methods.add_function("dir", |_, name: Option<String>| -> rlua::Result<String> {
+            if let Some(name) = name {
+                Ok(get_plugin_dir().join(name).to_string_lossy().to_string())
+            } else {
+                Ok(get_plugin_dir().to_string_lossy().to_string())
+            }
+        });
+    }
+}
+
+#[cfg(test)]
+mod test_plugin {
+    use rlua::Lua;
+
+    use super::Handler;
+
+    fn get_lua_state() -> Lua {
+        let plugin = Handler::new();
+        let lua = Lua::new();
+        lua.context(|ctx| {
+            ctx.globals().set("plugin", plugin).unwrap();
+        });
+        lua
+    }
+
+    #[test]
+    fn test_dir() {
+        let lua = get_lua_state();
+        assert!(lua
+            .context(|ctx| -> String { ctx.load("return plugin.dir()").call(()).unwrap() })
+            .ends_with(".run/test/data/plugins"));
+    }
+
+    #[test]
+    fn test_named_dir() {
+        let lua = get_lua_state();
+        assert!(lua
+            .context(|ctx| -> String {
+                ctx.load("return plugin.dir(\"awesome\")").call(()).unwrap()
+            })
+            .ends_with(".run/test/data/plugins/awesome"));
     }
 }

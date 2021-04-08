@@ -34,3 +34,13 @@ width, height = blight.terminal_dimensions()
 
 ***blight.version() -> name, version***
 Returns Blightmud name and version in string format
+
+##
+
+***blight.config_dir() -> Path***
+Returns blightmuds config directory path on the current system
+
+##
+
+***blight.data_dir() -> Path***
+Returns blightmuds data directory path on the current system

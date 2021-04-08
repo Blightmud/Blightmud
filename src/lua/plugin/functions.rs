@@ -8,7 +8,7 @@ use git2::{
 
 use crate::event::Event;
 
-fn get_plugin_dir() -> PathBuf {
+pub fn get_plugin_dir() -> PathBuf {
     let plugin_dir = crate::DATA_DIR.join("plugins");
     fs::create_dir_all(&plugin_dir).ok();
     plugin_dir

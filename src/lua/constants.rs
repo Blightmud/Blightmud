@@ -6,6 +6,7 @@ pub const TIMED_NEXT_ID: &str = "__timed_next_id";
 pub const COMMAND_BINDING_TABLE: &str = "__cmd_binds";
 pub const MUD_OUTPUT_LISTENER_TABLE: &str = "__output_listeners";
 pub const MUD_INPUT_LISTENER_TABLE: &str = "__input_listeners";
+pub const BLIGHT_ON_QUIT_LISTENER_TABLE: &str = "__on_quit_listeners";
 pub const BACKEND: &str = "__blight_backend_wrapper";
 
 // Core tables

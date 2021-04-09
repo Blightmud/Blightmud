@@ -473,6 +473,13 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
         };
         screen.flush();
     }
+    if let Ok(lua) = session.lua_script.lock() {
+        lua.on_quit();
+        lua.get_output_lines().iter().for_each(|l| {
+            screen.print_output(l);
+        });
+        screen.flush();
+    }
     screen.reset()?;
     session.close()?;
     Ok(())

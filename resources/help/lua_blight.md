@@ -44,3 +44,11 @@ Returns blightmuds config directory path on the current system
 
 ***blight.data_dir() -> Path***
 Returns blightmuds data directory path on the current system
+
+##
+
+***blight.on_quit(callback)***
+Registers a function to be called when blightmud exits
+
+- `callback`    The function to be called
+

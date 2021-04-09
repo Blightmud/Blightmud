@@ -41,6 +41,7 @@ fn create_default_lua_state(
         ctx.set_named_registry_value(BACKEND, backend)?;
         ctx.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table()?)?;
         ctx.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, ctx.create_table()?)?;
+        ctx.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, ctx.create_table()?)?;
         ctx.set_named_registry_value(TIMED_CALLBACK_TABLE, ctx.create_table()?)?;
         ctx.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, ctx.create_table()?)?;
         ctx.set_named_registry_value(TIMED_NEXT_ID, 1)?;
@@ -191,6 +192,19 @@ impl LuaScript {
             }) {
                 output_stack_trace(&self.writer, &msg.to_string());
             }
+        }
+    }
+
+    pub fn on_quit(&self) {
+        if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
+            let table: rlua::Table = ctx.named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
+            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+                let (_, cb) = pair?;
+                cb.call::<_, ()>(())?;
+            }
+            Ok(())
+        }) {
+            output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 

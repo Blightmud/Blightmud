@@ -1,123 +1,74 @@
 name: Rust
 
 on:
+  pull_request:
   push:
     branches:
       - master
       - dev
       - "*_impl"
-  pull_request:
-    branches: ["*"]
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
 
 jobs:
-  test_macos:
-    name: Build on MacOS
-    runs-on: macos-latest
+  tests:
+    name: Tests
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.toolchain == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        toolchain: [stable, beta, nightly]
+        include:
+          - os: macos-latest
+          - os: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/git
-          ~/.cargo/registry
-          ~/.cargo/bin
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Setup toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: clippy, rustfmt
-        override: true
-    - name: Formatting
-      run: cargo fmt -- --check
-    - name: Check
-      run: cargo check --locked --all-features
-    - name: Clippy
-      run: cargo clippy --locked --all-features
-    - name: Test
-      run: cargo test --locked --all-features
-    - name: Build
-      run: cargo build --release --locked --all-features
-
-  test_macos_no_tts:
-    name: Build on MacOS (no TTS)
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/git
-          ~/.cargo/registry
-          ~/.cargo/bin
-        key: ${{ runner.os }}-cargo-no-tts-${{ hashFiles('**/Cargo.lock') }}
-    - name: Setup toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: clippy, rustfmt
-        override: true
-    - name: Formatting
-      run: cargo fmt -- --check
-    - name: Clippy
-      run: cargo clippy --locked
-    - name: Test
-      run: cargo test --locked
-    - name: Build
-      run: cargo build --release --locked
-
-  test_ubuntu:
-    name: Build on Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/git
-          ~/.cargo/registry
-          ~/.cargo/bin
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Installing dependencies
-      run: sudo apt-get install libspeechd-dev libasound2-dev && rustup update stable
-    - name: Formatting
-      run: cargo fmt -- --check
-    - name: Check
-      run: cargo check --locked --all-features
-    - name: Clippy
-      run: cargo clippy --locked --all-features
-    - name: Test
-      run: cargo test --locked --all-features
-    - name: Build
-      run: cargo build --release --locked --all-features
-
-  test_ubuntu_no_tts:
-    name: Build on Ubuntu (no TTS)
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/git
-          ~/.cargo/registry
-          ~/.cargo/bin
-          target
-        key: ${{ runner.os }}-cargo-no-tts-${{ hashFiles('**/Cargo.lock') }}
-    - name: Installing dependencies
-      run: sudo apt-get install libasound2-dev && rustup update stable
-    - name: Formatting
-      run: cargo fmt -- --check
-    - name: Check
-      run: cargo check --locked
-    - name: Clippy
-      run: cargo clippy --locked
-    - name: Test
-      run: cargo test --locked
-    - name: Build
-      run: cargo build --release --locked
+      - uses: actions/checkout@v2
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            ~/.cargo/bin
+          key: ${{ matrix.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Installing dependencies
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Setup toolchain
+        if: ${{ matrix.toolchain != 'nightly' }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy, rustfmt
+          override: true
+      - name: Setup toolchain
+        if: ${{ matrix.toolchain == 'nightly' }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          profile: minimal
+          override: true
+      - name: Formatting
+        if: ${{ matrix.toolchain != 'nightly' }}
+        run: cargo fmt -- --check
+      - name: Check
+        run: cargo check --locked
+      - name: Check (all features)
+        run: cargo check --locked --all-features
+      - name: Clippy
+        if: ${{ matrix.toolchain != 'nightly' }}
+        run: cargo clippy --locked
+      - name: Clippy (all features)
+        if: ${{ matrix.toolchain != 'nightly' }}
+        run: cargo clippy --locked --all-features
+      - name: Test
+        run: cargo test --locked
+      - name: Test (all features)
+        run: cargo test --locked --all-features
+      - name: Build
+        run: cargo build --release --locked
+      - name: Build (all features)
+        run: cargo build --release --locked --all-features

@@ -59,6 +59,11 @@ end)
 
 ##
 
+***mud.disconnect()***
+Disconnect from the current mud
+
+##
+
 ***mud.on_disconnect(callback)***
 Registers a callback that is triggered upon disconnecting from a server.
 

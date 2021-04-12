@@ -259,8 +259,9 @@ impl LuaScript {
         Ok(())
     }
 
-    pub fn on_connect(&mut self, host: &str, port: u16) {
+    pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
         if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+            ctx.set_named_registry_value(CONNECTION_ID, id)?;
             let globals = ctx.globals();
             let table: rlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
             for pair in table.pairs::<rlua::Value, rlua::Function>() {
@@ -363,6 +364,7 @@ impl LuaScript {
 #[cfg(test)]
 mod lua_script_tests {
     use super::LuaScript;
+    use super::CONNECTION_ID;
     use crate::{event::Event, lua::regex::Regex, model::Line, PROJECT_NAME, VERSION};
     use rlua::Result as LuaResult;
     use std::{
@@ -803,7 +805,7 @@ mod lua_script_tests {
             ctx.load(lua_code).exec().unwrap();
         });
 
-        lua.on_connect("test", 21);
+        lua.on_connect("test", 21, 12);
         assert_eq!(
             lua.get_output_lines(),
             [
@@ -812,11 +814,17 @@ mod lua_script_tests {
                 Line::from("test:21-3"),
             ]
         );
+        assert_eq!(
+            lua.state
+                .context(|ctx| -> rlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
+                .unwrap(),
+            12
+        );
         lua.reset((100, 100));
         lua.state.context(|ctx| {
             ctx.load(lua_code).exec().unwrap();
         });
-        lua.on_connect("server", 1000);
+        lua.on_connect("server", 1000, 13);
         assert_eq!(
             lua.get_output_lines(),
             [
@@ -824,6 +832,12 @@ mod lua_script_tests {
                 Line::from("server:1000-2"),
                 Line::from("server:1000-3"),
             ]
+        );
+        assert_eq!(
+            lua.state
+                .context(|ctx| -> rlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
+                .unwrap(),
+            13
         );
     }
 

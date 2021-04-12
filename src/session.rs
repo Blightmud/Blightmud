@@ -39,9 +39,13 @@ pub struct Session {
 impl Session {
     pub fn connect(&mut self, host: &str, port: u16, tls: bool) -> bool {
         let mut connected = false;
+        let mut conn_id = 0u16;
         if let Ok(mut connection) = self.connection.lock() {
             connected = match connection.connect(host, port, tls) {
-                Ok(_) => true,
+                Ok(_) => {
+                    conn_id = connection.id;
+                    true
+                }
                 Err(err) => {
                     debug!("Failed to connect: {}", err);
                     false
@@ -52,7 +56,7 @@ impl Session {
             self.main_writer
                 .send(Event::StartLogging(host.to_string(), false))
                 .unwrap();
-            self.main_writer.send(Event::Connected).unwrap();
+            self.main_writer.send(Event::Connected(conn_id)).unwrap();
         }
         connected
     }

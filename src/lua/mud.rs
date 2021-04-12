@@ -8,8 +8,8 @@ use crate::{
 use super::{
     backend::Backend,
     constants::{
-        BACKEND, MUD_INPUT_LISTENER_TABLE, MUD_OUTPUT_LISTENER_TABLE, ON_CONNECTION_CALLBACK_TABLE,
-        ON_DISCONNECT_CALLBACK_TABLE,
+        BACKEND, CONNECTION_ID, MUD_INPUT_LISTENER_TABLE, MUD_OUTPUT_LISTENER_TABLE,
+        ON_CONNECTION_CALLBACK_TABLE, ON_DISCONNECT_CALLBACK_TABLE,
     },
 };
 
@@ -53,6 +53,12 @@ impl UserData for Mud {
                 .writer
                 .send(Event::Connect(Connection { host, port, tls }))
                 .unwrap();
+            Ok(())
+        });
+        methods.add_function("disconnect", |ctx, ()| {
+            let conn_id: u16 = ctx.named_registry_value(CONNECTION_ID).unwrap_or_default();
+            let backend: Backend = ctx.named_registry_value(BACKEND)?;
+            backend.writer.send(Event::Disconnect(conn_id)).unwrap();
             Ok(())
         });
         methods.add_function(
@@ -112,7 +118,7 @@ mod test_mud {
         model::Line,
     };
 
-    use super::Mud;
+    use super::{Mud, CONNECTION_ID};
 
     #[test]
     fn test_output_register() {
@@ -186,6 +192,26 @@ mod test_mud {
                 tls: true,
             }),
         );
+    }
+
+    #[test]
+    fn test_default_disconnect() {
+        assert_event("mud.disconnect()", Event::Disconnect(0));
+    }
+
+    #[test]
+    fn test_disconnect() {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let backend = Backend::new(writer);
+        let mud = Mud::new();
+        let lua = Lua::new();
+        lua.context(|ctx| {
+            ctx.set_named_registry_value(BACKEND, backend).unwrap();
+            ctx.set_named_registry_value(CONNECTION_ID, 4).unwrap();
+            ctx.globals().set("mud", mud).unwrap();
+            ctx.load("mud.disconnect()").exec().unwrap();
+            assert_eq!(reader.recv().unwrap(), Event::Disconnect(4));
+        });
     }
 
     #[test]

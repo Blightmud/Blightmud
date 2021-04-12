@@ -45,6 +45,13 @@ Connect to a server
 
 ##
 
+***mud.connect_server(server)***
+Connect to a server
+
+- `server`  The name of the stored server
+
+##
+
 ***mud.on_connect(callback)***
 Registers a callback that is triggered when the client successfully connects to
 a server.
@@ -74,6 +81,11 @@ blight.on_disconnect(function ()
     blight.output("Disconnected from server")
 end)
 ```
+
+##
+
+***mud.reconnect()***
+Reconnect to the current/last connected server
 
 ##
 

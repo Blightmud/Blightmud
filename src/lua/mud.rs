@@ -55,10 +55,20 @@ impl UserData for Mud {
                 .unwrap();
             Ok(())
         });
+        methods.add_function("connect_server", |ctx, server: String| {
+            let backend: Backend = ctx.named_registry_value(BACKEND)?;
+            backend.writer.send(Event::LoadServer(server)).unwrap();
+            Ok(())
+        });
         methods.add_function("disconnect", |ctx, ()| {
             let conn_id: u16 = ctx.named_registry_value(CONNECTION_ID).unwrap_or_default();
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend.writer.send(Event::Disconnect(conn_id)).unwrap();
+            Ok(())
+        });
+        methods.add_function("reconnect", |ctx, ()| {
+            let backend: Backend = ctx.named_registry_value(BACKEND)?;
+            backend.writer.send(Event::Reconnect).unwrap();
             Ok(())
         });
         methods.add_function(

@@ -56,8 +56,10 @@ jobs:
         if: ${{ matrix.toolchain != 'nightly' }}
         run: cargo fmt -- --check
       - name: Check
+        if: ${{ matrix.toolchain != 'nightly' }}
         run: cargo check --locked
       - name: Check (all features)
+        if: ${{ matrix.toolchain != 'nightly' }}
         run: cargo check --locked --all-features
       - name: Clippy
         if: ${{ matrix.toolchain != 'nightly' }}

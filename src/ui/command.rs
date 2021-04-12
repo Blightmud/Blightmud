@@ -491,35 +491,6 @@ fn parse_command(msg: &str) -> Event {
     let lc_msg = msg.to_ascii_lowercase();
     let mut iter = lc_msg.split_whitespace();
     match iter.next() {
-        Some("/connect") => {
-            let p1 = iter.next();
-            let p2 = iter.next();
-            let p3 = iter.next();
-
-            if p1 == None && p2 == None {
-                Event::Info("USAGE: /connect <host> <port>".to_string())
-            } else if p2 == None {
-                let name = p1.unwrap().to_string();
-
-                Event::LoadServer(name)
-            } else {
-                let host = p1.unwrap().to_string();
-                let tls = if let Some(tls) = p3 {
-                    matches!(tls, "tls" | "true" | "on" | "enable")
-                } else {
-                    false
-                };
-                if let Ok(port) = p2.unwrap().parse::<u16>() {
-                    Event::Connect(Connection::new(&host, port, tls))
-                } else {
-                    Event::Error(
-                        "USAGE: /connect <host: String> <port: Positive number>".to_string(),
-                    )
-                }
-            }
-        }
-        Some("/disconnect") | Some("/dc") => Event::Disconnect(0),
-        Some("/reconnect") | Some("/rc") => Event::Reconnect,
         Some("/add_server") => {
             let p1 = iter.next();
             let p2 = iter.next();

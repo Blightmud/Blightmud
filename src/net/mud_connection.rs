@@ -75,6 +75,7 @@ impl MudConnection {
         } else {
             self.stream = Some(RwStream::new(TcpStream::connect(uri)?));
         }
+        self.id = connection_id();
         Ok(())
     }
 

@@ -310,7 +310,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::ServerSend(_)
             | Event::ServerInput(_)
             | Event::Connect(_)
-            | Event::Connected
+            | Event::Connected(_)
             | Event::Reconnect
             | Event::Disconnect(_) => {
                 event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;

@@ -27,7 +27,7 @@ pub enum Event {
     Info(String),
     UserInputBuffer(String, usize),
     Connect(Connection),
-    Connected,
+    Connected(u16),
     Disconnect(u16),
     Reconnect,
     AddServer(String, Connection),
@@ -154,13 +154,13 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::Connected => {
+            Event::Connected(id) => {
                 let host = self.session.host();
                 let port = self.session.port();
                 debug!("Connected to {}:{}", host, port);
                 screen.set_host(&host, port)?;
                 if let Ok(mut script) = self.session.lua_script.lock() {
-                    script.on_connect(&host, port);
+                    script.on_connect(&host, port, id);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });

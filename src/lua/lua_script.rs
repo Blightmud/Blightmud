@@ -365,6 +365,7 @@ impl LuaScript {
 mod lua_script_tests {
     use super::LuaScript;
     use super::CONNECTION_ID;
+    use crate::model::Connection;
     use crate::{event::Event, lua::regex::Regex, model::Line, PROJECT_NAME, VERSION};
     use rlua::Result as LuaResult;
     use std::{
@@ -948,5 +949,50 @@ mod lua_script_tests {
 
             assert!(ids.is_empty());
         });
+    }
+
+    #[test]
+    fn confirm_connection_macros() {
+        let (lua, reader) = get_lua();
+        lua.on_mud_input(&mut Line::from("/connect example.com 4000"));
+        assert_eq!(
+            reader.recv().unwrap(),
+            Event::Connect(Connection::new("example.com", 4000, false))
+        );
+        lua.on_mud_input(&mut Line::from("/connect example.com 4000 true"));
+        assert_eq!(
+            reader.recv().unwrap(),
+            Event::Connect(Connection::new("example.com", 4000, true))
+        );
+        lua.state.context(|ctx| {
+            ctx.set_named_registry_value(CONNECTION_ID, 4).unwrap();
+        });
+        lua.on_mud_input(&mut Line::from("/disconnect"));
+        assert_eq!(reader.recv().unwrap(), Event::Disconnect(4));
+
+        lua.on_mud_input(&mut Line::from("/reconnect"));
+        assert_eq!(reader.recv().unwrap(), Event::Reconnect);
+    }
+
+    #[test]
+    fn confirm_logging_macros() {
+        let (lua, reader) = get_lua();
+        lua.on_mud_input(&mut Line::from("/start_log test"));
+        assert_eq!(
+            reader.recv().unwrap(),
+            Event::StartLogging("test".to_string(), true)
+        );
+        lua.on_mud_input(&mut Line::from("/stop_log"));
+        assert_eq!(reader.recv().unwrap(), Event::StopLogging);
+    }
+
+    #[test]
+    fn confirm_load_macro() {
+        let (lua, reader) = get_lua();
+        lua.on_mud_input(&mut Line::from("/load test"));
+        assert_eq!(
+            reader.recv().unwrap(),
+            Event::LoadScript("test".to_string())
+        );
     }
 }

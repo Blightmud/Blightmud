@@ -168,8 +168,7 @@ impl EventHandler {
                 Ok(())
             }
             Event::Disconnect(id) => {
-                let disconnect = id == 0 || self.session.connection_id() == id;
-                if disconnect && self.session.connected() {
+                if self.session.connection_id() == id && self.session.connected() {
                     self.session.disconnect();
                     screen.print_info(&format!(
                         "Disconnecting from: {}:{}",

@@ -120,7 +120,7 @@ alias.add("^/set ([^\\s]+)\\s*(on|off)?$", function (matches)
 	end
 end)
 
-alias.add("^/connect(.*)$", function (m)
+alias.add("^/connect.*$", function (m)
     local args = get_args(m[1])
     if #args == 2 then
         mud.connect_server(args[2])
@@ -143,4 +143,23 @@ alias.add("^(:?/disconnect|/dc)$", function ()
 end)
 alias.add("^(:?/reconnect|/rc)$", function ()
     mud.reconnect()
+end)
+alias.add("^/start_log.*$", function (m)
+    local args = get_args(m[1])
+    if #args == 2 then
+        log.start(args[2])
+    else
+        info("USAGE: /start_log <name>")
+    end
+end)
+alias.add("^/stop_log$", function ()
+    log.stop()
+end)
+alias.add("^/load.*$", function (m)
+    local args = get_args(m[1])
+    if #args > 1 then
+        script.load(table.concat(args, " ", 2))
+    else
+        info("USAGE: /load <path>")
+    end
 end)

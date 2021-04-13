@@ -532,15 +532,6 @@ fn parse_command(msg: &str) -> Event {
             }
         }
         Some("/list_servers") | Some("/ls") => Event::ListServers,
-        Some("/load") => {
-            let p1 = iter.next();
-            if p1 == None {
-                Event::Info("USAGE: /load <path>".to_string())
-            } else {
-                let p1 = p1.unwrap().to_string();
-                Event::LoadScript(p1)
-            }
-        }
         Some("/help") => {
             let p1 = iter.next();
             if let Some(hfile) = p1 {
@@ -549,15 +540,6 @@ fn parse_command(msg: &str) -> Event {
                 Event::ShowHelp("help".to_string(), true)
             }
         }
-        Some("/start_log") => {
-            let p1 = iter.next();
-            if let Some(world) = p1 {
-                Event::StartLogging(world.to_string(), true)
-            } else {
-                Event::Info("USAGE: /start_log <name>".to_string())
-            }
-        }
-        Some("/stop_log") => Event::StopLogging,
         Some("/quit") | Some("/q") => Event::Quit,
         _ => Event::ServerInput(Line::from(msg)),
     }

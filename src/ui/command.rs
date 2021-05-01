@@ -1,4 +1,4 @@
-use crate::model::{Connection, Line, Servers};
+use crate::model::{Line, Servers};
 use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
@@ -491,47 +491,6 @@ fn parse_command(msg: &str) -> Event {
     let lc_msg = msg.to_ascii_lowercase();
     let mut iter = lc_msg.split_whitespace();
     match iter.next() {
-        Some("/add_server") => {
-            let p1 = iter.next();
-            let p2 = iter.next();
-            let p3 = iter.next();
-            let p4 = iter.next();
-
-            if p1 == None || p2 == None || p3 == None {
-                Event::Info(
-                    "USAGE: /add_server <name: String> <host: String> <port: Positive number>"
-                        .to_string(),
-                )
-            } else {
-                let name = p1.unwrap().to_string();
-                let host = p2.unwrap().to_string();
-
-                let tls = if let Some(tls) = p4 {
-                    matches!(tls, "tls" | "true" | "on" | "enable")
-                } else {
-                    false
-                };
-
-                if let Ok(port) = p3.unwrap().parse::<u16>() {
-                    Event::AddServer(name, Connection::new(&host, port, tls))
-                } else {
-                    Event::Error(
-                        "USAGE: /add_server <name: String> <host: String> <port: Positive number>"
-                            .to_string(),
-                    )
-                }
-            }
-        }
-        Some("/remove_server") => {
-            let p1 = iter.next();
-
-            if let Some(name) = p1 {
-                Event::RemoveServer(name.to_string())
-            } else {
-                Event::Info("USAGE: /remove_server <name: String>".to_string())
-            }
-        }
-        Some("/list_servers") | Some("/ls") => Event::ListServers,
         Some("/help") => {
             let p1 = iter.next();
             if let Some(hfile) = p1 {

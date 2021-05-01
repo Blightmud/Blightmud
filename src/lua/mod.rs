@@ -17,6 +17,7 @@ mod mud;
 mod plugin;
 mod regex;
 mod script;
+mod servers;
 mod settings;
 mod socket;
 mod store;

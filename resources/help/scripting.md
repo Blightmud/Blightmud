@@ -31,4 +31,5 @@ by typing `/help <module>`.
 - `core`        Functions for advanced scripting and telnet protocol control
 - `socket`      Functions to handle opening and sending data over a socket
 - `audio`       Functions to handle audio
+- `servers`     Server storage and handling
 - `plugin`      Plugin handling

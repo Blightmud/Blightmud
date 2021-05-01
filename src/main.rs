@@ -315,12 +315,6 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::Disconnect(_) => {
                 event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
             }
-            Event::AddServer(_, _)
-            | Event::RemoveServer(_)
-            | Event::LoadServer(_)
-            | Event::ListServers => {
-                event_handler.handle_store_events(event, &mut screen)?;
-            }
             Event::MudOutput(_)
             | Event::Output(_)
             | Event::Prompt(_)

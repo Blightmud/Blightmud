@@ -71,6 +71,7 @@ alias.add("^/triggers$", function ()
 	end
 end)
 
+-- TTS
 alias.add("^/tts (on|off)$", function (matches)
 	tts.enable(matches[2] == "on")
 end)
@@ -83,6 +84,7 @@ alias.add("^/tts_keypresses (on|off)$", function (matches)
 	tts.echo_keypresses(matches[2] == "on")
 end)
 
+-- Settings
 alias.add("^/settings$", function ()
 	for key, value in pairs(settings.list()) do
 		local key_format = cformat("<yellow>%s<reset>", key)
@@ -120,10 +122,17 @@ alias.add("^/set ([^\\s]+)\\s*(on|off)?$", function (matches)
 	end
 end)
 
+-- Connection
 alias.add("^/connect.*$", function (m)
     local args = get_args(m[1])
     if #args == 2 then
-        mud.connect_server(args[2])
+        local result, server = pcall(servers.get, args[2])
+        if result then
+            info(cformat("Connecting to saved server: <yellow>%s<reset>", args[2]))
+            mud.connect(server.host, server.port)
+        else
+            error(server)
+        end
     elseif #args == 3 then
         mud.connect(args[2], args[3], args[4])
     elseif #args >= 4 then
@@ -144,6 +153,8 @@ end)
 alias.add("^(:?/reconnect|/rc)$", function ()
     mud.reconnect()
 end)
+
+-- Logging
 alias.add("^/start_log.*$", function (m)
     local args = get_args(m[1])
     if #args == 2 then
@@ -161,5 +172,51 @@ alias.add("^/load.*$", function (m)
         script.load(table.concat(args, " ", 2))
     else
         info("USAGE: /load <path>")
+    end
+end)
+
+-- Server handling
+alias.add("^(?:/list_servers|/ls)$", function ()
+    local stored = servers.get_all()
+
+    for _,s in ipairs(stored) do
+        local tls_str = cformat("TLS: <red>off<reset>")
+        if s.tls then
+            tls_str = cformat("TLS:  <green>on<reset>")
+        end
+        info(cformat("<yellow>%-12s<reset> Host: %-25s Port: <blue>%4s<reset> %s", s.name, s.host, s.port, tls_str))
+    end
+end)
+alias.add("^/add_server.*$", function (m)
+    local args = get_args(m[1])
+    if #args > 3 then
+        local name = args[2]
+        local host = args[3]
+        local port = tonumber(args[4])
+        local tls = args[5] and args[5]:lower() == "on" or args[5]:lower() == "true"
+        local result, err = pcall(servers.add, name, host, port, tls)
+        if result then
+            info(cformat("Server added: <yellow>%s<reset>", name))
+        else
+            error(err)
+        end
+    else
+        info("USAGE: /add_server <name: String> <host: String> <port: Number> [<tls: String>]")
+        info("EXAMPLE: /add_server example examplemud.com 4000")
+        info("EXAMPLE: /add_server example examplemud.com 4000 true")
+    end
+end)
+alias.add("^/remove_server.*$", function (m)
+    local args = get_args(m[1])
+    if #args > 1 then
+        local name = args[2]
+        local result, err = pcall(servers.remove, name)
+        if result then
+            info(cformat("Server removed: <yellow>%s<reset>", name))
+        else
+            error(err)
+        end
+    else
+        info("USAGE: /remove_server <name: String>")
     end
 end)

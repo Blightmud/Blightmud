@@ -6,7 +6,7 @@ use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{
     log::Log, mud::Mud, regex::RegexLib, settings::Settings, store::Store, timer::Timer, util::*,
 };
-use crate::{event::Event, model::Line};
+use crate::{event::Event, lua::servers::Servers, model::Line};
 use anyhow::Result;
 use log::info;
 use rlua::{AnyUserData, Lua, Result as LuaResult};
@@ -59,6 +59,7 @@ fn create_default_lua_state(
         globals.set("plugin", plugin::Handler::new())?;
         globals.set("audio", Audio {})?;
         globals.set("socket", SocketLib {})?;
+        globals.set("servers", Servers {})?;
 
         globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
         globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;

@@ -1,6 +1,5 @@
 use crate::{
-    io::SaveData,
-    model::{Connection, Line, Servers},
+    model::{Connection, Line},
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
     tts::TTSEvent,
@@ -30,10 +29,6 @@ pub enum Event {
     Connected(u16),
     Disconnect(u16),
     Reconnect,
-    AddServer(String, Connection),
-    RemoveServer(String),
-    LoadServer(String),
-    ListServers,
     ProtoEnabled(u8),
     EnableProto(u8),
     DisableProto(u8),
@@ -280,94 +275,6 @@ impl EventHandler {
                 screen.print_send(&msg);
                 Ok(())
             }
-            _ => Err(BadEventRoutingError.into()),
-        }
-    }
-
-    pub fn handle_store_events(&mut self, event: Event, screen: &mut dyn UserInterface) -> Result {
-        match event {
-            Event::AddServer(name, connection) => match Servers::try_load() {
-                Ok(mut saved_servers) => {
-                    if saved_servers.contains_key(&name) {
-                        self.session.main_writer.send(Event::Error(format!(
-                            "Saved server already exists for {}",
-                            name
-                        )))?;
-                        return Ok(());
-                    }
-
-                    saved_servers.insert(name.clone(), connection);
-                    saved_servers.save();
-
-                    self.session
-                        .main_writer
-                        .send(Event::Info(format!("Server added: {}", name)))?;
-
-                    Ok(())
-                }
-                Err(err) => {
-                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
-                    Ok(())
-                }
-            },
-            Event::RemoveServer(name) => match Servers::try_load() {
-                Ok(mut saved_servers) => {
-                    if saved_servers.contains_key(&name) {
-                        saved_servers.remove(&name);
-                        saved_servers.save();
-
-                        self.session
-                            .main_writer
-                            .send(Event::Info(format!("Server removed: {}", name)))?;
-                    } else {
-                        self.session.main_writer.send(Event::Error(format!(
-                            "Saved server does not exist: {}",
-                            name
-                        )))?;
-                    }
-
-                    Ok(())
-                }
-                Err(err) => {
-                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
-                    Ok(())
-                }
-            },
-            Event::LoadServer(name) => match Servers::try_load() {
-                Ok(saved_servers) => {
-                    if saved_servers.contains_key(&name) {
-                        let connection = saved_servers.get(&name).cloned().unwrap();
-                        self.session.main_writer.send(Event::Connect(connection))?;
-                    } else {
-                        screen.print_error(&format!("Saved server does not exist: {}", name));
-                    }
-
-                    Ok(())
-                }
-                Err(err) => {
-                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
-                    Ok(())
-                }
-            },
-            Event::ListServers => match Servers::try_load() {
-                Ok(saved_servers) => {
-                    if saved_servers.is_empty() {
-                        screen.print_info("There are no saved servers.");
-                    } else {
-                        screen.print_info("Saved servers:");
-                        screen.print_info("");
-                        for server in saved_servers {
-                            screen.print_info(&format!(" - Name: {}, {}", server.0, server.1));
-                        }
-                    }
-
-                    Ok(())
-                }
-                Err(err) => {
-                    screen.print_error(&format!("Error loading servers.ron on line {}", err));
-                    Ok(())
-                }
-            },
             _ => Err(BadEventRoutingError.into()),
         }
     }

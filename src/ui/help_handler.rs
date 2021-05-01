@@ -185,6 +185,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "socket" => "socket.md",
         "plugin" => "plugin.md",
         "plugin_developer" => "plugin_developer.md",
+        "servers" => "servers.md",
     }
 }
 

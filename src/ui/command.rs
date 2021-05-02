@@ -488,20 +488,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
 
 fn parse_command(msg: &str) -> Event {
     let msg = String::from(msg);
-    let lc_msg = msg.to_ascii_lowercase();
-    let mut iter = lc_msg.split_whitespace();
-    match iter.next() {
-        Some("/help") => {
-            let p1 = iter.next();
-            if let Some(hfile) = p1 {
-                Event::ShowHelp(hfile.to_string(), true)
-            } else {
-                Event::ShowHelp("help".to_string(), true)
-            }
-        }
-        Some("/quit") | Some("/q") => Event::Quit,
-        _ => Event::ServerInput(Line::from(msg)),
-    }
+    Event::ServerInput(Line::from(msg.to_ascii_lowercase()))
 }
 
 #[cfg(test)]

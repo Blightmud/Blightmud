@@ -47,6 +47,19 @@ Returns blightmuds data directory path on the current system
 
 ##
 
+***blight.show_help(subject, lock_scroll)***
+Render a helpfile
+
+- `subject`     The name of the helpfile to show
+- `lock_scroll` Lock scroll to top of the helpfile
+
+##
+
+***blight.quit()***
+Exit Blightmud
+
+##
+
 ***blight.on_quit(callback)***
 Registers a function to be called when blightmud exits
 

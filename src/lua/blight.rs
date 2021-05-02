@@ -119,6 +119,20 @@ impl UserData for Blight {
             table.set(table.raw_len() + 1, func)?;
             Ok(())
         });
+        methods.add_function("quit", |ctx, ()| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer.send(Event::Quit).unwrap();
+            Ok(())
+        });
+        methods.add_function("show_help", |ctx, (name, lock_scroll): (String, bool)| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer
+                .send(Event::ShowHelp(name, lock_scroll))
+                .unwrap();
+            Ok(())
+        });
     }
 }
 
@@ -212,5 +226,35 @@ mod test_blight {
             Ok(())
         })
         .unwrap();
+    }
+
+    #[test]
+    fn quit() {
+        let (lua, reader) = get_lua_state();
+        lua.context(|ctx| {
+            ctx.load("blight.quit()").exec().unwrap();
+            assert_eq!(reader.recv(), Ok(Event::Quit));
+        });
+    }
+
+    #[test]
+    fn show_help() {
+        let (lua, reader) = get_lua_state();
+        lua.context(|ctx| {
+            ctx.load("blight.show_help(\"test1\", false)")
+                .exec()
+                .unwrap();
+            assert_eq!(
+                reader.recv(),
+                Ok(Event::ShowHelp("test1".to_string(), false))
+            );
+            ctx.load("blight.show_help(\"test2\", true)")
+                .exec()
+                .unwrap();
+            assert_eq!(
+                reader.recv(),
+                Ok(Event::ShowHelp("test2".to_string(), true))
+            );
+        });
     }
 }

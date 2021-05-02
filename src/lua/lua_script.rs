@@ -996,4 +996,23 @@ mod lua_script_tests {
             Event::LoadScript("test".to_string())
         );
     }
+
+    #[test]
+    fn confirm_quit_macro() {
+        let (lua, reader) = get_lua();
+        lua.on_mud_input(&mut Line::from("/quit"));
+        assert_eq!(reader.recv().unwrap(), Event::Quit);
+        lua.on_mud_input(&mut Line::from("/q"));
+        assert_eq!(reader.recv().unwrap(), Event::Quit);
+    }
+
+    #[test]
+    fn confirm_help_macro() {
+        let (lua, reader) = get_lua();
+        lua.on_mud_input(&mut Line::from("/help test1"));
+        assert_eq!(
+            reader.recv().unwrap(),
+            Event::ShowHelp("test1".to_string(), true)
+        );
+    }
 }

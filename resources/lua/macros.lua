@@ -220,3 +220,13 @@ alias.add("^/remove_server.*$", function (m)
         info("USAGE: /remove_server <name: String>")
     end
 end)
+alias.add("^(?:/quit|/q)$", blight.quit)
+alias.add("^/help.*$", function (m)
+    local args = get_args(m[1])
+    if #args > 1 then
+        local name = args[2]
+        blight.show_help(name, true)
+    else
+        info("USAGE: /help <subject>")
+    end
+end)

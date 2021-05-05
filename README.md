@@ -1,6 +1,9 @@
 ![Rust](https://github.com/Blightmud/Blightmud/workflows/Rust/badge.svg)
+![GitHub commits since latest release (by SemVer)](https://img.shields.io/github/commits-since/blightmud/blightmud/latest?sort=semver)
+![GitHub issues by-label](https://img.shields.io/github/issues-raw/blightmud/blightmud/bug)
 ![Security audit](https://github.com/Blightmud/blightmud/workflows/Security%20audit/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/Blightmud/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/Blightmud/Blightmud?branch=dev)
+![AUR maintainer](https://img.shields.io/aur/maintainer/blightmud?label=aur%20maintainer)
 # Blightmud  : A mud client for the terminal
 
 Blightmud has been a passion project of mine for some time. A big user of the

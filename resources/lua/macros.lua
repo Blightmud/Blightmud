@@ -38,11 +38,14 @@ alias.add("^/test (.*)$", function (matches)
 end)
 
 local function state_label (state, label)
-	local color = C_RED
-	if state then
-		color = C_GREEN
+    local len = label:len() + 1
+	if not state then
+        label = "-" .. label
+        return cformat("<red>%" .. len .. "s<reset>", label)
+    else
+        label = "+" .. label
+        return cformat("<green>%" .. len .. "s<reset>", label)
 	end
-	return color .. label .. C_RESET
 end
 
 local function number_label (number, label)
@@ -56,7 +59,7 @@ end
 alias.add("^/aliases$", function ()
 	for id,alias in pairs(alias.get_group():get_aliases()) do
 		local enabled = state_label(alias.enabled, "enabled")
-		info(cformat("%s :\t<yellow>%s<reset>\t%s", id, alias.regex:regex(), enabled))
+		info(cformat("%4s : <yellow>%-20s<reset> %s", id, alias.regex:regex(), enabled))
 	end
 end)
 
@@ -67,7 +70,7 @@ alias.add("^/triggers$", function ()
 		local raw = state_label(trigger.raw, "raw")
 		local prompt = state_label(trigger.prompt, "prompt")
 		local count = number_label(trigger.count, "count: ")
-		info(cformat("%s :\t<yellow>%s<reset>\t%s\t%s\t%s\t%s\t%s", id, trigger.regex:regex(), enabled, gag, raw, prompt, count))
+		info(cformat("%4s : <yellow>%-20s<reset> %s %s %s %s %s", id, trigger.regex:regex(), enabled, gag, raw, prompt, count))
 	end
 end)
 

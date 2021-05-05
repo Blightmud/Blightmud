@@ -17,7 +17,7 @@ impl UserData for RegexLib {
 
 #[derive(Clone)]
 pub struct Regex {
-    regex: regex::Regex,
+    pub regex: regex::Regex,
 }
 
 impl Display for Regex {

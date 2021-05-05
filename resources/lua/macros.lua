@@ -233,3 +233,16 @@ alias.add("^/help.*$", function (m)
         info("USAGE: /help <subject>")
     end
 end)
+
+-- Search
+alias.add("^(?:/search|/s).*$", function (m)
+    local args = get_args(m[1])
+    if #args == 1 then
+        info(
+            "USAGE: /search <regex>",
+            "USAGE: /s <regex>"
+            )
+    else
+        search.search(args[2])
+    end
+end)

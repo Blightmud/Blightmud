@@ -398,6 +398,8 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::ScrollDown => screen.scroll_down()?,
             Event::ScrollTop => screen.scroll_top()?,
             Event::ScrollBottom => screen.reset_scroll()?,
+            Event::FindForward(pattern) => screen.find_down(&pattern)?,
+            Event::FindBackward(pattern) => screen.find_up(&pattern)?,
             Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
             Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
             Event::LoadScript(path) => {

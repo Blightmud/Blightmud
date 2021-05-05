@@ -1,4 +1,4 @@
-use super::{constants::*, ui_event::UiEvent};
+use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::Event;
 use crate::{model::Line, PROJECT_NAME, VERSION};
 use log::debug;
@@ -131,6 +131,20 @@ impl UserData for Blight {
             this.main_writer
                 .send(Event::ShowHelp(name, lock_scroll))
                 .unwrap();
+            Ok(())
+        });
+        methods.add_function("find_backward", |ctx, re: Regex| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer
+                .send(Event::FindBackward(re.regex))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("find_forward", |ctx, re: Regex| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer.send(Event::FindForward(re.regex)).unwrap();
             Ok(())
         });
     }

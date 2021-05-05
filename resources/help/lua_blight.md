@@ -55,6 +55,20 @@ Render a helpfile
 
 ##
 
+***blight.find_backward(regex)***
+Searches for a string backward from current position
+
+- `regex`    The `regex` to search for
+
+##
+
+***blight.find_forward(regex)***
+Searches for a string forward from current position
+
+- `regex`    The `regex` to search for
+
+##
+
 ***blight.quit()***
 Exit Blightmud
 
@@ -65,3 +79,4 @@ Registers a function to be called when blightmud exits
 
 - `callback`    The function to be called
 
+##

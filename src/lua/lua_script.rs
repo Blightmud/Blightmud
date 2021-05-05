@@ -82,6 +82,11 @@ fn create_default_lua_state(
             .call::<_, rlua::Value>(())?;
         globals.set("alias", lua_aliases)?;
 
+        let lua_search = ctx
+            .load(include_str!("../../resources/lua/search.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("search", lua_search)?;
+
         ctx.load(include_str!("../../resources/lua/defaults.lua"))
             .exec()?;
         ctx.load(include_str!("../../resources/lua/functions.lua"))

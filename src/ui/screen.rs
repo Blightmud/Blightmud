@@ -1,13 +1,18 @@
 use crate::{model::Line, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
-use std::collections::VecDeque;
+use regex::Regex;
 use std::{error, fmt};
 use std::{
     io::{stdout, Write},
     sync::Arc,
     sync::Mutex,
 };
-use termion::{color, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use termion::{
+    color::{self, Bg, Fg},
+    input::MouseTerminal,
+    raw::IntoRawMode,
+    screen::AlternateScreen,
+};
 
 #[cfg(test)]
 use mockall::automock;
@@ -16,6 +21,7 @@ struct ScrollData {
     active: bool,
     pos: usize,
     lock: bool,
+    hilite: Option<Regex>,
 }
 
 const OUTPUT_START_LINE: u16 = 2;
@@ -63,6 +69,8 @@ pub trait UserInterface {
     fn scroll_to(&mut self, row: usize) -> Result<()>;
     fn scroll_top(&mut self) -> Result<()>;
     fn scroll_up(&mut self) -> Result<()>;
+    fn find_up(&mut self, pattern: &Regex) -> Result<()>;
+    fn find_down(&mut self, pattern: &Regex) -> Result<()>;
     fn set_host(&mut self, host: &str, port: u16) -> Result<()>;
     fn set_status_area_height(&mut self, height: u16) -> Result<()>;
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;
@@ -160,15 +168,15 @@ impl StatusArea {
             "{}{}{}",
             termion::cursor::Goto(1, line),
             termion::clear::CurrentLine,
-            color::Fg(color::Green),
+            Fg(color::Green),
         )?;
 
         let custom_info = if !custom_info.trim().is_empty() {
             format!(
                 "━ {}{}{} ",
                 custom_info.trim(),
-                color::Fg(color::Reset),
-                color::Fg(color::Green)
+                Fg(color::Reset),
+                Fg(color::Green)
             )
         } else {
             "".to_string()
@@ -183,7 +191,7 @@ impl StatusArea {
             &custom_info,
             self.width as usize + stripped_chars
         )?; // Print separator
-        write!(screen, "{}", color::Fg(color::Reset))?;
+        write!(screen, "{}", Fg(color::Reset))?;
         Ok(())
     }
 
@@ -205,39 +213,58 @@ impl StatusArea {
 }
 
 struct History {
-    inner: VecDeque<String>,
+    inner: Vec<String>,
 }
 
 impl History {
     fn new() -> Self {
         Self {
-            inner: VecDeque::with_capacity(32 * 1024),
+            inner: Vec::with_capacity(32 * 1024),
         }
     }
 
     fn drain(&mut self) {
         while self.inner.len() >= self.inner.capacity() {
-            self.inner.pop_front();
+            self.inner.remove(0);
         }
     }
 
     fn append(&mut self, line: &str) {
         if !line.trim().is_empty() {
             for line in line.lines() {
-                self.inner.push_back(String::from(line));
+                self.inner.push(String::from(line));
             }
         } else {
-            self.inner.push_back("".to_string());
+            self.inner.push("".to_string());
         }
         self.drain();
     }
 
     fn remove_last(&mut self) -> Option<String> {
-        self.inner.pop_back()
+        self.inner.pop()
     }
 
     fn len(&self) -> usize {
         self.inner.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    fn find_forward(&self, pattern: &Regex, pos: usize) -> Option<usize> {
+        self.inner[pos..]
+            .iter()
+            .position(|l| pattern.is_match(l))
+            .map(|index| pos + index)
+    }
+
+    fn find_backward(&self, pattern: &Regex, pos: usize) -> Option<usize> {
+        self.inner[..pos]
+            .iter()
+            .rev()
+            .position(|l| pattern.is_match(l))
+            .map(|index| pos - index)
     }
 }
 
@@ -325,8 +352,8 @@ impl UserInterface for Screen {
             "{}{}{}{}{}{}{}{}{}",
             termion::cursor::Save,
             termion::cursor::Goto(1, self.prompt_line),
-            termion::color::Fg(termion::color::Reset),
-            termion::color::Bg(termion::color::Reset),
+            Fg(termion::color::Reset),
+            Bg(termion::color::Reset),
             termion::style::Reset,
             termion::clear::CurrentLine,
             input,
@@ -365,13 +392,23 @@ impl UserInterface for Screen {
     fn print_send(&mut self, send: &Line) {
         if let Some(line) = send.print_line() {
             self.tts_ctrl.lock().unwrap().speak_input(&line);
+            log::debug!(
+                "INPUT: {}",
+                &format!(
+                    "{}{}> {}{}",
+                    termion::style::Reset,
+                    Fg(color::LightYellow),
+                    line,
+                    Fg(color::Reset),
+                )
+            );
             self.print_line(
                 &format!(
                     "{}{}> {}{}",
                     termion::style::Reset,
-                    color::Fg(color::LightYellow),
+                    Fg(color::LightYellow),
                     line,
-                    color::Fg(color::Reset),
+                    Fg(color::Reset),
                 ),
                 true,
             );
@@ -385,21 +422,19 @@ impl UserInterface for Screen {
     }
 
     fn print_error(&mut self, output: &str) {
-        let line = &format!(
-            "{}[!!] {}{}",
-            color::Fg(color::Red),
-            output,
-            color::Fg(color::Reset)
-        );
+        let line = &format!("{}[!!] {}{}", Fg(color::Red), output, Fg(color::Reset));
         self.print_line(line, true);
         self.tts_ctrl.lock().unwrap().speak_error(output);
     }
 
     fn scroll_to(&mut self, row: usize) -> Result<()> {
-        if row < self.history.len() {
+        let max_start_index = self.history.inner.len() as i32 - self.output_range() as i32;
+        if row < max_start_index as usize {
             self.scroll_data.active = true;
             self.scroll_data.pos = row;
             self.draw_scroll()?;
+        } else {
+            self.reset_scroll()?;
         }
         Ok(())
     }
@@ -410,9 +445,9 @@ impl UserInterface for Screen {
     }
 
     fn scroll_up(&mut self) -> Result<()> {
-        let output_range: usize = self.output_line as usize - OUTPUT_START_LINE as usize;
+        let output_range: usize = self.output_range() as usize;
         let history = &self.history.inner;
-        if history.len() > output_range as usize {
+        if history.len() > output_range {
             if !self.scroll_data.active {
                 self.scroll_data.active = true;
                 self.scroll_data.pos = history.len() - output_range;
@@ -426,7 +461,7 @@ impl UserInterface for Screen {
 
     fn scroll_down(&mut self) -> Result<()> {
         if self.scroll_data.active {
-            let output_range: i32 = self.output_line as i32 - OUTPUT_START_LINE as i32;
+            let output_range = self.output_range() as i32;
             let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
             let new_start_index = self.scroll_data.pos + 5;
             if new_start_index >= max_start_index as usize {
@@ -450,7 +485,13 @@ impl UserInterface for Screen {
 
     fn reset_scroll(&mut self) -> Result<()> {
         self.scroll_data.active = false;
-        let output_range = self.output_line - OUTPUT_START_LINE + 1;
+        self.scroll_data.hilite = None;
+        self.scroll_data.pos = if self.history.is_empty() {
+            0
+        } else {
+            self.history.len() - 1
+        };
+        let output_range = self.output_range();
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
@@ -476,6 +517,34 @@ impl UserInterface for Screen {
             }
         }
         self.redraw_status_area()?;
+        Ok(())
+    }
+
+    fn find_up(&mut self, pattern: &Regex) -> Result<()> {
+        let pos = if self.scroll_data.active {
+            self.scroll_data.pos
+        } else if self.history.len() > self.output_range() as usize {
+            self.history.len() - self.output_range() as usize
+        } else {
+            self.history.len()
+        };
+        if let Some(line) = self.history.find_backward(pattern, pos) {
+            self.scroll_data.hilite = Some(pattern.clone());
+            self.scroll_to(0.max(line - 1) as usize)?;
+        }
+        Ok(())
+    }
+
+    fn find_down(&mut self, pattern: &Regex) -> Result<()> {
+        if self.scroll_data.active {
+            if let Some(line) = self
+                .history
+                .find_forward(pattern, self.history.len().min(self.scroll_data.pos + 1))
+            {
+                self.scroll_data.hilite = Some(pattern.clone());
+                self.scroll_to(line.min(self.history.len() - 1))?;
+            }
+        }
         Ok(())
     }
 
@@ -512,6 +581,7 @@ impl Screen {
                 active: false,
                 pos: 0,
                 lock: false,
+                hilite: None,
             },
             connection: None,
         })
@@ -572,7 +642,7 @@ impl Screen {
             "{}{}{}",
             termion::cursor::Goto(1, 1),
             termion::clear::CurrentLine,
-            color::Fg(color::Green),
+            Fg(color::Green),
         )?;
         let output = if let Some(connection) = &self.connection {
             format!("═ {} ═", connection)
@@ -580,12 +650,7 @@ impl Screen {
             "".to_string()
         };
         write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
-        write!(
-            self.screen,
-            "{}{}",
-            color::Fg(color::Reset),
-            self.goto_prompt(),
-        )?;
+        write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
         Ok(())
     }
 
@@ -606,17 +671,32 @@ impl Screen {
     }
 
     fn draw_scroll(&mut self) -> Result<()> {
-        let output_range = self.output_line - OUTPUT_START_LINE + 1;
+        let output_range = self.output_range();
         for i in 0..output_range {
             let index = self.scroll_data.pos + i as usize;
             let line_no = OUTPUT_START_LINE + i;
+            let mut line = self.history.inner[index].clone();
+            if let Some(pattern) = &self.scroll_data.hilite {
+                line = pattern
+                    .replace_all(
+                        &line,
+                        &format!(
+                            "{}{}$0{}{}",
+                            Fg(color::LightWhite),
+                            Bg(color::Blue),
+                            Bg(color::Reset),
+                            Fg(color::Reset)
+                        ),
+                    )
+                    .to_string();
+            }
             write!(
                 self.screen,
                 "{}{}{}{}",
                 termion::cursor::Goto(1, line_no),
                 termion::clear::CurrentLine,
                 termion::style::Reset,
-                self.history.inner[index],
+                line,
             )?;
         }
         self.redraw_status_area()?;
@@ -631,6 +711,10 @@ impl Screen {
         } else {
             Ok(Box::new(screen))
         }
+    }
+
+    fn output_range(&self) -> u16 {
+        self.output_line - OUTPUT_START_LINE + 1
     }
 }
 

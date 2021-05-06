@@ -214,18 +214,24 @@ impl StatusArea {
 
 struct History {
     inner: Vec<String>,
+    capacity: usize,
+    drain_length: usize,
 }
 
 impl History {
     fn new() -> Self {
+        let drain_length: usize = 1024;
+        let capacity: usize = 32 * drain_length;
         Self {
-            inner: Vec::with_capacity(32 * 1024),
+            inner: Vec::with_capacity(capacity),
+            capacity,
+            drain_length,
         }
     }
 
     fn drain(&mut self) {
-        while self.inner.len() >= self.inner.capacity() {
-            self.inner.remove(0);
+        if self.inner.len() >= self.capacity {
+            self.inner.drain(0..self.drain_length);
         }
     }
 
@@ -843,5 +849,25 @@ mod screen_test {
         assert_eq!(history.find_forward(&re, 4), None);
         assert_eq!(history.find_backward(&re, 4), Some(3));
         assert_eq!(history.find_backward(&re, 2), None);
+    }
+
+    #[test]
+    fn test_drain_history() {
+        let mut history = History::new();
+        history.capacity = 20;
+        history.drain_length = 10;
+        assert!(history.is_empty());
+        for _ in 0..19 {
+            history.append(&"test");
+        }
+        assert_eq!(history.len(), 19);
+        history.append(&"test");
+        assert_eq!(history.len(), 10);
+        for _ in 0..9 {
+            history.append(&"test");
+        }
+        assert_eq!(history.len(), 19);
+        history.append(&"test");
+        assert_eq!(history.len(), 10);
     }
 }

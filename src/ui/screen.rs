@@ -224,8 +224,8 @@ impl History {
     }
 
     fn drain(&mut self) {
-        if self.inner.len() > self.inner.capacity() {
-            let count = self.inner.len() - self.inner.capacity();
+        if self.inner.len() >= self.inner.capacity() {
+            let count = 1 + self.inner.len() - self.inner.capacity();
             self.inner.drain(0..count);
         }
     }
@@ -842,5 +842,43 @@ mod screen_test {
         assert_eq!(history.find_forward(&re, 4), None);
         assert_eq!(history.find_backward(&re, 4), Some(3));
         assert_eq!(history.find_backward(&re, 2), None);
+    }
+
+    #[test]
+    fn test_drain_history() {
+        let line = "some_data";
+        let mut history = History::new();
+        assert!(history.is_empty());
+        history.inner = Vec::with_capacity(11);
+        assert_eq!(history.inner.capacity(), 11);
+        assert!(history.is_empty());
+        for _ in 0..10 {
+            history.append(&"pre");
+        }
+        assert_eq!(history.len(), 10);
+        for _ in 0..5 {
+            history.append(&line);
+        }
+        assert_eq!(history.len(), 10);
+        assert_eq!(
+            history
+                .inner
+                .iter()
+                .filter(|s| **s == "pre".to_string())
+                .count(),
+            5
+        );
+        for _ in 0..5 {
+            history.append(&line);
+        }
+        assert_eq!(history.len(), 10);
+        assert_eq!(
+            history
+                .inner
+                .iter()
+                .filter(|s| **s == "pre".to_string())
+                .count(),
+            0
+        );
     }
 }

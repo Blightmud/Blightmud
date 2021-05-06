@@ -82,6 +82,11 @@ fn create_default_lua_state(
             .call::<_, rlua::Value>(())?;
         globals.set("alias", lua_aliases)?;
 
+        let lua_search = ctx
+            .load(include_str!("../../resources/lua/search.lua"))
+            .call::<_, rlua::Value>(())?;
+        globals.set("search", lua_search)?;
+
         ctx.load(include_str!("../../resources/lua/defaults.lua"))
             .exec()?;
         ctx.load(include_str!("../../resources/lua/functions.lua"))
@@ -366,8 +371,8 @@ impl LuaScript {
 mod lua_script_tests {
     use super::LuaScript;
     use super::CONNECTION_ID;
-    use crate::model::Connection;
-    use crate::{event::Event, lua::regex::Regex, model::Line, PROJECT_NAME, VERSION};
+    use crate::model::{Connection, Regex};
+    use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
     use rlua::Result as LuaResult;
     use std::{
         collections::BTreeMap,
@@ -904,7 +909,7 @@ mod lua_script_tests {
 
             let alias: &rlua::Table = aliases.get(&id).unwrap();
             assert_eq!(alias.get::<_, bool>("enabled").unwrap(), true);
-            assert_eq!(alias.get::<_, Regex>("regex").unwrap().to_string(), "test");
+            assert_eq!(alias.get::<_, LReg>("regex").unwrap().to_string(), "test");
 
             ctx.load(r#"alias.clear()"#).exec().unwrap();
             let ids: BTreeMap<u32, rlua::Table> = ctx
@@ -933,10 +938,7 @@ mod lua_script_tests {
             assert!(triggers.contains_key(&id));
 
             let trigger: &rlua::Table = triggers.get(&id).unwrap();
-            assert_eq!(
-                trigger.get::<_, Regex>("regex").unwrap().to_string(),
-                "test"
-            );
+            assert_eq!(trigger.get::<_, LReg>("regex").unwrap().to_string(), "test");
             assert_eq!(trigger.get::<_, bool>("enabled").unwrap(), true);
             assert_eq!(trigger.get::<_, bool>("gag").unwrap(), false);
             assert_eq!(trigger.get::<_, bool>("raw").unwrap(), false);
@@ -1014,5 +1016,15 @@ mod lua_script_tests {
             reader.recv().unwrap(),
             Event::ShowHelp("test1".to_string(), true)
         );
+    }
+
+    #[test]
+    fn confirm_search_macros() {
+        let (lua, reader) = get_lua();
+        lua.on_mud_input(&mut Line::from("/search test1"));
+        let re = Regex::new("test1").unwrap();
+        assert_eq!(reader.recv().unwrap(), Event::FindBackward(re.clone()));
+        lua.on_mud_input(&mut Line::from("/s test1"));
+        assert_eq!(reader.recv().unwrap(), Event::FindBackward(re));
     }
 }

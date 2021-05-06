@@ -82,6 +82,15 @@ bind("ctrl-d", "delete_right")
 bind("ctrl-h", "delete")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
+bind("ctrl-k", "delete_to_end")
+bind("ctrl-u", "delete_from_start")
 
+-- ctrl + up/down
+blight.bind("\x1b[1;5a", function () search.find_up() end)
+blight.bind("\x1b[1;5b", function () search.find_down() end)
+
+-- ctrl + pgup/pgdn
+blight.bind("\x1b[5;5~", function () search.find_last_input() end)
+blight.bind("\x1b[6;5~", function () search.find_next_input() end)
 blight.bind("ctrl-s", function () tts:stop() end)
 ```

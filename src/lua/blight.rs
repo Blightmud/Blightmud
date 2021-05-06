@@ -1,4 +1,4 @@
-use super::{constants::*, ui_event::UiEvent};
+use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::Event;
 use crate::{model::Line, PROJECT_NAME, VERSION};
 use log::debug;
@@ -133,6 +133,20 @@ impl UserData for Blight {
                 .unwrap();
             Ok(())
         });
+        methods.add_function("find_backward", |ctx, re: Regex| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer
+                .send(Event::FindBackward(re.regex))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("find_forward", |ctx, re: Regex| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer.send(Event::FindForward(re.regex)).unwrap();
+            Ok(())
+        });
     }
 }
 
@@ -150,9 +164,11 @@ mod test_blight {
 
     fn get_lua_state() -> (Lua, Receiver<Event>) {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let regex = crate::lua::regex::RegexLib {};
         let blight = Blight::new(writer);
         let lua = Lua::new();
         lua.context(|ctx| -> rlua::Result<()> {
+            ctx.globals().set("regex", regex)?;
             ctx.globals().set("blight", blight)?;
             ctx.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, ctx.create_table()?)?;
             Ok(())
@@ -234,6 +250,22 @@ mod test_blight {
         lua.context(|ctx| {
             ctx.load("blight.quit()").exec().unwrap();
             assert_eq!(reader.recv(), Ok(Event::Quit));
+        });
+    }
+
+    #[test]
+    fn find() {
+        let (lua, reader) = get_lua_state();
+        let re = crate::model::Regex::new("test").unwrap();
+        lua.context(|ctx| {
+            ctx.load(r#"blight.find_forward(regex.new("test"))"#)
+                .exec()
+                .unwrap();
+            assert_eq!(reader.recv(), Ok(Event::FindForward(re.clone())));
+            ctx.load(r#"blight.find_backward(regex.new("test"))"#)
+                .exec()
+                .unwrap();
+            assert_eq!(reader.recv(), Ok(Event::FindBackward(re)));
         });
     }
 

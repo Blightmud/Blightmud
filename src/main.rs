@@ -393,11 +393,15 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     }
                 }
             }
-            Event::ScrollLock(enabled) => screen.scroll_lock(enabled)?,
-            Event::ScrollUp => screen.scroll_up()?,
-            Event::ScrollDown => screen.scroll_down()?,
-            Event::ScrollTop => screen.scroll_top()?,
-            Event::ScrollBottom => screen.reset_scroll()?,
+            Event::ScrollLock(_)
+            | Event::ScrollUp
+            | Event::ScrollDown
+            | Event::ScrollTop
+            | Event::ScrollBottom
+            | Event::FindForward(_)
+            | Event::FindBackward(_) => {
+                event_handler.handle_scroll_events(event, &mut screen)?;
+            }
             Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
             Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
             Event::LoadScript(path) => {

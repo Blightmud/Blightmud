@@ -224,8 +224,9 @@ impl History {
     }
 
     fn drain(&mut self) {
-        while self.inner.len() >= self.inner.capacity() {
-            self.inner.remove(0);
+        if self.inner.len() > self.inner.capacity() {
+            let count = self.inner.len() - self.inner.capacity();
+            self.inner.drain(0..count);
         }
     }
 

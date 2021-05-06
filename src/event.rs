@@ -14,7 +14,6 @@ use std::{
     sync::mpsc::{channel, Receiver, Sender},
 };
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Clone)]
 pub enum Event {
     Prompt(Line),

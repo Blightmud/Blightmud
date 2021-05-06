@@ -214,19 +214,24 @@ impl StatusArea {
 
 struct History {
     inner: Vec<String>,
+    capacity: usize,
+    drain_length: usize,
 }
 
 impl History {
     fn new() -> Self {
+        let drain_length: usize = 1024;
+        let capacity: usize = 32 * drain_length;
         Self {
-            inner: Vec::with_capacity(32 * 1024),
+            inner: Vec::with_capacity(capacity),
+            capacity,
+            drain_length,
         }
     }
 
     fn drain(&mut self) {
-        if self.inner.len() >= self.inner.capacity() {
-            let count = 1 + self.inner.len() - self.inner.capacity();
-            self.inner.drain(0..count);
+        if self.inner.len() >= self.capacity {
+            self.inner.drain(0..self.drain_length);
         }
     }
 
@@ -846,39 +851,21 @@ mod screen_test {
 
     #[test]
     fn test_drain_history() {
-        let line = "some_data";
         let mut history = History::new();
+        history.capacity = 20;
+        history.drain_length = 10;
         assert!(history.is_empty());
-        history.inner = Vec::with_capacity(11);
-        assert_eq!(history.inner.capacity(), 11);
-        assert!(history.is_empty());
-        for _ in 0..10 {
-            history.append(&"pre");
+        for _ in 0..19 {
+            history.append(&"test");
         }
+        assert_eq!(history.len(), 19);
+        history.append(&"test");
         assert_eq!(history.len(), 10);
-        for _ in 0..5 {
-            history.append(&line);
+        for _ in 0..9 {
+            history.append(&"test");
         }
+        assert_eq!(history.len(), 19);
+        history.append(&"test");
         assert_eq!(history.len(), 10);
-        assert_eq!(
-            history
-                .inner
-                .iter()
-                .filter(|s| **s == "pre".to_string())
-                .count(),
-            5
-        );
-        for _ in 0..5 {
-            history.append(&line);
-        }
-        assert_eq!(history.len(), 10);
-        assert_eq!(
-            history
-                .inner
-                .iter()
-                .filter(|s| **s == "pre".to_string())
-                .count(),
-            0
-        );
     }
 }

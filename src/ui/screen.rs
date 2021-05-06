@@ -264,7 +264,7 @@ impl History {
             .iter()
             .rev()
             .position(|l| pattern.is_match(l))
-            .map(|index| pos - index)
+            .map(|index| pos - index - 1)
     }
 }
 
@@ -520,7 +520,7 @@ impl UserInterface for Screen {
         };
         if let Some(line) = self.history.find_backward(pattern, pos) {
             self.scroll_data.hilite = Some(pattern.clone());
-            self.scroll_to(0.max(line - 1) as usize)?;
+            self.scroll_to(0.max(line) as usize)?;
         }
         Ok(())
     }
@@ -828,5 +828,18 @@ mod screen_test {
                 "test",
             ]
         );
+    }
+
+    #[test]
+    fn test_search_history() {
+        let line = "a nice line\n\nwith a blank line\nand lines\nc\ntest\n";
+
+        let mut history = History::new();
+        history.append(line);
+        let re = crate::model::Regex::new("and lines").unwrap();
+        assert_eq!(history.find_forward(&re, 0), Some(3));
+        assert_eq!(history.find_forward(&re, 4), None);
+        assert_eq!(history.find_backward(&re, 4), Some(3));
+        assert_eq!(history.find_backward(&re, 2), None);
     }
 }

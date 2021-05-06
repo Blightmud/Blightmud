@@ -281,6 +281,40 @@ impl EventHandler {
             _ => Err(BadEventRoutingError.into()),
         }
     }
+
+    pub fn handle_scroll_events(&self, event: Event, screen: &mut dyn UserInterface) -> Result {
+        match event {
+            Event::ScrollLock(enabled) => {
+                screen.scroll_lock(enabled)?;
+                Ok(())
+            }
+            Event::ScrollUp => {
+                screen.scroll_up()?;
+                Ok(())
+            }
+            Event::ScrollDown => {
+                screen.scroll_down()?;
+                Ok(())
+            }
+            Event::ScrollTop => {
+                screen.scroll_top()?;
+                Ok(())
+            }
+            Event::ScrollBottom => {
+                screen.reset_scroll()?;
+                Ok(())
+            }
+            Event::FindForward(pattern) => {
+                screen.find_down(&pattern)?;
+                Ok(())
+            }
+            Event::FindBackward(pattern) => {
+                screen.find_up(&pattern)?;
+                Ok(())
+            }
+            _ => Err(BadEventRoutingError.into()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -290,7 +324,7 @@ mod event_test {
 
     use mockall::predicate::eq;
 
-    use crate::{session::SessionBuilder, timer::TimerEvent};
+    use crate::{model::Regex, session::SessionBuilder, timer::TimerEvent};
 
     use crate::io::MockLogWriter;
     use crate::ui::MockUserInterface;
@@ -331,6 +365,69 @@ mod event_test {
         let handler = EventHandler::from(&session);
         let _ = handler.log_str("prefix ", "test line");
         let _ = handler.log_line("prefix ", &Line::from("test line"));
+    }
+
+    #[test]
+    fn test_scrolling() {
+        let (session, _reader, _timer_reader) = build_session();
+        let mut screen = MockUserInterface::new();
+        screen.expect_scroll_up().times(1).returning(|| Ok(()));
+        screen.expect_scroll_top().times(1).returning(|| Ok(()));
+        screen.expect_scroll_down().times(1).returning(|| Ok(()));
+        screen.expect_reset_scroll().times(1).returning(|| Ok(()));
+        screen
+            .expect_scroll_lock()
+            .times(1)
+            .with(eq(true))
+            .returning(|_| Ok(()));
+        screen
+            .expect_scroll_lock()
+            .times(1)
+            .with(eq(false))
+            .returning(|_| Ok(()));
+        let handler = EventHandler::from(&session);
+        assert!(handler
+            .handle_scroll_events(Event::ScrollUp, &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_scroll_events(Event::ScrollDown, &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_scroll_events(Event::ScrollTop, &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_scroll_events(Event::ScrollBottom, &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_scroll_events(Event::ScrollLock(true), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_scroll_events(Event::ScrollLock(false), &mut screen)
+            .is_ok());
+    }
+
+    #[test]
+    fn test_find() {
+        let (session, _reader, _timer_reader) = build_session();
+        let re = Regex::new("test").unwrap();
+        let mut screen = MockUserInterface::new();
+        screen
+            .expect_find_down()
+            .times(1)
+            .withf(|other| *other == Regex::new("test").unwrap())
+            .returning(|_| Ok(()));
+        screen
+            .expect_find_up()
+            .times(1)
+            .withf(|other| *other == Regex::new("test").unwrap())
+            .returning(|_| Ok(()));
+        let handler = EventHandler::from(&session);
+        assert!(handler
+            .handle_scroll_events(Event::FindBackward(re.clone()), &mut screen)
+            .is_ok());
+        assert!(handler
+            .handle_scroll_events(Event::FindForward(re), &mut screen)
+            .is_ok());
     }
 
     #[test]

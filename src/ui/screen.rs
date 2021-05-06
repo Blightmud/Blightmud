@@ -1,6 +1,6 @@
+use crate::model::Regex;
 use crate::{model::Line, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
-use regex::Regex;
 use std::{error, fmt};
 use std::{
     io::{stdout, Write},

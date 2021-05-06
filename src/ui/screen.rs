@@ -418,13 +418,15 @@ impl UserInterface for Screen {
     }
 
     fn scroll_to(&mut self, row: usize) -> Result<()> {
-        let max_start_index = self.history.inner.len() as i32 - self.output_range() as i32;
-        if row < max_start_index as usize {
-            self.scroll_data.active = true;
-            self.scroll_data.pos = row;
-            self.draw_scroll()?;
-        } else {
-            self.reset_scroll()?;
+        if self.history.len() > self.output_range() as usize {
+            let max_start_index = self.history.inner.len() as i32 - self.output_range() as i32;
+            if max_start_index > 0 && row < max_start_index as usize {
+                self.scroll_data.active = true;
+                self.scroll_data.pos = row;
+                self.draw_scroll()?;
+            } else {
+                self.reset_scroll()?;
+            }
         }
         Ok(())
     }

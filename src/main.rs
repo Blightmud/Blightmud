@@ -320,7 +320,6 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::Prompt(_)
             | Event::Error(_)
             | Event::Info(_)
-            | Event::InputSent(_)
             | Event::UserInputBuffer(_, _) => {
                 //tts_ctrl.handle_events(event.clone());
                 event_handler.handle_output_events(event, &mut screen)?;

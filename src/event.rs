@@ -18,7 +18,6 @@ use std::{
 pub enum Event {
     Prompt(Line),
     ServerSend(Vec<u8>),
-    InputSent(Line),
     ServerInput(Line),
     MudOutput(Line),
     Output(Line),
@@ -271,12 +270,6 @@ impl EventHandler {
                 screen.print_info(&msg);
                 Ok(())
             }
-            Event::InputSent(msg) => {
-                let mut output_buffer = self.session.output_buffer.lock().unwrap();
-                output_buffer.input_sent();
-                screen.print_send(&msg);
-                Ok(())
-            }
             _ => Err(BadEventRoutingError.into()),
         }
     }
@@ -448,11 +441,6 @@ mod event_test {
         screen.expect_print_prompt_input().times(1).return_const(());
         screen.expect_print_error().times(1).return_const(());
         screen.expect_print_info().times(1).return_const(());
-        screen
-            .expect_print_send()
-            .with(eq(Line::from("input data")))
-            .times(1)
-            .return_const(());
 
         let line = Line::from("Output line");
         assert!(handler
@@ -475,9 +463,6 @@ mod event_test {
             .is_ok());
         assert!(handler
             .handle_output_events(Event::Error("error message".to_string()), &mut screen)
-            .is_ok());
-        assert!(handler
-            .handle_output_events(Event::InputSent(Line::from("input data")), &mut screen)
             .is_ok());
     }
 }

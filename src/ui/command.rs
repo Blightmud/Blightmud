@@ -290,20 +290,9 @@ fn parse_key_event(
 ) {
     match key {
         Key::Char('\n') => {
-            let input = Line::from(buffer.get_buffer());
-            match parse_command(&buffer.submit()) {
-                Event::ServerInput(msg) => writer.send(Event::ServerInput(msg)).unwrap(),
-                Event::Quit => {
-                    if save_history {
-                        buffer.history.save();
-                    }
-                    writer.send(Event::Quit).unwrap();
-                }
-                e => {
-                    writer.send(Event::InputSent(input)).unwrap();
-                    writer.send(e).unwrap();
-                }
-            }
+            writer
+                .send(Event::ServerInput(Line::from(buffer.submit())))
+                .unwrap();
         }
         Key::Char('\t') => buffer.tab_complete(),
         Key::Char(c) => {
@@ -484,11 +473,6 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
             debug!("Input stream closing");
         })
         .unwrap()
-}
-
-fn parse_command(msg: &str) -> Event {
-    let msg = String::from(msg);
-    Event::ServerInput(Line::from(msg.to_ascii_lowercase()))
 }
 
 #[cfg(test)]

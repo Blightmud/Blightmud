@@ -230,6 +230,6 @@ alias.add("^/help.*$", function (m)
         local name = args[2]
         blight.show_help(name, true)
     else
-        info("USAGE: /help <subject>")
+        blight.show_help("help", true)
     end
 end)

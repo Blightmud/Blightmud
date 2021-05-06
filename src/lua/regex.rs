@@ -1,4 +1,4 @@
-use regex::Regex as Re;
+use crate::model::Regex as Re;
 use rlua::{UserData, UserDataMethods};
 use std::fmt::{Display, Formatter};
 
@@ -17,7 +17,7 @@ impl UserData for RegexLib {
 
 #[derive(Clone)]
 pub struct Regex {
-    pub regex: regex::Regex,
+    pub regex: Re,
 }
 
 impl Display for Regex {

@@ -235,7 +235,7 @@ alias.add("^/help.*$", function (m)
 end)
 
 -- Search
-alias.add("^(?:/search|/s).*$", function (m)
+alias.add("^(?:/search|/s ).*$", function (m)
     local args = get_args(m[1])
     if #args == 1 then
         info(

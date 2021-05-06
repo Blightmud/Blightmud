@@ -1,3 +1,4 @@
+use crate::model::Regex;
 use crate::{
     model::{Connection, Line},
     net::{spawn_receive_thread, spawn_transmit_thread},
@@ -8,14 +9,13 @@ use crate::{
 };
 use libtelnet_rs::events::TelnetEvents;
 use log::debug;
-use regex::Regex;
 use std::{
     error::Error,
     sync::mpsc::{channel, Receiver, Sender},
 };
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Event {
     Prompt(Line),
     ServerSend(Vec<u8>),
@@ -65,17 +65,6 @@ pub enum Event {
     StopSFX,
     Redraw,
     Quit,
-}
-
-impl PartialEq for Event {
-    fn eq(&self, other: &Self) -> bool {
-        match self {
-            Self::FindForward(pattern) | Self::FindBackward(pattern) => {
-                pattern.as_str() == pattern.as_str()
-            }
-            _ => *self == *other,
-        }
-    }
 }
 
 type Result = std::result::Result<(), Box<dyn Error>>;

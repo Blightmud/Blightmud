@@ -392,16 +392,6 @@ impl UserInterface for Screen {
     fn print_send(&mut self, send: &Line) {
         if let Some(line) = send.print_line() {
             self.tts_ctrl.lock().unwrap().speak_input(&line);
-            log::debug!(
-                "INPUT: {}",
-                &format!(
-                    "{}{}> {}{}",
-                    termion::style::Reset,
-                    Fg(color::LightYellow),
-                    line,
-                    Fg(color::Reset),
-                )
-            );
             self.print_line(
                 &format!(
                     "{}{}> {}{}",

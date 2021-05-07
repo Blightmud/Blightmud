@@ -40,6 +40,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - Low resource and fast
 - In client help and manuals
 - Native Text-To-Speech functionality (optional compile)
+- Text searching
 - Tab completion
 
 ## Compiling

@@ -678,7 +678,7 @@ impl Screen {
                 line = pattern
                     .replace_all(
                         &line,
-                        &format!(
+                        format!(
                             "{}{}$0{}{}",
                             Fg(color::LightWhite),
                             Bg(color::Blue),

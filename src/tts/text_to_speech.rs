@@ -11,7 +11,7 @@ use {
         sync::mpsc::{channel, Receiver},
         thread,
     },
-    tts::TTS,
+    tts::Tts as TTS,
 };
 
 use crate::{io::SaveData, model::Line};

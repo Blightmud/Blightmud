@@ -1,6 +1,7 @@
 ![Rust](https://github.com/Blightmud/Blightmud/workflows/Rust/badge.svg)
 ![GitHub commits since latest release (by SemVer)](https://img.shields.io/github/commits-since/blightmud/blightmud/latest?sort=semver)
 ![GitHub issues by-label](https://img.shields.io/github/issues-raw/blightmud/blightmud/bug)
+[![dependency status](https://deps.rs/repo/github/blightmud/blightmud/status.svg)](https://deps.rs/repo/github/blightmud/blightmud)
 ![Security audit](https://github.com/Blightmud/blightmud/workflows/Security%20audit/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/Blightmud/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/Blightmud/Blightmud?branch=dev)
 ![AUR maintainer](https://img.shields.io/aur/maintainer/blightmud?label=aur%20maintainer)

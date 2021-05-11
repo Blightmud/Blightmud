@@ -196,7 +196,10 @@ alias.add("^/add_server.*$", function (m)
         local name = args[2]
         local host = args[3]
         local port = tonumber(args[4])
-        local tls = args[5] and args[5]:lower() == "on" or args[5]:lower() == "true"
+        local tls = false
+        if args[5] then
+            tls = args[5]:lower() == "on" or args[5]:lower() == "true"
+        end
         local result, err = pcall(servers.add, name, host, port, tls)
         if result then
             info(cformat("Server added: <yellow>%s<reset>", name))

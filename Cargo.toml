@@ -38,7 +38,7 @@ human-panic = "1.0.3"
 native-tls = "0.2.7"
 tts = { version = "0.16.0", optional = true }
 serde_json = "1.0.64"
-git2 = "0.13.17"
+git2 = "0.13.18"
 rodio = "0.13.1"
 
 [dev-dependencies]

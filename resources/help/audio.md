@@ -17,7 +17,8 @@ The audio module supports the following formats:
 
 ## Playback options
 
-The following options can be provided to a **playback function**. The options should be provided as a table with the following optional keys:
+The following options can be provided to a **playback function**. The options
+should be provided as a table with the following optional keys:
 
 - `loop`    Loop the sound infinitely (music only)
 - `amplify` A float value to amplify the sound. (1.0 is default)

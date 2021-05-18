@@ -16,10 +16,15 @@ Everything it does create will be available and seen by the user (eg. Through
 `/aliases` or `/triggers`). This might change in the future but for now that's
 how it works.
 
+## Help file
+If a user types `/help <plugin-name>` Blightmud will attempt to render the
+`README.md` file in your plugin repository. So try to keep this file
+instructive for Blightmud users.
+
 ## Hosting/Sharing
 Make your plugin available in a git repository. There are numerous options for
 this so I don't think it needs further explanation.
 
-Blightmud will always update (git pull) from the `master` branch. So making
-this your 'stable' branch and handling development on another branch is a good
-tip.
+Blightmud will always update (git pull) from the `master` or `main` branch. So
+making one of these your 'stable' branch and handling development on another
+branch is a good tip.

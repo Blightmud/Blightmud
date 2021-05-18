@@ -4,7 +4,7 @@
 [![dependency status](https://deps.rs/repo/github/blightmud/blightmud/status.svg)](https://deps.rs/repo/github/blightmud/blightmud)
 ![Security audit](https://github.com/Blightmud/blightmud/workflows/Security%20audit/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/Blightmud/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/Blightmud/Blightmud?branch=dev)
-![AUR maintainer](https://img.shields.io/aur/maintainer/blightmud?label=aur%20maintainer)
+[![Discord](https://img.shields.io/discord/712214526463836191?label=Discord)](https://discord.gg/qnxgUC5)
 # Blightmud  : A mud client for the terminal
 
 Blightmud has been a passion project of mine for some time. A big user of the

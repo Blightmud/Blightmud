@@ -1,4 +1,4 @@
-use crate::model::Regex;
+use crate::{audio::SourceOptions, model::Regex};
 use crate::{
     model::{Connection, Line},
     net::{spawn_receive_thread, spawn_transmit_thread},
@@ -57,9 +57,9 @@ pub enum Event {
     Speak(String, bool),
     SpeakStop,
     TTSEvent(TTSEvent),
-    PlayMusic(String, bool),
+    PlayMusic(String, SourceOptions),
     StopMusic,
-    PlaySFX(String),
+    PlaySFX(String, SourceOptions),
     StopSFX,
     Redraw,
     Quit,

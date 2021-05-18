@@ -15,15 +15,23 @@ The audio module supports the following formats:
 - Vorbis
 - Flac
 
+## Playback options
+
+The following options can be provided to a **playback function**. The options
+should be provided as a table with the following optional keys:
+
+- `loop`    Loop the sound infinitely (music only)
+- `amplify` A float value to amplify the sound. (1.0 is default)
+
 ##
 
-***audio.play_music(path, repeat)***
+***audio.play_music(path[, options])***
 Queues up an audio file to play. If there is already music playing then the new
 file will be played as soon as the current one finishes. Note that `repeat`
 will prevent a file from ever completing.
 
 - `path`    Path to the audio file you want to play
-- `repeat`  Bool to tell if audio should repeat indefinitely or not.
+- `options` Playback options *(optional)*
 
 ##
 
@@ -32,14 +40,14 @@ Clears the music play queue and stops output.
 
 ##
 
-***audio.play_sfx(path)***
+***audio.play_sfx(path[, options])***
 Queues up an audio file to play. If there is already sound playing then the
 provided will play after those have completed.
 
 - `path`    The path to the audio file to play.
+- `options` Playback options *(optional)*
 
 ##
 
 ***audio.stop_sfx()***
 Stops all sfx playback and clears the queue.
-

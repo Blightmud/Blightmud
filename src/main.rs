@@ -324,7 +324,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 //tts_ctrl.handle_events(event.clone());
                 event_handler.handle_output_events(event, &mut screen)?;
             }
-            Event::PlayMusic(_, _) | Event::StopMusic | Event::PlaySFX(_) | Event::StopSFX => {
+            Event::PlayMusic(_, _) | Event::StopMusic | Event::PlaySFX(_, _) | Event::StopSFX => {
                 if let Err(err) = audio::handle_audio_event(event, &mut player) {
                     screen.print_error(&err.to_string())
                 }

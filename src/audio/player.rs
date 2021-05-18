@@ -1,13 +1,28 @@
 use std::{fs::File, io::BufReader};
 
 use anyhow::Result;
-use rodio::{Sink, Source};
+use rodio::{source::Source, Sink};
 
 pub struct Player {
     _stream: Option<rodio::OutputStream>,
     handle: Option<rodio::OutputStreamHandle>,
     music: Option<Sink>,
     sfx: Option<Sink>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SourceOptions {
+    pub repeat: bool,
+    pub amplify: f32,
+}
+
+impl Default for SourceOptions {
+    fn default() -> Self {
+        Self {
+            repeat: false,
+            amplify: 1.0,
+        }
+    }
 }
 
 impl Player {
@@ -31,7 +46,7 @@ impl Player {
         }
     }
 
-    pub fn play_music(&mut self, fpath: &str, repeat: bool) -> Result<()> {
+    pub fn play_music(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.music.is_none() {
             if let Some(handle) = &self.handle {
                 self.music = rodio::Sink::try_new(&handle).ok();
@@ -40,7 +55,8 @@ impl Player {
         if let Some(music) = &self.music {
             let file = File::open(fpath)?;
             let source = rodio::Decoder::new(BufReader::new(file))?;
-            if repeat {
+            let source = source.amplify(options.amplify);
+            if options.repeat {
                 music.append(source.repeat_infinite());
             } else {
                 music.append(source);
@@ -55,7 +71,7 @@ impl Player {
         Ok(())
     }
 
-    pub fn play_sfx(&mut self, fpath: &str) -> Result<()> {
+    pub fn play_sfx(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.sfx.is_none() {
             if let Some(handle) = &self.handle {
                 self.sfx = rodio::Sink::try_new(&handle).ok();
@@ -64,6 +80,7 @@ impl Player {
         if let Some(sfx) = &self.sfx {
             let file = File::open(fpath)?;
             let source = rodio::Decoder::new(BufReader::new(file))?;
+            let source = source.amplify(options.amplify);
             sfx.append(source);
         }
         Ok(())

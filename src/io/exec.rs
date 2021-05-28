@@ -1,7 +1,7 @@
 use std::process::{Command, Output};
 
-use anyhow::Result;
 use anyhow::bail;
+use anyhow::Result;
 
 pub fn exec(cmd: &str) -> Result<Output> {
     match Command::new("sh").arg("-c").arg(cmd).output() {

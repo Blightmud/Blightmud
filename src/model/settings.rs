@@ -1,7 +1,7 @@
 use crate::io::SaveData;
+use anyhow::bail;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use anyhow::bail;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

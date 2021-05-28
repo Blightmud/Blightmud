@@ -17,29 +17,28 @@ termion = "1.5.6"
 log = "0.4.14"
 simple-logging = "2.0.2"
 chrono = "0.4.19"
-signal-hook = "0.3.7"
+signal-hook = "0.3.8"
 rlua = "0.17.0"
-regex = "1.4.5"
+regex = "1.5.4"
 strip-ansi-escapes = "0.1.0"
 timer = "0.2.0"
 flate2 = "1.0.20"
-mdcat = { version = "0.22.3", default-features = false }
+mdcat = { version = "0.22.4", default-features = false }
 pulldown-cmark = "0.8.0"
 syntect = "4.5.0"
-serde = { version = "1.0.125", features = ['derive'] }
+serde = { version = "1.0.126", features = ['derive'] }
 ron = "0.6.4"
 anyhow = "1.0.40"
 lazy_static = "1.4.0"
 rs-complete = "1.1.1"
-simple-error = "0.2.3"
 getopts = "0.2.21"
-curl = "0.4.35"
+curl = "0.4.37"
 human-panic = "1.0.3"
 native-tls = "0.2.7"
-tts = { version = "0.17", optional = true }
+tts = { version = "0.17.1", optional = true }
 serde_json = "1.0.64"
-git2 = "0.13.18"
-rodio = "0.13.1"
+git2 = "0.13.19"
+rodio = "0.14.0"
 
 [dev-dependencies]
 mockall = "0.9.1"

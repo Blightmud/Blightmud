@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  pull_request:
   push:
     tags:
       - 'v*'
@@ -78,10 +79,7 @@ jobs:
           toolchain: stable
           override: true
       - name: Build release
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked --release
+        run: cargo build --release --locked
       - name: Get current version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}

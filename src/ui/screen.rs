@@ -7,6 +7,7 @@ use std::{
     sync::Arc,
     sync::Mutex,
 };
+use termion::cursor;
 use termion::{
     color::{self, Bg, Fg},
     input::MouseTerminal,
@@ -19,12 +20,14 @@ use mockall::automock;
 
 struct ScrollData {
     active: bool,
+    split: bool,
     pos: usize,
     lock: bool,
     hilite: Option<Regex>,
 }
 
 const OUTPUT_START_LINE: u16 = 2;
+const SCROLL_LIVE_BUFFER_SIZE: u16 = 8;
 
 #[derive(Debug)]
 struct TerminalSizeError;
@@ -116,7 +119,7 @@ impl StatusArea {
         self.status_lines = vec![None; self.status_lines.len()];
     }
 
-    fn redraw(&mut self, screen: &mut impl Write, scrolled: bool) -> Result<()> {
+    fn redraw(&mut self, screen: &mut impl Write) -> Result<()> {
         for line in self.start_line..self.end_line + 1 {
             write!(
                 screen,
@@ -127,19 +130,11 @@ impl StatusArea {
             )?;
         }
 
-        let mut info = if scrolled {
-            "(more) ".to_string()
+        let info = if let Some(Some(custom_info)) = self.status_lines.get(0) {
+            custom_info.to_string()
         } else {
             "".to_string()
         };
-
-        if let Some(Some(custom_info)) = self.status_lines.get(0) {
-            if info.is_empty() {
-                info = custom_info.to_string();
-            } else {
-                info = format!("{}━ {} ", info, custom_info);
-            }
-        }
 
         self.draw_bar(self.start_line, screen, &info)?;
         if self.start_line != self.end_line {
@@ -298,8 +293,7 @@ impl UserInterface for Screen {
 
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.active)?;
+        self.status_area.redraw(&mut self.screen)?;
         write!(self.screen, "{}", self.goto_prompt())?;
         Ok(())
     }
@@ -323,7 +317,7 @@ impl UserInterface for Screen {
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {
                 self.history.append(prompt_line);
-                if !self.scroll_data.active {
+                if !self.scroll_data.active || self.scroll_data.split {
                     write!(
                         self.screen,
                         "{}\n{}{}",
@@ -424,10 +418,10 @@ impl UserInterface for Screen {
     }
 
     fn scroll_to(&mut self, row: usize) -> Result<()> {
-        if self.history.len() > self.output_range() as usize {
-            let max_start_index = self.history.inner.len() as i32 - self.output_range() as i32;
+        if self.history.len() > self.scroll_range() as usize {
+            let max_start_index = self.history.inner.len() as i32 - self.scroll_range() as i32;
             if max_start_index > 0 && row < max_start_index as usize {
-                self.scroll_data.active = true;
+                self.init_scroll()?;
                 self.scroll_data.pos = row;
                 self.draw_scroll()?;
             } else {
@@ -443,14 +437,12 @@ impl UserInterface for Screen {
     }
 
     fn scroll_up(&mut self) -> Result<()> {
-        let output_range: usize = self.output_range() as usize;
-        let history = &self.history.inner;
-        if history.len() > output_range {
+        let output_range: usize = self.scroll_range() as usize;
+        if self.history.inner.len() > output_range {
             if !self.scroll_data.active {
-                self.scroll_data.active = true;
-                self.scroll_data.pos = history.len() - output_range;
+                self.init_scroll()?;
+                self.scroll_data.pos = self.history.inner.len() - output_range;
             }
-            self.scroll_data.active = true;
             self.scroll_data.pos -= self.scroll_data.pos.min(5);
             self.draw_scroll()?;
         }
@@ -459,7 +451,7 @@ impl UserInterface for Screen {
 
     fn scroll_down(&mut self) -> Result<()> {
         if self.scroll_data.active {
-            let output_range = self.output_range() as i32;
+            let output_range = self.scroll_range() as i32;
             let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
             let new_start_index = self.scroll_data.pos + 5;
             if new_start_index >= max_start_index as usize {
@@ -474,7 +466,7 @@ impl UserInterface for Screen {
 
     fn scroll_top(&mut self) -> Result<()> {
         if self.history.inner.len() as u16 >= self.output_line {
-            self.scroll_data.active = true;
+            self.init_scroll()?;
             self.scroll_data.pos = 0;
             self.draw_scroll()?;
         }
@@ -483,6 +475,16 @@ impl UserInterface for Screen {
 
     fn reset_scroll(&mut self) -> Result<()> {
         self.scroll_data.active = false;
+        if self.scroll_data.split {
+            write!(self.screen, "{}", ResetScrollRegion)?;
+            write!(
+                self.screen,
+                "{}{}",
+                ScrollRegion(OUTPUT_START_LINE, self.output_line),
+                DisableOriginMode
+            )?;
+        }
+        self.scroll_data.split = false;
         self.scroll_data.hilite = None;
         self.scroll_data.pos = if self.history.is_empty() {
             0
@@ -514,15 +516,14 @@ impl UserInterface for Screen {
                 )?;
             }
         }
-        self.redraw_status_area()?;
         Ok(())
     }
 
     fn find_up(&mut self, pattern: &Regex) -> Result<()> {
         let pos = if self.scroll_data.active {
             self.scroll_data.pos
-        } else if self.history.len() > self.output_range() as usize {
-            self.history.len() - self.output_range() as usize
+        } else if self.history.len() > self.scroll_range() as usize {
+            self.history.len() - self.scroll_range() as usize
         } else {
             self.history.len()
         };
@@ -577,6 +578,7 @@ impl Screen {
             history: History::new(),
             scroll_data: ScrollData {
                 active: false,
+                split: false,
                 pos: 0,
                 lock: false,
                 hilite: None,
@@ -606,6 +608,7 @@ impl Screen {
             .unwrap(); // Set scroll region, non origin mode
             self.redraw_top_bar()?;
             self.reset_scroll()?;
+            self.redraw_status_area()?;
             self.screen.flush()?;
             write!(
                 self.screen,
@@ -621,7 +624,7 @@ impl Screen {
 
     fn print_line(&mut self, line: &str, new_line: bool) {
         self.history.append(&line);
-        if !self.scroll_data.active {
+        if !self.scroll_data.active || self.scroll_data.split {
             write!(
                 self.screen,
                 "{}{}{}{}",
@@ -655,8 +658,7 @@ impl Screen {
     fn redraw_status_area(&mut self) -> Result<()> {
         self.status_area.set_width(self.width);
         self.status_area.update_pos(self.output_line + 1);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.active)?;
+        self.status_area.redraw(&mut self.screen)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;
         Ok(())
     }
@@ -668,8 +670,33 @@ impl Screen {
         )
     }
 
+    fn init_scroll(&mut self) -> Result<()> {
+        self.scroll_data.active = true;
+        if self.scroll_range() < self.output_range() {
+            self.scroll_data.split = true;
+            let scroll_range = self.scroll_range();
+            write!(self.screen, "{}", ResetScrollRegion)?;
+            write!(
+                self.screen,
+                "{}{}",
+                ScrollRegion(scroll_range + 3, self.output_line),
+                DisableOriginMode
+            )?;
+            write!(
+                self.screen,
+                "{}{}{:━<4$}{}",
+                cursor::Goto(1, scroll_range + 2),
+                color::Fg(color::Green),
+                "━ (scroll) ",
+                color::Fg(color::Reset),
+                self.width as usize
+            )?;
+        }
+        Ok(())
+    }
+
     fn draw_scroll(&mut self) -> Result<()> {
-        let output_range = self.output_range();
+        let output_range = self.scroll_range();
         for i in 0..output_range {
             let index = self.scroll_data.pos + i as usize;
             let line_no = OUTPUT_START_LINE + i;
@@ -697,7 +724,6 @@ impl Screen {
                 line,
             )?;
         }
-        self.redraw_status_area()?;
         Ok(())
     }
 
@@ -708,6 +734,14 @@ impl Screen {
             Ok(Box::new(MouseTerminal::from(screen)))
         } else {
             Ok(Box::new(screen))
+        }
+    }
+
+    fn scroll_range(&self) -> u16 {
+        if self.height > SCROLL_LIVE_BUFFER_SIZE * 2 {
+            self.output_line - OUTPUT_START_LINE - SCROLL_LIVE_BUFFER_SIZE + 1
+        } else {
+            self.output_range()
         }
     }
 

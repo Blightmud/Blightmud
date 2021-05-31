@@ -147,7 +147,11 @@ impl StatusArea {
         };
 
         if let Some(Some(custom_info)) = self.status_lines.get(0) {
-            info = format!("{}━ {} ", info, custom_info);
+            info = if info.is_empty() {
+                custom_info.to_string()
+            } else {
+                format!("{}━ {} ", info, custom_info)
+            };
         }
 
         self.draw_bar(self.start_line, screen, &info)?;

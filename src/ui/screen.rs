@@ -26,8 +26,18 @@ struct ScrollData {
     hilite: Option<Regex>,
 }
 
+impl ScrollData {
+    fn scrolled_wo_split(&self) -> bool {
+        self.active && !self.split
+    }
+
+    fn not_scrolled_or_split(&self) -> bool {
+        !self.active || self.split
+    }
+}
+
 const OUTPUT_START_LINE: u16 = 2;
-const SCROLL_LIVE_BUFFER_SIZE: u16 = 8;
+const SCROLL_LIVE_BUFFER_SIZE: u16 = 10;
 
 #[derive(Debug)]
 struct TerminalSizeError;
@@ -119,7 +129,7 @@ impl StatusArea {
         self.status_lines = vec![None; self.status_lines.len()];
     }
 
-    fn redraw(&mut self, screen: &mut impl Write) -> Result<()> {
+    fn redraw(&mut self, screen: &mut impl Write, show_more: bool) -> Result<()> {
         for line in self.start_line..self.end_line + 1 {
             write!(
                 screen,
@@ -130,11 +140,15 @@ impl StatusArea {
             )?;
         }
 
-        let info = if let Some(Some(custom_info)) = self.status_lines.get(0) {
-            custom_info.to_string()
+        let mut info = if show_more {
+            "(more) ".to_string()
         } else {
-            "".to_string()
+            String::new()
         };
+
+        if let Some(Some(custom_info)) = self.status_lines.get(0) {
+            info = format!("{}━ {} ", info, custom_info);
+        }
 
         self.draw_bar(self.start_line, screen, &info)?;
         if self.start_line != self.end_line {
@@ -293,7 +307,8 @@ impl UserInterface for Screen {
 
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
-        self.status_area.redraw(&mut self.screen)?;
+        self.status_area
+            .redraw(&mut self.screen, self.scroll_data.scrolled_wo_split())?;
         write!(self.screen, "{}", self.goto_prompt())?;
         Ok(())
     }
@@ -317,7 +332,7 @@ impl UserInterface for Screen {
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {
                 self.history.append(prompt_line);
-                if !self.scroll_data.active || self.scroll_data.split {
+                if !self.scroll_data.not_scrolled_or_split() {
                     write!(
                         self.screen,
                         "{}\n{}{}",
@@ -483,6 +498,8 @@ impl UserInterface for Screen {
                 ScrollRegion(OUTPUT_START_LINE, self.output_line),
                 DisableOriginMode
             )?;
+        } else {
+            self.redraw_status_area()?;
         }
         self.scroll_data.split = false;
         self.scroll_data.hilite = None;
@@ -624,7 +641,7 @@ impl Screen {
 
     fn print_line(&mut self, line: &str, new_line: bool) {
         self.history.append(&line);
-        if !self.scroll_data.active || self.scroll_data.split {
+        if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
                 "{}{}{}{}",
@@ -658,7 +675,8 @@ impl Screen {
     fn redraw_status_area(&mut self) -> Result<()> {
         self.status_area.set_width(self.width);
         self.status_area.update_pos(self.output_line + 1);
-        self.status_area.redraw(&mut self.screen)?;
+        self.status_area
+            .redraw(&mut self.screen, self.scroll_data.scrolled_wo_split())?;
         write!(self.screen, "{}", self.goto_prompt(),)?;
         Ok(())
     }
@@ -691,6 +709,8 @@ impl Screen {
                 color::Fg(color::Reset),
                 self.width as usize
             )?;
+        } else {
+            self.redraw_status_area()?;
         }
         Ok(())
     }

@@ -5,9 +5,12 @@
 ![Security audit](https://github.com/Blightmud/blightmud/workflows/Security%20audit/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/Blightmud/Blightmud/badge.svg?branch=dev)](https://coveralls.io/github/Blightmud/Blightmud?branch=dev)
 [![Discord](https://img.shields.io/discord/712214526463836191?label=Discord)](https://discord.gg/qnxgUC5)
-# Blightmud  : A mud client for the terminal
 
-![screenshot](resources/images/demo.gif)
+<p align="center">
+  <img width="300" height="300" src="resources/images/logo.png">
+</p>
+
+# Blightmud  : A mud client for the terminal
 
 Blightmud has been a passion project of mine for some time. A big user of the
 old but great [tinyfugue](http://tinyfugue.sourceforge.net/) I always wanted to
@@ -44,6 +47,10 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - Text searching
 - Tab completion
 - Split view when scrolling
+
+## Demo
+
+![screenshot](resources/images/demo.gif)
 
 ## Compiling
 - Install rust

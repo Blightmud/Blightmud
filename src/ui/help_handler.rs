@@ -187,6 +187,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "plugin_developer" => "plugin_developer.md",
         "servers" => "servers.md",
         "search" => "search.md",
+        "scrolling" => "scrolling.md",
     }
 }
 

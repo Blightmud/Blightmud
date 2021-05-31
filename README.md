@@ -43,6 +43,7 @@ The client is written in rust. Some navigating throught the thesaurus brought me
 - Native Text-To-Speech functionality (optional compile)
 - Text searching
 - Tab completion
+- Split view when scrolling
 
 ## Compiling
 - Install rust

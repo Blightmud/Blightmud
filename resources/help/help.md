@@ -10,6 +10,7 @@ Available topics:
 - `logging`
 - `settings`
 - `search`
+- `scrolling`
 
 Helpfiles can also be viewed [online](https://github.com/Blightmud/Blightmud/tree/master/resources/help)
 

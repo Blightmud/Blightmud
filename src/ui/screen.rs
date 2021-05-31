@@ -336,7 +336,7 @@ impl UserInterface for Screen {
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {
                 self.history.append(prompt_line);
-                if !self.scroll_data.not_scrolled_or_split() {
+                if self.scroll_data.not_scrolled_or_split() {
                     write!(
                         self.screen,
                         "{}\n{}{}",

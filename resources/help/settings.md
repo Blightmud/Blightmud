@@ -16,3 +16,5 @@ Available settings are:
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
 - `save_history`        Save your last 100 commands to disk.
 - `confirm_quit`        Ask for confirmation before quitting Blightmud.
+- `scroll_split`        Split screen when scrolling
+- `tts_enabled`         Enable tts (only if compiled with TTS)

@@ -7,12 +7,12 @@
 [![Discord](https://img.shields.io/discord/712214526463836191?label=Discord)](https://discord.gg/qnxgUC5)
 # Blightmud  : A mud client for the terminal
 
+![screenshot](resources/images/demo.gif)
+
 Blightmud has been a passion project of mine for some time. A big user of the
 old but great [tinyfugue](http://tinyfugue.sourceforge.net/) I always wanted to
 create my own similar mud client. Even though I don't play much muds these
 days.
-
-![screenshot](resources/images/demo.gif)
 
 ## The name?
 The client is written in rust. Some navigating throught the thesaurus brought me to the word **blight** and here we are.

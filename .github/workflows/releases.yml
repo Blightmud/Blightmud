@@ -25,6 +25,20 @@ jobs:
         id: deb_path
         run: |
           ls -1 target/debian/*.deb | awk '{print "::set-output name=deb_path::"$1}'
+      - name: Generate changelog
+        id: changelog
+        uses: heinrichreimer/github-changelog-generator-action@v2.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create/Update release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          draft: true
+          artifacts: ${{ steps.deb_path.outputs.deb_path }}
+          artifactContentType: application/vnd.debian.binary-package
+          body: ${{ steps.changelog.outputs.changelog }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:
@@ -49,6 +63,14 @@ jobs:
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
       - name: Package Binary
         run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip blightmud
+      - name: Create/Update release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          draft: true
+          omitBody: true
+          artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v1
         with:

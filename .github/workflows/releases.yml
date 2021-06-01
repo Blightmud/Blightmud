@@ -31,6 +31,7 @@ jobs:
         id: changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.1.1
         with:
+          onlyLastTag: true
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Create/Update release
         uses: ncipollo/release-action@v1

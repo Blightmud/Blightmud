@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Install deps
         run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev pkg-config
       - name: Install cargo-deb
@@ -37,7 +39,7 @@ jobs:
           draft: true
           artifacts: ${{ steps.deb_path.outputs.deb_path }}
           artifactContentType: application/vnd.debian.binary-package
-          body: ${{ steps.changelog.outputs.changelog }}
+          bodyFile: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v1

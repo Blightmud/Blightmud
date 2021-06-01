@@ -90,7 +90,7 @@ end)
 -- Settings
 alias.add("^/settings$", function ()
 	for key, value in pairs(settings.list()) do
-		local key_format = cformat("<yellow>%s<reset>", key)
+		local key_format = cformat("<yellow>%-20s<reset>", key)
 		local value_format
 		if value then
 			value_format = cformat("<bgreen>on<reset>")
@@ -121,7 +121,7 @@ alias.add("^/set ([^\\s]+)\\s*(on|off)?$", function (matches)
 		else
 			value_format = cformat("<bred>off<reset>")
 		end
-		blight.output(cformat("%s => %s", key_format, value_format))
+		info(cformat("%s => %s", key_format, value_format))
 	end
 end)
 

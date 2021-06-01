@@ -14,6 +14,8 @@ pub trait SaveData: DeserializeOwned + Serialize + Default {
         false
     }
 
+    fn on_load(&mut self) {}
+
     fn path() -> Result<PathBuf> {
         let path = DATA_DIR.join(Self::relative_path());
 
@@ -28,7 +30,8 @@ pub trait SaveData: DeserializeOwned + Serialize + Default {
         let path = Self::path()?;
         if path.exists() {
             let file = fs::File::open(&path)?;
-            let obj = ron::de::from_reader(&file)?;
+            let mut obj: Self = ron::de::from_reader(&file)?;
+            obj.on_load();
             Ok(obj)
         } else {
             Ok(Self::default())

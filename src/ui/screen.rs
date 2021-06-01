@@ -1,4 +1,5 @@
-use crate::model::Regex;
+use crate::io::SaveData;
+use crate::model::{Regex, Settings, SCROLL_SPLIT};
 use crate::{model::Line, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
 use std::{error, fmt};
@@ -24,9 +25,36 @@ struct ScrollData {
     pos: usize,
     lock: bool,
     hilite: Option<Regex>,
+    allow_split: bool,
 }
 
 impl ScrollData {
+    fn new() -> Self {
+        let settings = Settings::load();
+        Self {
+            active: false,
+            split: false,
+            pos: 0,
+            lock: false,
+            hilite: None,
+            allow_split: settings.get(SCROLL_SPLIT).unwrap_or(true),
+        }
+    }
+
+    fn reset(&mut self, history: &History) -> Result<()> {
+        self.active = false;
+        self.split = false;
+        self.hilite = None;
+        self.pos = if history.is_empty() {
+            0
+        } else {
+            history.len() - 1
+        };
+        let settings = Settings::try_load()?;
+        self.allow_split = settings.get(SCROLL_SPLIT).unwrap_or(true);
+        Ok(())
+    }
+
     fn scrolled_wo_split(&self) -> bool {
         self.active && !self.split
     }
@@ -493,7 +521,6 @@ impl UserInterface for Screen {
     }
 
     fn reset_scroll(&mut self) -> Result<()> {
-        self.scroll_data.active = false;
         if self.scroll_data.split {
             write!(self.screen, "{}", ResetScrollRegion)?;
             write!(
@@ -505,13 +532,8 @@ impl UserInterface for Screen {
         } else {
             self.redraw_status_area()?;
         }
-        self.scroll_data.split = false;
-        self.scroll_data.hilite = None;
-        self.scroll_data.pos = if self.history.is_empty() {
-            0
-        } else {
-            self.history.len() - 1
-        };
+        self.scroll_data.reset(&self.history)?;
+
         let output_range = self.output_range();
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
@@ -597,13 +619,7 @@ impl Screen {
             prompt_line,
             cursor_prompt_pos: 1,
             history: History::new(),
-            scroll_data: ScrollData {
-                active: false,
-                split: false,
-                pos: 0,
-                lock: false,
-                hilite: None,
-            },
+            scroll_data: ScrollData::new(),
             connection: None,
         })
     }
@@ -762,7 +778,7 @@ impl Screen {
     }
 
     fn scroll_range(&self) -> u16 {
-        if self.height > SCROLL_LIVE_BUFFER_SIZE * 2 {
+        if self.scroll_data.allow_split && self.height > SCROLL_LIVE_BUFFER_SIZE * 2 {
             self.output_line - OUTPUT_START_LINE - SCROLL_LIVE_BUFFER_SIZE + 1
         } else {
             self.output_range()

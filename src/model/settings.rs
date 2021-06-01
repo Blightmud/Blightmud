@@ -15,12 +15,14 @@ pub const TTS_ENABLED: &str = "tts_enabled";
 pub const MOUSE_ENABLED: &str = "mouse_enabled";
 pub const SAVE_HISTORY: &str = "save_history";
 pub const CONFIRM_QUIT: &str = "confirm_quit";
-pub const SETTINGS: [&str; 5] = [
+pub const SCROLL_SPLIT: &str = "scroll_split";
+pub const SETTINGS: [&str; 6] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
     SAVE_HISTORY,
     CONFIRM_QUIT,
+    SCROLL_SPLIT,
 ];
 
 impl Settings {
@@ -50,6 +52,7 @@ impl Default for Settings {
         settings.insert(MOUSE_ENABLED.to_string(), true);
         settings.insert(SAVE_HISTORY.to_string(), false);
         settings.insert(CONFIRM_QUIT.to_string(), true);
+        settings.insert(SCROLL_SPLIT.to_string(), true);
         Self { settings }
     }
 }
@@ -57,6 +60,15 @@ impl Default for Settings {
 impl SaveData for Settings {
     fn relative_path() -> std::path::PathBuf {
         crate::CONFIG_DIR.join("settings.ron")
+    }
+
+    fn on_load(&mut self) {
+        let default = Self::default();
+        if default.settings.len() != self.settings.len() {
+            for (key, val) in default.settings {
+                self.settings.entry(key).or_insert(val);
+            }
+        }
     }
 
     fn is_pretty() -> bool {

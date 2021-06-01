@@ -132,7 +132,7 @@ alias.add("^/connect.*$", function (m)
         local result, server = pcall(servers.get, args[2])
         if result then
             info(cformat("Connecting to saved server: <yellow>%s<reset>", args[2]))
-            mud.connect(server.host, server.port)
+            mud.connect(server.host, server.port, server.tls)
         else
             error(server)
         end

@@ -1,5 +1,5 @@
 use crate::io::SaveData;
-use crate::model::{Regex, Settings, SCROLL_SPLIT};
+use crate::model::{Regex, Settings, SCROLL_LOCK, SCROLL_SPLIT};
 use crate::{model::Line, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
 use std::{error, fmt};
@@ -23,9 +23,10 @@ struct ScrollData {
     active: bool,
     split: bool,
     pos: usize,
-    lock: bool,
+    scroll_lock: bool,
     hilite: Option<Regex>,
     allow_split: bool,
+    allow_scroll_lock: bool,
 }
 
 impl ScrollData {
@@ -35,9 +36,10 @@ impl ScrollData {
             active: false,
             split: false,
             pos: 0,
-            lock: false,
+            scroll_lock: false,
             hilite: None,
             allow_split: settings.get(SCROLL_SPLIT).unwrap_or(true),
+            allow_scroll_lock: settings.get(SCROLL_LOCK).unwrap_or(true),
         }
     }
 
@@ -52,6 +54,12 @@ impl ScrollData {
         };
         let settings = Settings::try_load()?;
         self.allow_split = settings.get(SCROLL_SPLIT).unwrap_or(true);
+        self.allow_scroll_lock = settings.get(SCROLL_LOCK).unwrap_or(true);
+        Ok(())
+    }
+
+    fn lock(&mut self, lock: bool) -> Result<()> {
+        self.scroll_lock = lock && self.allow_scroll_lock;
         Ok(())
     }
 
@@ -429,7 +437,7 @@ impl UserInterface for Screen {
                     new_line = true;
                     count += 1;
                 }
-                if self.scroll_data.lock && count > self.height {
+                if self.scroll_data.scroll_lock && count > self.height {
                     self.scroll_to(cur_line).ok();
                 }
             }
@@ -479,8 +487,7 @@ impl UserInterface for Screen {
     }
 
     fn scroll_lock(&mut self, lock: bool) -> Result<()> {
-        self.scroll_data.lock = lock;
-        Ok(())
+        self.scroll_data.lock(lock)
     }
 
     fn scroll_up(&mut self) -> Result<()> {
@@ -521,7 +528,9 @@ impl UserInterface for Screen {
     }
 
     fn reset_scroll(&mut self) -> Result<()> {
-        if self.scroll_data.split {
+        let reset_split = self.scroll_data.split;
+        self.scroll_data.reset(&self.history)?;
+        if reset_split {
             write!(self.screen, "{}", ResetScrollRegion)?;
             write!(
                 self.screen,
@@ -532,7 +541,6 @@ impl UserInterface for Screen {
         } else {
             self.redraw_status_area()?;
         }
-        self.scroll_data.reset(&self.history)?;
 
         let output_range = self.output_range();
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;

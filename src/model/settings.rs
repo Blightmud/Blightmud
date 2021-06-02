@@ -16,13 +16,15 @@ pub const MOUSE_ENABLED: &str = "mouse_enabled";
 pub const SAVE_HISTORY: &str = "save_history";
 pub const CONFIRM_QUIT: &str = "confirm_quit";
 pub const SCROLL_SPLIT: &str = "scroll_split";
-pub const SETTINGS: [&str; 6] = [
+pub const SCROLL_LOCK: &str = "scroll_lock";
+pub const SETTINGS: [&str; 7] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
     SAVE_HISTORY,
     CONFIRM_QUIT,
     SCROLL_SPLIT,
+    SCROLL_LOCK,
 ];
 
 impl Settings {
@@ -53,6 +55,7 @@ impl Default for Settings {
         settings.insert(SAVE_HISTORY.to_string(), false);
         settings.insert(CONFIRM_QUIT.to_string(), true);
         settings.insert(SCROLL_SPLIT.to_string(), true);
+        settings.insert(SCROLL_LOCK.to_string(), true);
         Self { settings }
     }
 }

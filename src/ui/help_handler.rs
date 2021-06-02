@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
 use log::debug;
-use mdcat::{ResourceAccess, Settings, TerminalCapabilities, TerminalSize};
+use mdcat::{ResourceAccess, Settings as MDSettings, TerminalCapabilities, TerminalSize};
 use pulldown_cmark::{Options, Parser};
 use syntect::parsing::SyntaxSet;
 
@@ -114,10 +114,10 @@ impl HelpHandler {
     }
 }
 
-fn md_settings() -> Settings {
+fn md_settings() -> MDSettings {
     let terminal_size = TerminalSize::detect().unwrap_or_default();
 
-    Settings {
+    MDSettings {
         terminal_capabilities: TerminalCapabilities::ansi(),
         terminal_size,
         resource_access: ResourceAccess::LocalOnly,

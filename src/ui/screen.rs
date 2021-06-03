@@ -63,10 +63,6 @@ impl ScrollData {
         Ok(())
     }
 
-    fn scrolled_wo_split(&self) -> bool {
-        self.active && !self.split
-    }
-
     fn not_scrolled_or_split(&self) -> bool {
         !self.active || self.split
     }
@@ -98,9 +94,9 @@ impl error::Error for TerminalSizeError {
 
 struct StatusArea {
     start_line: u16,
-    end_line: u16,
     width: u16,
     status_lines: Vec<Option<String>>,
+    scroll_marker: bool,
 }
 
 #[cfg_attr(test, automock)]
@@ -129,13 +125,16 @@ pub trait UserInterface {
 impl StatusArea {
     fn new(height: u16, start_line: u16, width: u16) -> Self {
         let height = height.clamp(1, 5);
-        let end_line = start_line + height - 1;
         Self {
             start_line,
-            end_line,
             width,
             status_lines: vec![None; height as usize],
+            scroll_marker: false,
         }
+    }
+
+    fn set_scroll_marker(&mut self, value: bool) {
+        self.scroll_marker = value;
     }
 
     fn set_height(&mut self, height: u16, start_line: u16) {
@@ -153,7 +152,7 @@ impl StatusArea {
     }
 
     fn set_status_line(&mut self, index: usize, line: String) {
-        let index = index.max(0).min(self.status_lines.len() - 1);
+        let index = index.clamp(0, self.status_lines.len() - 1);
         if !line.trim().is_empty() {
             self.status_lines[index] = Some(line);
         } else {
@@ -165,24 +164,17 @@ impl StatusArea {
         self.status_lines = vec![None; self.status_lines.len()];
     }
 
-    fn redraw(&mut self, screen: &mut impl Write, show_more: bool) -> Result<()> {
-        for line in self.start_line..self.end_line + 1 {
-            write!(
-                screen,
-                "{}{}{}",
-                termion::cursor::Goto(1, line),
-                termion::clear::CurrentLine,
-                termion::style::Reset,
-            )?;
-        }
+    fn redraw_line(&mut self, screen: &mut impl Write, line_no: usize) -> Result<()> {
+        let line_no = line_no.clamp(0, self.status_lines.len() - 1);
+        let index = self.start_line as usize + line_no;
 
-        let mut info = if show_more {
+        let mut info = if self.scroll_marker && line_no == 0 {
             "(more) ".to_string()
         } else {
             String::new()
         };
 
-        if let Some(Some(custom_info)) = self.status_lines.get(0) {
+        if let Some(Some(custom_info)) = self.status_lines.get(line_no as usize) {
             info = if info.is_empty() {
                 custom_info.to_string()
             } else {
@@ -190,32 +182,27 @@ impl StatusArea {
             };
         }
 
-        self.draw_bar(self.start_line, screen, &info)?;
-        if self.start_line != self.end_line {
-            let height = self.status_lines.len() as u16;
-            for line_no in 1..height {
-                let line_no = line_no as u16;
-                let info = if let Some(info) = &self.status_lines[line_no as usize] {
-                    &info
-                } else {
-                    ""
-                };
+        if line_no == 0 || line_no == self.status_lines.len() - 1 {
+            self.draw_bar(index, screen, &info)?;
+        } else {
+            self.draw_line(index, screen, &info)?;
+        }
 
-                if line_no == height - 1 {
-                    self.draw_bar(self.start_line + line_no, screen, &info)?;
-                } else {
-                    self.draw_line(self.start_line + line_no, screen, &info)?;
-                }
-            }
+        Ok(())
+    }
+
+    fn redraw(&mut self, screen: &mut impl Write) -> Result<()> {
+        for line in 0..self.status_lines.len() {
+            self.redraw_line(screen, line)?;
         }
         Ok(())
     }
 
-    fn draw_bar(&self, line: u16, screen: &mut impl Write, custom_info: &str) -> Result<()> {
+    fn draw_bar(&self, line: usize, screen: &mut impl Write, custom_info: &str) -> Result<()> {
         write!(
             screen,
             "{}{}{}",
-            termion::cursor::Goto(1, line),
+            termion::cursor::Goto(1, line as u16),
             termion::clear::CurrentLine,
             Fg(color::Green),
         )?;
@@ -244,11 +231,11 @@ impl StatusArea {
         Ok(())
     }
 
-    fn draw_line(&self, line: u16, screen: &mut impl Write, info: &str) -> Result<()> {
+    fn draw_line(&self, line: usize, screen: &mut impl Write, info: &str) -> Result<()> {
         write!(
             screen,
             "{}{}",
-            termion::cursor::Goto(1, line),
+            termion::cursor::Goto(1, line as u16),
             termion::clear::CurrentLine,
         )?;
 
@@ -339,16 +326,16 @@ pub struct Screen {
 
 impl UserInterface for Screen {
     fn set_status_area_height(&mut self, height: u16) -> Result<()> {
-        let height = height.max(1).min(5);
-        self.status_area.set_height(height, self.height);
+        let height = height.clamp(1, 5);
+        self.status_area
+            .set_height(height, self.height - height - 1);
         self.setup()?;
         Ok(())
     }
 
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.scrolled_wo_split())?;
+        self.status_area.redraw_line(&mut self.screen, line)?;
         write!(self.screen, "{}", self.goto_prompt())?;
         Ok(())
     }
@@ -529,6 +516,7 @@ impl UserInterface for Screen {
 
     fn reset_scroll(&mut self) -> Result<()> {
         let reset_split = self.scroll_data.split;
+        let reset_scroll = self.scroll_data.active;
         self.scroll_data.reset(&self.history)?;
         if reset_split {
             write!(self.screen, "{}", ResetScrollRegion)?;
@@ -538,8 +526,9 @@ impl UserInterface for Screen {
                 ScrollRegion(OUTPUT_START_LINE, self.output_line),
                 DisableOriginMode
             )?;
-        } else {
-            self.redraw_status_area()?;
+        } else if reset_scroll {
+            self.status_area.set_scroll_marker(false);
+            self.status_area.redraw_line(&mut self.screen, 0)?;
         }
 
         let output_range = self.output_range();
@@ -703,8 +692,7 @@ impl Screen {
     fn redraw_status_area(&mut self) -> Result<()> {
         self.status_area.set_width(self.width);
         self.status_area.update_pos(self.output_line + 1);
-        self.status_area
-            .redraw(&mut self.screen, self.scroll_data.scrolled_wo_split())?;
+        self.status_area.redraw(&mut self.screen)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;
         Ok(())
     }
@@ -738,7 +726,8 @@ impl Screen {
                 self.width as usize
             )?;
         } else {
-            self.redraw_status_area()?;
+            self.status_area.set_scroll_marker(true);
+            self.status_area.redraw_line(&mut self.screen, 0)?;
         }
         Ok(())
     }

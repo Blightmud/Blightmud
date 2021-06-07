@@ -1,6 +1,6 @@
 [package]
 name = "blightmud"
-version = "3.2.0"
+version = "3.3.0"
 description = "A terminal mud-client"
 readme = "README.md"
 license = "GPL3"
@@ -17,7 +17,7 @@ termion = "1.5.6"
 log = "0.4.14"
 simple-logging = "2.0.2"
 chrono = "0.4.19"
-signal-hook = "0.3.8"
+signal-hook = "0.3.9"
 mlua =  { version = "0.5.4", features = ["lua54", "send", "vendored"] }
 regex = "1.5.4"
 strip-ansi-escapes = "0.1.0"

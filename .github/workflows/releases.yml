@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev lua5.4 pkg-config
+        run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev pkg-config
       - name: Install cargo-deb
         run: cargo install cargo-deb || true
       - name: Package DEB
@@ -59,8 +59,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Install deps
-        run: brew update && brew install lua
       - name: Build release
         run: cargo build --release --locked
       - name: Get current version

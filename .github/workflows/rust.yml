@@ -40,13 +40,7 @@ jobs:
         run: sudo apt-get update
       - name: Installing dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install libasound2-dev libspeechd-dev lua5.4
-      - name: Updating repository
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: brew update
-      - name: Installing dependencies
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install lua
+        run: sudo apt-get install libasound2-dev libspeechd-dev
       - name: Setup toolchain
         if: ${{ matrix.toolchain != 'nightly' }}
         uses: actions-rs/toolchain@v1

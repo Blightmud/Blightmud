@@ -93,9 +93,7 @@ mod test_plugin {
     fn get_lua_state() -> Lua {
         let plugin = Handler::new();
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.globals().set("plugin", plugin).unwrap();
-        });
+        lua.globals().set("plugin", plugin).unwrap();
         lua
     }
 
@@ -103,7 +101,9 @@ mod test_plugin {
     fn test_dir() {
         let lua = get_lua_state();
         assert!(lua
-            .context(|ctx| -> String { ctx.load("return plugin.dir()").call(()).unwrap() })
+            .load("return plugin.dir()")
+            .call::<_, String>(())
+            .unwrap()
             .ends_with(".run/test/data/plugins"));
     }
 
@@ -111,9 +111,9 @@ mod test_plugin {
     fn test_named_dir() {
         let lua = get_lua_state();
         assert!(lua
-            .context(|ctx| -> String {
-                ctx.load("return plugin.dir(\"awesome\")").call(()).unwrap()
-            })
+            .load("return plugin.dir(\"awesome\")")
+            .call::<_, String>(())
+            .unwrap()
             .ends_with(".run/test/data/plugins/awesome"));
     }
 }

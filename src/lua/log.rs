@@ -47,11 +47,9 @@ mod test_log {
         let backend = Backend::new(writer);
         let log = Log::new();
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.globals().set("log", log).unwrap();
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.globals().set("log", log).unwrap();
+        lua.load(lua_code).exec().unwrap();
 
         assert_eq!(reader.recv(), Ok(event));
     }

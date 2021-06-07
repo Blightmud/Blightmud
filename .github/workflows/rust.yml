@@ -35,7 +35,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/bin
           key: ${{ matrix.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Installing dependencies
+      - name: Updating repository
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get update
       - name: Installing dependencies

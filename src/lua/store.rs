@@ -67,17 +67,15 @@ mod test_store {
     fn test_memory_storage() {
         let lua = Lua::new();
         let store = Store::new();
-        lua.context(|ctx| {
-            ctx.globals().set(Store::LUA_GLOBAL_NAME, store).unwrap();
+        lua.globals().set(Store::LUA_GLOBAL_NAME, store).unwrap();
 
-            ctx.load("store.session_write(\"abc\",\"def\")")
-                .exec()
-                .unwrap();
-            let value: String = ctx
-                .load("return store.session_read(\"abc\")")
-                .call(())
-                .unwrap();
-            assert_eq!("def", value);
-        });
+        lua.load("store.session_write(\"abc\",\"def\")")
+            .exec()
+            .unwrap();
+        let value: String = lua
+            .load("return store.session_read(\"abc\")")
+            .call(())
+            .unwrap();
+        assert_eq!("def", value);
     }
 }

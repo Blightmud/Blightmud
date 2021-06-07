@@ -63,11 +63,9 @@ mod test_player {
         let backend = Backend::new(writer);
         let audio = Audio {};
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.globals().set("audio", audio).unwrap();
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.globals().set("audio", audio).unwrap();
+        lua.load(lua_code).exec().unwrap();
 
         assert_eq!(reader.recv(), Ok(event));
     }

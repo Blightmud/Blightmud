@@ -124,9 +124,7 @@ mod test_servers {
 
     fn get_lua() -> Lua {
         let state = Lua::new();
-        state.context(|ctx| {
-            ctx.globals().set("servers", Servers {}).unwrap();
-        });
+        state.globals().set("servers", Servers {}).unwrap();
         state
     }
 
@@ -155,9 +153,7 @@ mod test_servers {
         end
         "#;
 
-        lua.context(|ctx| {
-            assert_eq!(ctx.load(lua_code).call::<_, bool>(()).unwrap(), true);
-            assert_eq!(ctx.load(lua_code).call::<_, bool>(()).unwrap(), false);
-        });
+        assert_eq!(lua.load(lua_code).call::<_, bool>(()).unwrap(), true);
+        assert_eq!(lua.load(lua_code).call::<_, bool>(()).unwrap(), false);
     }
 }

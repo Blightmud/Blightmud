@@ -9,7 +9,7 @@ use super::{
 use crate::{event::Event, lua::servers::Servers, model::Line};
 use anyhow::Result;
 use log::info;
-use rlua::{AnyUserData, Lua, Result as LuaResult};
+use mlua::{AnyUserData, Lua, Result as LuaResult};
 use std::io::prelude::*;
 use std::{fs::File, sync::mpsc::Sender};
 
@@ -69,22 +69,22 @@ fn create_default_lua_state(
 
         let lua_json = ctx
             .load(include_str!("../../resources/lua/json.lua"))
-            .call::<_, rlua::Value>(())?;
+            .call::<_, mlua::Value>(())?;
         globals.set("json", lua_json)?;
 
         let lua_triggers = ctx
             .load(include_str!("../../resources/lua/trigger.lua"))
-            .call::<_, rlua::Value>(())?;
+            .call::<_, mlua::Value>(())?;
         globals.set("trigger", lua_triggers)?;
 
         let lua_aliases = ctx
             .load(include_str!("../../resources/lua/alias.lua"))
-            .call::<_, rlua::Value>(())?;
+            .call::<_, mlua::Value>(())?;
         globals.set("alias", lua_aliases)?;
 
         let lua_search = ctx
             .load(include_str!("../../resources/lua/search.lua"))
-            .call::<_, rlua::Value>(())?;
+            .call::<_, mlua::Value>(())?;
         globals.set("search", lua_search)?;
 
         ctx.load(include_str!("../../resources/lua/defaults.lua"))
@@ -102,15 +102,15 @@ fn create_default_lua_state(
 
         let lua_gmcp = ctx
             .load(include_str!("../../resources/lua/gmcp.lua"))
-            .call::<_, rlua::Value>(())?;
+            .call::<_, mlua::Value>(())?;
         globals.set("gmcp", lua_gmcp)?;
         let lua_msdp = ctx
             .load(include_str!("../../resources/lua/msdp.lua"))
-            .call::<_, rlua::Value>(())?;
+            .call::<_, mlua::Value>(())?;
         globals.set("msdp", lua_msdp)?;
         let lua_tasks = ctx
             .load(include_str!("../../resources/lua/tasks.lua"))
-            .call::<_, rlua::Value>(())?;
+            .call::<_, mlua::Value>(())?;
         globals.set("tasks", lua_tasks)?;
 
         {
@@ -143,7 +143,7 @@ impl LuaScript {
     pub fn reset(&mut self, dimensions: (u16, u16)) {
         let store = self
             .state
-            .context(|ctx| -> Result<Store, rlua::Error> {
+            .context(|ctx| -> Result<Store, mlua::Error> {
                 ctx.globals().get(Store::LUA_GLOBAL_NAME)
             })
             .ok();
@@ -164,9 +164,9 @@ impl LuaScript {
     pub fn on_mud_output(&self, line: &mut Line) {
         if !line.flags.bypass_script {
             let mut lline = LuaLine::from(line.clone());
-            if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
-                let table: rlua::Table = ctx.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
-                for pair in table.pairs::<rlua::Value, rlua::Function>() {
+            if let Err(msg) = self.state.context(|ctx| -> mlua::Result<()> {
+                let table: mlua::Table = ctx.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
+                for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
                     lline = cb.call::<_, LuaLine>(lline)?;
                 }
@@ -184,9 +184,9 @@ impl LuaScript {
     pub fn on_mud_input(&self, line: &mut Line) {
         if !line.flags.bypass_script {
             let mut lline = LuaLine::from(line.clone());
-            if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
-                let table: rlua::Table = ctx.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
-                for pair in table.pairs::<rlua::Value, rlua::Function>() {
+            if let Err(msg) = self.state.context(|ctx| -> mlua::Result<()> {
+                let table: mlua::Table = ctx.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
+                for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
                     lline = cb.call::<_, LuaLine>(lline)?;
                 }
@@ -202,9 +202,9 @@ impl LuaScript {
     }
 
     pub fn on_quit(&self) {
-        if let Err(msg) = self.state.context(|ctx| -> rlua::Result<()> {
-            let table: rlua::Table = ctx.named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
-            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+        if let Err(msg) = self.state.context(|ctx| -> mlua::Result<()> {
+            let table: mlua::Table = ctx.named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair?;
                 cb.call::<_, ()>(())?;
             }
@@ -216,13 +216,13 @@ impl LuaScript {
 
     pub fn run_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let core_table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
+            let core_table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
             match core_table.get(id)? {
-                rlua::Value::Function(func) => func.call::<_, ()>(()),
+                mlua::Value::Function(func) => func.call::<_, ()>(()),
                 _ => {
-                    let table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
+                    let table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
                     match table.get(id)? {
-                        rlua::Value::Function(func) => func.call::<_, ()>(()),
+                        mlua::Value::Function(func) => func.call::<_, ()>(()),
                         _ => Ok(()),
                     }
                 }
@@ -234,12 +234,12 @@ impl LuaScript {
 
     pub fn remove_timed_function(&mut self, id: u32) {
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let core_table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
-            let table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
-            if let Err(core_err) = core_table.set(id, rlua::Nil) {
+            let core_table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
+            let table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
+            if let Err(core_err) = core_table.set(id, mlua::Nil) {
                 return Err(core_err);
             }
-            table.set(id, rlua::Nil)
+            table.set(id, mlua::Nil)
         }) {
             output_stack_trace(&self.writer, &msg.to_string());
         }
@@ -253,7 +253,7 @@ impl LuaScript {
         let mut content = String::new();
         file.read_to_string(&mut content)?;
         if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let package: rlua::Table = ctx.globals().get("package")?;
+            let package: mlua::Table = ctx.globals().get("package")?;
             let ppath = package.get::<&str, String>("path")?;
             package.set("path", format!("{0}/?.lua;{1}", dir, ppath))?;
             let result = ctx.load(&content).set_name(dir)?.exec();
@@ -266,11 +266,11 @@ impl LuaScript {
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
             ctx.set_named_registry_value(CONNECTION_ID, id)?;
             let globals = ctx.globals();
-            let table: rlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
-            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+            let table: mlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>((host, port))?;
             }
@@ -281,10 +281,10 @@ impl LuaScript {
     }
 
     pub fn on_disconnect(&mut self) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
             let globals = ctx.globals();
-            let table: rlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
-            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+            let table: mlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>(())?;
             }
@@ -306,10 +306,10 @@ impl LuaScript {
     }
 
     pub fn proto_enabled(&mut self, proto: u8) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
             let globals = ctx.globals();
-            let table: rlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
-            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+            let table: mlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>(proto)?;
             }
@@ -320,10 +320,10 @@ impl LuaScript {
     }
 
     pub fn proto_subneg(&mut self, proto: u8, bytes: &[u8]) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
             let globals = ctx.globals();
-            let table: rlua::Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
-            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+            let table: mlua::Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>((proto, bytes.to_vec()))?;
             }
@@ -335,9 +335,9 @@ impl LuaScript {
 
     pub fn check_bindings(&mut self, cmd: &str) -> bool {
         let mut response = false;
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), rlua::Error> {
-            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
-            if let Ok(callback) = bind_table.get::<_, rlua::Function>(cmd) {
+        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
+            let bind_table: mlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            if let Ok(callback) = bind_table.get::<_, mlua::Function>(cmd) {
                 response = true;
                 callback.call::<_, ()>(())
             } else {
@@ -352,7 +352,7 @@ impl LuaScript {
     pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
         match self
             .state
-            .context(|ctx| -> Result<Vec<UiEvent>, rlua::Error> {
+            .context(|ctx| -> Result<Vec<UiEvent>, mlua::Error> {
                 let blight_aud: AnyUserData = ctx.globals().get("blight")?;
                 let mut blight = blight_aud.borrow_mut::<Blight>()?;
                 let events = blight.get_ui_events();
@@ -373,7 +373,7 @@ mod lua_script_tests {
     use super::CONNECTION_ID;
     use crate::model::{Connection, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
-    use rlua::Result as LuaResult;
+    use mlua::Result as LuaResult;
     use std::{
         collections::BTreeMap,
         sync::mpsc::{channel, Receiver, Sender},
@@ -823,7 +823,7 @@ mod lua_script_tests {
         );
         assert_eq!(
             lua.state
-                .context(|ctx| -> rlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
+                .context(|ctx| -> mlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
                 .unwrap(),
             12
         );
@@ -842,7 +842,7 @@ mod lua_script_tests {
         );
         assert_eq!(
             lua.state
-                .context(|ctx| -> rlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
+                .context(|ctx| -> mlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
                 .unwrap(),
             13
         );
@@ -900,19 +900,19 @@ mod lua_script_tests {
                 .call(())
                 .unwrap();
 
-            let aliases: BTreeMap<u32, rlua::Table> = ctx
+            let aliases: BTreeMap<u32, mlua::Table> = ctx
                 .load(r#"return alias.get_group():get_aliases()"#)
                 .call(())
                 .unwrap();
 
             assert!(aliases.contains_key(&id));
 
-            let alias: &rlua::Table = aliases.get(&id).unwrap();
+            let alias: &mlua::Table = aliases.get(&id).unwrap();
             assert_eq!(alias.get::<_, bool>("enabled").unwrap(), true);
             assert_eq!(alias.get::<_, LReg>("regex").unwrap().to_string(), "test");
 
             ctx.load(r#"alias.clear()"#).exec().unwrap();
-            let ids: BTreeMap<u32, rlua::Table> = ctx
+            let ids: BTreeMap<u32, mlua::Table> = ctx
                 .load(r#"return alias.get_group():get_aliases()"#)
                 .call(())
                 .unwrap();
@@ -930,14 +930,14 @@ mod lua_script_tests {
                 .call(())
                 .unwrap();
 
-            let triggers: BTreeMap<u32, rlua::Table> = ctx
+            let triggers: BTreeMap<u32, mlua::Table> = ctx
                 .load(r#"return trigger.get_group():get_triggers()"#)
                 .call(())
                 .unwrap();
 
             assert!(triggers.contains_key(&id));
 
-            let trigger: &rlua::Table = triggers.get(&id).unwrap();
+            let trigger: &mlua::Table = triggers.get(&id).unwrap();
             assert_eq!(trigger.get::<_, LReg>("regex").unwrap().to_string(), "test");
             assert_eq!(trigger.get::<_, bool>("enabled").unwrap(), true);
             assert_eq!(trigger.get::<_, bool>("gag").unwrap(), false);
@@ -945,7 +945,7 @@ mod lua_script_tests {
             assert_eq!(trigger.get::<_, bool>("prompt").unwrap(), false);
 
             ctx.load(r#"trigger.clear()"#).exec().unwrap();
-            let ids: BTreeMap<u32, rlua::Table> = ctx
+            let ids: BTreeMap<u32, mlua::Table> = ctx
                 .load(r#"return trigger.get_group():get_triggers()"#)
                 .call(())
                 .unwrap();

@@ -1,4 +1,4 @@
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 use super::{
     backend::Backend,
@@ -18,16 +18,16 @@ impl Timer {
     }
 }
 
-fn is_core_mode(ctx: rlua::Context) -> Result<bool, rlua::Error> {
+fn is_core_mode(ctx: mlua::Context) -> Result<bool, mlua::Error> {
     let blight: Blight = ctx.globals().get("blight")?;
     Ok(blight.core_mode)
 }
 
-fn user_mode_only(ctx: rlua::Context) -> Result<(), rlua::Error> {
+fn user_mode_only(ctx: mlua::Context) -> Result<(), mlua::Error> {
     if is_core_mode(ctx)? {
         let boxed_error =
             Box::<dyn Error + Send + Sync>::from("this method is not supported in core mode");
-        return Err(rlua::Error::ExternalError(Arc::from(boxed_error)));
+        return Err(mlua::Error::ExternalError(Arc::from(boxed_error)));
     }
     Ok(())
 }
@@ -36,7 +36,7 @@ impl UserData for Timer {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_function(
             "add",
-            |ctx, (duration, count, callback): (f32, u32, rlua::Function)| {
+            |ctx, (duration, count, callback): (f32, u32, mlua::Function)| {
                 let duration = Duration::milliseconds((duration * 1000.0) as i64);
                 let count = if count > 0 { Some(count) } else { None };
                 let core_mode = is_core_mode(ctx)?;
@@ -45,9 +45,9 @@ impl UserData for Timer {
                 } else {
                     TIMED_CALLBACK_TABLE
                 };
-                let cb_table: rlua::Table = ctx.named_registry_value(cb_table_name)?;
+                let cb_table: mlua::Table = ctx.named_registry_value(cb_table_name)?;
                 let backend: Backend = ctx.named_registry_value(BACKEND)?;
-                let lua_id: rlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID)?;
+                let lua_id: mlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID)?;
                 let id = lua_id as u32;
                 cb_table.raw_set(id, callback)?;
                 backend
@@ -60,9 +60,9 @@ impl UserData for Timer {
         );
         methods.add_function("get_ids", |ctx, ()| {
             user_mode_only(ctx)?;
-            let timer_table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
-            let mut keys: Vec<rlua::Integer> = vec![];
-            for pair in timer_table.pairs::<rlua::Integer, rlua::Value>() {
+            let timer_table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
+            let mut keys: Vec<mlua::Integer> = vec![];
+            for pair in timer_table.pairs::<mlua::Integer, mlua::Value>() {
                 keys.push(pair?.0);
             }
             Ok(keys)
@@ -77,8 +77,8 @@ impl UserData for Timer {
         methods.add_function("remove", |ctx, timer_idx: u32| {
             user_mode_only(ctx)?;
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
-            let timer_table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
-            timer_table.raw_set(timer_idx, rlua::Nil)?;
+            let timer_table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
+            timer_table.raw_set(timer_idx, mlua::Nil)?;
             backend.writer.send(Event::RemoveTimer(timer_idx)).unwrap();
             Ok(())
         });
@@ -93,7 +93,7 @@ mod test_timer {
         lua::constants::{BACKEND, TIMED_CALLBACK_TABLE, TIMED_CALLBACK_TABLE_CORE, TIMED_NEXT_ID},
     };
     use chrono::Duration;
-    use rlua::Lua;
+    use mlua::Lua;
     use std::sync::mpsc::{channel, Receiver, Sender};
 
     #[test]
@@ -129,13 +129,13 @@ mod test_timer {
                     true,
                 ))
             );
-            let core_table: rlua::Table =
+            let core_table: mlua::Table =
                 ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE).unwrap();
             assert!(matches!(
                 core_table.raw_get(1).unwrap(),
-                rlua::Value::Function(_)
+                mlua::Value::Function(_)
             ));
-            let new_id: rlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID).unwrap();
+            let new_id: mlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID).unwrap();
             assert_eq!(new_id, 2);
         });
     }
@@ -172,12 +172,12 @@ mod test_timer {
                     false,
                 ))
             );
-            let table: rlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE).unwrap();
+            let table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE).unwrap();
             assert!(matches!(
                 table.raw_get(5).unwrap(),
-                rlua::Value::Function(_)
+                mlua::Value::Function(_)
             ));
-            let new_id: rlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID).unwrap();
+            let new_id: mlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID).unwrap();
             assert_eq!(new_id, 6);
 
             let ids: Vec<u32> = ctx.load("return timer.get_ids()").call(()).unwrap();

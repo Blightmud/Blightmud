@@ -1,15 +1,15 @@
 use crate::model::Regex as Re;
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 use std::fmt::{Display, Formatter};
 
 pub struct RegexLib;
 
 impl UserData for RegexLib {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.add_function("new", |_, pattern: String| -> rlua::Result<Regex> {
+        methods.add_function("new", |_, pattern: String| -> mlua::Result<Regex> {
             match Re::new(&pattern) {
                 Ok(re) => Ok(Regex { regex: re }),
-                Err(msg) => Err(rlua::Error::RuntimeError(msg.to_string())),
+                Err(msg) => Err(mlua::Error::RuntimeError(msg.to_string())),
             }
         });
     }
@@ -30,13 +30,13 @@ impl UserData for Regex {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_method(
             "test",
-            |_, this, src: String| -> rlua::Result<rlua::Value> {
-                Ok(rlua::Value::Boolean(this.regex.is_match(&src)))
+            |_, this, src: String| -> mlua::Result<mlua::Value> {
+                Ok(mlua::Value::Boolean(this.regex.is_match(&src)))
             },
         );
         methods.add_method(
             "match",
-            |_, this, src: String| -> rlua::Result<Option<Vec<String>>> {
+            |_, this, src: String| -> mlua::Result<Option<Vec<String>>> {
                 let re = &this.regex;
                 let matches = re.captures(&src).map(|captures| {
                     captures
@@ -55,7 +55,7 @@ impl UserData for Regex {
             |_,
              this,
              (src, replace, count): (String, String, Option<usize>)|
-             -> rlua::Result<String> {
+             -> mlua::Result<String> {
                 let re = &this.regex;
                 let limit = count.unwrap_or(0);
                 Ok(re.replacen::<&str>(&src, limit, &replace).to_mut().clone())
@@ -67,7 +67,7 @@ impl UserData for Regex {
 
 #[cfg(test)]
 mod test_regexp {
-    use rlua::Lua;
+    use mlua::Lua;
 
     use super::RegexLib;
 
@@ -115,7 +115,7 @@ mod test_regexp {
         let state = get_lua();
         assert_eq!(
             state
-                .context(|ctx| -> rlua::Result<Option<Vec<String>>> {
+                .context(|ctx| -> mlua::Result<Option<Vec<String>>> {
                     ctx.load(
                         r#"
             local re = regex.new("^(\\w+)$")
@@ -128,7 +128,7 @@ mod test_regexp {
             Some(vec!["test".to_string(), "test".to_string()])
         );
         let result = state
-            .context(|ctx| -> rlua::Result<Option<Vec<String>>> {
+            .context(|ctx| -> mlua::Result<Option<Vec<String>>> {
                 ctx.load(
                     r#"
             local re = regex.new("^(\\w+)$")
@@ -146,7 +146,7 @@ mod test_regexp {
         let state = get_lua();
         assert_eq!(
             state
-                .context(|ctx| -> rlua::Result<String> {
+                .context(|ctx| -> mlua::Result<String> {
                     ctx.load(
                         r#"
             local re = regex.new("(?P<y>\\d{4})-(?P<m>\\d{2})-(?P<d>\\d{2})")
@@ -160,7 +160,7 @@ mod test_regexp {
         );
         assert_eq!(
             state
-                .context(|ctx| -> rlua::Result<String> {
+                .context(|ctx| -> mlua::Result<String> {
                     ctx.load(
                         r#"
             local re = regex.new("(?P<y>\\d{4})-(?P<m>\\d{2})-(?P<d>\\d{2})")
@@ -174,7 +174,7 @@ mod test_regexp {
         );
         assert_eq!(
             state
-                .context(|ctx| -> rlua::Result<String> {
+                .context(|ctx| -> mlua::Result<String> {
                     ctx.load(
                         r#"
             local re = regex.new("(?P<y>\\d{4})-(?P<m>\\d{2})-(?P<d>\\d{2})")
@@ -188,7 +188,7 @@ mod test_regexp {
         );
         assert_eq!(
             state
-                .context(|ctx| -> rlua::Result<String> {
+                .context(|ctx| -> mlua::Result<String> {
                     ctx.load(
                         r#"
             local re = regex.new("(\\d{4})-(\\d{2})-(\\d{2})")

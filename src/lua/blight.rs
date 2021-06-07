@@ -2,7 +2,7 @@ use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::Event;
 use crate::{model::Line, PROJECT_NAME, VERSION};
 use log::debug;
-use rlua::{
+use mlua::{
     AnyUserData, Function, Result as LuaResult, Table, UserData, UserDataMethods, Variadic,
 };
 use std::sync::mpsc::Sender;
@@ -57,17 +57,17 @@ impl UserData for Blight {
             let this = this_aux.borrow::<Blight>()?;
             Ok(this.screen_dimensions)
         });
-        methods.add_function("bind", |ctx, (cmd, callback): (String, rlua::Function)| {
-            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+        methods.add_function("bind", |ctx, (cmd, callback): (String, mlua::Function)| {
+            let bind_table: mlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
             bind_table.set(cmd.to_lowercase(), callback)?;
             Ok(())
         });
         methods.add_function("unbind", |ctx, cmd: String| {
-            let bind_table: rlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
-            bind_table.set(cmd, rlua::Nil)?;
+            let bind_table: mlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            bind_table.set(cmd, mlua::Nil)?;
             Ok(())
         });
-        methods.add_function("ui", |ctx, cmd: String| -> rlua::Result<()> {
+        methods.add_function("ui", |ctx, cmd: String| -> mlua::Result<()> {
             let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
             let mut this = this_aux.borrow_mut::<Blight>()?;
             let event: UiEvent = UiEvent::from(cmd.as_str());
@@ -108,13 +108,13 @@ impl UserData for Blight {
         methods.add_function("version", |_, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))
         });
-        methods.add_function("config_dir", |_, ()| -> rlua::Result<String> {
+        methods.add_function("config_dir", |_, ()| -> mlua::Result<String> {
             Ok(crate::CONFIG_DIR.to_string_lossy().to_string())
         });
-        methods.add_function("data_dir", |_, ()| -> rlua::Result<String> {
+        methods.add_function("data_dir", |_, ()| -> mlua::Result<String> {
             Ok(crate::DATA_DIR.to_string_lossy().to_string())
         });
-        methods.add_function("on_quit", |ctx, func: Function| -> rlua::Result<()> {
+        methods.add_function("on_quit", |ctx, func: Function| -> mlua::Result<()> {
             let table: Table = ctx.named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
             table.set(table.raw_len() + 1, func)?;
             Ok(())
@@ -154,7 +154,7 @@ impl UserData for Blight {
 mod test_blight {
     use std::sync::mpsc::{channel, Receiver, Sender};
 
-    use rlua::{AnyUserData, Lua};
+    use mlua::{AnyUserData, Lua};
 
     use crate::event::Event;
 
@@ -167,7 +167,7 @@ mod test_blight {
         let regex = crate::lua::regex::RegexLib {};
         let blight = Blight::new(writer);
         let lua = Lua::new();
-        lua.context(|ctx| -> rlua::Result<()> {
+        lua.context(|ctx| -> mlua::Result<()> {
             ctx.globals().set("regex", regex)?;
             ctx.globals().set("blight", blight)?;
             ctx.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, ctx.create_table()?)?;
@@ -208,12 +208,12 @@ mod test_blight {
     fn confirm_on_quite_register() {
         let (lua, _reader) = get_lua_state();
         lua.context(|ctx| {
-            let table: rlua::Table = ctx
+            let table: mlua::Table = ctx
                 .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
                 .unwrap();
             assert_eq!(table.raw_len(), 0);
             ctx.load("blight.on_quit(function () end)").exec().unwrap();
-            let table: rlua::Table = ctx
+            let table: mlua::Table = ctx
                 .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
                 .unwrap();
             assert_eq!(table.raw_len(), 1);
@@ -223,14 +223,14 @@ mod test_blight {
     #[test]
     fn on_quit_function() {
         let (lua, _reader) = get_lua_state();
-        lua.context(|ctx| -> rlua::Result<()> {
+        lua.context(|ctx| -> mlua::Result<()> {
             ctx.load("blight.on_quit(function () blight.output(\"on_quit\") end)")
                 .exec()
                 .unwrap();
-            let table: rlua::Table = ctx
+            let table: mlua::Table = ctx
                 .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
                 .unwrap();
-            for pair in table.pairs::<rlua::Value, rlua::Function>() {
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>(()).unwrap();
             }

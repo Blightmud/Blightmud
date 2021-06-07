@@ -1,5 +1,5 @@
 use crate::io::SaveData;
-use rlua::{AnyUserData, Result, UserData, UserDataMethods};
+use mlua::{AnyUserData, Result, UserData, UserDataMethods};
 use std::{collections::HashMap, path::PathBuf};
 
 impl SaveData for HashMap<String, String> {
@@ -61,7 +61,7 @@ impl UserData for Store {
 #[cfg(test)]
 mod test_store {
     use super::Store;
-    use rlua::Lua;
+    use mlua::Lua;
 
     #[test]
     fn test_memory_storage() {

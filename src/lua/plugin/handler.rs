@@ -1,4 +1,4 @@
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 use crate::io::SaveData;
 use crate::lua::{backend::Backend, constants::BACKEND};
@@ -28,7 +28,7 @@ impl UserData for Handler {
         });
         methods.add_function(
             "load",
-            |ctx, name: String| -> rlua::Result<(bool, String)> {
+            |ctx, name: String| -> mlua::Result<(bool, String)> {
                 let backend: Backend = ctx.named_registry_value(BACKEND)?;
                 if let Err(err) = load_plugin(&name, &backend.writer) {
                     Ok((false, err.to_string()))
@@ -47,7 +47,7 @@ impl UserData for Handler {
                 Ok((true, String::new()))
             }
         });
-        methods.add_function("get_all", |_, ()| -> rlua::Result<Vec<String>> {
+        methods.add_function("get_all", |_, ()| -> mlua::Result<Vec<String>> {
             Ok(get_plugins())
         });
         methods.add_function("update", |ctx, name: String| {
@@ -70,11 +70,11 @@ impl UserData for Handler {
             auto.save();
             Ok(())
         });
-        methods.add_function("enabled", |_, _: ()| -> rlua::Result<Vec<String>> {
+        methods.add_function("enabled", |_, _: ()| -> mlua::Result<Vec<String>> {
             let autoloaded = AutoLoadPlugins::load();
             Ok(autoloaded.iter().cloned().collect())
         });
-        methods.add_function("dir", |_, name: Option<String>| -> rlua::Result<String> {
+        methods.add_function("dir", |_, name: Option<String>| -> mlua::Result<String> {
             if let Some(name) = name {
                 Ok(get_plugin_dir().join(name).to_string_lossy().to_string())
             } else {
@@ -86,7 +86,7 @@ impl UserData for Handler {
 
 #[cfg(test)]
 mod test_plugin {
-    use rlua::Lua;
+    use mlua::Lua;
 
     use super::Handler;
 

@@ -1,6 +1,6 @@
 use std::process::Output;
 
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 pub struct ExecResponse {
     code: Option<i32>,
@@ -12,12 +12,12 @@ impl UserData for ExecResponse {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method(
             "code",
-            |_, this, _: ()| -> Result<Option<i32>, rlua::Error> { Ok(this.code) },
+            |_, this, _: ()| -> Result<Option<i32>, mlua::Error> { Ok(this.code) },
         );
-        methods.add_method("stdout", |_, this, _: ()| -> Result<String, rlua::Error> {
+        methods.add_method("stdout", |_, this, _: ()| -> Result<String, mlua::Error> {
             Ok(this.stdout.clone())
         });
-        methods.add_method("stderr", |_, this, _: ()| -> Result<String, rlua::Error> {
+        methods.add_method("stderr", |_, this, _: ()| -> Result<String, mlua::Error> {
             Ok(this.stderr.clone())
         });
     }

@@ -203,12 +203,12 @@ dependencies = [
  "libtelnet-rs",
  "log",
  "mdcat",
+ "mlua",
  "mockall",
  "mockall_double",
  "native-tls",
  "pulldown-cmark",
  "regex",
- "rlua",
  "rodio",
  "ron",
  "rs-complete",
@@ -1218,6 +1218,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mlua"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd448d3e7018f2ff38dd732a374045f5b037eb4ee477d9241d9bb8c209528c1c"
+dependencies = [
+ "bstr",
+ "cc",
+ "lazy_static",
+ "num-traits",
+ "pkg-config",
+]
+
+[[package]]
 name = "mockall"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1835,19 +1848,6 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
-]
-
-[[package]]
-name = "rlua"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25fa5b2c667bae0b6218361e96d365e414fe4a0fa80f476b9631aa2dea2c6881"
-dependencies = [
- "bitflags",
- "bstr",
- "cc",
- "libc",
- "num-traits",
 ]
 
 [[package]]

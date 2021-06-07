@@ -1,4 +1,4 @@
-use rlua::{Table, UserData, UserDataMethods};
+use mlua::{Table, UserData, UserDataMethods};
 
 use crate::{audio::SourceOptions, event::Event};
 
@@ -53,7 +53,7 @@ mod test_player {
     use std::sync::mpsc::{channel, Receiver, Sender};
 
     use super::*;
-    use rlua::Lua;
+    use mlua::Lua;
 
     use crate::event::Event;
     use crate::lua::{backend::Backend, constants::BACKEND};

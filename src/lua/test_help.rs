@@ -24,12 +24,12 @@ macro_rules! test_lua {
     ($($key:literal => $val:expr,)+) => { test_lua!($($key => $val),+) };
 
     () => {
-        let state = rlua::Lua::new();
+        let state = mlua::Lua::new();
 
         #[allow(unused_macros)]
         macro_rules! run_lua {
             ($lua_code:literal) => {
-                state.context(|ctx| -> rlua::Result<()> {
+                state.context(|ctx| -> mlua::Result<()> {
                     ctx.load($lua_code).call::<_,()>(()).unwrap();
                     Ok(())
                 }).unwrap();

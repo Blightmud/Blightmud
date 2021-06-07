@@ -1,4 +1,4 @@
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 use super::{backend::Backend, constants::BACKEND};
 use crate::event::Event;
@@ -33,7 +33,7 @@ impl UserData for Log {
 mod test_log {
     use std::sync::mpsc::{channel, Receiver, Sender};
 
-    use rlua::Lua;
+    use mlua::Lua;
 
     use crate::{
         event::Event,

@@ -1,8 +1,8 @@
 use crate::io::SaveData;
 use crate::model::{Connection, Servers as MServers};
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
-use rlua::prelude::ToLua;
+use mlua::prelude::ToLua;
 
 #[cfg(test)]
 use mockall::automock;
@@ -15,14 +15,14 @@ pub struct Server {
 impl UserData for Server {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_meta_method(
-            rlua::MetaMethod::Index,
-            |ctx, this, key: String| -> rlua::Result<rlua::Value> {
+            mlua::MetaMethod::Index,
+            |ctx, this, key: String| -> mlua::Result<mlua::Value> {
                 match key.as_str() {
                     "name" => Ok(this.name.clone().to_lua(ctx)?),
                     "host" => Ok(this.connection.host.clone().to_lua(ctx)?),
                     "port" => Ok(this.connection.port.to_lua(ctx)?),
                     "tls" => Ok(this.connection.tls.to_lua(ctx)?),
-                    _ => Err(rlua::Error::external(format!("Invalid index: {}", key))),
+                    _ => Err(mlua::Error::external(format!("Invalid index: {}", key))),
                 }
             },
         );
@@ -35,11 +35,11 @@ struct ServerLoader {}
 
 #[cfg_attr(test, automock)]
 impl ServerLoader {
-    fn get() -> rlua::Result<MServers> {
+    fn get() -> mlua::Result<MServers> {
         if let Ok(servers) = MServers::try_load() {
             Ok(servers)
         } else {
-            Err(rlua::Error::external(
+            Err(mlua::Error::external(
                 "Unable to read servers.ron from disk".to_string(),
             ))
         }
@@ -50,12 +50,12 @@ impl UserData for Servers {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_function(
             "add",
-            |_, (name, host, port, tls): (String, String, u16, bool)| -> rlua::Result<()> {
+            |_, (name, host, port, tls): (String, String, u16, bool)| -> mlua::Result<()> {
                 let mut servers = ServerLoader::get()?;
 
                 #[allow(clippy::map_entry)]
                 if servers.contains_key(&name) {
-                    Err(rlua::Error::external(format!(
+                    Err(mlua::Error::external(format!(
                         "Saved server already exists for {}",
                         name
                     )))
@@ -67,19 +67,19 @@ impl UserData for Servers {
                 }
             },
         );
-        methods.add_function("remove", |_, name: String| -> rlua::Result<()> {
+        methods.add_function("remove", |_, name: String| -> mlua::Result<()> {
             let mut servers = ServerLoader::get()?;
             if servers.remove(&name).is_some() {
                 servers.save();
                 Ok(())
             } else {
-                Err(rlua::Error::external(format!(
+                Err(mlua::Error::external(format!(
                     "Saved server does not exist: {}",
                     name
                 )))
             }
         });
-        methods.add_function("get", |_, name: String| -> rlua::Result<Server> {
+        methods.add_function("get", |_, name: String| -> mlua::Result<Server> {
             let servers = ServerLoader::get()?;
             if servers.contains_key(&name) {
                 if let Some(connection) = servers.get(&name) {
@@ -88,19 +88,19 @@ impl UserData for Servers {
                         connection: connection.clone(),
                     })
                 } else {
-                    Err(rlua::Error::external(format!(
+                    Err(mlua::Error::external(format!(
                         "Failed to read server: {}",
                         name
                     )))
                 }
             } else {
-                Err(rlua::Error::external(format!(
+                Err(mlua::Error::external(format!(
                     "Saved server does not exist: {}",
                     name
                 )))
             }
         });
-        methods.add_function("get_all", |_, ()| -> rlua::Result<Vec<Server>> {
+        methods.add_function("get_all", |_, ()| -> mlua::Result<Vec<Server>> {
             let servers = ServerLoader::get()?;
             Ok(servers
                 .iter()
@@ -118,7 +118,7 @@ mod test_servers {
 
     use std::collections::HashMap;
 
-    use rlua::Lua;
+    use mlua::Lua;
 
     use super::*;
 

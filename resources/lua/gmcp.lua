@@ -1,4 +1,4 @@
-local unpack = unpack or table.unpack
+local unpack = table.unpack
 local OPT = 201
 
 local function GMCP()
@@ -21,7 +21,7 @@ local function GMCP()
 	end
 
 	local function string_to_bytes(str)
-		values = {}
+		local values = {}
 		for i, v in utf8.codes(str) do
 			values[i] = v
 		end
@@ -103,7 +103,7 @@ local gmcp = GMCP()
 
 -- Register the module
 core.enable_protocol(OPT)
-core.on_protocol_enabled(function (proto) 
+core.on_protocol_enabled(function (proto)
 	gmcp._on_enable(proto)
 end)
 core.subneg_recv(function (proto, data)

@@ -23,7 +23,7 @@ fn create_default_lua_state(
     dimensions: (u16, u16),
     store: Option<Store>,
 ) -> Lua {
-    let state = unsafe { Lua::new_with_debug() };
+    let state = unsafe { Lua::unsafe_new() };
 
     let backend = Backend::new(writer.clone());
     let mut blight = Blight::new(writer.clone());
@@ -35,16 +35,16 @@ fn create_default_lua_state(
 
     blight.screen_dimensions = dimensions;
     blight.core_mode(true);
-    let result = state.context(|ctx| -> LuaResult<()> {
-        let globals = ctx.globals();
+    let result: LuaResult<()> = (|| {
+        let globals = state.globals();
 
-        ctx.set_named_registry_value(BACKEND, backend)?;
-        ctx.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table()?)?;
-        ctx.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, ctx.create_table()?)?;
-        ctx.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, ctx.create_table()?)?;
-        ctx.set_named_registry_value(TIMED_CALLBACK_TABLE, ctx.create_table()?)?;
-        ctx.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, ctx.create_table()?)?;
-        ctx.set_named_registry_value(TIMED_NEXT_ID, 1)?;
+        state.set_named_registry_value(BACKEND, backend)?;
+        state.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(TIMED_CALLBACK_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, state.create_table()?)?;
+        state.set_named_registry_value(TIMED_NEXT_ID, 1)?;
 
         globals.set("blight", blight)?;
         globals.set("core", Core::new(writer.clone()))?;
@@ -61,54 +61,60 @@ fn create_default_lua_state(
         globals.set("socket", SocketLib {})?;
         globals.set("servers", Servers {})?;
 
-        globals.set(COMMAND_BINDING_TABLE, ctx.create_table()?)?;
-        globals.set(PROTO_ENABLED_LISTENERS_TABLE, ctx.create_table()?)?;
-        globals.set(PROTO_SUBNEG_LISTENERS_TABLE, ctx.create_table()?)?;
-        globals.set(ON_CONNECTION_CALLBACK_TABLE, ctx.create_table()?)?;
-        globals.set(ON_DISCONNECT_CALLBACK_TABLE, ctx.create_table()?)?;
+        globals.set(COMMAND_BINDING_TABLE, state.create_table()?)?;
+        globals.set(PROTO_ENABLED_LISTENERS_TABLE, state.create_table()?)?;
+        globals.set(PROTO_SUBNEG_LISTENERS_TABLE, state.create_table()?)?;
+        globals.set(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
+        globals.set(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
 
-        let lua_json = ctx
+        let lua_json = state
             .load(include_str!("../../resources/lua/json.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("json", lua_json)?;
 
-        let lua_triggers = ctx
+        let lua_triggers = state
             .load(include_str!("../../resources/lua/trigger.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("trigger", lua_triggers)?;
 
-        let lua_aliases = ctx
+        let lua_aliases = state
             .load(include_str!("../../resources/lua/alias.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("alias", lua_aliases)?;
 
-        let lua_search = ctx
+        let lua_search = state
             .load(include_str!("../../resources/lua/search.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("search", lua_search)?;
 
-        ctx.load(include_str!("../../resources/lua/defaults.lua"))
+        state
+            .load(include_str!("../../resources/lua/defaults.lua"))
             .exec()?;
-        ctx.load(include_str!("../../resources/lua/functions.lua"))
+        state
+            .load(include_str!("../../resources/lua/functions.lua"))
             .exec()?;
-        ctx.load(include_str!("../../resources/lua/bindings.lua"))
+        state
+            .load(include_str!("../../resources/lua/bindings.lua"))
             .exec()?;
-        ctx.load(include_str!("../../resources/lua/lua_command.lua"))
+        state
+            .load(include_str!("../../resources/lua/lua_command.lua"))
             .exec()?;
-        ctx.load(include_str!("../../resources/lua/macros.lua"))
+        state
+            .load(include_str!("../../resources/lua/macros.lua"))
             .exec()?;
-        ctx.load(include_str!("../../resources/lua/plugins.lua"))
+        state
+            .load(include_str!("../../resources/lua/plugins.lua"))
             .exec()?;
 
-        let lua_gmcp = ctx
+        let lua_gmcp = state
             .load(include_str!("../../resources/lua/gmcp.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("gmcp", lua_gmcp)?;
-        let lua_msdp = ctx
+        let lua_msdp = state
             .load(include_str!("../../resources/lua/msdp.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("msdp", lua_msdp)?;
-        let lua_tasks = ctx
+        let lua_tasks = state
             .load(include_str!("../../resources/lua/tasks.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("tasks", lua_tasks)?;
@@ -119,11 +125,12 @@ fn create_default_lua_state(
             blight.core_mode(false);
         }
 
-        ctx.load(include_str!("../../resources/lua/on_state_created.lua"))
+        state
+            .load(include_str!("../../resources/lua/on_state_created.lua"))
             .exec()?;
 
         Ok(())
-    });
+    })();
 
     if let Err(err) = result {
         output_stack_trace(&writer, &err.to_string());
@@ -141,31 +148,29 @@ impl LuaScript {
     }
 
     pub fn reset(&mut self, dimensions: (u16, u16)) {
-        let store = self
-            .state
-            .context(|ctx| -> Result<Store, mlua::Error> {
-                ctx.globals().get(Store::LUA_GLOBAL_NAME)
-            })
-            .ok();
+        let store = self.state.globals().get(Store::LUA_GLOBAL_NAME).ok();
         self.state = create_default_lua_state(self.writer.clone(), dimensions, store);
     }
 
     pub fn get_output_lines(&self) -> Vec<Line> {
-        self.state
-            .context(|ctx| -> LuaResult<Vec<Line>> {
-                let blight_aud: AnyUserData = ctx.globals().get("blight")?;
-                let mut blight = blight_aud.borrow_mut::<Blight>()?;
-                let lines = blight.get_output_lines();
-                Ok(lines)
-            })
-            .unwrap()
+        let blight_aud: AnyUserData = self
+            .state
+            .globals()
+            .get("blight")
+            .expect("blight global not found");
+        let mut blight = blight_aud
+            .borrow_mut::<Blight>()
+            .expect("Could not borrow blight global as mut");
+        let lines = blight.get_output_lines();
+        lines
     }
 
     pub fn on_mud_output(&self, line: &mut Line) {
         if !line.flags.bypass_script {
             let mut lline = LuaLine::from(line.clone());
-            if let Err(msg) = self.state.context(|ctx| -> mlua::Result<()> {
-                let table: mlua::Table = ctx.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
+            if let Err(msg) = (|| -> LuaResult<()> {
+                let table: mlua::Table =
+                    self.state.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
                 for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
                     lline = cb.call::<_, LuaLine>(lline)?;
@@ -175,7 +180,7 @@ impl LuaScript {
                     line.set_content(&replacement);
                 }
                 Ok(())
-            }) {
+            })() {
                 output_stack_trace(&self.writer, &msg.to_string());
             }
         }
@@ -184,8 +189,9 @@ impl LuaScript {
     pub fn on_mud_input(&self, line: &mut Line) {
         if !line.flags.bypass_script {
             let mut lline = LuaLine::from(line.clone());
-            if let Err(msg) = self.state.context(|ctx| -> mlua::Result<()> {
-                let table: mlua::Table = ctx.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
+            if let Err(msg) = (|| -> LuaResult<()> {
+                let table: mlua::Table =
+                    self.state.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
                 for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
                     lline = cb.call::<_, LuaLine>(lline)?;
@@ -195,52 +201,57 @@ impl LuaScript {
                     line.set_content(&replacement);
                 }
                 Ok(())
-            }) {
+            })() {
                 output_stack_trace(&self.writer, &msg.to_string());
             }
         }
     }
 
     pub fn on_quit(&self) {
-        if let Err(msg) = self.state.context(|ctx| -> mlua::Result<()> {
-            let table: mlua::Table = ctx.named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair?;
                 cb.call::<_, ()>(())?;
             }
             Ok(())
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn run_timed_function(&mut self, id: u32) {
-        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let core_table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let core_table: mlua::Table =
+                self.state.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
             match core_table.get(id)? {
                 mlua::Value::Function(func) => func.call::<_, ()>(()),
                 _ => {
-                    let table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
+                    let table: mlua::Table =
+                        self.state.named_registry_value(TIMED_CALLBACK_TABLE)?;
                     match table.get(id)? {
                         mlua::Value::Function(func) => func.call::<_, ()>(()),
                         _ => Ok(()),
                     }
                 }
             }
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn remove_timed_function(&mut self, id: u32) {
-        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let core_table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
-            let table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE)?;
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let core_table: mlua::Table =
+                self.state.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
+            let table: mlua::Table = self.state.named_registry_value(TIMED_CALLBACK_TABLE)?;
             if let Err(core_err) = core_table.set(id, mlua::Nil) {
                 return Err(core_err);
             }
             table.set(id, mlua::Nil)
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
@@ -252,112 +263,110 @@ impl LuaScript {
         let dir = file_path.rsplitn(2, '/').nth(1).unwrap_or("");
         let mut content = String::new();
         file.read_to_string(&mut content)?;
-        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let package: mlua::Table = ctx.globals().get("package")?;
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let package: mlua::Table = self.state.globals().get("package")?;
             let ppath = package.get::<&str, String>("path")?;
             package.set("path", format!("{0}/?.lua;{1}", dir, ppath))?;
-            let result = ctx.load(&content).set_name(dir)?.exec();
+            let result = self.state.load(&content).set_name(dir)?.exec();
             package.set("path", ppath)?;
             result
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
         Ok(())
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
-            ctx.set_named_registry_value(CONNECTION_ID, id)?;
-            let globals = ctx.globals();
+        if let Err(msg) = (|| -> LuaResult<()> {
+            self.state.set_named_registry_value(CONNECTION_ID, id)?;
+            let globals = self.state.globals();
             let table: mlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>((host, port))?;
             }
             Ok(())
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn on_disconnect(&mut self) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
-            let globals = ctx.globals();
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let globals = self.state.globals();
             let table: mlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>(())?;
             }
             Ok(())
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn set_dimensions(&mut self, dim: (u16, u16)) {
-        if let Err(msg) = self.state.context(|ctx| -> LuaResult<()> {
-            let blight_aud: AnyUserData = ctx.globals().get("blight")?;
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let blight_aud: AnyUserData = self.state.globals().get("blight")?;
             let mut blight = blight_aud.borrow_mut::<Blight>()?;
             blight.screen_dimensions = dim;
             Ok(())
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn proto_enabled(&mut self, proto: u8) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
-            let globals = ctx.globals();
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let globals = self.state.globals();
             let table: mlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>(proto)?;
             }
             Ok(())
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn proto_subneg(&mut self, proto: u8, bytes: &[u8]) {
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
-            let globals = ctx.globals();
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let globals = self.state.globals();
             let table: mlua::Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>((proto, bytes.to_vec()))?;
             }
             Ok(())
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
     }
 
     pub fn check_bindings(&mut self, cmd: &str) -> bool {
         let mut response = false;
-        if let Err(msg) = self.state.context(|ctx| -> Result<(), mlua::Error> {
-            let bind_table: mlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+        if let Err(msg) = (|| -> LuaResult<()> {
+            let bind_table: mlua::Table = self.state.globals().get(COMMAND_BINDING_TABLE)?;
             if let Ok(callback) = bind_table.get::<_, mlua::Function>(cmd) {
                 response = true;
                 callback.call::<_, ()>(())
             } else {
                 Ok(())
             }
-        }) {
+        })() {
             output_stack_trace(&self.writer, &msg.to_string());
         }
         response
     }
 
     pub fn get_ui_events(&mut self) -> Vec<UiEvent> {
-        match self
-            .state
-            .context(|ctx| -> Result<Vec<UiEvent>, mlua::Error> {
-                let blight_aud: AnyUserData = ctx.globals().get("blight")?;
-                let mut blight = blight_aud.borrow_mut::<Blight>()?;
-                let events = blight.get_ui_events();
-                Ok(events)
-            }) {
+        match (|| -> LuaResult<Vec<UiEvent>> {
+            let blight_aud: AnyUserData = self.state.globals().get("blight")?;
+            let mut blight = blight_aud.borrow_mut::<Blight>()?;
+            let events = blight.get_ui_events();
+            Ok(events)
+        })() {
             Ok(data) => data,
             Err(msg) => {
                 output_stack_trace(&self.writer, &msg.to_string());

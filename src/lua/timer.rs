@@ -1,4 +1,4 @@
-use mlua::{UserData, UserDataMethods};
+use mlua::{Lua, UserData, UserDataMethods};
 
 use super::{
     backend::Backend,
@@ -18,13 +18,13 @@ impl Timer {
     }
 }
 
-fn is_core_mode(ctx: mlua::Context) -> Result<bool, mlua::Error> {
-    let blight: Blight = ctx.globals().get("blight")?;
+fn is_core_mode(lua: &Lua) -> Result<bool, mlua::Error> {
+    let blight: Blight = lua.globals().get("blight")?;
     Ok(blight.core_mode)
 }
 
-fn user_mode_only(ctx: mlua::Context) -> Result<(), mlua::Error> {
-    if is_core_mode(ctx)? {
+fn user_mode_only(lua: &Lua) -> Result<(), mlua::Error> {
+    if is_core_mode(lua)? {
         let boxed_error =
             Box::<dyn Error + Send + Sync>::from("this method is not supported in core mode");
         return Err(mlua::Error::ExternalError(Arc::from(boxed_error)));
@@ -36,25 +36,25 @@ impl UserData for Timer {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_function(
             "add",
-            |ctx, (duration, count, callback): (f32, u32, mlua::Function)| {
+            |lua, (duration, count, callback): (f32, u32, mlua::Function)| {
                 let duration = Duration::milliseconds((duration * 1000.0) as i64);
                 let count = if count > 0 { Some(count) } else { None };
-                let core_mode = is_core_mode(ctx)?;
+                let core_mode = is_core_mode(lua)?;
                 let cb_table_name = if core_mode {
                     TIMED_CALLBACK_TABLE_CORE
                 } else {
                     TIMED_CALLBACK_TABLE
                 };
-                let cb_table: mlua::Table = ctx.named_registry_value(cb_table_name)?;
-                let backend: Backend = ctx.named_registry_value(BACKEND)?;
-                let lua_id: mlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID)?;
+                let cb_table: mlua::Table = lua.named_registry_value(cb_table_name)?;
+                let backend: Backend = lua.named_registry_value(BACKEND)?;
+                let lua_id: mlua::Integer = lua.named_registry_value(TIMED_NEXT_ID)?;
                 let id = lua_id as u32;
                 cb_table.raw_set(id, callback)?;
                 backend
                     .writer
                     .send(Event::AddTimedEvent(duration, count, id, core_mode))
                     .unwrap();
-                ctx.set_named_registry_value(TIMED_NEXT_ID, id + 1)?;
+                lua.set_named_registry_value(TIMED_NEXT_ID, id + 1)?;
                 Ok(id)
             },
         );

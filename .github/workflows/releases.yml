@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev lua5.4 pkg-config
       - name: Install cargo-deb
         run: cargo install cargo-deb || true
       - name: Package DEB

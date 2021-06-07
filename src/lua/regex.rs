@@ -73,9 +73,7 @@ mod test_regexp {
 
     fn get_lua() -> Lua {
         let state = Lua::new();
-        state.context(|ctx| {
-            ctx.globals().set("regex", RegexLib {}).unwrap();
-        });
+        state.globals().set("regex", RegexLib {}).unwrap();
         state
     }
 
@@ -83,29 +81,27 @@ mod test_regexp {
     fn test_match() {
         let state = get_lua();
         assert_eq!(
-            state.context(|ctx| -> bool {
-                ctx.load(
+            state
+                .load(
                     r#"
             local re = regex.new("^test$")
             return re:test("test")
             "#,
                 )
-                .call(())
-                .unwrap()
-            }),
+                .call::<_, bool>(())
+                .unwrap(),
             true
         );
         assert_eq!(
-            state.context(|ctx| -> bool {
-                ctx.load(
+            state
+                .load(
                     r#"
             local re = regex.new("^test$")
             return re:test("not a test")
             "#,
                 )
-                .call(())
-                .unwrap()
-            }),
+                .call::<_, bool>(())
+                .unwrap(),
             false
         );
     }
@@ -115,28 +111,24 @@ mod test_regexp {
         let state = get_lua();
         assert_eq!(
             state
-                .context(|ctx| -> mlua::Result<Option<Vec<String>>> {
-                    ctx.load(
-                        r#"
+                .load(
+                    r#"
             local re = regex.new("^(\\w+)$")
             return re:match("test")
             "#,
-                    )
-                    .call(())
-                })
+                )
+                .call::<_, Option<Vec<String>>>(())
                 .unwrap(),
             Some(vec!["test".to_string(), "test".to_string()])
         );
-        let result = state
-            .context(|ctx| -> mlua::Result<Option<Vec<String>>> {
-                ctx.load(
-                    r#"
+        let result: Option<bool> = state
+            .load(
+                r#"
             local re = regex.new("^(\\w+)$")
             return re:match("not a test")
             "#,
-                )
-                .call(())
-            })
+            )
+            .call(())
             .unwrap();
         assert_eq!(result, None);
     }
@@ -146,57 +138,49 @@ mod test_regexp {
         let state = get_lua();
         assert_eq!(
             state
-                .context(|ctx| -> mlua::Result<String> {
-                    ctx.load(
-                        r#"
+                .load(
+                    r#"
             local re = regex.new("(?P<y>\\d{4})-(?P<m>\\d{2})-(?P<d>\\d{2})")
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$m/$d/$y")
             "#,
-                    )
-                    .call(())
-                })
+                )
+                .call::<_, String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 07/05/2014".to_string()
         );
         assert_eq!(
             state
-                .context(|ctx| -> mlua::Result<String> {
-                    ctx.load(
-                        r#"
+                .load(
+                    r#"
             local re = regex.new("(?P<y>\\d{4})-(?P<m>\\d{2})-(?P<d>\\d{2})")
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$m/$d/$y", 1)
             "#,
-                    )
-                    .call(())
-                })
+                )
+                .call::<_, String>(())
                 .unwrap(),
             "03/14/2012, 2013-01-01 and 2014-07-05".to_string()
         );
         assert_eq!(
             state
-                .context(|ctx| -> mlua::Result<String> {
-                    ctx.load(
-                        r#"
+                .load(
+                    r#"
             local re = regex.new("(?P<y>\\d{4})-(?P<m>\\d{2})-(?P<d>\\d{2})")
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$m/$d/$y", 2)
             "#,
-                    )
-                    .call(())
-                })
+                )
+                .call::<_, String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 2014-07-05".to_string()
         );
         assert_eq!(
             state
-                .context(|ctx| -> mlua::Result<String> {
-                    ctx.load(
-                        r#"
+                .load(
+                    r#"
             local re = regex.new("(\\d{4})-(\\d{2})-(\\d{2})")
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$2/$3/$1")
             "#,
-                    )
-                    .call(())
-                })
+                )
+                .call::<_, String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 07/05/2014".to_string()
         );

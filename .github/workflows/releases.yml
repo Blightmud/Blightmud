@@ -59,6 +59,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Install deps
+        run: brew update && brew install lua
       - name: Build release
         run: cargo build --release --locked
       - name: Get current version

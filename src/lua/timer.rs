@@ -105,39 +105,36 @@ mod test_timer {
         let timer = Timer::new();
         blight.core_mode(true);
 
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
-            ctx.globals().set("blight", blight).unwrap();
-            ctx.globals().set("timer", timer).unwrap();
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
+        lua.globals().set("blight", blight).unwrap();
+        lua.globals().set("timer", timer).unwrap();
 
-            let add_timer_result: u32 = ctx
-                .load("return timer.add(1, 2, function () end)")
-                .call(())
-                .unwrap();
-            assert_eq!(add_timer_result, 1);
-            assert_eq!(
-                reader.recv(),
-                Ok(Event::AddTimedEvent(
-                    Duration::milliseconds(1000),
-                    Some(2),
-                    1,
-                    true,
-                ))
-            );
-            let core_table: mlua::Table =
-                ctx.named_registry_value(TIMED_CALLBACK_TABLE_CORE).unwrap();
-            assert!(matches!(
-                core_table.raw_get(1).unwrap(),
-                mlua::Value::Function(_)
-            ));
-            let new_id: mlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID).unwrap();
-            assert_eq!(new_id, 2);
-        });
+        let add_timer_result: u32 = lua
+            .load("return timer.add(1, 2, function () end)")
+            .call(())
+            .unwrap();
+        assert_eq!(add_timer_result, 1);
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::AddTimedEvent(
+                Duration::milliseconds(1000),
+                Some(2),
+                1,
+                true,
+            ))
+        );
+        let core_table: mlua::Table = lua.named_registry_value(TIMED_CALLBACK_TABLE_CORE).unwrap();
+        assert!(matches!(
+            core_table.raw_get(1).unwrap(),
+            mlua::Value::Function(_)
+        ));
+        let new_id: mlua::Integer = lua.named_registry_value(TIMED_NEXT_ID).unwrap();
+        assert_eq!(new_id, 2);
     }
 
     #[test]
@@ -149,40 +146,38 @@ mod test_timer {
         let timer = Timer::new();
         blight.core_mode(false);
 
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_NEXT_ID, 5).unwrap();
-            ctx.globals().set("blight", blight).unwrap();
-            ctx.globals().set("timer", timer).unwrap();
-            let add_timer_result: u32 = ctx
-                .load("return timer.add(3, 0, function () end)")
-                .call(())
-                .unwrap();
-            assert_eq!(add_timer_result, 5);
-            assert_eq!(
-                reader.recv(),
-                Ok(Event::AddTimedEvent(
-                    Duration::milliseconds(3000),
-                    None,
-                    5,
-                    false,
-                ))
-            );
-            let table: mlua::Table = ctx.named_registry_value(TIMED_CALLBACK_TABLE).unwrap();
-            assert!(matches!(
-                table.raw_get(5).unwrap(),
-                mlua::Value::Function(_)
-            ));
-            let new_id: mlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID).unwrap();
-            assert_eq!(new_id, 6);
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_NEXT_ID, 5).unwrap();
+        lua.globals().set("blight", blight).unwrap();
+        lua.globals().set("timer", timer).unwrap();
+        let add_timer_result: u32 = lua
+            .load("return timer.add(3, 0, function () end)")
+            .call(())
+            .unwrap();
+        assert_eq!(add_timer_result, 5);
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::AddTimedEvent(
+                Duration::milliseconds(3000),
+                None,
+                5,
+                false,
+            ))
+        );
+        let table: mlua::Table = lua.named_registry_value(TIMED_CALLBACK_TABLE).unwrap();
+        assert!(matches!(
+            table.raw_get(5).unwrap(),
+            mlua::Value::Function(_)
+        ));
+        let new_id: mlua::Integer = lua.named_registry_value(TIMED_NEXT_ID).unwrap();
+        assert_eq!(new_id, 6);
 
-            let ids: Vec<u32> = ctx.load("return timer.get_ids()").call(()).unwrap();
-            assert_eq!(ids, vec![5]);
-        });
+        let ids: Vec<u32> = lua.load("return timer.get_ids()").call(()).unwrap();
+        assert_eq!(ids, vec![5]);
     }
 
     #[test]
@@ -194,29 +189,27 @@ mod test_timer {
         let timer = Timer::new();
         blight.core_mode(false);
 
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
-            ctx.globals().set("blight", blight).unwrap();
-            ctx.globals().set("timer", timer).unwrap();
-            let add_timer_result: u32 = ctx
-                .load("return timer.add(1, 2, function () end)")
-                .call(())
-                .unwrap();
-            assert_eq!(add_timer_result, 1);
-            let add_timer_result: u32 = ctx
-                .load("return timer.add(3, 4, function () end)")
-                .call(())
-                .unwrap();
-            assert_eq!(add_timer_result, 2);
-            ctx.load("timer.clear()").exec().unwrap();
-            let ids: Vec<u32> = ctx.load("return timer.get_ids()").call(()).unwrap();
-            assert_eq!(ids.len(), 0);
-        });
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
+        lua.globals().set("blight", blight).unwrap();
+        lua.globals().set("timer", timer).unwrap();
+        let add_timer_result: u32 = lua
+            .load("return timer.add(1, 2, function () end)")
+            .call(())
+            .unwrap();
+        assert_eq!(add_timer_result, 1);
+        let add_timer_result: u32 = lua
+            .load("return timer.add(3, 4, function () end)")
+            .call(())
+            .unwrap();
+        assert_eq!(add_timer_result, 2);
+        lua.load("timer.clear()").exec().unwrap();
+        let ids: Vec<u32> = lua.load("return timer.get_ids()").call(()).unwrap();
+        assert_eq!(ids.len(), 0);
     }
 
     #[test]
@@ -228,28 +221,26 @@ mod test_timer {
         let timer = Timer::new();
         blight.core_mode(false);
 
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
-            ctx.globals().set("blight", blight).unwrap();
-            ctx.globals().set("timer", timer).unwrap();
-            let add_timer_result: u32 = ctx
-                .load("return timer.add(1, 2, function () end)")
-                .call(())
-                .unwrap();
-            assert_eq!(add_timer_result, 1);
-            let add_timer_result: u32 = ctx
-                .load("return timer.add(3, 4, function () end)")
-                .call(())
-                .unwrap();
-            assert_eq!(add_timer_result, 2);
-            ctx.load("timer.remove(1)").exec().unwrap();
-            let ids: Vec<u32> = ctx.load("return timer.get_ids()").call(()).unwrap();
-            assert_eq!(ids, vec![2]);
-        });
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
+        lua.globals().set("blight", blight).unwrap();
+        lua.globals().set("timer", timer).unwrap();
+        let add_timer_result: u32 = lua
+            .load("return timer.add(1, 2, function () end)")
+            .call(())
+            .unwrap();
+        assert_eq!(add_timer_result, 1);
+        let add_timer_result: u32 = lua
+            .load("return timer.add(3, 4, function () end)")
+            .call(())
+            .unwrap();
+        assert_eq!(add_timer_result, 2);
+        lua.load("timer.remove(1)").exec().unwrap();
+        let ids: Vec<u32> = lua.load("return timer.get_ids()").call(()).unwrap();
+        assert_eq!(ids, vec![2]);
     }
 }

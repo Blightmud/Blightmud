@@ -161,8 +161,7 @@ impl LuaScript {
         let mut blight = blight_aud
             .borrow_mut::<Blight>()
             .expect("Could not borrow blight global as mut");
-        let lines = blight.get_output_lines();
-        lines
+        blight.get_output_lines()
     }
 
     pub fn on_mud_output(&self, line: &mut Line) {
@@ -382,7 +381,6 @@ mod lua_script_tests {
     use super::CONNECTION_ID;
     use crate::model::{Connection, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
-    use mlua::Result as LuaResult;
     use std::{
         collections::BTreeMap,
         sync::mpsc::{channel, Receiver, Sender},
@@ -419,9 +417,7 @@ mod lua_script_tests {
         "#;
 
         let lua = get_lua().0;
-        lua.state.context(|ctx| {
-            ctx.load(create_trigger_lua).exec().unwrap();
-        });
+        lua.state.load(create_trigger_lua).exec().unwrap();
 
         assert!(test_trigger("test", &lua));
         assert!(!test_trigger("test test", &lua));
@@ -434,9 +430,7 @@ mod lua_script_tests {
         "#;
 
         let lua = get_lua().0;
-        lua.state.context(|ctx| {
-            ctx.load(create_trigger_lua).exec().unwrap();
-        });
+        lua.state.load(create_trigger_lua).exec().unwrap();
 
         assert!(test_trigger("test", &lua));
         assert!(test_trigger("test", &lua));
@@ -451,9 +445,7 @@ mod lua_script_tests {
         "#;
 
         let lua = get_lua().0;
-        lua.state.context(|ctx| {
-            ctx.load(create_prompt_trigger_lua).exec().unwrap();
-        });
+        lua.state.load(create_prompt_trigger_lua).exec().unwrap();
 
         assert!(test_prompt_trigger("test", &lua));
         assert!(!test_prompt_trigger("test test", &lua));
@@ -462,25 +454,23 @@ mod lua_script_tests {
     #[test]
     fn test_lua_trigger_id_increment() {
         let lua = get_lua().0;
-        let (ttrig, ptrig) = lua
+        lua.state
+            .load(r#"trigger.add("^test regular$", {}, function () end)"#)
+            .exec()
+            .unwrap();
+        lua.state
+            .load(r#"trigger.add("^test regular$", {}, function () end)"#)
+            .exec()
+            .unwrap();
+        let ttrig: u32 = lua
             .state
-            .context(|ctx| -> LuaResult<(u32, u32)> {
-                ctx.load(r#"trigger.add("^test regular$", {}, function () end)"#)
-                    .exec()
-                    .unwrap();
-                ctx.load(r#"trigger.add("^test regular$", {}, function () end)"#)
-                    .exec()
-                    .unwrap();
-                let ttrig: u32 = ctx
-                    .load(r#"return trigger.add("^test$", {}, function () end).id"#)
-                    .call(())
-                    .unwrap();
-                let ptrig: u32 = ctx
-                    .load(r#"return trigger.add("^test$", {prompt=true}, function () end).id"#)
-                    .call(())
-                    .unwrap();
-                Ok((ttrig, ptrig))
-            })
+            .load(r#"return trigger.add("^test$", {}, function () end).id"#)
+            .call(())
+            .unwrap();
+        let ptrig: u32 = lua
+            .state
+            .load(r#"return trigger.add("^test$", {prompt=true}, function () end).id"#)
+            .call(())
             .unwrap();
 
         assert_ne!(ttrig, ptrig);
@@ -493,9 +483,7 @@ mod lua_script_tests {
         "#;
 
         let (lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(create_trigger_lua).exec().unwrap();
-        });
+        lua.state.load(create_trigger_lua).exec().unwrap();
 
         assert!(test_trigger("\x1b[31mtest\x1b[0m", &lua));
         assert!(!test_trigger("test", &lua));
@@ -504,38 +492,32 @@ mod lua_script_tests {
     #[test]
     fn test_remove_trigger() {
         let lua = get_lua().0;
-        let (ttrig, ptrig) = lua
+        let ttrig: u32 = lua
             .state
-            .context(|ctx| -> LuaResult<(u32, u32)> {
-                let ttrig: u32 = ctx
-                    .load(r#"return trigger.add("^test$", {}, function () end).id"#)
-                    .call(())
-                    .unwrap();
-                let ptrig: u32 = ctx
-                    .load(r#"return trigger.add("^test$", {prompt=true}, function () end).id"#)
-                    .call(())
-                    .unwrap();
-                Ok((ttrig, ptrig))
-            })
+            .load(r#"return trigger.add("^test$", {}, function () end).id"#)
+            .call(())
+            .unwrap();
+        let ptrig: u32 = lua
+            .state
+            .load(r#"return trigger.add("^test$", {prompt=true}, function () end).id"#)
+            .call(())
             .unwrap();
 
         assert!(test_trigger("test", &lua));
         assert!(test_prompt_trigger("test", &lua));
 
-        lua.state.context(|ctx| {
-            ctx.load(&format!("trigger.remove({})", ttrig))
-                .exec()
-                .unwrap();
-        });
+        lua.state
+            .load(&format!("trigger.remove({})", ttrig))
+            .exec()
+            .unwrap();
 
         assert!(test_prompt_trigger("test", &lua));
         assert!(!test_trigger("test", &lua));
 
-        lua.state.context(|ctx| {
-            ctx.load(&format!("trigger.remove({})", ptrig))
-                .exec()
-                .unwrap();
-        });
+        lua.state
+            .load(&format!("trigger.remove({})", ptrig))
+            .exec()
+            .unwrap();
 
         assert!(!test_trigger("test", &lua));
         assert!(!test_prompt_trigger("test", &lua));
@@ -553,9 +535,7 @@ mod lua_script_tests {
         "#;
 
         let lua = get_lua().0;
-        lua.state.context(|ctx| {
-            ctx.load(create_alias_lua).exec().unwrap();
-        });
+        lua.state.load(create_alias_lua).exec().unwrap();
 
         assert!(check_alias_match(&lua, Line::from("test")));
         assert!(!check_alias_match(&lua, Line::from(" test")));
@@ -568,17 +548,12 @@ mod lua_script_tests {
         "#;
 
         let lua = get_lua().0;
-        let index: i32 = lua
-            .state
-            .context(|ctx| ctx.load(create_alias_lua).call(()))
-            .unwrap();
+        let index: i32 = lua.state.load(create_alias_lua).call(()).unwrap();
 
         assert!(check_alias_match(&lua, Line::from("test")));
 
         let delete_alias = format!("alias.remove({})", index);
-        lua.state.context(|ctx| {
-            ctx.load(&delete_alias).exec().unwrap();
-        });
+        lua.state.load(&delete_alias).exec().unwrap();
         assert!(!check_alias_match(&lua, Line::from("test")));
     }
 
@@ -587,13 +562,15 @@ mod lua_script_tests {
         let mut lua = get_lua().0;
         let dim: (u16, u16) = lua
             .state
-            .context(|ctx| ctx.load("return blight.terminal_dimensions()").call(()))
+            .load("return blight.terminal_dimensions()")
+            .call(())
             .unwrap();
         assert_eq!(dim, (80, 80));
         lua.set_dimensions((70, 70));
         let dim: (u16, u16) = lua
             .state
-            .context(|ctx| ctx.load("return blight.terminal_dimensions()").call(()))
+            .load("return blight.terminal_dimensions()")
+            .call(())
             .unwrap();
         assert_eq!(dim, (70, 70));
     }
@@ -605,9 +582,7 @@ mod lua_script_tests {
         "#;
 
         let (lua, reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(send_gmcp_lua).exec().unwrap();
-        });
+        lua.state.load(send_gmcp_lua).exec().unwrap();
 
         assert_eq!(reader.recv(), Ok(Event::EnableProto(200)));
     }
@@ -619,9 +594,7 @@ mod lua_script_tests {
         "#;
 
         let (lua, reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(send_gmcp_lua).exec().unwrap();
-        });
+        lua.state.load(send_gmcp_lua).exec().unwrap();
 
         assert_eq!(
             reader.recv(),
@@ -634,10 +607,8 @@ mod lua_script_tests {
         let lua = get_lua().0;
         let (name, version): (String, String) = lua
             .state
-            .context(|ctx| -> LuaResult<(String, String)> {
-                ctx.load("return blight.version()")
-                    .call::<(), (String, String)>(())
-            })
+            .load("return blight.version()")
+            .call::<(), (String, String)>(())
             .unwrap();
         assert_eq!(version, VERSION);
         assert_eq!(name, PROJECT_NAME);
@@ -645,18 +616,14 @@ mod lua_script_tests {
 
     fn assert_event(lua_code: &str, event: Event) {
         let (lua, reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.state.load(lua_code).exec().unwrap();
 
         assert_eq!(reader.recv(), Ok(event));
     }
 
     fn assert_events(lua_code: &str, events: Vec<Event>) {
         let (lua, reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.state.load(lua_code).exec().unwrap();
 
         for event in events.iter() {
             assert_eq!(reader.recv(), Ok(event.clone()));
@@ -666,11 +633,10 @@ mod lua_script_tests {
     #[test]
     fn test_output() {
         let (lua, _) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load("blight.output(\"test\", \"test\")")
-                .exec()
-                .unwrap();
-        });
+        lua.state
+            .load("blight.output(\"test\", \"test\")")
+            .exec()
+            .unwrap();
         assert_eq!(lua.get_output_lines(), vec![Line::from("test test")]);
     }
 
@@ -706,9 +672,7 @@ mod lua_script_tests {
         "#;
 
         let (lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(trigger).exec().unwrap();
-        });
+        lua.state.load(trigger).exec().unwrap();
 
         let mut line = Line::from("Health 100");
         lua.on_mud_output(&mut line);
@@ -720,11 +684,10 @@ mod lua_script_tests {
     }
 
     fn check_color(lua: &LuaScript, output: &str, result: &str) {
-        lua.state.context(|ctx| {
-            ctx.load(&format!("blight.output({})", output))
-                .exec()
-                .unwrap();
-        });
+        lua.state
+            .load(&format!("blight.output({})", output))
+            .exec()
+            .unwrap();
         assert_eq!(lua.get_output_lines()[0], Line::from(result));
     }
 
@@ -786,9 +749,7 @@ mod lua_script_tests {
         "#;
 
         let (mut lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.state.load(lua_code).exec().unwrap();
 
         lua.check_bindings("ctrl-a");
         assert_eq!(lua.get_output_lines(), [Line::from("ctrl-a")]);
@@ -817,9 +778,7 @@ mod lua_script_tests {
         "#;
 
         let (mut lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.state.load(lua_code).exec().unwrap();
 
         lua.on_connect("test", 21, 12);
         assert_eq!(
@@ -832,14 +791,12 @@ mod lua_script_tests {
         );
         assert_eq!(
             lua.state
-                .context(|ctx| -> mlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
+                .named_registry_value::<_, u32>(CONNECTION_ID)
                 .unwrap(),
             12
         );
         lua.reset((100, 100));
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.state.load(lua_code).exec().unwrap();
         lua.on_connect("server", 1000, 13);
         assert_eq!(
             lua.get_output_lines(),
@@ -851,7 +808,7 @@ mod lua_script_tests {
         );
         assert_eq!(
             lua.state
-                .context(|ctx| -> mlua::Result<u16> { ctx.named_registry_value(CONNECTION_ID) })
+                .named_registry_value::<_, u32>(CONNECTION_ID)
                 .unwrap(),
             13
         );
@@ -872,9 +829,7 @@ mod lua_script_tests {
         "#;
 
         let (mut lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.state.load(lua_code).exec().unwrap();
 
         lua.on_disconnect();
         assert_eq!(
@@ -886,9 +841,7 @@ mod lua_script_tests {
             ]
         );
         lua.reset((100, 100));
-        lua.state.context(|ctx| {
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.state.load(lua_code).exec().unwrap();
         lua.on_disconnect();
         assert_eq!(
             lua.get_output_lines(),
@@ -903,64 +856,66 @@ mod lua_script_tests {
     #[test]
     fn test_alias_ids() {
         let (lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            let id = ctx
-                .load(r#"return alias.add("test", function () end).id"#)
-                .call(())
-                .unwrap();
+        let id = lua
+            .state
+            .load(r#"return alias.add("test", function () end).id"#)
+            .call(())
+            .unwrap();
 
-            let aliases: BTreeMap<u32, mlua::Table> = ctx
-                .load(r#"return alias.get_group():get_aliases()"#)
-                .call(())
-                .unwrap();
+        let aliases: BTreeMap<u32, mlua::Table> = lua
+            .state
+            .load(r#"return alias.get_group():get_aliases()"#)
+            .call(())
+            .unwrap();
 
-            assert!(aliases.contains_key(&id));
+        assert!(aliases.contains_key(&id));
 
-            let alias: &mlua::Table = aliases.get(&id).unwrap();
-            assert_eq!(alias.get::<_, bool>("enabled").unwrap(), true);
-            assert_eq!(alias.get::<_, LReg>("regex").unwrap().to_string(), "test");
+        let alias: &mlua::Table = aliases.get(&id).unwrap();
+        assert_eq!(alias.get::<_, bool>("enabled").unwrap(), true);
+        assert_eq!(alias.get::<_, LReg>("regex").unwrap().to_string(), "test");
 
-            ctx.load(r#"alias.clear()"#).exec().unwrap();
-            let ids: BTreeMap<u32, mlua::Table> = ctx
-                .load(r#"return alias.get_group():get_aliases()"#)
-                .call(())
-                .unwrap();
+        lua.state.load(r#"alias.clear()"#).exec().unwrap();
+        let ids: BTreeMap<u32, mlua::Table> = lua
+            .state
+            .load(r#"return alias.get_group():get_aliases()"#)
+            .call(())
+            .unwrap();
 
-            assert!(ids.is_empty());
-        });
+        assert!(ids.is_empty());
     }
 
     #[test]
     fn test_trigger_ids() {
         let (lua, _reader) = get_lua();
-        lua.state.context(|ctx| {
-            let id = ctx
-                .load(r#"return trigger.add("test", {}, function () end).id"#)
-                .call(())
-                .unwrap();
+        let id = lua
+            .state
+            .load(r#"return trigger.add("test", {}, function () end).id"#)
+            .call(())
+            .unwrap();
 
-            let triggers: BTreeMap<u32, mlua::Table> = ctx
-                .load(r#"return trigger.get_group():get_triggers()"#)
-                .call(())
-                .unwrap();
+        let triggers: BTreeMap<u32, mlua::Table> = lua
+            .state
+            .load(r#"return trigger.get_group():get_triggers()"#)
+            .call(())
+            .unwrap();
 
-            assert!(triggers.contains_key(&id));
+        assert!(triggers.contains_key(&id));
 
-            let trigger: &mlua::Table = triggers.get(&id).unwrap();
-            assert_eq!(trigger.get::<_, LReg>("regex").unwrap().to_string(), "test");
-            assert_eq!(trigger.get::<_, bool>("enabled").unwrap(), true);
-            assert_eq!(trigger.get::<_, bool>("gag").unwrap(), false);
-            assert_eq!(trigger.get::<_, bool>("raw").unwrap(), false);
-            assert_eq!(trigger.get::<_, bool>("prompt").unwrap(), false);
+        let trigger: &mlua::Table = triggers.get(&id).unwrap();
+        assert_eq!(trigger.get::<_, LReg>("regex").unwrap().to_string(), "test");
+        assert_eq!(trigger.get::<_, bool>("enabled").unwrap(), true);
+        assert_eq!(trigger.get::<_, bool>("gag").unwrap(), false);
+        assert_eq!(trigger.get::<_, bool>("raw").unwrap(), false);
+        assert_eq!(trigger.get::<_, bool>("prompt").unwrap(), false);
 
-            ctx.load(r#"trigger.clear()"#).exec().unwrap();
-            let ids: BTreeMap<u32, mlua::Table> = ctx
-                .load(r#"return trigger.get_group():get_triggers()"#)
-                .call(())
-                .unwrap();
+        lua.state.load(r#"trigger.clear()"#).exec().unwrap();
+        let ids: BTreeMap<u32, mlua::Table> = lua
+            .state
+            .load(r#"return trigger.get_group():get_triggers()"#)
+            .call(())
+            .unwrap();
 
-            assert!(ids.is_empty());
-        });
+        assert!(ids.is_empty());
     }
 
     #[test]
@@ -976,9 +931,9 @@ mod lua_script_tests {
             reader.recv().unwrap(),
             Event::Connect(Connection::new("example.com", 4000, true))
         );
-        lua.state.context(|ctx| {
-            ctx.set_named_registry_value(CONNECTION_ID, 4).unwrap();
-        });
+        lua.state
+            .set_named_registry_value(CONNECTION_ID, 4)
+            .unwrap();
         lua.on_mud_input(&mut Line::from("/disconnect"));
         assert_eq!(reader.recv().unwrap(), Event::Disconnect(4));
 

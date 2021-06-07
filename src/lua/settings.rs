@@ -49,34 +49,30 @@ mod test_settings {
     #[test]
     fn test_list_settings() {
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.globals()
-                .set(Settings::LUA_GLOBAL_NAME, Settings::new())
-                .unwrap();
+        lua.globals()
+            .set(Settings::LUA_GLOBAL_NAME, Settings::new())
+            .unwrap();
 
-            let settings_table: mlua::Table = ctx.load("return settings.list()").call(()).unwrap();
+        let settings_table: mlua::Table = lua.load("return settings.list()").call(()).unwrap();
 
-            assert!(matches!(
-                settings_table.raw_get(model::MOUSE_ENABLED).unwrap(),
-                mlua::Value::Boolean(_),
-            ));
-        });
+        assert!(matches!(
+            settings_table.raw_get(model::MOUSE_ENABLED).unwrap(),
+            mlua::Value::Boolean(_),
+        ));
     }
 
     #[test]
     fn test_get_settings() {
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.globals()
-                .set(Settings::LUA_GLOBAL_NAME, Settings::new())
-                .unwrap();
+        lua.globals()
+            .set(Settings::LUA_GLOBAL_NAME, Settings::new())
+            .unwrap();
 
-            let value: mlua::Value = ctx
-                .load("return settings.get(\"mouse_enabled\")")
-                .call(())
-                .unwrap();
+        let value: mlua::Value = lua
+            .load("return settings.get(\"mouse_enabled\")")
+            .call(())
+            .unwrap();
 
-            assert!(matches!(value, mlua::Value::Boolean(_)));
-        });
+        assert!(matches!(value, mlua::Value::Boolean(_)));
     }
 }

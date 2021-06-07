@@ -41,7 +41,7 @@ jobs:
       - name: Updating package repo
         run: sudo apt-get update
       - name: Installing dependencies
-        run: sudo apt-get install libasound2-dev
+        run: sudo apt-get install libasound2-dev liblua5.4-dev
       - name: Run tests
         run: cargo test
         env:

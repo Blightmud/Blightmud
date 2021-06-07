@@ -167,13 +167,10 @@ mod test_blight {
         let regex = crate::lua::regex::RegexLib {};
         let blight = Blight::new(writer);
         let lua = Lua::new();
-        lua.context(|ctx| -> mlua::Result<()> {
-            ctx.globals().set("regex", regex)?;
-            ctx.globals().set("blight", blight)?;
-            ctx.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, ctx.create_table()?)?;
-            Ok(())
-        })
-        .unwrap();
+        lua.globals().set("regex", regex).unwrap();
+        lua.globals().set("blight", blight).unwrap();
+        lua.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, lua.create_table().unwrap())
+            .unwrap();
         (lua, reader)
     }
 
@@ -181,7 +178,9 @@ mod test_blight {
     fn test_config_dir() {
         let (lua, _reader) = get_lua_state();
         assert!(lua
-            .context(|ctx| -> String { ctx.load("return blight.config_dir()").call(()).unwrap() })
+            .load("return blight.config_dir()")
+            .call::<_, String>(())
+            .unwrap()
             .ends_with(".run/test/config"));
     }
 
@@ -189,7 +188,9 @@ mod test_blight {
     fn test_data_dir() {
         let (lua, _reader) = get_lua_state();
         assert!(lua
-            .context(|ctx| -> String { ctx.load("return blight.data_dir()").call(()).unwrap() })
+            .load("return blight.data_dir()")
+            .call::<_, String>(())
+            .unwrap()
             .ends_with(".run/test/data"));
     }
 
@@ -197,9 +198,9 @@ mod test_blight {
     fn test_version() {
         let (lua, _reader) = get_lua_state();
         assert_eq!(
-            lua.context(|ctx| -> (String, String) {
-                ctx.load("return blight.version()").call(()).unwrap()
-            }),
+            lua.load("return blight.version()")
+                .call::<_, (String, String)>(())
+                .unwrap(),
             (PROJECT_NAME.to_string(), VERSION.to_string())
         );
     }
@@ -207,86 +208,74 @@ mod test_blight {
     #[test]
     fn confirm_on_quite_register() {
         let (lua, _reader) = get_lua_state();
-        lua.context(|ctx| {
-            let table: mlua::Table = ctx
-                .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
-                .unwrap();
-            assert_eq!(table.raw_len(), 0);
-            ctx.load("blight.on_quit(function () end)").exec().unwrap();
-            let table: mlua::Table = ctx
-                .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
-                .unwrap();
-            assert_eq!(table.raw_len(), 1);
-        });
+        let table: mlua::Table = lua
+            .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
+            .unwrap();
+        assert_eq!(table.raw_len(), 0);
+        lua.load("blight.on_quit(function () end)").exec().unwrap();
+        let table: mlua::Table = lua
+            .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
+            .unwrap();
+        assert_eq!(table.raw_len(), 1);
     }
 
     #[test]
     fn on_quit_function() {
         let (lua, _reader) = get_lua_state();
-        lua.context(|ctx| -> mlua::Result<()> {
-            ctx.load("blight.on_quit(function () blight.output(\"on_quit\") end)")
-                .exec()
-                .unwrap();
-            let table: mlua::Table = ctx
-                .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
-                .unwrap();
-            for pair in table.pairs::<mlua::Value, mlua::Function>() {
-                let (_, cb) = pair.unwrap();
-                cb.call::<_, ()>(()).unwrap();
-            }
-            let blight_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
-            let mut blight = blight_aux.borrow_mut::<Blight>()?;
-            let lines = blight.get_output_lines();
-            let mut it = lines.iter();
-            assert_eq!(it.next().unwrap(), &crate::model::Line::from("on_quit"));
-            Ok(())
-        })
-        .unwrap();
+        lua.load("blight.on_quit(function () blight.output(\"on_quit\") end)")
+            .exec()
+            .unwrap();
+        let table: mlua::Table = lua
+            .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
+            .unwrap();
+        for pair in table.pairs::<mlua::Value, mlua::Function>() {
+            let (_, cb) = pair.unwrap();
+            cb.call::<_, ()>(()).unwrap();
+        }
+        let blight_aux = lua.globals().get::<_, AnyUserData>("blight").unwrap();
+        let mut blight = blight_aux.borrow_mut::<Blight>().unwrap();
+        let lines = blight.get_output_lines();
+        let mut it = lines.iter();
+        assert_eq!(it.next().unwrap(), &crate::model::Line::from("on_quit"));
     }
 
     #[test]
     fn quit() {
         let (lua, reader) = get_lua_state();
-        lua.context(|ctx| {
-            ctx.load("blight.quit()").exec().unwrap();
-            assert_eq!(reader.recv(), Ok(Event::Quit));
-        });
+        lua.load("blight.quit()").exec().unwrap();
+        assert_eq!(reader.recv(), Ok(Event::Quit));
     }
 
     #[test]
     fn find() {
         let (lua, reader) = get_lua_state();
         let re = crate::model::Regex::new("test").unwrap();
-        lua.context(|ctx| {
-            ctx.load(r#"blight.find_forward(regex.new("test"))"#)
-                .exec()
-                .unwrap();
-            assert_eq!(reader.recv(), Ok(Event::FindForward(re.clone())));
-            ctx.load(r#"blight.find_backward(regex.new("test"))"#)
-                .exec()
-                .unwrap();
-            assert_eq!(reader.recv(), Ok(Event::FindBackward(re)));
-        });
+        lua.load(r#"blight.find_forward(regex.new("test"))"#)
+            .exec()
+            .unwrap();
+        assert_eq!(reader.recv(), Ok(Event::FindForward(re.clone())));
+        lua.load(r#"blight.find_backward(regex.new("test"))"#)
+            .exec()
+            .unwrap();
+        assert_eq!(reader.recv(), Ok(Event::FindBackward(re)));
     }
 
     #[test]
     fn show_help() {
         let (lua, reader) = get_lua_state();
-        lua.context(|ctx| {
-            ctx.load("blight.show_help(\"test1\", false)")
-                .exec()
-                .unwrap();
-            assert_eq!(
-                reader.recv(),
-                Ok(Event::ShowHelp("test1".to_string(), false))
-            );
-            ctx.load("blight.show_help(\"test2\", true)")
-                .exec()
-                .unwrap();
-            assert_eq!(
-                reader.recv(),
-                Ok(Event::ShowHelp("test2".to_string(), true))
-            );
-        });
+        lua.load("blight.show_help(\"test1\", false)")
+            .exec()
+            .unwrap();
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::ShowHelp("test1".to_string(), false))
+        );
+        lua.load("blight.show_help(\"test2\", true)")
+            .exec()
+            .unwrap();
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::ShowHelp("test2".to_string(), true))
+        );
     }
 }

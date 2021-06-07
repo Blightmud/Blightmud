@@ -35,12 +35,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/bin
           key: ${{ matrix.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Installing dependencies
+      - name: Updating repository
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get update
       - name: Installing dependencies
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install libasound2-dev libspeechd-dev
+        run: sudo apt-get install libasound2-dev libspeechd-dev liblua5.4-dev
+      - name: Updating repository
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew update
+      - name: Installing dependencies
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install lua
       - name: Setup toolchain
         if: ${{ matrix.toolchain != 'nightly' }}
         uses: actions-rs/toolchain@v1

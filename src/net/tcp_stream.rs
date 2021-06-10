@@ -53,6 +53,7 @@ impl MudReceiver {
         } else {
             data = vec![];
         }
+        debug!("Bytes: {:?}", data);
         data
     }
 }

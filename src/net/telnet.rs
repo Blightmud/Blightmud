@@ -107,7 +107,8 @@ impl TelnetHandler {
                     }
                 }
                 TelnetEvents::DataReceive(msg) => {
-                    if !msg.is_empty() {
+                    debug!("Data receive: {:?}", msg);
+                    if !msg.is_empty() && msg != [0] {
                         if let Ok(mut output_buffer) = self.output_buffer.lock() {
                             let new_lines = output_buffer.receive(&msg);
                             for line in new_lines {

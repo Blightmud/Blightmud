@@ -414,8 +414,6 @@ impl UserInterface for Screen {
             if let Some(prefix) = self.history.remove_last() {
                 debug_assert!(line.print_line().unwrap().starts_with(&prefix));
             }
-        } else {
-            self.tts_ctrl.lock().unwrap().speak_line(line);
         }
         if let Some(print_line) = line.print_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {

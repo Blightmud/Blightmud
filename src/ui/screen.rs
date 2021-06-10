@@ -2,6 +2,7 @@ use crate::io::SaveData;
 use crate::model::{Regex, Settings, SCROLL_LOCK, SCROLL_SPLIT};
 use crate::{model::Line, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
+use log::debug;
 use std::{error, fmt};
 use std::{
     io::{stdout, Write},
@@ -355,6 +356,7 @@ impl UserInterface for Screen {
     }
 
     fn print_prompt(&mut self, prompt: &Line) {
+        debug!("UI: {:?}", prompt);
         self.tts_ctrl.lock().unwrap().speak_line(&prompt);
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {
@@ -406,6 +408,7 @@ impl UserInterface for Screen {
     }
 
     fn print_output(&mut self, line: &Line) {
+        debug!("UI: {:?}", line);
         self.tts_ctrl.lock().unwrap().speak_line(line);
         if line.flags.separate_receives {
             if let Some(prefix) = self.history.remove_last() {

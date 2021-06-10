@@ -1,4 +1,4 @@
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 use crate::model::Line as mLine;
 
@@ -19,13 +19,13 @@ impl From<mLine> for Line {
 
 impl UserData for Line {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_method("line", |_, this, _: ()| -> rlua::Result<String> {
+        methods.add_method("line", |_, this, _: ()| -> mlua::Result<String> {
             Ok(this.inner.clean_line().to_string())
         });
-        methods.add_method("raw", |_, this, _: ()| -> rlua::Result<String> {
+        methods.add_method("raw", |_, this, _: ()| -> mlua::Result<String> {
             Ok(this.inner.line().to_string())
         });
-        methods.add_method_mut("gag", |_, this, gag: Option<bool>| -> rlua::Result<bool> {
+        methods.add_method_mut("gag", |_, this, gag: Option<bool>| -> mlua::Result<bool> {
             if let Some(gag) = gag {
                 this.inner.flags.gag = gag;
             }
@@ -33,7 +33,7 @@ impl UserData for Line {
         });
         methods.add_method_mut(
             "tts_gag",
-            |_, this, gag: Option<bool>| -> rlua::Result<bool> {
+            |_, this, gag: Option<bool>| -> mlua::Result<bool> {
                 if let Some(gag) = gag {
                     this.inner.flags.tts_gag = gag;
                 }
@@ -42,7 +42,7 @@ impl UserData for Line {
         );
         methods.add_method_mut(
             "tts_interrupt",
-            |_, this, val: Option<bool>| -> rlua::Result<bool> {
+            |_, this, val: Option<bool>| -> mlua::Result<bool> {
                 if let Some(val) = val {
                     this.inner.flags.tts_interrupt = val;
                 }
@@ -51,19 +51,19 @@ impl UserData for Line {
         );
         methods.add_method_mut(
             "skip_log",
-            |_, this, val: Option<bool>| -> rlua::Result<bool> {
+            |_, this, val: Option<bool>| -> mlua::Result<bool> {
                 if let Some(val) = val {
                     this.inner.flags.skip_log = val;
                 }
                 Ok(this.inner.flags.skip_log)
             },
         );
-        methods.add_method("prompt", |_, this, _: ()| -> rlua::Result<bool> {
+        methods.add_method("prompt", |_, this, _: ()| -> mlua::Result<bool> {
             Ok(this.inner.flags.prompt)
         });
         methods.add_method_mut(
             "matched",
-            |_, this, val: Option<bool>| -> rlua::Result<bool> {
+            |_, this, val: Option<bool>| -> mlua::Result<bool> {
                 if let Some(val) = val {
                     this.inner.flags.matched = val;
                 }
@@ -76,7 +76,7 @@ impl UserData for Line {
         });
         methods.add_method(
             "replacement",
-            |_, this, _: ()| -> rlua::Result<Option<String>> { Ok(this.replacement.clone()) },
+            |_, this, _: ()| -> mlua::Result<Option<String>> { Ok(this.replacement.clone()) },
         );
     }
 }

@@ -1,4 +1,4 @@
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 use super::{backend::Backend, constants::BACKEND};
 use crate::event::Event;
@@ -33,7 +33,7 @@ impl UserData for Log {
 mod test_log {
     use std::sync::mpsc::{channel, Receiver, Sender};
 
-    use rlua::Lua;
+    use mlua::Lua;
 
     use crate::{
         event::Event,
@@ -47,11 +47,9 @@ mod test_log {
         let backend = Backend::new(writer);
         let log = Log::new();
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.globals().set("log", log).unwrap();
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.globals().set("log", log).unwrap();
+        lua.load(lua_code).exec().unwrap();
 
         assert_eq!(reader.recv(), Ok(event));
     }

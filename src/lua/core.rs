@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use log::debug;
-use rlua::{AnyUserData, Table, UserData, UserDataMethods};
+use mlua::{AnyUserData, Table, UserData, UserDataMethods};
 
 use crate::{event::Event, io::exec};
 
@@ -44,7 +44,7 @@ impl UserData for Core {
             this.main_writer.send(Event::DisableProto(proto)).unwrap();
             Ok(())
         });
-        methods.add_function_mut("on_protocol_enabled", |ctx, cb: rlua::Function| {
+        methods.add_function_mut("on_protocol_enabled", |ctx, cb: mlua::Function| {
             let globals = ctx.globals();
             let table: Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
             let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
@@ -53,7 +53,7 @@ impl UserData for Core {
             globals.set(PROTO_ENABLED_LISTENERS_TABLE, table)?;
             Ok(())
         });
-        methods.add_function_mut("subneg_recv", |ctx, cb: rlua::Function| {
+        methods.add_function_mut("subneg_recv", |ctx, cb: mlua::Function| {
             let globals = ctx.globals();
             let table: Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
             let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
@@ -78,10 +78,10 @@ impl UserData for Core {
         });
         methods.add_function(
             "exec",
-            |_, cmd: String| -> Result<ExecResponse, rlua::Error> {
+            |_, cmd: String| -> Result<ExecResponse, mlua::Error> {
                 match exec(&cmd) {
                     Ok(output) => Ok(ExecResponse::from(output)),
-                    Err(err) => Err(rlua::Error::RuntimeError(err.to_string())),
+                    Err(err) => Err(mlua::Error::RuntimeError(err.to_string())),
                 }
             },
         );

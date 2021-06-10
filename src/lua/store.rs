@@ -1,5 +1,5 @@
 use crate::io::SaveData;
-use rlua::{AnyUserData, Result, UserData, UserDataMethods};
+use mlua::{AnyUserData, Result, UserData, UserDataMethods};
 use std::{collections::HashMap, path::PathBuf};
 
 impl SaveData for HashMap<String, String> {
@@ -61,23 +61,21 @@ impl UserData for Store {
 #[cfg(test)]
 mod test_store {
     use super::Store;
-    use rlua::Lua;
+    use mlua::Lua;
 
     #[test]
     fn test_memory_storage() {
         let lua = Lua::new();
         let store = Store::new();
-        lua.context(|ctx| {
-            ctx.globals().set(Store::LUA_GLOBAL_NAME, store).unwrap();
+        lua.globals().set(Store::LUA_GLOBAL_NAME, store).unwrap();
 
-            ctx.load("store.session_write(\"abc\",\"def\")")
-                .exec()
-                .unwrap();
-            let value: String = ctx
-                .load("return store.session_read(\"abc\")")
-                .call(())
-                .unwrap();
-            assert_eq!("def", value);
-        });
+        lua.load("store.session_write(\"abc\",\"def\")")
+            .exec()
+            .unwrap();
+        let value: String = lua
+            .load("return store.session_read(\"abc\")")
+            .call(())
+            .unwrap();
+        assert_eq!("def", value);
     }
 }

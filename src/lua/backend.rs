@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use rlua::UserData;
+use mlua::UserData;
 
 use crate::event::Event;
 

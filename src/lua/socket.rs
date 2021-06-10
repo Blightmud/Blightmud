@@ -3,7 +3,7 @@ use std::{
     net::{Shutdown, TcpStream},
 };
 
-use rlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 pub struct SocketLib;
 
@@ -11,7 +11,7 @@ impl UserData for SocketLib {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_function(
             "connect",
-            |_, (host, port): (String, u32)| -> rlua::Result<Option<Socket>> {
+            |_, (host, port): (String, u32)| -> mlua::Result<Option<Socket>> {
                 if let Ok(connection) = TcpStream::connect(format!("{}:{}", host, port)) {
                     Ok(Some(Socket { connection }))
                 } else {

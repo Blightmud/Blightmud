@@ -24,15 +24,12 @@ macro_rules! test_lua {
     ($($key:literal => $val:expr,)+) => { test_lua!($($key => $val),+) };
 
     () => {
-        let state = rlua::Lua::new();
+        let state = mlua::Lua::new();
 
         #[allow(unused_macros)]
         macro_rules! run_lua {
             ($lua_code:literal) => {
-                state.context(|ctx| -> rlua::Result<()> {
-                    ctx.load($lua_code).call::<_,()>(()).unwrap();
-                    Ok(())
-                }).unwrap();
+                state.load($lua_code).call::<_,()>(()).unwrap();
             };
         }
 
@@ -40,9 +37,7 @@ macro_rules! test_lua {
         macro_rules! assert_lua {
             ($return_type:ty, $lua_code:literal, $expect:expr) => {
                 assert_eq!(
-                    state.context(|ctx| -> $return_type {
-                        ctx.load(concat!("return ", $lua_code)).call(()).unwrap()
-                    }),
+                    state.load(concat!("return ", $lua_code)).call::<_, $return_type>(()).unwrap(),
                     $expect
                 );
             };
@@ -65,32 +60,28 @@ macro_rules! test_lua {
         #[allow(unused_macros)]
         macro_rules! global {
             ($key:literal) => {
-                state.context(|ctx| ctx.globals().get($key).unwrap())
+                state.globals().get($key).unwrap()
             };
         }
 
         #[allow(unused_macros)]
         macro_rules! set_global {
             ($key:literal, $val:expr) => {
-                state.context(|ctx| {
-                    ctx.globals().set($key, $val).unwrap();
-                });
+                    state.globals().set($key, $val).unwrap();
             };
         }
 
         #[allow(unused_macros)]
         macro_rules! register {
             ($key:literal) => {
-                state.context(|ctx| ctx.named_registry_value($key).unwrap())
+                state.named_registry_value($key).unwrap();
             };
         }
 
         #[allow(unused_macros)]
         macro_rules! set_register {
             ($key:literal, $val:expr) => {
-                state.context(|ctx| {
-                    ctx.set_named_registry_value($key, $val).unwrap();
-                });
+                state.set_named_registry_value($key, $val).unwrap();
             };
         }
     };

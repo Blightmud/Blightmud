@@ -1,4 +1,4 @@
-use rlua::{Function, Table, UserData, UserDataMethods};
+use mlua::{Function, Table, UserData, UserDataMethods};
 
 use crate::{
     event::Event,
@@ -25,7 +25,7 @@ impl UserData for Mud {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_function(
             "add_output_listener",
-            |ctx, func: Function| -> rlua::Result<()> {
+            |ctx, func: Function| -> mlua::Result<()> {
                 let table: Table = ctx.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
                 table.set(table.raw_len() + 1, func)?;
                 Ok(())
@@ -33,7 +33,7 @@ impl UserData for Mud {
         );
         methods.add_function(
             "add_input_listener",
-            |ctx, func: Function| -> rlua::Result<()> {
+            |ctx, func: Function| -> mlua::Result<()> {
                 let table: Table = ctx.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
                 table.set(table.raw_len() + 1, func)?;
                 Ok(())
@@ -68,7 +68,7 @@ impl UserData for Mud {
         });
         methods.add_function(
             "send",
-            |ctx, (msg, options): (String, Option<rlua::Table>)| {
+            |ctx, (msg, options): (String, Option<mlua::Table>)| {
                 let mut line = Line::from(msg);
                 line.flags.bypass_script = true;
 
@@ -93,15 +93,15 @@ impl UserData for Mud {
             backend.writer.send(Event::ServerInput(line)).unwrap();
             Ok(())
         });
-        methods.add_function("on_connect", |ctx, callback: rlua::Function| {
+        methods.add_function("on_connect", |ctx, callback: mlua::Function| {
             let globals = ctx.globals();
-            let table: rlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
+            let table: mlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
             table.raw_set(table.raw_len() + 1, callback)?;
             Ok(())
         });
-        methods.add_function("on_disconnect", |ctx, callback: rlua::Function| {
+        methods.add_function("on_disconnect", |ctx, callback: mlua::Function| {
             let globals = ctx.globals();
-            let table: rlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
+            let table: mlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
             table.set(table.raw_len() + 1, callback)?;
             Ok(())
         });
@@ -112,7 +112,7 @@ impl UserData for Mud {
 mod test_mud {
     use std::sync::mpsc::{channel, Receiver, Sender};
 
-    use rlua::Lua;
+    use mlua::Lua;
 
     use crate::{
         event::Event,
@@ -129,32 +129,28 @@ mod test_mud {
     fn test_output_register() {
         let mud = Mud::new();
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.globals().set("mud", mud).unwrap();
-            ctx.load("mud.add_output_listener(function () end)")
-                .exec()
-                .unwrap();
-            let table: rlua::Table = ctx.named_registry_value(MUD_OUTPUT_LISTENER_TABLE).unwrap();
-            assert_eq!(table.raw_len(), 1);
-        });
+        lua.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.globals().set("mud", mud).unwrap();
+        lua.load("mud.add_output_listener(function () end)")
+            .exec()
+            .unwrap();
+        let table: mlua::Table = lua.named_registry_value(MUD_OUTPUT_LISTENER_TABLE).unwrap();
+        assert_eq!(table.raw_len(), 1);
     }
 
     #[test]
     fn test_input_register() {
         let mud = Mud::new();
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, ctx.create_table().unwrap())
-                .unwrap();
-            ctx.globals().set("mud", mud).unwrap();
-            ctx.load("mud.add_input_listener(function () end)")
-                .exec()
-                .unwrap();
-            let table: rlua::Table = ctx.named_registry_value(MUD_INPUT_LISTENER_TABLE).unwrap();
-            assert_eq!(table.raw_len(), 1);
-        });
+        lua.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.globals().set("mud", mud).unwrap();
+        lua.load("mud.add_input_listener(function () end)")
+            .exec()
+            .unwrap();
+        let table: mlua::Table = lua.named_registry_value(MUD_INPUT_LISTENER_TABLE).unwrap();
+        assert_eq!(table.raw_len(), 1);
     }
 
     fn assert_event(lua_code: &str, event: Event) {
@@ -162,11 +158,9 @@ mod test_mud {
         let backend = Backend::new(writer);
         let mud = Mud::new();
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.globals().set("mud", mud).unwrap();
-            ctx.load(lua_code).exec().unwrap();
-        });
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.globals().set("mud", mud).unwrap();
+        lua.load(lua_code).exec().unwrap();
 
         assert_eq!(reader.recv(), Ok(event));
     }
@@ -210,13 +204,11 @@ mod test_mud {
         let backend = Backend::new(writer);
         let mud = Mud::new();
         let lua = Lua::new();
-        lua.context(|ctx| {
-            ctx.set_named_registry_value(BACKEND, backend).unwrap();
-            ctx.set_named_registry_value(CONNECTION_ID, 4).unwrap();
-            ctx.globals().set("mud", mud).unwrap();
-            ctx.load("mud.disconnect()").exec().unwrap();
-            assert_eq!(reader.recv().unwrap(), Event::Disconnect(4));
-        });
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.set_named_registry_value(CONNECTION_ID, 4).unwrap();
+        lua.globals().set("mud", mud).unwrap();
+        lua.load("mud.disconnect()").exec().unwrap();
+        assert_eq!(reader.recv().unwrap(), Event::Disconnect(4));
     }
 
     #[test]

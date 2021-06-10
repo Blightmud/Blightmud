@@ -63,7 +63,11 @@ impl OutputBuffer {
                     let mut line = Line::from(&self.buffer[last_cut..i]);
                     if self.telnet_mode == TelnetMode::UnterminatedPrompt && last_cut == 0 {
                         line.flags.separate_receives =
-                            i > existing_buffer_len && existing_buffer_len > 0;
+                            i >= existing_buffer_len && existing_buffer_len > 0;
+                        debug!(
+                            "SEPARATE_RECEIVE[last_cut={} i={} existing_len={} line={:?}]",
+                            last_cut, i, existing_buffer_len, line
+                        );
                     }
                     lines.push(line);
                     i + cut_len

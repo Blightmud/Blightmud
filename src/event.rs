@@ -15,6 +15,13 @@ use std::{
 };
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum QuitMethod {
+    CtrlC,
+    Script,
+    System,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Event {
     Prompt(Line),
     ServerSend(Vec<u8>),
@@ -62,7 +69,7 @@ pub enum Event {
     PlaySFX(String, SourceOptions),
     StopSFX,
     Redraw,
-    Quit,
+    Quit(QuitMethod),
 }
 
 type Result = std::result::Result<(), Box<dyn Error>>;

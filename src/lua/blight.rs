@@ -1,5 +1,5 @@
 use super::{constants::*, regex::Regex, ui_event::UiEvent};
-use crate::event::Event;
+use crate::event::{Event, QuitMethod};
 use crate::{model::Line, PROJECT_NAME, VERSION};
 use log::debug;
 use mlua::{
@@ -122,7 +122,9 @@ impl UserData for Blight {
         methods.add_function("quit", |ctx, ()| {
             let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
-            this.main_writer.send(Event::Quit).unwrap();
+            this.main_writer
+                .send(Event::Quit(QuitMethod::Script))
+                .unwrap();
             Ok(())
         });
         methods.add_function("show_help", |ctx, (name, lock_scroll): (String, bool)| {
@@ -156,7 +158,7 @@ mod test_blight {
 
     use mlua::{AnyUserData, Lua};
 
-    use crate::event::Event;
+    use crate::event::{Event, QuitMethod};
 
     use super::Blight;
     use crate::lua::constants::BLIGHT_ON_QUIT_LISTENER_TABLE;
@@ -243,7 +245,7 @@ mod test_blight {
     fn quit() {
         let (lua, reader) = get_lua_state();
         lua.load("blight.quit()").exec().unwrap();
-        assert_eq!(reader.recv(), Ok(Event::Quit));
+        assert_eq!(reader.recv(), Ok(Event::Quit(QuitMethod::Script)));
     }
 
     #[test]

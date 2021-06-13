@@ -19,7 +19,7 @@ mod tools;
 mod tts;
 mod ui;
 
-use crate::event::Event;
+use crate::event::{Event, QuitMethod};
 use crate::io::SaveData;
 use crate::model::Servers;
 use crate::session::{Session, SessionBuilder};
@@ -302,7 +302,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
         if quit_pending {
             quit_pending = matches!(
                 event,
-                Event::Quit | Event::UserInputBuffer(..) | Event::TimedEvent(..)
+                Event::Quit(_) | Event::UserInputBuffer(..) | Event::TimedEvent(..)
             );
         }
 
@@ -457,8 +457,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 let prompt_input = session.prompt_input.lock().unwrap();
                 screen.print_prompt_input(&prompt_input, prompt_input.len());
             }
-            Event::Quit => {
-                if Settings::load().get(CONFIRM_QUIT)? && !quit_pending {
+            Event::Quit(method) => {
+                if Settings::load().get(CONFIRM_QUIT)?
+                    && method == QuitMethod::CtrlC
+                    && !quit_pending
+                {
                     screen.print_info("Confirm quit with ctrl-c");
                     screen.flush();
                     quit_pending = true;

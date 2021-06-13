@@ -1,3 +1,4 @@
+use crate::event::QuitMethod;
 use crate::model::{Line, Servers};
 use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
@@ -304,7 +305,7 @@ fn parse_key_event(
             if save_history {
                 buffer.history.save();
             }
-            writer.send(Event::Quit).unwrap();
+            writer.send(Event::Quit(QuitMethod::CtrlC)).unwrap();
         }
         Key::PageUp => writer.send(Event::ScrollUp).unwrap(),
         Key::PageDown => writer.send(Event::ScrollDown).unwrap(),

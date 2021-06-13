@@ -379,6 +379,7 @@ impl LuaScript {
 mod lua_script_tests {
     use super::LuaScript;
     use super::CONNECTION_ID;
+    use crate::event::QuitMethod;
     use crate::model::{Connection, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
     use std::{
@@ -967,9 +968,9 @@ mod lua_script_tests {
     fn confirm_quit_macro() {
         let (lua, reader) = get_lua();
         lua.on_mud_input(&mut Line::from("/quit"));
-        assert_eq!(reader.recv().unwrap(), Event::Quit);
+        assert_eq!(reader.recv().unwrap(), Event::Quit(QuitMethod::Script));
         lua.on_mud_input(&mut Line::from("/q"));
-        assert_eq!(reader.recv().unwrap(), Event::Quit);
+        assert_eq!(reader.recv().unwrap(), Event::Quit(QuitMethod::Script));
     }
 
     #[test]

@@ -15,7 +15,7 @@ Available settings are:
 - `logging_enabled`     See `/help logging`
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
 - `save_history`        Save your last 100 commands to disk.
-- `confirm_quit`        Ask for confirmation before quitting Blightmud.
+- `confirm_quit`        Ask for confirmation before quitting Blightmud when pressing `ctrl-c`.
 - `scroll_split`        Split screen when scrolling
 - `scroll_lock`         Set scroll position at start of text when showing long help files
 - `tts_enabled`         Enable tts (only if compiled with TTS)

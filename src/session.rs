@@ -7,6 +7,7 @@ use std::sync::{
 };
 
 use crate::{
+    event::QuitMethod,
     io::{LogWriter, Logger},
     lua::LuaScript,
     net::MudConnection,
@@ -134,7 +135,7 @@ impl Session {
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.disconnect();
-        self.main_writer.send(Event::Quit)?;
+        self.main_writer.send(Event::Quit(QuitMethod::System))?;
         self.timer_writer.send(TimerEvent::Quit)?;
         self.tts_ctrl.lock().unwrap().shutdown();
         Ok(())
@@ -289,7 +290,7 @@ mod session_test {
     fn test_close() {
         let (mut session, reader, timer_reader) = build_session();
         session.close().unwrap();
-        assert_eq!(reader.recv(), Ok(Event::Quit));
+        assert_eq!(reader.recv(), Ok(Event::Quit(QuitMethod::System)));
         assert_eq!(timer_reader.recv(), Ok(TimerEvent::Quit));
     }
 }

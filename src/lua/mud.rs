@@ -94,14 +94,12 @@ impl UserData for Mud {
             Ok(())
         });
         methods.add_function("on_connect", |ctx, callback: mlua::Function| {
-            let globals = ctx.globals();
-            let table: mlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
+            let table: mlua::Table = ctx.named_registry_value(ON_CONNECTION_CALLBACK_TABLE)?;
             table.raw_set(table.raw_len() + 1, callback)?;
             Ok(())
         });
         methods.add_function("on_disconnect", |ctx, callback: mlua::Function| {
-            let globals = ctx.globals();
-            let table: mlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
+            let table: mlua::Table = ctx.named_registry_value(ON_DISCONNECT_CALLBACK_TABLE)?;
             table.set(table.raw_len() + 1, callback)?;
             Ok(())
         });

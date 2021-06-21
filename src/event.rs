@@ -22,6 +22,7 @@ pub enum QuitMethod {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum Event {
     Prompt(Line),
     ServerSend(Vec<u8>),
@@ -134,7 +135,7 @@ impl EventHandler {
                     }
                     if !line.flags.matched {
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
-                            if let TelnetEvents::DataSend(buffer) = parser.send_text(&line.line()) {
+                            if let TelnetEvents::DataSend(buffer) = parser.send_text(line.line()) {
                                 self.session.main_writer.send(Event::ServerSend(buffer))?;
                             }
                         }

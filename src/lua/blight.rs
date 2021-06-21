@@ -119,6 +119,14 @@ impl UserData for Blight {
             table.set(table.raw_len() + 1, func)?;
             Ok(())
         });
+        methods.add_function(
+            "on_complete",
+            |ctx, func: mlua::Function| -> mlua::Result<()> {
+                let table: Table = ctx.named_registry_value(COMPLETION_CALLBACK_TABLE)?;
+                table.set(table.raw_len() + 1, func)?;
+                Ok(())
+            },
+        );
         methods.add_function("quit", |ctx, ()| {
             let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
@@ -161,7 +169,7 @@ mod test_blight {
     use crate::event::{Event, QuitMethod};
 
     use super::Blight;
-    use crate::lua::constants::BLIGHT_ON_QUIT_LISTENER_TABLE;
+    use crate::lua::constants::{BLIGHT_ON_QUIT_LISTENER_TABLE, COMPLETION_CALLBACK_TABLE};
     use crate::{PROJECT_NAME, VERSION};
 
     fn get_lua_state() -> (Lua, Receiver<Event>) {
@@ -172,6 +180,8 @@ mod test_blight {
         lua.globals().set("regex", regex).unwrap();
         lua.globals().set("blight", blight).unwrap();
         lua.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(COMPLETION_CALLBACK_TABLE, lua.create_table().unwrap())
             .unwrap();
         (lua, reader)
     }
@@ -218,6 +228,18 @@ mod test_blight {
         let table: mlua::Table = lua
             .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)
             .unwrap();
+        assert_eq!(table.raw_len(), 1);
+    }
+
+    #[test]
+    fn on_complete() {
+        let (lua, _reader) = get_lua_state();
+        let table: mlua::Table = lua.named_registry_value(COMPLETION_CALLBACK_TABLE).unwrap();
+        assert_eq!(table.raw_len(), 0);
+        lua.load("blight.on_complete(function () end)")
+            .exec()
+            .unwrap();
+        let table: mlua::Table = lua.named_registry_value(COMPLETION_CALLBACK_TABLE).unwrap();
         assert_eq!(table.raw_len(), 1);
     }
 

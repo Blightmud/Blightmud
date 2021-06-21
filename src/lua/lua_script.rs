@@ -50,6 +50,7 @@ fn create_default_lua_state(
         state.set_named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(COMPLETION_CALLBACK_TABLE, state.create_table()?)?;
 
         globals.set("blight", blight)?;
         globals.set("core", Core::new(writer.clone()))?;
@@ -163,50 +164,54 @@ impl LuaScript {
         blight.get_output_lines()
     }
 
+    fn exec_lua<T>(&self, func: &mut dyn FnMut() -> LuaResult<T>) -> Option<T> {
+        let result = func();
+        if let Err(msg) = &result {
+            output_stack_trace(&self.writer, &msg.to_string());
+        }
+        result.ok()
+    }
+
     pub fn on_mud_output(&self, line: &mut Line) {
         if !line.flags.bypass_script {
             let mut lline = LuaLine::from(line.clone());
-            if let Err(msg) = (|| -> LuaResult<()> {
+            self.exec_lua(&mut || -> LuaResult<()> {
                 let table: mlua::Table =
                     self.state.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
                 for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
-                    lline = cb.call::<_, LuaLine>(lline)?;
+                    lline = cb.call::<_, LuaLine>(lline.clone())?;
                 }
                 line.replace_with(&lline.inner);
-                if let Some(replacement) = lline.replacement {
-                    line.set_content(&replacement);
+                if let Some(replacement) = &lline.replacement {
+                    line.set_content(replacement);
                 }
                 Ok(())
-            })() {
-                output_stack_trace(&self.writer, &msg.to_string());
-            }
+            });
         }
     }
 
     pub fn on_mud_input(&self, line: &mut Line) {
         if !line.flags.bypass_script {
             let mut lline = LuaLine::from(line.clone());
-            if let Err(msg) = (|| -> LuaResult<()> {
+            self.exec_lua(&mut || -> LuaResult<()> {
                 let table: mlua::Table =
                     self.state.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
                 for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
-                    lline = cb.call::<_, LuaLine>(lline)?;
+                    lline = cb.call::<_, LuaLine>(lline.clone())?;
                 }
                 line.replace_with(&lline.inner);
-                if let Some(replacement) = lline.replacement {
-                    line.set_content(&replacement);
+                if let Some(replacement) = &lline.replacement {
+                    line.set_content(replacement);
                 }
                 Ok(())
-            })() {
-                output_stack_trace(&self.writer, &msg.to_string());
-            }
+            });
         }
     }
 
     pub fn on_quit(&self) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let table: mlua::Table = self
                 .state
                 .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
@@ -215,13 +220,11 @@ impl LuaScript {
                 cb.call::<_, ()>(())?;
             }
             Ok(())
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
     }
 
     pub fn run_timed_function(&mut self, id: u32) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let core_table: mlua::Table =
                 self.state.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
             match core_table.get(id)? {
@@ -235,13 +238,11 @@ impl LuaScript {
                     }
                 }
             }
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
     }
 
     pub fn remove_timed_function(&mut self, id: u32) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let core_table: mlua::Table =
                 self.state.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
             let table: mlua::Table = self.state.named_registry_value(TIMED_CALLBACK_TABLE)?;
@@ -249,9 +250,7 @@ impl LuaScript {
                 return Err(core_err);
             }
             table.set(id, mlua::Nil)
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
     }
 
     pub fn load_script(&mut self, path: &str) -> Result<()> {
@@ -261,21 +260,19 @@ impl LuaScript {
         let dir = file_path.rsplitn(2, '/').nth(1).unwrap_or("");
         let mut content = String::new();
         file.read_to_string(&mut content)?;
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let package: mlua::Table = self.state.globals().get("package")?;
             let ppath = package.get::<&str, String>("path")?;
             package.set("path", format!("{0}/?.lua;{1}", dir, ppath))?;
             let result = self.state.load(&content).set_name(dir)?.exec();
             package.set("path", ppath)?;
             result
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
         Ok(())
     }
 
     pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             self.state.set_named_registry_value(CONNECTION_ID, id)?;
             let table: mlua::Table = self
                 .state
@@ -285,13 +282,11 @@ impl LuaScript {
                 cb.call::<_, ()>((host, port))?;
             }
             Ok(())
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
     }
 
     pub fn on_disconnect(&mut self) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let table: mlua::Table = self
                 .state
                 .named_registry_value(ON_DISCONNECT_CALLBACK_TABLE)?;
@@ -300,24 +295,20 @@ impl LuaScript {
                 cb.call::<_, ()>(())?;
             }
             Ok(())
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
     }
 
     pub fn set_dimensions(&mut self, dim: (u16, u16)) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let blight_aud: AnyUserData = self.state.globals().get("blight")?;
             let mut blight = blight_aud.borrow_mut::<Blight>()?;
             blight.screen_dimensions = dim;
             Ok(())
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
     }
 
     pub fn proto_enabled(&mut self, proto: u8) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let table: mlua::Table = self
                 .state
                 .named_registry_value(PROTO_ENABLED_LISTENERS_TABLE)?;
@@ -326,13 +317,11 @@ impl LuaScript {
                 cb.call::<_, ()>(proto)?;
             }
             Ok(())
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
     }
 
     pub fn proto_subneg(&mut self, proto: u8, bytes: &[u8]) {
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let table: mlua::Table = self
                 .state
                 .named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE)?;
@@ -341,14 +330,34 @@ impl LuaScript {
                 cb.call::<_, ()>((proto, bytes.to_vec()))?;
             }
             Ok(())
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
+    }
+
+    pub fn tab_complete(&mut self, input: &str) -> Option<Vec<String>> {
+        self.exec_lua(&mut || -> LuaResult<Option<Vec<String>>> {
+            let cb_table: mlua::Table =
+                self.state.named_registry_value(COMPLETION_CALLBACK_TABLE)?;
+            let mut completions = vec![];
+            for cb in cb_table.sequence_values::<mlua::Function>() {
+                let cb = cb?;
+                let result = cb.call::<_, Option<Vec<String>>>(input.to_string())?;
+                if let Some(mut options) = result {
+                    options.sort();
+                    completions.append(&mut options);
+                }
+            }
+            Ok(if completions.is_empty() {
+                None
+            } else {
+                Some(completions)
+            })
+        })
+        .unwrap_or(None)
     }
 
     pub fn check_bindings(&mut self, cmd: &str) -> bool {
         let mut response = false;
-        if let Err(msg) = (|| -> LuaResult<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
             let bind_table: mlua::Table = self.state.named_registry_value(COMMAND_BINDING_TABLE)?;
             if let Ok(callback) = bind_table.get::<_, mlua::Function>(cmd) {
                 response = true;
@@ -356,9 +365,7 @@ impl LuaScript {
             } else {
                 Ok(())
             }
-        })() {
-            output_stack_trace(&self.writer, &msg.to_string());
-        }
+        });
         response
     }
 
@@ -994,5 +1001,36 @@ mod lua_script_tests {
         assert_eq!(reader.recv().unwrap(), Event::FindBackward(re.clone()));
         lua.on_mud_input(&mut Line::from("/s test1"));
         assert_eq!(reader.recv().unwrap(), Event::FindBackward(re));
+    }
+
+    #[test]
+    fn confirm_completion() {
+        let (mut lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+                blight.on_complete(function (input)
+                    if input == "bat" then
+                        return {"batman"}
+                    elseif input == "batm" then
+                        return {"batman", "batmobile"}
+                    else
+                        return nil
+                    end
+                end)
+                "#,
+            )
+            .exec()
+            .unwrap();
+
+        assert_eq!(
+            lua.tab_complete(&"bat".to_string()),
+            Some(vec!["batman".to_string()])
+        );
+        assert_eq!(
+            lua.tab_complete(&"batm".to_string()),
+            Some(vec!["batman".to_string(), "batmobile".to_string()])
+        );
+        assert_eq!(lua.tab_complete(&"rob".to_string()), None);
     }
 }

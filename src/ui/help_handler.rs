@@ -103,7 +103,7 @@ impl HelpHandler {
             self.parse_markdown(&file_content)
         } else if plugin_help_path.exists() {
             if let Some(path) = plugin_help_path.to_str() {
-                let content = self.read_from_file(&path);
+                let content = self.read_from_file(path);
                 self.parse_markdown(&content)
             } else {
                 Event::Info(format!("Invalid helpfile for plugin: {}", file))

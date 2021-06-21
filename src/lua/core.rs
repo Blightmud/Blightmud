@@ -45,21 +45,19 @@ impl UserData for Core {
             Ok(())
         });
         methods.add_function_mut("on_protocol_enabled", |ctx, cb: mlua::Function| {
-            let globals = ctx.globals();
-            let table: Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
+            let table: Table = ctx.named_registry_value(PROTO_ENABLED_LISTENERS_TABLE)?;
             let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
             let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
-            globals.set(PROTO_ENABLED_LISTENERS_TABLE, table)?;
+            ctx.set_named_registry_value(PROTO_ENABLED_LISTENERS_TABLE, table)?;
             Ok(())
         });
         methods.add_function_mut("subneg_recv", |ctx, cb: mlua::Function| {
-            let globals = ctx.globals();
-            let table: Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
+            let table: Table = ctx.named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE)?;
             let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
             let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
-            globals.set(PROTO_SUBNEG_LISTENERS_TABLE, table)?;
+            ctx.set_named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE, table)?;
             Ok(())
         });
         methods.add_function_mut("subneg_send", |ctx, (proto, bytes): (u8, Table)| {

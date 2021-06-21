@@ -3,44 +3,10 @@
 -- provides: /lua <lua stuff>
 --
 
-local lua_debug_usage = alias.add("^/lua$", function()
-        blight.output("[!!] Usage: /lua <code>")
-end)
-
-local lua_debug_alias = alias.add("^/lua (.*)$", function(matches)
-	local f, e = load("return "..matches[2])
-	if not f then
-		f, e = assert(load(matches[2]))
-	end
-
-	local r =
-	function(...)
-		if not table.is_empty({...}) then
-			display(...)
-		end
-	end
-	r(f())
-end)
-
-function table.is_empty(t)
-	return not t or next(t) == nil
-end
-
-function display(...)
-	local arg = {...}
-	arg.n = #arg
-	if arg.n > 1 then
-		for i = 1, arg.n do
-			display(arg[i])
-		end
-	else
-		blight.output((prettywrite(arg[1], '  ') or 'nil') .. '\n')
-	end
-end
-
+local lua_keywords
 local function get_keywords ()
-	if not lua_keyword then
-		lua_keyword = {
+	if not lua_keywords then
+		lua_keywords = {
 			["and"] = true, ["break"] = true, ["do"] = true,
 			["else"] = true, ["elseif"] = true, ["end"] = true,
 			["false"] = true, ["for"] = true, ["function"] = true,
@@ -50,7 +16,7 @@ local function get_keywords ()
 			["until"] = true, ["while"] = true
 		}
 	end
-	return lua_keyword
+	return lua_keywords
 end
 
 local function quote_if_necessary (v)
@@ -64,12 +30,11 @@ local function quote_if_necessary (v)
 	return v
 end
 
-local keywords
-
 local function is_identifier (s)
-	return type(s) == 'string' and s:find('^[%a_][%w_]*$') and not keywords[s]
+	return type(s) == 'string' and s:find('^[%a_][%w_]*$') and not get_keywords()[s]
 end
 
+local prettywrite
 local function quote (s)
 	if type(s) == 'table' then
 		return prettywrite(s, '')
@@ -85,8 +50,8 @@ local function index (numkey, key)
 	return '[' .. key .. ']'
 end
 
-local append = table.insert
-function prettywrite (tbl, space, not_clever)
+prettywrite = function(tbl, space, not_clever)
+    local append = table.insert
 	if type(tbl) ~= 'table' then
 		if type(tbl) == "string" then
 			return string.format("\"%s\"\n", tostring(tbl))
@@ -99,9 +64,6 @@ function prettywrite (tbl, space, not_clever)
 		return '{}'
 	end
 
-	if not keywords then
-		keywords = get_keywords()
-	end
 	local set = ' = '
 	if space == '' then
 		set = '='
@@ -128,7 +90,7 @@ function prettywrite (tbl, space, not_clever)
 	end
 
 	local function eat_last_comma ()
-		local n, lastch = #lines
+		local n = #lines
 		local lastch = lines[n]:sub(-1, -1)
 		if lastch == ',' then
 			lines[n] = lines[n]:sub(1, -2)
@@ -189,4 +151,38 @@ function prettywrite (tbl, space, not_clever)
 	writeit(tbl, '', space)
 	eat_last_comma()
 	return table.concat(lines, #space > 0 and '\n' or '')
+end
+
+local function display(...)
+	local arg = {...}
+	arg.n = #arg
+	if arg.n > 1 then
+		for i = 1, arg.n do
+			display(arg[i])
+		end
+	else
+		blight.output((prettywrite(arg[1], '  ') or 'nil') .. '\n')
+	end
+end
+
+alias.add("^/lua$", function()
+        blight.output("[!!] Usage: /lua <code>")
+end)
+
+alias.add("^/lua (.*)$", function(matches)
+	local f, _ = load("return "..matches[2])
+	if not f then
+		f, _ = assert(load(matches[2]))
+	end
+
+	local r = function(...)
+		if not table.is_empty({...}) then
+			display(...)
+		end
+	end
+	r(f())
+end)
+
+function table.is_empty(t)
+	return not t or next(t) == nil
 end

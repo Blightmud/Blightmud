@@ -45,6 +45,11 @@ fn create_default_lua_state(
         state.set_named_registry_value(TIMED_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, state.create_table()?)?;
         state.set_named_registry_value(TIMED_NEXT_ID, 1)?;
+        state.set_named_registry_value(COMMAND_BINDING_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(PROTO_ENABLED_LISTENERS_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
 
         globals.set("blight", blight)?;
         globals.set("core", Core::new(writer.clone()))?;
@@ -60,12 +65,6 @@ fn create_default_lua_state(
         globals.set("audio", Audio {})?;
         globals.set("socket", SocketLib {})?;
         globals.set("servers", Servers {})?;
-
-        globals.set(COMMAND_BINDING_TABLE, state.create_table()?)?;
-        globals.set(PROTO_ENABLED_LISTENERS_TABLE, state.create_table()?)?;
-        globals.set(PROTO_SUBNEG_LISTENERS_TABLE, state.create_table()?)?;
-        globals.set(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
-        globals.set(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
 
         let lua_json = state
             .load(include_str!("../../resources/lua/json.lua"))
@@ -278,8 +277,9 @@ impl LuaScript {
     pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
         if let Err(msg) = (|| -> LuaResult<()> {
             self.state.set_named_registry_value(CONNECTION_ID, id)?;
-            let globals = self.state.globals();
-            let table: mlua::Table = globals.get(ON_CONNECTION_CALLBACK_TABLE)?;
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(ON_CONNECTION_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>((host, port))?;
@@ -292,8 +292,9 @@ impl LuaScript {
 
     pub fn on_disconnect(&mut self) {
         if let Err(msg) = (|| -> LuaResult<()> {
-            let globals = self.state.globals();
-            let table: mlua::Table = globals.get(ON_DISCONNECT_CALLBACK_TABLE)?;
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(ON_DISCONNECT_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>(())?;
@@ -317,8 +318,9 @@ impl LuaScript {
 
     pub fn proto_enabled(&mut self, proto: u8) {
         if let Err(msg) = (|| -> LuaResult<()> {
-            let globals = self.state.globals();
-            let table: mlua::Table = globals.get(PROTO_ENABLED_LISTENERS_TABLE)?;
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(PROTO_ENABLED_LISTENERS_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>(proto)?;
@@ -331,8 +333,9 @@ impl LuaScript {
 
     pub fn proto_subneg(&mut self, proto: u8, bytes: &[u8]) {
         if let Err(msg) = (|| -> LuaResult<()> {
-            let globals = self.state.globals();
-            let table: mlua::Table = globals.get(PROTO_SUBNEG_LISTENERS_TABLE)?;
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<_, ()>((proto, bytes.to_vec()))?;
@@ -346,7 +349,7 @@ impl LuaScript {
     pub fn check_bindings(&mut self, cmd: &str) -> bool {
         let mut response = false;
         if let Err(msg) = (|| -> LuaResult<()> {
-            let bind_table: mlua::Table = self.state.globals().get(COMMAND_BINDING_TABLE)?;
+            let bind_table: mlua::Table = self.state.named_registry_value(COMMAND_BINDING_TABLE)?;
             if let Ok(callback) = bind_table.get::<_, mlua::Function>(cmd) {
                 response = true;
                 callback.call::<_, ()>(())

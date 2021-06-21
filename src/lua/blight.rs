@@ -58,12 +58,12 @@ impl UserData for Blight {
             Ok(this.screen_dimensions)
         });
         methods.add_function("bind", |ctx, (cmd, callback): (String, mlua::Function)| {
-            let bind_table: mlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            let bind_table: mlua::Table = ctx.named_registry_value(COMMAND_BINDING_TABLE)?;
             bind_table.set(cmd.to_lowercase(), callback)?;
             Ok(())
         });
         methods.add_function("unbind", |ctx, cmd: String| {
-            let bind_table: mlua::Table = ctx.globals().get(COMMAND_BINDING_TABLE)?;
+            let bind_table: mlua::Table = ctx.named_registry_value(COMMAND_BINDING_TABLE)?;
             bind_table.set(cmd, mlua::Nil)?;
             Ok(())
         });

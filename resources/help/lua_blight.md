@@ -74,9 +74,13 @@ Allows users to insert custom tab completion logic into Blightmud
 
 - `callback`    The function that gets called on a `complete` event. 
 
+The `input` argument to the callback function is the current promptline in its
+entirety.  Eg. If user types `/connect bat<tab>` then `input` will contain
+`/connect bat`.
+
 The callback function should return a list of completions or `nil` if no
-completions were found. The completions should be complete words (prefix
-included) and not just the suffix or completion part of the word.
+completions were found. The completions should be complete lines (prefix
+included) and not just the suffix or completion part of the line.
 
 You may register multiple completion callbacks, the execution order of these is
 undefined however the default completion inside Blightmud will always be

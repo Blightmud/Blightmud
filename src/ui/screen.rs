@@ -357,7 +357,7 @@ impl UserInterface for Screen {
 
     fn print_prompt(&mut self, prompt: &Line) {
         debug!("UI: {:?}", prompt);
-        self.tts_ctrl.lock().unwrap().speak_line(&prompt);
+        self.tts_ctrl.lock().unwrap().speak_line(prompt);
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {
                 self.history.append(prompt_line);
@@ -417,13 +417,13 @@ impl UserInterface for Screen {
         }
         if let Some(print_line) = line.print_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {
-                self.print_line(&print_line, !line.flags.separate_receives);
+                self.print_line(print_line, !line.flags.separate_receives);
             } else {
                 let mut new_line = !line.flags.separate_receives;
                 let mut count = 0;
                 let cur_line = self.history.len();
-                for l in wrap_line(&print_line, self.width as usize) {
-                    self.print_line(&l, new_line);
+                for l in wrap_line(print_line, self.width as usize) {
+                    self.print_line(l, new_line);
                     new_line = true;
                     count += 1;
                 }
@@ -436,7 +436,7 @@ impl UserInterface for Screen {
 
     fn print_send(&mut self, send: &Line) {
         if let Some(line) = send.print_line() {
-            self.tts_ctrl.lock().unwrap().speak_input(&line);
+            self.tts_ctrl.lock().unwrap().speak_input(line);
             self.print_line(
                 &format!(
                     "{}{}> {}{}",
@@ -660,7 +660,7 @@ impl Screen {
     }
 
     fn print_line(&mut self, line: &str, new_line: bool) {
-        self.history.append(&line);
+        self.history.append(line);
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
@@ -796,7 +796,7 @@ fn wrap_line(line: &str, width: usize) -> Vec<&str> {
     for line in line.lines() {
         // If the line is empty just push and continue
         if line.trim().is_empty() {
-            lines.push(&line);
+            lines.push(line);
             continue;
         }
 

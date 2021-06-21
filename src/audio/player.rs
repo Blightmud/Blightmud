@@ -49,7 +49,7 @@ impl Player {
     pub fn play_music(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.music.is_none() {
             if let Some(handle) = &self.handle {
-                self.music = rodio::Sink::try_new(&handle).ok();
+                self.music = rodio::Sink::try_new(handle).ok();
             }
         }
         if let Some(music) = &self.music {
@@ -74,7 +74,7 @@ impl Player {
     pub fn play_sfx(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.sfx.is_none() {
             if let Some(handle) = &self.handle {
-                self.sfx = rodio::Sink::try_new(&handle).ok();
+                self.sfx = rodio::Sink::try_new(handle).ok();
             }
         }
         if let Some(sfx) = &self.sfx {

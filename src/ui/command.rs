@@ -4,7 +4,7 @@ use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
 use rs_complete::CompletionTree;
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::thread;
 use std::{
     io::stdin,
@@ -64,11 +64,12 @@ pub struct CommandBuffer {
     cursor_pos: usize,
     completion_tree: CompletionTree,
     completion: CompletionStepData,
+    script: Arc<Mutex<LuaScript>>,
     tts_ctrl: Arc<Mutex<TTSController>>,
 }
 
 impl CommandBuffer {
-    pub fn new(tts_ctrl: Arc<Mutex<TTSController>>) -> Self {
+    pub fn new(tts_ctrl: Arc<Mutex<TTSController>>, script: Arc<Mutex<LuaScript>>) -> Self {
         let mut completion = CompletionTree::with_inclusions(&['/', '_']);
         completion.set_min_word_len(3);
 
@@ -81,6 +82,7 @@ impl CommandBuffer {
             cursor_pos: 0,
             completion_tree: completion,
             completion: CompletionStepData::default(),
+            script,
             tts_ctrl,
         }
     }
@@ -219,12 +221,28 @@ impl CommandBuffer {
     fn tab_complete(&mut self) {
         if self.buffer.len() > 1 {
             if self.completion.is_empty() {
-                if let Some(options) = self.completion_tree.complete(&self.strbuf) {
-                    self.completion.set_options(&self.strbuf, options);
+                let mut completions = vec![];
+                if let Some(mut options) = self.script.lock().unwrap().tab_complete(&self.strbuf) {
+                    completions.append(&mut options);
                 }
+                if let Some(mut options) = self.completion_tree.complete(&self.strbuf) {
+                    completions.append(&mut options);
+                }
+
+                // Remove duplicates but preserve order of occurence
+                let mut occurences: HashSet<&String> = HashSet::new();
+                let completions = completions.iter().fold(vec![], |mut acc, word| {
+                    if !occurences.contains(word) {
+                        acc.push(word.clone());
+                    }
+                    occurences.insert(word);
+                    acc
+                });
+
+                self.completion.set_options(&self.strbuf, completions);
             }
             if let Some(comp) = self.completion.next() {
-                self.tts_ctrl.lock().unwrap().speak(&comp, true);
+                self.tts_ctrl.lock().unwrap().speak(comp, true);
                 self.buffer = comp.chars().collect();
                 self.cursor_pos = comp.len();
             }
@@ -424,9 +442,9 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
             let script = session.lua_script.clone();
             let stdin = stdin();
             let mut tts_ctrl = session.tts_ctrl.clone();
-            let mut buffer = CommandBuffer::new(tts_ctrl.clone());
+            let mut buffer = CommandBuffer::new(tts_ctrl.clone(), script.clone());
             for server in Servers::load().keys() {
-                buffer.completion_tree.insert(&server);
+                buffer.completion_tree.insert(server);
             }
             buffer
                 .completion_tree
@@ -437,7 +455,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                 buffer.history = History::load();
                 buffer.current_index = buffer.history.len();
                 for line in buffer.history.iter() {
-                    buffer.completion_tree.insert(&line);
+                    buffer.completion_tree.insert(line);
                 }
             }
 
@@ -479,22 +497,30 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
 #[cfg(test)]
 mod command_test {
 
+    use std::sync::mpsc::{channel, Receiver, Sender};
     use std::sync::{Arc, Mutex};
 
     use super::CommandBuffer;
+    use crate::lua::LuaScript;
     use crate::tts::TTSController;
+    use crate::Event;
 
     fn push_string(buffer: &mut CommandBuffer, msg: &str) {
         msg.chars().for_each(|c| buffer.push_key(c));
     }
 
-    fn get_command() -> CommandBuffer {
-        CommandBuffer::new(Arc::new(Mutex::new(TTSController::new(false))))
+    fn get_command() -> (CommandBuffer, Receiver<Event>) {
+        let (tx, rx): (Sender<Event>, Receiver<Event>) = channel();
+        let buffer = CommandBuffer::new(
+            Arc::new(Mutex::new(TTSController::new(false))),
+            Arc::new(Mutex::new(LuaScript::new(tx, (100, 100)))),
+        );
+        (buffer, rx)
     }
 
     #[test]
     fn test_editing() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
 
         push_string(&mut buffer, "test is test");
         assert_eq!(buffer.get_buffer(), "test is test");
@@ -516,7 +542,7 @@ mod command_test {
 
     #[test]
     fn test_no_zero_index_remove_crash() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         buffer.push_key('t');
         buffer.step_left();
         assert_eq!(buffer.get_pos(), 0);
@@ -526,14 +552,14 @@ mod command_test {
 
     #[test]
     fn test_no_history_empty_input() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         buffer.submit();
         assert!(buffer.history.is_empty());
     }
 
     #[test]
     fn no_duplicate_commands_in_history() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "test");
         buffer.submit();
         push_string(&mut buffer, "test");
@@ -563,7 +589,7 @@ mod command_test {
 
     #[test]
     fn test_input_navigation() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "some random words");
         buffer.step_word_left();
         assert_eq!(buffer.cursor_pos, 12);
@@ -585,7 +611,7 @@ mod command_test {
 
     #[test]
     fn test_end_start_navigation() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         assert_eq!(buffer.cursor_pos, 0);
@@ -599,7 +625,7 @@ mod command_test {
 
     #[test]
     fn test_delete_rest_of_line() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.step_word_right();
@@ -609,7 +635,7 @@ mod command_test {
 
     #[test]
     fn test_delete_from_start_of_line() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.step_word_right();
@@ -620,7 +646,7 @@ mod command_test {
 
     #[test]
     fn test_delete_right() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.step_word_right();
@@ -635,7 +661,7 @@ mod command_test {
 
     #[test]
     fn test_delete_word_left() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "some random words");
         buffer.move_to_end();
         buffer.delete_word_left();
@@ -648,7 +674,7 @@ mod command_test {
 
     #[test]
     fn test_delete_word_right() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         push_string(&mut buffer, "some random words");
         buffer.move_to_start();
         buffer.delete_word_right();
@@ -659,7 +685,7 @@ mod command_test {
 
     #[test]
     fn test_fancy_chars() {
-        let mut buffer = get_command();
+        let mut buffer = get_command().0;
         let input = "some weird chars: ÅÖÄø æĸœ→ €ßðßª“";
         push_string(&mut buffer, input);
         assert_eq!(input.chars().count(), buffer.buffer.len());
@@ -677,5 +703,15 @@ mod command_test {
         assert_eq!(human_key("ctrl-", '\u{1b}'), "ctrl-escape");
         assert_eq!(human_key("ctrl-", 'd'), "ctrl-d");
         assert_eq!(human_key("f", 'x'), "fx");
+    }
+
+    #[test]
+    fn test_completions() {
+        let mut buffer = get_command().0;
+        push_string(&mut buffer, "batman");
+        buffer.submit();
+        push_string(&mut buffer, "bat");
+        buffer.tab_complete();
+        assert_eq!(buffer.completion.options, vec!["batman".to_string()]);
     }
 }

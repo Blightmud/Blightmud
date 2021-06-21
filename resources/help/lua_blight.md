@@ -69,6 +69,36 @@ Searches for a string forward from current position
 
 ##
 
+***blight.on_complete(callback: function(input: string) -> [string] | nil)***
+Allows users to insert custom tab completion logic into Blightmud
+
+- `callback`    The function that gets called on a `complete` event. 
+
+The callback function should return a list of completions or `nil` if no
+completions were found. The completions should be complete words (prefix
+included) and not just the suffix or completion part of the word.
+
+You may register multiple completion callbacks, the execution order of these is
+undefined however the default completion inside Blightmud will always be
+executed after custom completion functions.
+
+All completions from custom functions and default completions will be
+concatenated into a list with duplicates removed (order preserved). Subsequent
+completion calls (default `tab` presses) will step through this list.
+
+### Example:
+1. User types: `bat<tab>`
+2. Completion functions are called returning `[batman, batgirl]`
+3. `batman` is inserted into users prompt
+4. User types: `<tab>`
+5. `batgirl` is inserted into users prompt
+6. User types: `<tab>`
+7. `bat` is inserted into users prompt (back to start)
+8. User types `g<tab>` (prompt is `batg`, completions are cleared)
+9. Completion functions are called returning `[batgirl]`
+
+##
+
 ***blight.quit()***
 Exit Blightmud
 

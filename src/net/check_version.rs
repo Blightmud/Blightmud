@@ -53,7 +53,7 @@ fn run(writer: Sender<Event>, current: &str, fetcher: &dyn FetchVersionInformati
             let json: serde_json::Value = json;
             let new: String = json["tag_name"].as_str().unwrap_or_default().to_string();
             let url: String = json["html_url"].as_str().unwrap_or_default().to_string();
-            if diff_versions(&current, &new) {
+            if diff_versions(current, &new) {
                 writer
                     .send(Event::Info(format!(
                         "There is a newer version of Blightmud available. (current: {}, new: {})",

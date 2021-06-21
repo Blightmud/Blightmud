@@ -92,7 +92,7 @@ impl From<String> for Line {
 
 impl From<&String> for Line {
     fn from(line: &String) -> Self {
-        let (content, clean_content, clean_utf8) = get_content_from(&line);
+        let (content, clean_content, clean_utf8) = get_content_from(line);
         Self {
             content,
             clean_content,
@@ -128,7 +128,7 @@ impl From<&Vec<u8>> for Line {
             line
         } else {
             clean_utf8 = false;
-            String::from_utf8_lossy(&line).to_mut().clone()
+            String::from_utf8_lossy(line).to_mut().clone()
         };
 
         let (content, clean_content, _) = get_content_from(&line);

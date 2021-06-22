@@ -97,18 +97,13 @@ mod test_version_diff {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
 
         fetcher.expect_fetch().times(1).returning(|| {
-            Ok(br#"{"tag_name":"v10.0.0","html_url":"http://example.com"}"#
-                .iter()
-                .cloned()
-                .collect())
+            Ok(br#"{"tag_name":"v10.0.0","html_url":"http://example.com"}"#.to_vec())
         });
 
-        run(writer.clone(), "v1.0.0", &fetcher);
+        run(writer, "v1.0.0", &fetcher);
         assert_eq!(
             reader.try_recv().unwrap(),
-            Event::Info(format!(
-                "There is a newer version of Blightmud available. (current: v1.0.0, new: v10.0.0)",
-            ))
+            Event::Info("There is a newer version of Blightmud available. (current: v1.0.0, new: v10.0.0)".to_string())
         );
         assert_eq!(
             reader.try_recv().unwrap(),
@@ -122,13 +117,10 @@ mod test_version_diff {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
 
         fetcher.expect_fetch().times(1).returning(|| {
-            Ok(br#"{"tag_name":"v1.0.0","html_url":"http://example.com"}"#
-                .iter()
-                .cloned()
-                .collect())
+            Ok(br#"{"tag_name":"v1.0.0","html_url":"http://example.com"}"#.to_vec())
         });
 
-        run(writer.clone(), "v1.0.0", &fetcher);
+        run(writer, "v1.0.0", &fetcher);
         assert!(reader.try_recv().is_err());
     }
 
@@ -140,9 +132,9 @@ mod test_version_diff {
         fetcher
             .expect_fetch()
             .times(1)
-            .returning(|| Ok(br#"{}"#.iter().cloned().collect()));
+            .returning(|| Ok(br#"{}"#.to_vec()));
 
-        run(writer.clone(), "v1.0.0", &fetcher);
+        run(writer, "v1.0.0", &fetcher);
         assert!(reader.try_recv().is_err());
     }
 
@@ -153,7 +145,7 @@ mod test_version_diff {
 
         fetcher.expect_fetch().times(1).returning(|| bail!("Error"));
 
-        run(writer.clone(), "v1.0.0", &fetcher);
+        run(writer, "v1.0.0", &fetcher);
         assert!(reader.try_recv().is_err());
     }
 

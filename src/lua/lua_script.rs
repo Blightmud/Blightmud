@@ -536,7 +536,7 @@ mod lua_script_tests {
 
     fn check_alias_match(lua: &LuaScript, mut line: Line) -> bool {
         lua.on_mud_input(&mut line);
-        line.flags.matched == true
+        line.flags.matched
     }
 
     #[test]

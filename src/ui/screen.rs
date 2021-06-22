@@ -860,7 +860,7 @@ mod screen_test {
     fn test_wrap_line() {
         let line: &'static str =
             "\x1b[34mSomething \x1b[0mthat's pretty \x1b[32mlong and annoying\x1b[0m";
-        let lines = wrap_line(&line, 11);
+        let lines = wrap_line(line, 11);
         let mut iter = lines.iter();
         assert_eq!(iter.next(), Some(&"\u{1b}[34mSomething"));
         assert_eq!(iter.next(), Some(&"\u{1b}[0mthat's"));
@@ -878,7 +878,7 @@ mod screen_test {
                 line = format!(
                     "{}{}",
                     line,
-                    std::iter::repeat(num).take(15).collect::<String>()
+                    num.repeat(15)
                 );
             }
         }
@@ -888,7 +888,7 @@ mod screen_test {
             let num = format!("{}", i % 10);
             assert_eq!(
                 line,
-                &format!("{}", std::iter::repeat(num).take(15).collect::<String>())
+                &num.repeat(15).to_string()
             );
         }
     }
@@ -932,16 +932,16 @@ mod screen_test {
         history.drain_length = 10;
         assert!(history.is_empty());
         for _ in 0..19 {
-            history.append(&"test");
+            history.append("test");
         }
         assert_eq!(history.len(), 19);
-        history.append(&"test");
+        history.append("test");
         assert_eq!(history.len(), 10);
         for _ in 0..9 {
-            history.append(&"test");
+            history.append("test");
         }
         assert_eq!(history.len(), 19);
-        history.append(&"test");
+        history.append("test");
         assert_eq!(history.len(), 10);
     }
 }

@@ -222,7 +222,7 @@ mod test_mud {
         let lua_code = r#"
         mud.output("test trigger")
         "#;
-        assert_event(&lua_code, Event::MudOutput(Line::from("test trigger")));
+        assert_event(lua_code, Event::MudOutput(Line::from("test trigger")));
     }
 
     #[test]
@@ -231,6 +231,6 @@ mod test_mud {
         mud.input("test line")
         "#;
 
-        assert_event(&lua_code, Event::ServerInput(Line::from("test line")));
+        assert_event(lua_code, Event::ServerInput(Line::from("test line")));
     }
 }

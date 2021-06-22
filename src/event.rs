@@ -335,8 +335,8 @@ mod event_test {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
         let (timer_writer, timer_reader): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
         let session = SessionBuilder::new()
-            .main_writer(writer.clone())
-            .timer_writer(timer_writer.clone())
+            .main_writer(writer)
+            .timer_writer(timer_writer)
             .screen_dimensions((80, 80))
             .build();
 
@@ -455,7 +455,7 @@ mod event_test {
             .handle_output_events(Event::MudOutput(line.clone()), &mut screen)
             .is_ok());
         assert!(handler
-            .handle_output_events(Event::Output(line.clone()), &mut screen)
+            .handle_output_events(Event::Output(line), &mut screen)
             .is_ok());
         assert!(handler
             .handle_output_events(Event::Prompt(Line::from("")), &mut screen)

@@ -101,7 +101,7 @@ mod test_timer {
         let lua = Lua::new();
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
         let backend = Backend::new(writer.clone());
-        let mut blight = Blight::new(writer.clone());
+        let mut blight = Blight::new(writer);
         let timer = Timer::new();
         blight.core_mode(true);
 
@@ -142,7 +142,7 @@ mod test_timer {
         let lua = Lua::new();
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
         let backend = Backend::new(writer.clone());
-        let mut blight = Blight::new(writer.clone());
+        let mut blight = Blight::new(writer);
         let timer = Timer::new();
         blight.core_mode(false);
 
@@ -185,7 +185,7 @@ mod test_timer {
         let lua = Lua::new();
         let (writer, _reader): (Sender<Event>, Receiver<Event>) = channel();
         let backend = Backend::new(writer.clone());
-        let mut blight = Blight::new(writer.clone());
+        let mut blight = Blight::new(writer);
         let timer = Timer::new();
         blight.core_mode(false);
 
@@ -217,7 +217,7 @@ mod test_timer {
         let lua = Lua::new();
         let (writer, _reader): (Sender<Event>, Receiver<Event>) = channel();
         let backend = Backend::new(writer.clone());
-        let mut blight = Blight::new(writer.clone());
+        let mut blight = Blight::new(writer);
         let timer = Timer::new();
         blight.core_mode(false);
 

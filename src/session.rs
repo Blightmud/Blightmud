@@ -236,8 +236,8 @@ mod session_test {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
         let (timer_writer, timer_reader): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
         let session = SessionBuilder::new()
-            .main_writer(writer.clone())
-            .timer_writer(timer_writer.clone())
+            .main_writer(writer)
+            .timer_writer(timer_writer)
             .screen_dimensions((80, 80))
             .build();
 

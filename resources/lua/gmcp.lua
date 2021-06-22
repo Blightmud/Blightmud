@@ -7,6 +7,7 @@ local function GMCP()
 		ready_listeners = {},
 		echo_gmcp = store.session_read("__echo_gmcp") == "true",
 		gmcp_ready = store.session_read("__gmcp_ready") == "true",
+        recv_cache = json.decode(store.session_read("__gmcp_recv_cache") or "{}"),
 	}
 
 	local function parse_gmcp(msg)
@@ -48,12 +49,16 @@ local function GMCP()
 	local _subneg_recv = function (proto, data)
 		if proto == OPT then
 			local msg = utf8.char(unpack(data))
-			local mod, json = parse_gmcp(msg)
+			local mod, json_data = parse_gmcp(msg)
+            self.recv_cache[mod] = json_data
+            store.session_write("__gmcp_recv_cache", json.encode(self.recv_cache))
 			if self.echo_gmcp then
 				blight.output("[GMCP]: " .. msg)
 			end
 			if self.receivers[mod] ~= nil then
-				self.receivers[mod](json)
+				for _,cb in ipairs(self.receivers[mod]) do
+                    cb(json_data)
+                end
 			end
 		end
 	end
@@ -68,7 +73,13 @@ local function GMCP()
 	end
 
 	local receive = function (mod, callback)
-		self.receivers[mod] = callback
+        if self.receivers[mod] == nil then
+            self.receivers[mod] = {}
+        end
+		table.insert(self.receivers[mod], callback)
+        if self.recv_cache[mod] ~= nil then
+            callback(self.recv_cache[mod])
+        end
 	end
 
 	local send = function (msg)

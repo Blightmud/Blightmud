@@ -875,21 +875,14 @@ mod screen_test {
         for _ in 0..1000 {
             for i in 0..10 {
                 let num = format!("{}", i);
-                line = format!(
-                    "{}{}",
-                    line,
-                    num.repeat(15)
-                );
+                line = format!("{}{}", line, num.repeat(15));
             }
         }
         let lines = wrap_line(&line, 15);
         assert_eq!(lines.len(), 1000 * 10);
         for (i, line) in lines.iter().enumerate() {
             let num = format!("{}", i % 10);
-            assert_eq!(
-                line,
-                &num.repeat(15).to_string()
-            );
+            assert_eq!(line, &num.repeat(15).to_string());
         }
     }
 

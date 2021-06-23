@@ -1237,16 +1237,16 @@ dependencies = [
 
 [[package]]
 name = "mlua"
-version = "0.5.4"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd448d3e7018f2ff38dd732a374045f5b037eb4ee477d9241d9bb8c209528c1c"
+checksum = "449624a68c1c8730604973e9f5a86eecce9dddc1ed6238ac21b94068eb8e29d4"
 dependencies = [
  "bstr",
  "cc",
- "lazy_static",
  "lua-src",
  "luajit-src",
  "num-traits",
+ "once_cell",
  "pkg-config",
 ]
 

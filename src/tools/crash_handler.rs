@@ -1,10 +1,12 @@
 use std::env;
 use std::panic;
 
+use crate::VERSION;
+
 pub fn register_panic_hook() {
     panic::set_hook(Box::new(|panic_info| {
         let meta = human_panic::Metadata {
-            version: env!("CARGO_PKG_VERSION").into(),
+            version: VERSION.into(),
             name: env!("CARGO_PKG_NAME").into(),
             authors: env!("CARGO_PKG_AUTHORS").replace(":", ", ").into(),
             homepage: env!("CARGO_PKG_HOMEPAGE").into(),

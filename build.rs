@@ -10,4 +10,29 @@ fn main() {
         String::new()
     };
     println!("cargo:rustc-env=GIT_HASH={}", git_hash);
+
+    let git_tag = if let Ok(output) = Command::new("git")
+        .args(&["describe", "--exact-match", "--tags", "HEAD"])
+        .output()
+    {
+        String::from_utf8(output.stdout).unwrap_or_default()
+    } else {
+        String::new()
+    };
+    println!("cargo:rustc-env=GIT_TAG={}", git_tag);
+
+    if git_tag.is_empty() {
+        let git_describe =
+            if let Ok(output) = Command::new("git").args(&["describe", "--tags"]).output() {
+                String::from_utf8(output.stdout).unwrap_or_default()
+            } else {
+                String::new()
+            };
+        println!(
+            "cargo:rustc-env=GIT_DESCRIBE={}",
+            format!(" ({})", git_describe.trim())
+        );
+    } else {
+        println!("cargo:rustc-env=GIT_DESCRIBE=");
+    }
 }

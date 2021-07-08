@@ -32,11 +32,9 @@ use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, 
 use net::check_latest_version;
 use tools::register_panic_hook;
 
-#[cfg(debug_assertions)]
-const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "-", env!("GIT_HASH"));
-#[cfg(not(debug_assertions))]
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-const PROJECT_NAME: &str = "Blightmud";
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), env!("GIT_DESCRIBE"));
+
+const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[cfg(not(debug_assertions))]
 const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
@@ -110,12 +108,12 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
         .unwrap()
 }
 
-fn start_logging() -> std::io::Result<()> {
-    #[cfg(not(debug_assertions))]
-    let log_level = log::LevelFilter::Info;
-
-    #[cfg(debug_assertions)]
-    let log_level = log::LevelFilter::Debug;
+fn start_logging(log_level: log::LevelFilter) -> std::io::Result<()> {
+    let log_level = if cfg!(debug_assertions) {
+        log::LevelFilter::Debug
+    } else {
+        log_level
+    };
 
     let logpath = DATA_DIR.clone().join("logs");
     std::fs::create_dir_all(&logpath)?;
@@ -148,10 +146,8 @@ fn print_version() {
     );
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
+fn setup_options() -> Options {
     let mut opts = Options::new();
-    let program = &args[0];
     opts.optopt("c", "connect", "Connect to server", "HOST:PORT");
     opts.optflag(
         "t",
@@ -166,7 +162,15 @@ fn main() {
     opts.optopt("w", "world", "Connect to a predefined world", "WORLD");
     opts.optflag("h", "help", "Print help menu");
     opts.optflag("v", "version", "Print version information");
+    opts.optflag("V", "verbose", "Enable verbose logging");
 
+    opts
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let program = &args[0];
+    let opts = setup_options();
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
         Err(f) => panic!("{}", f.to_string()),
@@ -175,15 +179,19 @@ fn main() {
     if matches.opt_present("h") {
         print_help(program, opts);
         return;
-    }
-
-    if matches.opt_present("v") {
+    } else if matches.opt_present("v") {
         print_version();
         return;
     }
 
     register_panic_hook();
-    if let Err(e) = start_logging() {
+    let log_level = if matches.opt_present("verbose") {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Info
+    };
+
+    if let Err(e) = start_logging(log_level) {
         panic!("[!!] Logging failed to start: {:?}", e);
     }
 

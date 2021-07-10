@@ -25,7 +25,7 @@ use crate::model::Servers;
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
-use crate::ui::{spawn_input_thread, Screen};
+use crate::ui::{spawn_input_thread, ReaderScreen, Screen};
 use event::EventHandler;
 use getopts::Options;
 use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY};
@@ -254,7 +254,16 @@ fn run(
     let mut event_handler = EventHandler::from(&session);
 
     let mut player = Player::new();
-    let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
+    let reader_mode = true;
+    let mut screen: Box<dyn UserInterface> = if reader_mode {
+        Box::new(ReaderScreen::new()?)
+    } else {
+        Box::new(Screen::new(
+            session.tts_ctrl.clone(),
+            settings.get(MOUSE_ENABLED)?,
+        )?)
+    };
+
     screen.setup()?;
 
     let _input_thread = spawn_input_thread(session.clone());
@@ -427,7 +436,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 info!("Clearing scripts");
                 screen.print_info("Clearing scripts...");
                 if let Ok(mut script) = session.lua_script.lock() {
-                    script.reset((screen.width, screen.height));
+                    script.reset((screen.width(), screen.height()));
                     screen.print_info("Done");
                 }
                 session.timer_writer.send(TimerEvent::Clear(true))?;
@@ -460,7 +469,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::Redraw => {
                 screen.setup()?;
                 if let Ok(mut script) = session.lua_script.lock() {
-                    script.set_dimensions((screen.width, screen.height));
+                    script.set_dimensions((screen.width(), screen.height()));
                 }
                 let prompt_input = session.prompt_input.lock().unwrap();
                 screen.print_prompt_input(&prompt_input, prompt_input.len());

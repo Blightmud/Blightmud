@@ -18,7 +18,7 @@ log = "0.4.14"
 simple-logging = "2.0.2"
 chrono = "0.4.19"
 signal-hook = "0.3.9"
-mlua =  { version = "0.6.1", features = ["lua54", "send", "vendored"] }
+mlua =  { version = "0.6.2", features = ["lua54", "send", "vendored"] }
 regex = "1.5.4"
 strip-ansi-escapes = "0.1.0"
 timer = "0.2.0"

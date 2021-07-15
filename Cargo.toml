@@ -23,7 +23,7 @@ regex = "1.5.4"
 strip-ansi-escapes = "0.1.0"
 timer = "0.2.0"
 flate2 = "1.0.20"
-mdcat = { version = "0.23.0", default-features = false }
+mdcat = { version = "0.23.1", default-features = false }
 pulldown-cmark = "0.8.0"
 syntect = "4.5.0"
 serde = { version = "1.0.126", features = ['derive'] }

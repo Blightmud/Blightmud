@@ -1,9 +1,13 @@
+use std::io::Write;
+
 #[cfg(test)]
 use mockall::automock;
 
 use crate::model::{Line, Regex};
 
 use anyhow::Result;
+
+use super::history::History;
 
 #[cfg_attr(test, automock)]
 pub trait UserInterface {
@@ -29,6 +33,7 @@ pub trait UserInterface {
     fn flush(&mut self);
     fn width(&self) -> u16;
     fn height(&self) -> u16;
+    fn destroy(self: Box<Self>) -> Result<(Box<dyn Write>, History)>;
 }
 
 pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {

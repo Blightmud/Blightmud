@@ -163,6 +163,7 @@ fn setup_options() -> Options {
     opts.optflag("h", "help", "Print help menu");
     opts.optflag("v", "version", "Print version information");
     opts.optflag("V", "verbose", "Enable verbose logging");
+    opts.optflag("r", "reader-mode", "Force screen reader friendly mode");
 
     opts
 }
@@ -226,7 +227,12 @@ fn main() {
             .unwrap();
     }
 
-    let settings = Settings::try_load().expect("Error loading settings.ron");
+    let mut settings = Settings::try_load().expect("Error loading settings.ron");
+    if matches.opt_present("reader-mode") {
+        settings.set(READER_MODE, true).unwrap();
+        settings.save();
+    }
+
     let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)

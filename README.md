@@ -18,41 +18,46 @@ create my own similar mud client. Even though I don't play much muds these
 days.
 
 ## The name?
-The client is written in rust. Some navigating throught the thesaurus brought me to the word **blight** and here we are.
+
+The client is written in rust. Some navigating throught the thesaurus brought
+me to the word **blight** and here we are.
 
 ## Features
+
 - Completely terminal based (mac and linux)
 - Telnet:
-    - TLS connections
-    - GMCP support
-    - MSDP support
-    - MCCP2 support (compress2)
+  - TLS connections
+  - GMCP support
+  - MSDP support
+  - MCCP2 support (compress2)
 - Lua scripting:
-    - Output and sending
-    - Aliases
-    - Triggers
-    - Timers
-    - Customizing status bar
-    - Persistent storage
-    - Session storage
-    - Keybindings
-    - Audio playback (music/ambiance and sound effects)
-    - Text-To-Speech
-    - Mouse scrolling (experimental)
-    - Plugins
-    - Sockets (TCP connecting and sending only)
+  - Output and sending
+  - Aliases
+  - Triggers
+  - Timers
+  - Customizing status bar
+  - Persistent storage
+  - Session storage
+  - Keybindings
+  - Audio playback (music/ambiance and sound effects)
+  - Text-To-Speech
+  - Mouse scrolling (experimental)
+  - Plugins
+  - Sockets (TCP connecting and sending only)
 - Low resource and fast
 - In client help and manuals
 - Native Text-To-Speech functionality (optional compile)
 - Text searching
 - Tab completion
 - Split view when scrolling
+- Screen reader friendly mode
 
 ## Demo
 
 ![screenshot](resources/images/demo.gif)
 
 ## Compiling
+
 - Install rust
 - Run `cargo build` to compile
 - Run `cargo run` to run
@@ -71,6 +76,7 @@ commands that might fit your system:
 - Arch      `pacman -S speech-dispatcher espeak`
 
 ## Installation
+
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page
 - **Archlinux/Manjaro**  : Packages are available on AUR
 - **Mac/Homebrew**       : We have a homebrew tap `brew tap Blightmud/blightmud` (intel only, if you're on Apple Silcon (darwin) compiling is the best option)
@@ -78,10 +84,16 @@ commands that might fit your system:
 - **Windows**            : No native windows support but Blightmud runs fine under WSL
 
 ## Support, questions and help
+
 Join our [discord](https://discord.gg/qnxgUC5)
 
 ## Contributing
+
 All contributions are welcome. Check out [contributing guidelines](CONTRIBUTING.md).
 
 ## Side notes
-This is my first rust project that has actually grown a bit. Some things might look silly but thanks to rust they should still be safe. Anywho. If you find some antipattern where you have a better idea I'm more then happy to se the PR and learn some more rustier ways.
+
+This is my first rust project that has actually grown a bit. Some things might
+look silly but thanks to rust they should still be safe. Anywho. If you find
+some antipattern where you have a better idea I'm more then happy to se the PR
+and learn some more rustier ways.

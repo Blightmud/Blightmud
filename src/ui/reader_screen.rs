@@ -1,7 +1,10 @@
 use std::io::Write;
 
 use anyhow::Result;
-use termion::{clear, cursor::Goto};
+use termion::{
+    clear,
+    cursor::{self, Goto},
+};
 
 use crate::model::{Line, Regex};
 
@@ -13,6 +16,7 @@ pub struct ReaderScreen {
     scroll_data: ScrollData,
     pub width: u16,
     pub height: u16,
+    prompt_input: Option<(String, usize)>,
 }
 
 impl ReaderScreen {
@@ -25,32 +29,55 @@ impl ReaderScreen {
             scroll_data,
             width,
             height,
+            prompt_input: None,
         })
     }
 
-    pub fn print(&mut self, line: &str, new_line: bool) {
-        write!(
-            self.screen,
-            "{}{}{}{}{}",
-            Goto(1, self.height),
-            clear::AfterCursor,
-            line,
-            if new_line { "\n" } else { "" },
-            Goto(1, self.height)
-        )
-        .unwrap();
+    fn print(&mut self, line: &str, new_line: bool) {
+        self.history.append(line);
+        if !self.scroll_data.active {
+            write!(
+                self.screen,
+                "{}{}{}{}{}",
+                Goto(1, self.height),
+                clear::AfterCursor,
+                line,
+                if new_line { "\n" } else { "" },
+                Goto(1, self.height)
+            )
+            .unwrap();
+            self.print_typed_prompt();
+        }
     }
 
-    pub fn print_line(&mut self, line: &Line) {
-        writeln!(
-            self.screen,
-            "{}{}{}{}",
-            Goto(1, self.height),
-            clear::AfterCursor,
-            line,
-            Goto(1, self.height)
-        )
-        .unwrap();
+    fn print_line(&mut self, line: &Line) {
+        self.history.append(&line.to_string());
+        if !self.scroll_data.active {
+            writeln!(
+                self.screen,
+                "{}{}{}{}",
+                Goto(1, self.height),
+                clear::AfterCursor,
+                line,
+                Goto(1, self.height)
+            )
+            .unwrap();
+            self.print_typed_prompt();
+        }
+    }
+
+    fn print_typed_prompt(&mut self) {
+        if let Some((line, pos)) = &self.prompt_input {
+            write!(
+                self.screen,
+                "{}{}{}{}",
+                Goto(1, self.height),
+                clear::AfterCursor,
+                line,
+                Goto(*pos as u16 + 1, self.height)
+            )
+            .unwrap();
+        }
     }
 
     fn draw_scroll(&mut self) -> Result<()> {
@@ -86,6 +113,11 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_output(&mut self, line: &Line) {
+        if line.flags.separate_receives {
+            if let Some(prefix) = self.history.remove_last() {
+                debug_assert!(line.print_line().unwrap().starts_with(&prefix));
+            }
+        }
         if let Some(print_line) = line.print_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {
                 self.print(print_line, !line.flags.separate_receives);
@@ -104,15 +136,8 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
-        write!(
-            self.screen,
-            "{}{}{}{}",
-            Goto(1, self.height),
-            clear::AfterCursor,
-            input,
-            Goto(pos as u16 + 1, self.height)
-        )
-        .unwrap();
+        self.prompt_input = Some((input.to_string(), pos));
+        self.print_typed_prompt();
     }
 
     fn print_send(&mut self, send: &Line) {
@@ -130,23 +155,28 @@ impl UserInterface for ReaderScreen {
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
+            write!(
+                self.screen,
+                "{}",
+                cursor::Goto(1, output_start_index as u16)
+            )?;
             for i in 0..output_range {
                 let index = output_start_index + i as usize;
-                let line_no = i + 1;
-                write!(
+                writeln!(
                     self.screen,
                     "{}{}{}",
-                    termion::cursor::Goto(1, line_no),
-                    termion::clear::CurrentLine,
+                    clear::AfterCursor,
                     self.history.inner[index],
+                    cursor::Goto(1, self.height)
                 )?;
             }
         } else {
             for line in &self.history.inner {
-                write!(
+                writeln!(
                     self.screen,
-                    "{}\n{}",
-                    termion::cursor::Goto(1, self.height - 1),
+                    "{}{}{}",
+                    Goto(1, self.height),
+                    clear::AfterCursor,
                     line,
                 )?;
             }

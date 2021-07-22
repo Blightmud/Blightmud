@@ -54,18 +54,20 @@ impl ReaderScreen {
     }
 
     fn print_line(&mut self, line: &Line) {
-        self.history.append(&line.to_string());
-        if !self.scroll_data.active {
-            writeln!(
-                self.screen,
-                "{}{}{}{}",
-                Goto(1, self.height),
-                clear::AfterCursor,
-                line,
-                Goto(1, self.height)
-            )
-            .unwrap();
-            self.print_typed_prompt();
+        if let Some(print_line) = &line.print_line() {
+            self.history.append(print_line);
+            if !self.scroll_data.active {
+                writeln!(
+                    self.screen,
+                    "{}{}{}{}",
+                    Goto(1, self.height),
+                    clear::AfterCursor,
+                    print_line,
+                    Goto(1, self.height)
+                )
+                .unwrap();
+                self.print_typed_prompt();
+            }
         }
     }
 

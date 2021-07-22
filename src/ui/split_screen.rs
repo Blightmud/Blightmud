@@ -1,10 +1,10 @@
 use super::history::History;
 use super::scroll_data::ScrollData;
+use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::{model::Line, model::Regex, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
 use log::debug;
-use std::{error, fmt};
 use std::{io::Write, sync::Arc, sync::Mutex};
 use termion::color::{self, Bg, Fg};
 use termion::cursor;
@@ -13,27 +13,6 @@ use super::UserInterface;
 
 const OUTPUT_START_LINE: u16 = 2;
 const SCROLL_LIVE_BUFFER_SIZE: u16 = 10;
-
-#[derive(Debug)]
-struct TerminalSizeError;
-
-impl fmt::Display for TerminalSizeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Failed to retrieve valid dimensions for terminal")
-    }
-}
-
-impl error::Error for TerminalSizeError {
-    fn description(&self) -> &str {
-        "Failed to retrieve valid dimensions for terminal"
-    }
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-    fn cause(&self) -> Option<&dyn error::Error> {
-        None
-    }
-}
 
 struct StatusArea {
     start_line: u16,

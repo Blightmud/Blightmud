@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{error, fmt, io::Write};
 
 #[cfg(test)]
 use mockall::automock;
@@ -8,6 +8,27 @@ use crate::model::{Line, Regex};
 use anyhow::Result;
 
 use super::history::History;
+
+#[derive(Debug)]
+pub struct TerminalSizeError;
+
+impl fmt::Display for TerminalSizeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to retrieve valid dimensions for terminal")
+    }
+}
+
+impl error::Error for TerminalSizeError {
+    fn description(&self) -> &str {
+        "Failed to retrieve valid dimensions for terminal"
+    }
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+    fn cause(&self) -> Option<&dyn error::Error> {
+        None
+    }
+}
 
 #[cfg_attr(test, automock)]
 pub trait UserInterface {

@@ -8,7 +8,10 @@ use termion::{
 
 use crate::model::{Line, Regex};
 
-use super::{history::History, scroll_data::ScrollData, wrap_line, UserInterface};
+use super::{
+    history::History, scroll_data::ScrollData, user_interface::TerminalSizeError, wrap_line,
+    UserInterface,
+};
 
 pub struct ReaderScreen {
     screen: Box<dyn Write>,
@@ -100,8 +103,17 @@ impl ReaderScreen {
 impl UserInterface for ReaderScreen {
     fn setup(&mut self) -> Result<()> {
         self.reset()?;
-        self.reset_scroll()?;
-        Ok(())
+        let (width, height) = termion::terminal_size()?;
+        if width > 0 && height > 0 {
+            self.width = width;
+            self.height = height;
+            self.reset_scroll()?;
+            self.screen.flush()?;
+            write!(self.screen, "{}", termion::cursor::Goto(1, height),)?;
+            Ok(())
+        } else {
+            Err(TerminalSizeError.into())
+        }
     }
 
     fn print_error(&mut self, output: &str) {
@@ -199,11 +211,21 @@ impl UserInterface for ReaderScreen {
         Ok(())
     }
 
-    fn scroll_lock(&mut self, _lock: bool) -> Result<()> {
-        Ok(())
+    fn scroll_lock(&mut self, lock: bool) -> Result<()> {
+        self.scroll_data.lock(lock)
     }
 
-    fn scroll_to(&mut self, _row: usize) -> Result<()> {
+    fn scroll_to(&mut self, row: usize) -> Result<()> {
+        if self.history.len() > self.height as usize - 1 {
+            let max_start_index = self.history.inner.len() as i32 - self.height as i32 - 1;
+            if max_start_index > 0 && row < max_start_index as usize {
+                self.scroll_data.active = true;
+                self.scroll_data.pos = row;
+                self.draw_scroll()?;
+            } else {
+                self.reset_scroll()?;
+            }
+        }
         Ok(())
     }
 
@@ -229,11 +251,32 @@ impl UserInterface for ReaderScreen {
         Ok(())
     }
 
-    fn find_up(&mut self, _pattern: &Regex) -> Result<()> {
+    fn find_up(&mut self, pattern: &Regex) -> Result<()> {
+        let scroll_range = self.height as usize - 1;
+        let pos = if self.scroll_data.active {
+            self.scroll_data.pos
+        } else if self.history.len() > scroll_range {
+            self.history.len() - scroll_range
+        } else {
+            self.history.len()
+        };
+        if let Some(line) = self.history.find_backward(pattern, pos) {
+            self.scroll_data.hilite = Some(pattern.clone());
+            self.scroll_to(0.max(line) as usize)?;
+        }
         Ok(())
     }
 
-    fn find_down(&mut self, _pattern: &Regex) -> Result<()> {
+    fn find_down(&mut self, pattern: &Regex) -> Result<()> {
+        if self.scroll_data.active {
+            if let Some(line) = self
+                .history
+                .find_forward(pattern, self.history.len().min(self.scroll_data.pos + 1))
+            {
+                self.scroll_data.hilite = Some(pattern.clone());
+                self.scroll_to(line.min(self.history.len() - 1))?;
+            }
+        }
         Ok(())
     }
 

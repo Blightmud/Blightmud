@@ -135,9 +135,15 @@ impl UserInterface for ReaderScreen {
                 self.print(print_line, !line.flags.separate_receives);
             } else {
                 let mut new_line = !line.flags.separate_receives;
+                let mut count = 0;
+                let cur_line = self.history.len();
                 for l in wrap_line(print_line, self.width as usize) {
                     self.print(l, new_line);
                     new_line = true;
+                    count += 1;
+                }
+                if self.scroll_data.scroll_lock && count > self.height {
+                    self.scroll_to(cur_line).ok();
                 }
             }
         }

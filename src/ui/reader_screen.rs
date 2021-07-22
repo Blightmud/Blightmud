@@ -152,7 +152,9 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_prompt(&mut self, prompt: &Line) {
-        self.print_line(&Line::from(format!("{}", prompt)));
+        if !prompt.is_empty() {
+            self.print_line(prompt);
+        }
     }
 
     fn print_prompt_input(&mut self, input: &str, pos: usize) {

@@ -5,7 +5,7 @@ use log::{error, info};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
-use ui::{HelpHandler, UserInterface};
+use ui::HelpHandler;
 
 mod audio;
 mod event;
@@ -21,14 +21,14 @@ mod ui;
 
 use crate::event::{Event, QuitMethod};
 use crate::io::SaveData;
-use crate::model::Servers;
+use crate::model::{Servers, READER_MODE};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
-use crate::ui::{spawn_input_thread, Screen};
+use crate::ui::spawn_input_thread;
 use event::EventHandler;
 use getopts::Options;
-use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, MOUSE_ENABLED, SAVE_HISTORY};
+use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, SAVE_HISTORY};
 use net::check_latest_version;
 use tools::register_panic_hook;
 
@@ -163,6 +163,7 @@ fn setup_options() -> Options {
     opts.optflag("h", "help", "Print help menu");
     opts.optflag("v", "version", "Print version information");
     opts.optflag("V", "verbose", "Enable verbose logging");
+    opts.optflag("r", "reader-mode", "Force screen reader friendly mode");
 
     opts
 }
@@ -226,7 +227,12 @@ fn main() {
             .unwrap();
     }
 
-    let settings = Settings::try_load().expect("Error loading settings.ron");
+    let mut settings = Settings::try_load().expect("Error loading settings.ron");
+    if matches.opt_present("reader-mode") {
+        settings.set(READER_MODE, true).unwrap();
+        settings.save();
+    }
+
     let dimensions = termion::terminal_size().unwrap();
     let session = SessionBuilder::new()
         .main_writer(main_writer)
@@ -236,7 +242,7 @@ fn main() {
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .build();
 
-    if let Err(error) = run(main_thread_read, session, settings) {
+    if let Err(error) = run(main_thread_read, session) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
     }
@@ -247,14 +253,14 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
-    settings: Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
     let mut player = Player::new();
-    let mut screen = Screen::new(session.tts_ctrl.clone(), settings.get(MOUSE_ENABLED)?)?;
+    let mut screen = ui::create_screen(&session, false)?;
+
     screen.setup()?;
 
     let _input_thread = spawn_input_thread(session.clone());
@@ -341,11 +347,13 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::Speak(msg, interupt) => session.tts_ctrl.lock().unwrap().speak(&msg, interupt),
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
-            Event::SettingChanged(name, value) => {
-                if name == SAVE_HISTORY {
-                    session.set_save_history(value);
+            Event::SettingChanged(name, value) => match name.as_str() {
+                SAVE_HISTORY => session.set_save_history(value),
+                READER_MODE => {
+                    screen = ui::switch_screen(screen, &mut session, value)?;
                 }
-            }
+                _ => {}
+            },
             Event::StartLogging(world, force) => {
                 if Settings::load().get(LOGGING_ENABLED)? || force {
                     session.start_logging(&world)
@@ -427,7 +435,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 info!("Clearing scripts");
                 screen.print_info("Clearing scripts...");
                 if let Ok(mut script) = session.lua_script.lock() {
-                    script.reset((screen.width, screen.height));
+                    script.reset((screen.width(), screen.height()));
                     screen.print_info("Done");
                 }
                 session.timer_writer.send(TimerEvent::Clear(true))?;
@@ -460,7 +468,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::Redraw => {
                 screen.setup()?;
                 if let Ok(mut script) = session.lua_script.lock() {
-                    script.set_dimensions((screen.width, screen.height));
+                    script.set_dimensions((screen.width(), screen.height()));
                 }
                 let prompt_input = session.prompt_input.lock().unwrap();
                 screen.print_prompt_input(&prompt_input, prompt_input.len());

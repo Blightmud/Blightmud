@@ -17,7 +17,8 @@ pub const SAVE_HISTORY: &str = "save_history";
 pub const CONFIRM_QUIT: &str = "confirm_quit";
 pub const SCROLL_SPLIT: &str = "scroll_split";
 pub const SCROLL_LOCK: &str = "scroll_lock";
-pub const SETTINGS: [&str; 7] = [
+pub const READER_MODE: &str = "reader_mode";
+pub const SETTINGS: [&str; 8] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
@@ -25,6 +26,7 @@ pub const SETTINGS: [&str; 7] = [
     CONFIRM_QUIT,
     SCROLL_SPLIT,
     SCROLL_LOCK,
+    READER_MODE,
 ];
 
 impl Settings {
@@ -56,6 +58,7 @@ impl Default for Settings {
         settings.insert(CONFIRM_QUIT.to_string(), true);
         settings.insert(SCROLL_SPLIT.to_string(), true);
         settings.insert(SCROLL_LOCK.to_string(), true);
+        settings.insert(READER_MODE.to_string(), false);
         Self { settings }
     }
 }

@@ -111,7 +111,7 @@ impl EventHandler {
     pub fn handle_server_events(
         &mut self,
         event: Event,
-        screen: &mut dyn UserInterface,
+        screen: &mut Box<dyn UserInterface>,
         transmit_writer: &mut Option<Sender<TelnetData>>,
     ) -> Result {
         match event {
@@ -237,7 +237,11 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_output_events(&self, event: Event, screen: &mut dyn UserInterface) -> Result {
+    pub fn handle_output_events(
+        &self,
+        event: Event,
+        screen: &mut Box<dyn UserInterface>,
+    ) -> Result {
         self.handle_logging(event.clone())?;
         match event {
             Event::MudOutput(mut line) => {
@@ -282,7 +286,11 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_scroll_events(&self, event: Event, screen: &mut dyn UserInterface) -> Result {
+    pub fn handle_scroll_events(
+        &self,
+        event: Event,
+        screen: &mut Box<dyn UserInterface>,
+    ) -> Result {
         match event {
             Event::ScrollLock(enabled) => {
                 screen.scroll_lock(enabled)?;
@@ -386,6 +394,7 @@ mod event_test {
             .with(eq(false))
             .returning(|_| Ok(()));
         let handler = EventHandler::from(&session);
+        let mut screen: Box<dyn UserInterface> = Box::new(screen);
         assert!(handler
             .handle_scroll_events(Event::ScrollUp, &mut screen)
             .is_ok());
@@ -422,6 +431,7 @@ mod event_test {
             .withf(|other| *other == Regex::new("test").unwrap())
             .returning(|_| Ok(()));
         let handler = EventHandler::from(&session);
+        let mut screen: Box<dyn UserInterface> = Box::new(screen);
         assert!(handler
             .handle_scroll_events(Event::FindBackward(re.clone()), &mut screen)
             .is_ok());
@@ -451,6 +461,7 @@ mod event_test {
         screen.expect_print_info().times(1).return_const(());
 
         let line = Line::from("Output line");
+        let mut screen: Box<dyn UserInterface> = Box::new(screen);
         assert!(handler
             .handle_output_events(Event::MudOutput(line.clone()), &mut screen)
             .is_ok());

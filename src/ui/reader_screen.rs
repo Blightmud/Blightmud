@@ -6,7 +6,10 @@ use termion::{
     cursor::{self, Goto},
 };
 
-use crate::model::{Line, Regex};
+use crate::{
+    model::{Line, Regex},
+    ui::{DisableOriginMode, ResetScrollRegion, ScrollRegion},
+};
 
 use super::{
     history::History, scroll_data::ScrollData, user_interface::TerminalSizeError, wrap_line,
@@ -17,72 +20,98 @@ pub struct ReaderScreen {
     screen: Box<dyn Write>,
     history: History,
     scroll_data: ScrollData,
-    pub width: u16,
-    pub height: u16,
+    output_line: u16,
+    prompt_line: u16,
+    width: u16,
+    height: u16,
     prompt_input: Option<(String, usize)>,
 }
 
 impl ReaderScreen {
     pub fn new(screen: Box<dyn Write>, history: History) -> Result<Self> {
         let (width, height) = termion::terminal_size()?;
+        let output_line = height - 1;
+        let prompt_line = height;
         let scroll_data = ScrollData::new();
         Ok(Self {
             screen,
             history,
             scroll_data,
+            output_line,
+            prompt_line,
             width,
             height,
             prompt_input: None,
         })
     }
 
+    #[inline]
     fn print(&mut self, line: &str, new_line: bool) {
         self.history.append(line);
         if !self.scroll_data.active {
             write!(
                 self.screen,
-                "{}{}{}{}{}",
-                Goto(1, self.height),
-                clear::AfterCursor,
-                line,
+                "{}{}{}{}",
+                Goto(1, self.height - 1),
                 if new_line { "\n" } else { "" },
+                line,
                 Goto(1, self.height)
             )
             .unwrap();
-            self.print_typed_prompt();
         }
     }
 
+    #[inline]
     fn print_line(&mut self, line: &Line) {
         if let Some(print_line) = &line.print_line() {
             self.history.append(print_line);
             if !self.scroll_data.active {
                 writeln!(
                     self.screen,
-                    "{}{}{}{}",
-                    Goto(1, self.height),
-                    clear::AfterCursor,
+                    "{}\n{}{}",
+                    Goto(1, self.height - 1),
                     print_line,
                     Goto(1, self.height)
                 )
                 .unwrap();
-                self.print_typed_prompt();
             }
         }
     }
 
-    fn print_typed_prompt(&mut self) {
-        if let Some((line, pos)) = &self.prompt_input {
-            write!(
-                self.screen,
-                "{}{}{}{}",
-                Goto(1, self.height),
-                clear::AfterCursor,
-                line,
-                Goto(*pos as u16 + 1, self.height)
-            )
-            .unwrap();
-        }
+    #[inline]
+    fn print_prompt_input(&mut self, line: &str, pos: usize) {
+        write!(
+            self.screen,
+            "{}{}{}{}",
+            Goto(1, self.prompt_line),
+            clear::AfterCursor,
+            line,
+            Goto(pos as u16 + 1, self.prompt_line)
+        )
+        .unwrap();
+    }
+
+    #[inline]
+    fn print_prompt_input_suffix(&mut self, line: &str, start: usize, end: usize) {
+        write!(
+            self.screen,
+            "{}{}{}",
+            Goto(start as u16 + 1, self.prompt_line),
+            line,
+            Goto(end as u16 + 1, self.prompt_line)
+        )
+        .unwrap();
+    }
+
+    #[inline]
+    fn trim_prompt_input(&mut self, pos: usize) {
+        write!(
+            self.screen,
+            "{}{}",
+            Goto(pos as u16 + 1, self.prompt_line),
+            clear::AfterCursor,
+        )
+        .unwrap();
     }
 
     fn draw_scroll(&mut self) -> Result<()> {
@@ -107,11 +136,19 @@ impl UserInterface for ReaderScreen {
         self.reset()?;
         let (width, height) = termion::terminal_size()?;
         if width > 0 && height > 0 {
+            self.output_line = height - 1;
+            self.prompt_line = height;
             self.width = width;
             self.height = height;
             self.reset_scroll()?;
+            write!(
+                self.screen,
+                "{}{}{}",
+                ScrollRegion(1, self.output_line),
+                DisableOriginMode,
+                cursor::Goto(1, self.prompt_line),
+            )?;
             self.screen.flush()?;
-            write!(self.screen, "{}", termion::cursor::Goto(1, height),)?;
             Ok(())
         } else {
             Err(TerminalSizeError.into())
@@ -144,7 +181,7 @@ impl UserInterface for ReaderScreen {
                     new_line = true;
                     count += 1;
                 }
-                if self.scroll_data.scroll_lock && count > self.height {
+                if self.scroll_data.scroll_lock && count > self.output_line {
                     self.scroll_to(cur_line).ok();
                 }
             }
@@ -157,9 +194,21 @@ impl UserInterface for ReaderScreen {
         }
     }
 
+    // This is fancy logic to make 'tdsr' less noisy
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
+        if let Some((existing, orig)) = self.prompt_input.clone() {
+            if input.starts_with(&existing) {
+                let input = input[orig..].to_owned();
+                self.print_prompt_input_suffix(&input, orig, pos);
+            } else if existing.starts_with(input) {
+                self.trim_prompt_input(pos);
+            } else {
+                self.print_prompt_input(input, pos);
+            }
+        } else {
+            self.print_prompt_input(input, pos);
+        }
         self.prompt_input = Some((input.to_string(), pos));
-        self.print_typed_prompt();
     }
 
     fn print_send(&mut self, send: &Line) {
@@ -167,13 +216,13 @@ impl UserInterface for ReaderScreen {
     }
 
     fn reset(&mut self) -> Result<()> {
-        write!(self.screen, "{}", termion::clear::All)?;
+        write!(self.screen, "{}{}", termion::clear::All, ResetScrollRegion)?;
         Ok(())
     }
 
     fn reset_scroll(&mut self) -> Result<()> {
         self.scroll_data.reset(&self.history)?;
-        let output_range = self.height - 1;
+        let output_range = self.output_line;
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
@@ -189,7 +238,7 @@ impl UserInterface for ReaderScreen {
                     "{}{}{}",
                     clear::AfterCursor,
                     self.history.inner[index],
-                    cursor::Goto(1, self.height)
+                    cursor::Goto(1, self.prompt_line)
                 )?;
             }
         } else {
@@ -197,7 +246,7 @@ impl UserInterface for ReaderScreen {
                 writeln!(
                     self.screen,
                     "{}{}{}",
-                    Goto(1, self.height),
+                    Goto(1, self.prompt_line),
                     clear::AfterCursor,
                     line,
                 )?;
@@ -208,7 +257,7 @@ impl UserInterface for ReaderScreen {
 
     fn scroll_down(&mut self) -> Result<()> {
         if self.scroll_data.active {
-            let output_range = self.height as i32 - 1;
+            let output_range = self.output_line as i32;
             let max_start_index = self.history.inner.len() as i32 - output_range;
             let new_start_index = self.scroll_data.pos + 5;
             if new_start_index >= max_start_index as usize {
@@ -226,8 +275,8 @@ impl UserInterface for ReaderScreen {
     }
 
     fn scroll_to(&mut self, row: usize) -> Result<()> {
-        if self.history.len() > self.height as usize - 1 {
-            let max_start_index = self.history.inner.len() as i32 - self.height as i32 - 1;
+        if self.history.len() > self.output_line as usize {
+            let max_start_index = self.history.inner.len() as i32 - self.output_line as i32;
             if max_start_index > 0 && row < max_start_index as usize {
                 self.scroll_data.active = true;
                 self.scroll_data.pos = row;
@@ -240,7 +289,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn scroll_top(&mut self) -> Result<()> {
-        if self.history.inner.len() as u16 >= self.height - 1 {
+        if self.history.inner.len() as u16 >= self.output_line {
             self.scroll_data.active = true;
             self.scroll_data.pos = 0;
             self.draw_scroll()?;
@@ -249,7 +298,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn scroll_up(&mut self) -> Result<()> {
-        let output_range = self.height as usize - 1;
+        let output_range = self.output_line as usize;
         if self.history.inner.len() > output_range {
             if !self.scroll_data.active {
                 self.scroll_data.active = true;
@@ -262,7 +311,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn find_up(&mut self, pattern: &Regex) -> Result<()> {
-        let scroll_range = self.height as usize - 1;
+        let scroll_range = self.output_line as usize;
         let pos = if self.scroll_data.active {
             self.scroll_data.pos
         } else if self.history.len() > scroll_range {

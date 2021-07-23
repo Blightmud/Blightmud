@@ -123,8 +123,8 @@ impl ReaderScreen {
                 "{}{}{}{}",
                 termion::cursor::Goto(1, i + 1),
                 termion::clear::CurrentLine,
-                termion::style::Reset,
                 line,
+                cursor::Goto(1, self.prompt_line),
             )?;
         }
         Ok(())
@@ -140,7 +140,6 @@ impl UserInterface for ReaderScreen {
             self.prompt_line = height;
             self.width = width;
             self.height = height;
-            self.reset_scroll()?;
             write!(
                 self.screen,
                 "{}{}{}",
@@ -148,6 +147,7 @@ impl UserInterface for ReaderScreen {
                 DisableOriginMode,
                 cursor::Goto(1, self.prompt_line),
             )?;
+            self.reset_scroll()?;
             self.screen.flush()?;
             Ok(())
         } else {
@@ -226,29 +226,26 @@ impl UserInterface for ReaderScreen {
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
-            write!(
-                self.screen,
-                "{}",
-                cursor::Goto(1, output_start_index as u16)
-            )?;
             for i in 0..output_range {
                 let index = output_start_index + i as usize;
-                writeln!(
+                write!(
                     self.screen,
-                    "{}{}{}",
+                    "{}{}{}{}",
+                    cursor::Goto(1, 1 + i),
                     clear::AfterCursor,
                     self.history.inner[index],
-                    cursor::Goto(1, self.prompt_line)
+                    cursor::Goto(1, self.prompt_line),
                 )?;
             }
         } else {
             for line in &self.history.inner {
-                writeln!(
+                write!(
                     self.screen,
-                    "{}{}{}",
-                    Goto(1, self.prompt_line),
+                    "{}\n{}{}{}",
+                    Goto(1, self.output_line),
                     clear::AfterCursor,
                     line,
+                    cursor::Goto(1, self.prompt_line),
                 )?;
             }
         }

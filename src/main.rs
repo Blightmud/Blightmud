@@ -316,7 +316,10 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
         if quit_pending {
             quit_pending = matches!(
                 event,
-                Event::Quit(_) | Event::UserInputBuffer(..) | Event::TimedEvent(..)
+                Event::Quit(_)
+                    | Event::UserInputBuffer(..)
+                    | Event::TimedEvent(..)
+                    | Event::TimerTick(..)
             );
         }
 
@@ -451,6 +454,14 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::TimedEvent(id) => {
                 if let Ok(mut script) = session.lua_script.lock() {
                     script.run_timed_function(id);
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
+                }
+            }
+            Event::TimerTick(millis) => {
+                if let Ok(mut script) = session.lua_script.lock() {
+                    script.tick(millis);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });

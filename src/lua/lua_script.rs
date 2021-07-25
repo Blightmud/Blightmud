@@ -45,6 +45,8 @@ fn create_default_lua_state(
         state.set_named_registry_value(TIMED_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, state.create_table()?)?;
         state.set_named_registry_value(TIMED_NEXT_ID, 1)?;
+        state.set_named_registry_value(TIMER_TICK_CALLBACK_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(TIMER_TICK_CALLBACK_TABLE_CORE, state.create_table()?)?;
         state.set_named_registry_value(COMMAND_BINDING_TABLE, state.create_table()?)?;
         state.set_named_registry_value(PROTO_ENABLED_LISTENERS_TABLE, state.create_table()?)?;
         state.set_named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE, state.create_table()?)?;
@@ -238,6 +240,24 @@ impl LuaScript {
                     }
                 }
             }
+        });
+    }
+
+    pub fn tick(&mut self, millis: u128) {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            let core_tick_table: mlua::Table = self
+                .state
+                .named_registry_value(TIMER_TICK_CALLBACK_TABLE_CORE)?;
+            let tick_table: mlua::Table =
+                self.state.named_registry_value(TIMER_TICK_CALLBACK_TABLE)?;
+            let pairs = core_tick_table
+                .pairs::<mlua::Integer, mlua::Function>()
+                .chain(tick_table.pairs::<mlua::Integer, mlua::Function>());
+            for pair in pairs.flatten() {
+                pair.1.call::<_, ()>(millis)?;
+            }
+
+            Ok(())
         });
     }
 

@@ -8,13 +8,14 @@ Aliases allow you to trigger a callback function when a certain command is typed
 Creates an alias which when triggered runs the provided callback function.
 
 - `regex`    A regular expression to match as the command name.
-- `callback` A Lua function that gets called when the regex is matched.
+- `callback` Lua function to call when match is found. Parameters are a table
+             of matches and the line that got matched (See `/help line`)
 - Returns an Alias object (see below)
 
 ##
 
 ***alias.get(id)***
-Fetches an alias by ud
+Fetches an alias by id
 
 - `id`      The id of the alias to get
 - Returns the Alias with the given id or `nil` if not found

@@ -1116,6 +1116,38 @@ mod lua_script_tests {
     }
 
     #[test]
+    fn confirm_proto_enabled() {
+        let (mut lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+        subneg = 0
+        core.on_protocol_enabled(function (proto) subneg = proto end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+        lua.proto_enabled(201);
+        assert_eq!(lua.state.globals().get::<_, u32>("subneg").unwrap(), 201);
+    }
+
+    #[test]
+    fn confirm_proto_subneg() {
+        let (mut lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+        subneg = 0
+        core.subneg_recv(function (proto, _) subneg = proto end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+        lua.proto_subneg(201, &[]);
+        assert_eq!(lua.state.globals().get::<_, u32>("subneg").unwrap(), 201);
+    }
+
+    #[test]
     fn confirm_completion() {
         let (mut lua, _reader) = get_lua();
         lua.state

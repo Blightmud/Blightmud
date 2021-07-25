@@ -4,6 +4,7 @@ use std::{
     collections::HashMap,
     sync::mpsc::{channel, Receiver, Sender},
     thread,
+    time::Instant,
 };
 use timer::{Guard, MessageTimer};
 
@@ -11,6 +12,7 @@ use timer::{Guard, MessageTimer};
 pub enum TimerEvent {
     Create(Duration, Option<u32>, u32, bool),
     Trigger(u32),
+    Tick,
     Remove(u32),
     Clear(bool),
     Quit,
@@ -97,10 +99,13 @@ pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEven
     thread::Builder::new()
         .name("timer-monitor-thread".to_string())
         .spawn(move || {
-            let mut schedule = Schedule::new(main_thread_writer);
+            let mut schedule = Schedule::new(main_thread_writer.clone());
             let receiver = receiver;
             let sender = thread_sender;
             let timer = MessageTimer::new(sender);
+            let start = Instant::now();
+            let _tick_guard =
+                timer.schedule_repeating(Duration::milliseconds(100), TimerEvent::Tick);
             loop {
                 if let Ok(event) = receiver.recv() {
                     match event {
@@ -111,6 +116,11 @@ pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEven
                         }
                         TimerEvent::Trigger(cbid) => {
                             schedule.run_job(cbid);
+                        }
+                        TimerEvent::Tick => {
+                            main_thread_writer
+                                .send(Event::TimerTick(start.elapsed().as_millis()))
+                                .unwrap();
                         }
                         TimerEvent::Remove(cbid) => {
                             schedule.remove_job(cbid);

@@ -49,3 +49,13 @@ end)
 ***timer.clear()***
 
 Removes all timers
+
+##
+
+***timer.on_tick(callback)***
+
+Will execute the provided callback every 100ms. The callback may take one
+argument which will be the amount of milliseconds that have passed since
+Blightmud was started.
+
+- `callback` The callback function

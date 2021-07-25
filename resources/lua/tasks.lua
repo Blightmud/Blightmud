@@ -167,7 +167,7 @@ local function run_task(task)
 end
 
 
-timer.add(0.1, 0, function()
+timer.on_tick(function (millis)
     local somethingRan = false
     for task, timespec in pairs(tasks) do
         if timespec.time < os.time() and not timespec.idle then

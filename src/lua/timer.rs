@@ -3,7 +3,10 @@ use mlua::{Lua, UserData, UserDataMethods};
 use super::{
     backend::Backend,
     blight::Blight,
-    constants::{BACKEND, TIMED_CALLBACK_TABLE, TIMED_CALLBACK_TABLE_CORE, TIMED_NEXT_ID},
+    constants::{
+        BACKEND, TIMED_CALLBACK_TABLE, TIMED_CALLBACK_TABLE_CORE, TIMED_NEXT_ID,
+        TIMER_TICK_CALLBACK_TABLE, TIMER_TICK_CALLBACK_TABLE_CORE,
+    },
 };
 use crate::event::Event;
 use chrono::Duration;
@@ -82,6 +85,18 @@ impl UserData for Timer {
             backend.writer.send(Event::RemoveTimer(timer_idx)).unwrap();
             Ok(())
         });
+        methods.add_function("on_tick", |ctx, func: mlua::Function| {
+            let core_mode = is_core_mode(ctx)?;
+            let tick_table: mlua::Table = if core_mode {
+                ctx.named_registry_value(TIMER_TICK_CALLBACK_TABLE_CORE)?
+            } else {
+                ctx.named_registry_value(TIMER_TICK_CALLBACK_TABLE)?
+            };
+            let lua_id: mlua::Integer = ctx.named_registry_value(TIMED_NEXT_ID)?;
+            tick_table.raw_set(lua_id, func)?;
+            ctx.set_named_registry_value(TIMED_NEXT_ID, lua_id + 1)?;
+            Ok(())
+        });
     }
 }
 
@@ -90,7 +105,10 @@ mod test_timer {
     use super::{Backend, Blight, Timer};
     use crate::{
         event::Event,
-        lua::constants::{BACKEND, TIMED_CALLBACK_TABLE, TIMED_CALLBACK_TABLE_CORE, TIMED_NEXT_ID},
+        lua::constants::{
+            BACKEND, TIMED_CALLBACK_TABLE, TIMED_CALLBACK_TABLE_CORE, TIMED_NEXT_ID,
+            TIMER_TICK_CALLBACK_TABLE, TIMER_TICK_CALLBACK_TABLE_CORE,
+        },
     };
     use chrono::Duration;
     use mlua::Lua;
@@ -242,5 +260,73 @@ mod test_timer {
         lua.load("timer.remove(1)").exec().unwrap();
         let ids: Vec<u32> = lua.load("return timer.get_ids()").call(()).unwrap();
         assert_eq!(ids, vec![2]);
+    }
+
+    #[test]
+    fn test_tick_core() {
+        let lua = Lua::new();
+        let (writer, _reader): (Sender<Event>, Receiver<Event>) = channel();
+        let backend = Backend::new(writer.clone());
+        let mut blight = Blight::new(writer);
+        let timer = Timer::new();
+        blight.core_mode(true);
+
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMER_TICK_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMER_TICK_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
+        lua.globals().set("blight", blight.clone()).unwrap();
+        lua.globals().set("timer", timer).unwrap();
+        lua.load(r#"timer.on_tick(function (millis) end)"#)
+            .exec()
+            .unwrap();
+        let core_ticks: mlua::Table = lua
+            .named_registry_value(TIMER_TICK_CALLBACK_TABLE_CORE)
+            .unwrap();
+        assert_eq!(core_ticks.len().unwrap(), 1);
+        let ticks: mlua::Table = lua.named_registry_value(TIMER_TICK_CALLBACK_TABLE).unwrap();
+        assert_eq!(ticks.len().unwrap(), 0);
+        let lua_id: i32 = lua.named_registry_value(TIMED_NEXT_ID).unwrap();
+        assert_eq!(lua_id, 2);
+    }
+
+    #[test]
+    fn test_tick_no_core() {
+        let lua = Lua::new();
+        let (writer, _reader): (Sender<Event>, Receiver<Event>) = channel();
+        let backend = Backend::new(writer.clone());
+        let mut blight = Blight::new(writer);
+        let timer = Timer::new();
+        blight.core_mode(false);
+
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMER_TICK_CALLBACK_TABLE_CORE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMER_TICK_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(TIMED_NEXT_ID, 1).unwrap();
+        lua.globals().set("blight", blight.clone()).unwrap();
+        lua.globals().set("timer", timer).unwrap();
+        lua.load(r#"timer.on_tick(function (millis) end)"#)
+            .exec()
+            .unwrap();
+        let core_ticks: mlua::Table = lua
+            .named_registry_value(TIMER_TICK_CALLBACK_TABLE_CORE)
+            .unwrap();
+        assert_eq!(core_ticks.len().unwrap(), 0);
+        let ticks: mlua::Table = lua.named_registry_value(TIMER_TICK_CALLBACK_TABLE).unwrap();
+        assert_eq!(ticks.len().unwrap(), 1);
+        let lua_id: i32 = lua.named_registry_value(TIMED_NEXT_ID).unwrap();
+        assert_eq!(lua_id, 2);
     }
 }

@@ -410,6 +410,7 @@ mod lua_script_tests {
     use super::LuaScript;
     use super::CONNECTION_ID;
     use crate::event::QuitMethod;
+    use crate::lua::constants::TIMED_CALLBACK_TABLE;
     use crate::model::{Connection, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
     use std::{
@@ -1021,6 +1022,97 @@ mod lua_script_tests {
         assert_eq!(reader.recv().unwrap(), Event::FindBackward(re.clone()));
         lua.on_mud_input(&mut Line::from("/s test1"));
         assert_eq!(reader.recv().unwrap(), Event::FindBackward(re));
+    }
+
+    #[test]
+    fn confirm_tick_callback() {
+        let (mut lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+        total_millis = 0
+        timer.on_tick(function (millis) total_millis = total_millis + millis end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+        lua.tick(100);
+        assert_eq!(
+            lua.state.globals().get::<_, u128>("total_millis").unwrap(),
+            100
+        );
+        lua.tick(100);
+        assert_eq!(
+            lua.state.globals().get::<_, u128>("total_millis").unwrap(),
+            200
+        );
+        lua.tick(100);
+        assert_eq!(
+            lua.state.globals().get::<_, u128>("total_millis").unwrap(),
+            300
+        );
+    }
+
+    #[test]
+    fn confirm_quit_callback() {
+        let (lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+        quit = false
+        blight.on_quit(function () quit = true end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+        assert!(!lua.state.globals().get::<_, bool>("quit").unwrap());
+        lua.on_quit();
+        assert!(lua.state.globals().get::<_, bool>("quit").unwrap());
+    }
+
+    #[test]
+    fn confirm_timed_function() {
+        let (mut lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+        run = false
+        id = timer.add(1, 1, function () run = true end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+        assert!(!lua.state.globals().get::<_, bool>("run").unwrap());
+        let id = lua.state.globals().get::<_, u32>("id").unwrap();
+        lua.run_timed_function(id);
+        assert!(lua.state.globals().get::<_, bool>("run").unwrap());
+    }
+
+    #[test]
+    fn confirm_remove_timed_function() {
+        let (mut lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+        id = timer.add(1, 1, function () run = true end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+        let id = lua.state.globals().get::<_, u32>("id").unwrap();
+        assert!(lua
+            .state
+            .named_registry_value::<_, mlua::Table>(TIMED_CALLBACK_TABLE)
+            .unwrap()
+            .contains_key(id)
+            .unwrap());
+        lua.remove_timed_function(id);
+        assert!(!lua
+            .state
+            .named_registry_value::<_, mlua::Table>(TIMED_CALLBACK_TABLE)
+            .unwrap()
+            .contains_key(id)
+            .unwrap());
     }
 
     #[test]

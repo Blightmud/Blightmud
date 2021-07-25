@@ -30,11 +30,11 @@ local function on_connect(host, port)
 	store.session_write("cur_port", tostring(port))
 
 	if host == "the-best-mud.org" then
-		blight.load("~/scripts/the-best-mud/main.lua")
+		script.load("~/scripts/the-best-mud/main.lua")
 	elseif host == "spacemud.net" then
-		blight.load("~/scripts/spacemud/main.lua")
+		script.load("~/scripts/spacemud/main.lua")
 	elseif host == "fantasymud.ly" then
-		blight.load("~/scripts/fantasymud/main.lua")
+		script.load("~/scripts/fantasymud/main.lua")
 	end 
 end
 

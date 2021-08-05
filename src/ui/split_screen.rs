@@ -288,6 +288,9 @@ impl UserInterface for SplitScreen {
     }
 
     fn print_send(&mut self, send: &Line) {
+        if self.scroll_data.active {
+            self.reset_scroll().ok();
+        }
         if let Some(line) = send.print_line() {
             self.tts_ctrl.lock().unwrap().speak_input(line);
             let line = &format!(

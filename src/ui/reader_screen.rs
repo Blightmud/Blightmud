@@ -212,6 +212,9 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_send(&mut self, send: &Line) {
+        if self.scroll_data.active {
+            self.reset_scroll().ok();
+        }
         self.print_line(send);
     }
 

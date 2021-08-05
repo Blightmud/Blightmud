@@ -34,8 +34,16 @@ impl History {
         self.drain();
     }
 
-    pub fn remove_last(&mut self) -> Option<String> {
-        self.inner.pop()
+    pub fn remove_last_if_prefix(&mut self, line: &str) -> Option<String> {
+        if let Some(prefix) = self.inner.last() {
+            if line.starts_with(prefix) {
+                self.inner.pop()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     pub fn len(&self) -> usize {

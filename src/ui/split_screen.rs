@@ -4,7 +4,6 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::{model::Line, model::Regex, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
-use log::debug;
 use std::{io::Write, sync::Arc, sync::Mutex};
 use termion::color::{self, Bg, Fg};
 use termion::cursor;
@@ -209,11 +208,11 @@ impl UserInterface for SplitScreen {
     }
 
     fn print_output(&mut self, line: &Line) {
-        debug!("UI: {:?}", line);
+        //debug!("UI: {:?}", line);
         self.tts_ctrl.lock().unwrap().speak_line(line);
         if line.flags.separate_receives {
-            if let Some(prefix) = self.history.remove_last() {
-                debug_assert!(line.print_line().unwrap().starts_with(&prefix));
+            if let Some(print_line) = line.print_line() {
+                self.history.remove_last_if_prefix(print_line);
             }
         }
         if let Some(print_line) = line.print_line() {
@@ -236,7 +235,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn print_prompt(&mut self, prompt: &Line) {
-        debug!("UI: {:?}", prompt);
+        //debug!("UI: {:?}", prompt);
         self.tts_ctrl.lock().unwrap().speak_line(prompt);
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {

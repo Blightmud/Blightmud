@@ -165,8 +165,8 @@ impl UserInterface for ReaderScreen {
 
     fn print_output(&mut self, line: &Line) {
         if line.flags.separate_receives {
-            if let Some(prefix) = self.history.remove_last() {
-                debug_assert!(line.print_line().unwrap().starts_with(&prefix));
+            if let Some(print_line) = line.print_line() {
+                self.history.remove_last_if_prefix(print_line);
             }
         }
         if let Some(print_line) = line.print_line() {

@@ -126,9 +126,11 @@ impl TelnetHandler {
     pub fn handle_prompt(&mut self) {
         if self.mode == TelnetMode::UnterminatedPrompt {
             if let Ok(mut output_buffer) = self.output_buffer.lock() {
-                let prompt = output_buffer.buffer_to_prompt(false);
-                debug!("END prompt: {}", prompt);
-                self.main_writer.send(Event::Prompt(prompt)).unwrap();
+                if output_buffer.len() < 500 {
+                    let prompt = output_buffer.buffer_to_prompt(false);
+                    debug!("END prompt: {}", prompt);
+                    self.main_writer.send(Event::Prompt(prompt)).unwrap();
+                }
             }
         }
     }

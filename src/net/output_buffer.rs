@@ -61,7 +61,10 @@ impl OutputBuffer {
                     cut_len
                 } else {
                     let mut line = Line::from(&self.buffer[last_cut..i]);
-                    if self.telnet_mode == TelnetMode::UnterminatedPrompt && last_cut == 0 {
+                    if self.telnet_mode == TelnetMode::UnterminatedPrompt
+                        && last_cut == 0
+                        && existing_buffer_len > 0
+                    {
                         line.flags.separate_receives =
                             i >= existing_buffer_len && existing_buffer_len > 0;
                         debug!(
@@ -97,6 +100,10 @@ impl OutputBuffer {
     #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.buffer.len()
     }
 }
 

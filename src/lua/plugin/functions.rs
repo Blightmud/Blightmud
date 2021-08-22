@@ -14,7 +14,7 @@ pub fn get_plugin_dir() -> PathBuf {
     plugin_dir
 }
 
-pub fn add_plugin(main_writer: Sender<Event>, url: &str) {
+pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) {
     let url = url.to_string();
     std::thread::spawn(move || {
         if let Some(name) = url.split('/').last() {
@@ -38,6 +38,28 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str) {
                 main_writer
                     .send(Event::Info(format!("Downloaded plugin: {}", name)))
                     .unwrap();
+                if with_submodules {
+                    main_writer
+                        .send(Event::Info(format!("Getting the submodules for {}.", name)))
+                        .unwrap();
+                    if let Ok(repo) = Repository::discover(&dest) {
+                        match update_submodules(repo) {
+                            Ok(()) => main_writer
+                                .send(Event::Info(format!("Plugin retrieval succeeded.")))
+                                .unwrap(),
+                            Err(e) => main_writer
+                                .send(Event::Error(format!(
+                                    "problems updating the submodules for this plugin: {}",
+                                    e
+                                )))
+                                .unwrap(),
+                        }
+                    } else {
+                        main_writer
+                            .send(Event::Error(format!("Problem opening repository:.")))
+                            .unwrap();
+                    }
+                }
             }
         } else {
             main_writer
@@ -126,4 +148,19 @@ pub fn get_plugins() -> Vec<String> {
         }
     }
     plugins
+}
+fn update_submodules(repository: Repository) -> Result<()> {
+    match repository.submodules() {
+        Ok(sms) => {
+            for mut sm in sms {
+                if let Err(e) = sm.update(true, None) {
+                    bail!("Problem updating the plugin: {}.", e);
+                }
+            }
+        }
+        Err(e) => {
+            bail!("Error getting access to the submodules: {}", e)
+        }
+    }
+    Ok(())
 }

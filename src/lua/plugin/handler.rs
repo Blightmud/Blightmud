@@ -20,10 +20,10 @@ impl Handler {
 
 impl UserData for Handler {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.add_function("add", |ctx, url: String| {
+        methods.add_function("add", |ctx, (url, with_submodules): (String, bool)| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             let writer = backend.writer;
-            add_plugin(writer, &url);
+            add_plugin(writer, &url, with_submodules);
             Ok(())
         });
         methods.add_function(

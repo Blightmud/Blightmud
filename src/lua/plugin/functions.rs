@@ -175,12 +175,19 @@ fn update_submodules(repository: Repository, should_initialize: bool) -> Result<
         Ok(sms) => {
             for mut sm in sms {
                 if let Err(e) = sm.update(should_initialize, None) {
-                    bail!("Problem updating the submodule: {}.", e);
+                    match e.message() {
+                        "submodule is not initialized" => {
+                            continue;
+                        }
+                        _ => {
+                            bail!("Problem updating the submodule: {}.", e);
+                        }
+                    }
                 }
             }
         }
         Err(e) => {
-            bail!("Error getting access to the submodules: {}", e)
+            bail!("Error getting access to the submodules: {}", e);
         }
     }
     Ok(())

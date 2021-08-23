@@ -43,7 +43,7 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) 
                         .send(Event::Info(format!("Getting the submodules for {}.", name)))
                         .unwrap();
                     if let Ok(repo) = Repository::discover(&dest) {
-                        match update_submodules(repo) {
+                        match update_submodules(repo, true) {
                             Ok(()) => main_writer
                                 .send(Event::Info(format!("Plugin retrieval succeeded.")))
                                 .unwrap(),
@@ -106,6 +106,27 @@ pub fn update_plugin(main_writer: Sender<Event>, name: &str) {
             main_writer
                 .send(Event::Info(format!("Updated plugin: {}", &name)))
                 .unwrap();
+            // Given that the reset hard cleaned out the repo, we need to remake it.
+            if let Ok(repo) = Repository::discover(get_plugin_dir().join(&name)) {
+                // Now we need to account for the submodules
+                main_writer
+                    .send(Event::Info(format!("Updating the plugin's submodules.")))
+                    .unwrap();
+                match update_submodules(repo, false) {
+                    Ok(()) => main_writer
+                        .send(Event::Info(format!(
+                            "The update of the submodules was successful."
+                        )))
+                        .unwrap(),
+                    Err(e) => main_writer
+                        .send(Event::Error(format!("Error updating submodules; {}", e)))
+                        .unwrap(),
+                }
+            } else {
+                main_writer
+                    .send(Event::Error(format!("Failed to open the repository.")))
+                    .unwrap();
+            }
         }
     });
 }
@@ -149,12 +170,12 @@ pub fn get_plugins() -> Vec<String> {
     }
     plugins
 }
-fn update_submodules(repository: Repository) -> Result<()> {
+fn update_submodules(repository: Repository, should_initialize: bool) -> Result<()> {
     match repository.submodules() {
         Ok(sms) => {
             for mut sm in sms {
-                if let Err(e) = sm.update(true, None) {
-                    bail!("Problem updating the plugin: {}.", e);
+                if let Err(e) = sm.update(should_initialize, None) {
+                    bail!("Problem updating the submodule: {}.", e);
                 }
             }
         }

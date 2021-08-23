@@ -215,7 +215,9 @@ impl UserInterface for ReaderScreen {
         if self.scroll_data.active {
             self.reset_scroll().ok();
         }
-        self.print_line(send);
+        if let Some(print_line) = send.print_line() {
+            self.history.append(print_line);
+        }
     }
 
     fn reset(&mut self) -> Result<()> {

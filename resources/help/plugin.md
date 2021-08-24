@@ -6,7 +6,7 @@ of lua scripts between users. It's all based off of git.
 The following macros exist to help manually adding and loading plugins.
 
 - `/plugins`                    List installed plugins
-- `/add_plugin <url|path> -r|--recursive`      Install a plugin through a git url or file path
+- `/add_plugin <url|path>`      Install a plugin through a git url or file path
 - `/remove_plugin <name>`       Uninstall a plugin
 - `/update_plugin <name>`       Update a plugin
 - `/load_plugin <name>`         Load a plugin

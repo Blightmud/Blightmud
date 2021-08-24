@@ -5,17 +5,12 @@ alias.add("^/plugins$", function ()
     end
 end)
 
-alias.add("^/add_plugin (.*?)( -r| --recursive)?$", function (matches)
+alias.add("^/add_plugin (.*?)$", function (matches)
     if #matches == 1 or matches[2] == "" then
-        print("USAGE: /add_plugin <url|path> -r|--recursive")
+        print("USAGE: /add_plugin <url|path>")
     else
         local path = matches[2]
-        local want_submodules = matches[3]
-        if want_submodules == " -r" or want_submodules == " --recursive" then
-            plugin.add(path, true)
-        else
-            plugin.add(path, false)
-        end
+        plugin.add(path, true)
     end
 end)
 

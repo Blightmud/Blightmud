@@ -10,9 +10,10 @@ alias.add("^/add_plugin (.*?)$", function (matches)
         print("USAGE: /add_plugin <url|path>")
     else
         local path = matches[2]
-        plugin.add(path)
+        plugin.add(path, true)
     end
 end)
+
 
 alias.add("^/enable_plugin (.*)$", function (matches)
     plugin.enable(matches[2])

@@ -23,10 +23,11 @@ scripting.
 
 ##
 
-***plugin.add(url_or_path)***
-Fetches a plugin to your local machine.
+***plugin.add(url_or_path, with_submodules)***
+Fetches a plugin to your local machine. If with_submodules is true, it will fetch the top layer of submodules as well (useful if, say, a plugin adds assets such as sound to the repository).
 
 - `url_or_path`     The path or url to install the plugin from
+- `with_submodules` also fetches the top layer of submodules (be warned that this could increase the fetch time)
 
 ##
 
@@ -50,7 +51,7 @@ Returns a list of all installed plugins
 ##
 
 ***plugin.update(name)***
-Updates a plugin
+Updates a plugin (note that if you hadn't cloned it recursively, the uninitialized submodules will be passed over)
 
 - `name`    The name of the plugin
 

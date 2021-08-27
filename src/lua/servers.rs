@@ -22,6 +22,7 @@ impl UserData for Server {
                     "host" => Ok(this.connection.host.clone().to_lua(ctx)?),
                     "port" => Ok(this.connection.port.to_lua(ctx)?),
                     "tls" => Ok(this.connection.tls.to_lua(ctx)?),
+                    "verify_cert" => Ok(this.connection.verify_cert.to_lua(ctx)?),
                     _ => Err(mlua::Error::external(format!("Invalid index: {}", key))),
                 }
             },
@@ -50,7 +51,9 @@ impl UserData for Servers {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_function(
             "add",
-            |_, (name, host, port, tls): (String, String, u16, bool)| -> mlua::Result<()> {
+            |_,
+             (name, host, port, tls, verify): (String, String, u16, bool, Option<bool>)|
+             -> mlua::Result<()> {
                 let mut servers = ServerLoader::get()?;
 
                 #[allow(clippy::map_entry)]
@@ -60,7 +63,12 @@ impl UserData for Servers {
                         name
                     )))
                 } else {
-                    let connection = Connection { host, port, tls };
+                    let connection = Connection {
+                        host,
+                        port,
+                        tls,
+                        verify_cert: verify.unwrap_or(false),
+                    };
                     servers.insert(name, connection);
                     servers.save();
                     Ok(())
@@ -140,6 +148,7 @@ mod test_servers {
                     host: "test.com".to_string(),
                     port: 4000,
                     tls: false,
+                    verify_cert: false,
                 },
             );
             Ok(servers)

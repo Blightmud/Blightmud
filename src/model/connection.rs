@@ -10,15 +10,19 @@ use std::path::PathBuf;
 pub struct Connection {
     pub host: String,
     pub port: u16,
+    #[serde(default)]
     pub tls: bool,
+    #[serde(default)]
+    pub verify_cert: bool,
 }
 
 impl Connection {
-    pub fn new(host: &str, port: u16, tls: bool) -> Self {
+    pub fn new(host: &str, port: u16, tls: bool, verify_cert: bool) -> Self {
         Self {
             host: host.to_owned(),
             port,
             tls,
+            verify_cert,
         }
     }
 }
@@ -27,8 +31,8 @@ impl fmt::Display for Connection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Host: {}, Port: {} TLS: {}",
-            self.host, self.port, self.tls
+            "Host: {}, Port: {} TLS: {} Verify: {}",
+            self.host, self.port, self.tls, self.verify_cert
         )
     }
 }
@@ -52,15 +56,15 @@ mod test_connection {
 
     #[test]
     fn confirm_disp() {
-        let conn = Connection::new("host.com", 8080, true);
+        let conn = Connection::new("host.com", 8080, true, true);
         assert_eq!(
             format!("{}", conn),
-            "Host: host.com, Port: 8080 TLS: true".to_string()
+            "Host: host.com, Port: 8080 TLS: true Verify: true".to_string()
         );
-        let conn = Connection::new("host.com", 4000, false);
+        let conn = Connection::new("host.com", 4000, false, false);
         assert_eq!(
             format!("{}", conn),
-            "Host: host.com, Port: 4000 TLS: false".to_string()
+            "Host: host.com, Port: 4000 TLS: false Verify: false".to_string()
         );
     }
 }

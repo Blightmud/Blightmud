@@ -14,27 +14,27 @@ Available topics:
 
 Helpfiles can also be viewed [online](https://github.com/Blightmud/Blightmud/tree/master/resources/help)
 
-## Basic commands:
+## Basic commands
 
-- `/connect <host> <port> [tls]`                : Connect to a given mud server
-- `/connect <name>`                             : Connect to a saved server
-- `/add_server <name> <host> <port> [tls]`      : Add a saved server
-- `/remove_server <name>`                       : Remove a saved server
-- `/list_servers, /ls`                          : List all saved servers
-- `/load <path/to/luafile>`                     : Load a script file
-- `/lua <code>`                                 : Execute Lua code
-- `/disconnect`, `/dc`                          : Disconnect from server
-- `/reconnect`, `/rc`                           : Reconnect to last/current server
-- `/quit`, `/q`                                 : Exit program
-- `/help`                                       : Help information
+- `/connect <host> <port> [<tls> <verify>]`           : Connect to a given mud server
+- `/connect <name>`                                   : Connect to a saved server
+- `/add_server <name> <host> <port> [<tls> <verify>]` : Add a saved server
+- `/remove_server <name>`                             : Remove a saved server
+- `/list_servers, /ls`                                : List all saved servers
+- `/load <path/to/luafile>`                           : Load a script file
+- `/lua <code>`                                       : Execute Lua code
+- `/disconnect`, `/dc`                                : Disconnect from server
+- `/reconnect`, `/rc`                                 : Reconnect to last/current server
+- `/quit`, `/q`                                       : Exit program
+- `/help`                                             : Help information
 
-## Additional macros:
+## Additional macros
 
 - `/test <line>`    : Send a line of text as if it was received from the mud (good for testing triggers)
 - `/aliases`        : List all aliases and their status
 - `/triggers`       : List all triggers and their status
 
-## Default keybindings:
+## Default keybindings
 
 - `PgUp`/`PgDn`      : Scroll output view
 - `End`              : Go to bottom of output view

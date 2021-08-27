@@ -47,14 +47,23 @@ impl UserData for Mud {
                 .unwrap();
             Ok(())
         });
-        methods.add_function("connect", |ctx, (host, port, tls): (String, u16, bool)| {
-            let backend: Backend = ctx.named_registry_value(BACKEND)?;
-            backend
-                .writer
-                .send(Event::Connect(Connection { host, port, tls }))
-                .unwrap();
-            Ok(())
-        });
+        methods.add_function(
+            "connect",
+            |ctx, (host, port, tls, verify): (String, u16, bool, Option<bool>)| {
+                let backend: Backend = ctx.named_registry_value(BACKEND)?;
+                let verify_cert = if tls { verify.unwrap_or(true) } else { false };
+                backend
+                    .writer
+                    .send(Event::Connect(Connection {
+                        host,
+                        port,
+                        tls,
+                        verify_cert,
+                    }))
+                    .unwrap();
+                Ok(())
+            },
+        );
         methods.add_function("disconnect", |ctx, ()| {
             let conn_id: u16 = ctx.named_registry_value(CONNECTION_ID).unwrap_or_default();
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
@@ -171,6 +180,7 @@ mod test_mud {
                 host: "hostname".to_string(),
                 port: 99,
                 tls: false,
+                verify_cert: false,
             }),
         );
         assert_event(
@@ -179,6 +189,7 @@ mod test_mud {
                 host: "hostname".to_string(),
                 port: 99,
                 tls: false,
+                verify_cert: false,
             }),
         );
         assert_event(
@@ -187,6 +198,25 @@ mod test_mud {
                 host: "hostname".to_string(),
                 port: 99,
                 tls: true,
+                verify_cert: true,
+            }),
+        );
+        assert_event(
+            "mud.connect(\"hostname\", 99, true, true)",
+            Event::Connect(Connection {
+                host: "hostname".to_string(),
+                port: 99,
+                tls: true,
+                verify_cert: true,
+            }),
+        );
+        assert_event(
+            "mud.connect(\"hostname\", 99, true, false)",
+            Event::Connect(Connection {
+                host: "hostname".to_string(),
+                port: 99,
+                tls: true,
+                verify_cert: false,
             }),
         );
     }

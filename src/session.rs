@@ -38,17 +38,20 @@ pub struct Session {
 
 #[cfg_attr(test, automock)]
 impl Session {
-    pub fn connect(&mut self, host: &str, port: u16, tls: bool) -> bool {
+    pub fn connect(&mut self, host: &str, port: u16, tls: bool, verify_cert: bool) -> bool {
         let mut connected = false;
         let mut conn_id = 0u16;
         if let Ok(mut connection) = self.connection.lock() {
-            connected = match connection.connect(host, port, tls) {
+            connected = match connection.connect(host, port, tls, verify_cert) {
                 Ok(_) => {
                     conn_id = connection.id;
                     true
                 }
                 Err(err) => {
                     debug!("Failed to connect: {}", err);
+                    self.main_writer
+                        .send(Event::Error(format!("{}", err)))
+                        .unwrap();
                     false
                 }
             };
@@ -101,6 +104,11 @@ impl Session {
     pub fn tls(&self) -> bool {
         let connection = self.connection.lock().unwrap();
         connection.tls
+    }
+
+    pub fn verify_cert(&self) -> bool {
+        let connection = self.connection.lock().unwrap();
+        connection.verify_cert
     }
 
     pub fn start_logging(&self, host: &str) {

@@ -4,14 +4,15 @@ This module allows you to persist frequently used servers in Blightmud.
 
 ##
 
-***servers.add(name, host, port[, tls])***
+***servers.add(name, host, port[, tls, verify])***
 Saves a server to disk. If a server with the provided name already exists
 the call will error. You can catch the error using `pcall()`
 
 - `name`    A name for the server
 - `host`    The server host
 - `port`    The server port
-- `tls`     Is the connection TLS, boolean (optional)
+- `tls`     Is the connection TLS, boolean *(optional)*
+- `verify`  Verify the tls cert, boolean (default: true) *(optional)*
 
 ##
 
@@ -43,6 +44,7 @@ Server = {
     name="The name",
     host="The host",
     port=4000,
-    tls=false
+    tls=false,
+    verify_cert=true
 }
 ```

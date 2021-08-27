@@ -147,9 +147,14 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::Connect(Connection { host, port, tls }) => {
+            Event::Connect(Connection {
+                host,
+                port,
+                tls,
+                verify_cert,
+            }) => {
                 self.session.disconnect();
-                if self.session.connect(&host, port, tls) {
+                if self.session.connect(&host, port, tls, verify_cert) {
                     let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
                     spawn_receive_thread(self.session.clone());
                     spawn_transmit_thread(self.session.clone(), reader);
@@ -198,10 +203,11 @@ impl EventHandler {
                 let host = self.session.host();
                 let port = self.session.port();
                 let tls = self.session.tls();
+                let verify = self.session.verify_cert();
                 if !host.is_empty() && !port > 0 {
                     self.session
                         .main_writer
-                        .send(Event::Connect(Connection::new(&host, port, tls)))?;
+                        .send(Event::Connect(Connection::new(&host, port, tls, verify)))?;
                 } else {
                     screen.print_error("Reconnect to what?");
                 }

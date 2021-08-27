@@ -20,6 +20,7 @@ pub struct MudConnection {
     pub host: String,
     pub port: u16,
     pub tls: bool,
+    pub verify_cert: bool,
 }
 
 lazy_static! {
@@ -39,6 +40,7 @@ impl MudConnection {
             host: "0.0.0.0".to_string(),
             port: 4000,
             tls: false,
+            verify_cert: false,
         }
     }
 
@@ -58,18 +60,22 @@ impl MudConnection {
         }
     }
 
-    pub fn connect(&mut self, host: &str, port: u16, tls: bool) -> Result<()> {
+    pub fn connect(&mut self, host: &str, port: u16, tls: bool, verify_cert: bool) -> Result<()> {
         self.host = host.to_string();
         self.port = port;
         self.tls = tls;
+        self.verify_cert = verify_cert;
 
         let uri = format!("{}:{}", self.host, self.port);
-        debug!("Connecting to {}:{} tls: {}", host, port, tls);
+        debug!(
+            "Connecting to {}:{} tls: {} verify: {}",
+            host, port, tls, verify_cert
+        );
 
         if tls {
             let stream = TcpStream::connect(uri)?;
             let connector = TlsConnector::builder()
-                .danger_accept_invalid_certs(true)
+                .danger_accept_invalid_certs(!verify_cert)
                 .build()?;
             self.tls_stream = Some(RwStream::new(connector.connect(host, stream)?));
         } else {

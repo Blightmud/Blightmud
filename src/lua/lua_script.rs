@@ -956,12 +956,22 @@ mod lua_script_tests {
         lua.on_mud_input(&mut Line::from("/connect example.com 4000"));
         assert_eq!(
             reader.recv().unwrap(),
-            Event::Connect(Connection::new("example.com", 4000, false))
+            Event::Connect(Connection::new("example.com", 4000, false, false))
         );
         lua.on_mud_input(&mut Line::from("/connect example.com 4000 true"));
         assert_eq!(
             reader.recv().unwrap(),
-            Event::Connect(Connection::new("example.com", 4000, true))
+            Event::Connect(Connection::new("example.com", 4000, true, true))
+        );
+        lua.on_mud_input(&mut Line::from("/connect example.com 4000 true true"));
+        assert_eq!(
+            reader.recv().unwrap(),
+            Event::Connect(Connection::new("example.com", 4000, true, true))
+        );
+        lua.on_mud_input(&mut Line::from("/connect example.com 4000 true false"));
+        assert_eq!(
+            reader.recv().unwrap(),
+            Event::Connect(Connection::new("example.com", 4000, true, false))
         );
         lua.state
             .set_named_registry_value(CONNECTION_ID, 4)

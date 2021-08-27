@@ -59,6 +59,7 @@ pub fn migrate_v2_settings_and_servers(main_writer: Sender<Event>) {
                 host: v2.host,
                 port: v2.port,
                 tls: v2.tls.unwrap_or_default(),
+                verify_cert: false,
             }
         }
     }

@@ -36,12 +36,13 @@ aliases).
 
 ##
 
-***mud.connect(host, port[, tls])***
+***mud.connect(host, port[, tls, verify])***
 Connect to a server
 
-- `host`  The host
-- `port`  The port
-- `tls`   Tls connection? true/false (optional)
+- `host`   The host
+- `port`   The port
+- `tls`    Tls connection? true/false *(optional)*
+- `verify` Verify tls cert (default: true) *(optional)*
 
 ##
 

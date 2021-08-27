@@ -155,6 +155,11 @@ fn setup_options() -> Options {
         "Use tls when connecting to a server (only applies in combination with --connect)",
     );
     opts.optflag(
+        "n",
+        "--no-verify",
+        "Don't verify the cert for the TLS connection",
+    );
+    opts.optflag(
         "T",
         "tts",
         "Use the TTS system when playing a MUD (for visually impaired users)",
@@ -207,8 +212,9 @@ fn main() {
             let host = split[0];
             let port: u16 = split[1].parse().unwrap();
             let tls = matches.opt_present("tls");
+            let no_verify = matches.opt_present("no-verify");
             main_writer
-                .send(Event::Connect(Connection::new(host, port, tls)))
+                .send(Event::Connect(Connection::new(host, port, tls, !no_verify)))
                 .unwrap();
         } else {
             print_help(program, opts);

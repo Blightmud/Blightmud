@@ -132,20 +132,23 @@ alias.add("^/connect.*$", function (m)
         local result, server = pcall(servers.get, args[2])
         if result then
             info(cformat("Connecting to saved server: <yellow>%s<reset>", args[2]))
-            mud.connect(server.host, server.port, server.tls)
+            mud.connect(server.host, server.port, server.tls, server.verify_cert)
         else
             error(server)
         end
     elseif #args == 3 then
-        mud.connect(args[2], args[3], args[4])
-    elseif #args >= 4 then
-        mud.connect(args[2], args[3], args[4])
+        mud.connect(args[2], args[3])
+    elseif #args == 4 then
+        mud.connect(args[2], args[3], args[4] == "true", true)
+    elseif #args >= 5 then
+        mud.connect(args[2], args[3], args[4] == "true", args[5] == "true")
     else
         info(
-            "USAGE: /connect <host> <port> [<tls>]",
+            "USAGE: /connect <host> <port> [<tls> <verify>]",
             "USAGE: /connect <server>",
             "EXAMPLE: /connect examplemud.org 4000",
             "EXAMPLE: /connect example-tls-mud.org 4000 true",
+            "EXAMPLE: /connect bad-cert-tls-mud.org 4000 true false",
             "EXAMPLE: /connect stored-server-name"
             )
     end
@@ -181,13 +184,20 @@ end)
 -- Server handling
 alias.add("^(?:/list_servers|/ls)$", function ()
     local stored = servers.get_all()
+    table.sort(stored, function (a, b)
+        return a.name < b.name
+    end)
 
     for _,s in ipairs(stored) do
         local tls_str = cformat("TLS: <red>off<reset>")
         if s.tls then
             tls_str = cformat("TLS:  <green>on<reset>")
         end
-        info(cformat("<yellow>%-12s<reset> Host: %-25s Port: <blue>%4s<reset> %s", s.name, s.host, s.port, tls_str))
+        local verify_str = cformat("Verify: <red>off<reset>")
+        if s.verify_cert then
+            verify_str = cformat("Verify:  <green>on<reset>")
+        end
+        info(cformat("<yellow>%-12s<reset> Host: %-25s Port: <blue>%4s<reset> %s %s", s.name, s.host, s.port, tls_str, verify_str))
     end
 end)
 alias.add("^/add_server.*$", function (m)
@@ -197,19 +207,25 @@ alias.add("^/add_server.*$", function (m)
         local host = args[3]
         local port = tonumber(args[4])
         local tls = false
+        local validate = false
         if args[5] then
             tls = args[5]:lower() == "on" or args[5]:lower() == "true"
+            validate = true
         end
-        local result, err = pcall(servers.add, name, host, port, tls)
+        if args[6] then
+            validate = args[6]:lower() == "on" or args[6]:lower() == "true"
+        end
+        local result, err = pcall(servers.add, name, host, port, tls, validate)
         if result then
             info(cformat("Server added: <yellow>%s<reset>", name))
         else
             error(err)
         end
     else
-        info("USAGE: /add_server <name: String> <host: String> <port: Number> [<tls: String>]")
-        info("EXAMPLE: /add_server example examplemud.com 4000")
-        info("EXAMPLE: /add_server example examplemud.com 4000 true")
+        info("USAGE: /add_server <name: String> <host: String> <port: Number> [<tls: String> <verify: String>]")
+        info("EXAMPLE: /add_server example no-ssl-mud.com 4000")
+        info("EXAMPLE: /add_server example ssl-mud.com 4400 true")
+        info("EXAMPLE: /add_server example bad-cert-ssl-mud.com 4000 true false")
     end
 end)
 alias.add("^/remove_server.*$", function (m)

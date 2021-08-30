@@ -38,6 +38,7 @@ const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[cfg(not(debug_assertions))]
 const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
+
 #[cfg(not(debug_assertions))]
 const XDG_CONFIG_DIR: &str = "~/.config/blightmud";
 
@@ -156,7 +157,7 @@ fn setup_options() -> Options {
     );
     opts.optflag(
         "n",
-        "--no-verify",
+        "no-verify",
         "Don't verify the cert for the TLS connection",
     );
     opts.optflag(

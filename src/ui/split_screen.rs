@@ -607,10 +607,9 @@ impl SplitScreen {
             }
             write!(
                 self.screen,
-                "{}{}{}{}",
+                "{}{}{}",
                 termion::cursor::Goto(1, line_no),
                 termion::clear::CurrentLine,
-                termion::style::Reset,
                 line,
             )?;
         }

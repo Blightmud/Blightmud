@@ -45,7 +45,7 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) 
                     if let Ok(repo) = Repository::discover(&dest) {
                         match update_submodules(repo, true) {
                             Ok(()) => main_writer
-                                .send(Event::Info(format!("Plugin retrieval succeeded.")))
+                                .send(Event::Info("Plugin retrieval succeeded.".to_string()))
                                 .unwrap(),
                             Err(e) => main_writer
                                 .send(Event::Error(format!(
@@ -56,7 +56,7 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) 
                         }
                     } else {
                         main_writer
-                            .send(Event::Error(format!("Problem opening repository:.")))
+                            .send(Event::Error("Problem opening repository.".to_string()))
                             .unwrap();
                     }
                 }
@@ -110,13 +110,13 @@ pub fn update_plugin(main_writer: Sender<Event>, name: &str) {
             if let Ok(repo) = Repository::discover(get_plugin_dir().join(&name)) {
                 // Now we need to account for the submodules
                 main_writer
-                    .send(Event::Info(format!("Updating the plugin's submodules.")))
+                    .send(Event::Info("Updating the plugin's submodules.".to_string()))
                     .unwrap();
                 match update_submodules(repo, false) {
                     Ok(()) => main_writer
-                        .send(Event::Info(format!(
-                            "The update of the submodules was successful."
-                        )))
+                        .send(Event::Info(
+                            "The update of the submodules was successful.".to_string(),
+                        ))
                         .unwrap(),
                     Err(e) => main_writer
                         .send(Event::Error(format!("Error updating submodules; {}", e)))
@@ -124,7 +124,7 @@ pub fn update_plugin(main_writer: Sender<Event>, name: &str) {
                 }
             } else {
                 main_writer
-                    .send(Event::Error(format!("Failed to open the repository.")))
+                    .send(Event::Error("Failed to open the repository.".to_string()))
                     .unwrap();
             }
         }

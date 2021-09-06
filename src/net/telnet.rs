@@ -2,7 +2,7 @@ use crate::event::Event;
 use crate::net::OutputBuffer;
 use crate::session::Session;
 use libtelnet_rs::{
-    events::{TelnetEvents, TelnetNegotiation as Neg},
+    events::TelnetEvents,
     telnet::{op_command as cmd, op_option as opt},
     Parser,
 };
@@ -74,15 +74,10 @@ impl TelnetHandler {
                 }
                 TelnetEvents::Negotiation(neg) => {
                     debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
-                    if let Ok(mut parser) = self.parser.lock() {
-                        if let Neg {
-                            option,
-                            command: cmd::WILL,
-                        } = neg
-                        {
-                            parser._will(option);
-                            self.main_writer.send(Event::ProtoEnabled(option)).unwrap();
-                        }
+                    if neg.command == cmd::WILL || neg.command == cmd::DO {
+                        self.main_writer
+                            .send(Event::ProtoEnabled(neg.option))
+                            .unwrap();
                     }
                 }
                 TelnetEvents::DecompressImmediate(buffer) => {

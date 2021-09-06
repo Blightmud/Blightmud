@@ -120,6 +120,10 @@ fn create_default_lua_state(
             .load(include_str!("../../resources/lua/tasks.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("tasks", lua_tasks)?;
+        let lua_ttype = state
+            .load(include_str!("../../resources/lua/ttype.lua"))
+            .call::<_, mlua::Value>(())?;
+        globals.set("ttype", lua_ttype)?;
 
         {
             let blight_aud: AnyUserData = globals.get("blight")?;

@@ -32,4 +32,5 @@ by typing `/help <module>`.
 - `socket`      Functions to handle opening and sending data over a socket
 - `audio`       Functions to handle audio
 - `servers`     Server storage and handling
+- `ttype`       TTYPE negotiation configuration
 - `plugin`      Plugin handling

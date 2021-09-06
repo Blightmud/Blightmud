@@ -188,6 +188,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "servers" => "servers.md",
         "search" => "search.md",
         "scrolling" => "scrolling.md",
+        "ttype" => "ttype.md",
     }
 }
 

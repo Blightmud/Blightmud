@@ -74,10 +74,13 @@ impl TelnetHandler {
                 }
                 TelnetEvents::Negotiation(neg) => {
                     debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
-                    if neg.command == cmd::WILL || neg.command == cmd::DO {
-                        self.main_writer
-                            .send(Event::ProtoEnabled(neg.option))
-                            .unwrap();
+                    if let Ok(mut parser) = self.parser.lock() {
+                        if neg.command == cmd::WILL || neg.command == cmd::DO {
+                            parser._will(neg.option);
+                            self.main_writer
+                                .send(Event::ProtoEnabled(neg.option))
+                                .unwrap();
+                        }
                     }
                 }
                 TelnetEvents::DecompressImmediate(buffer) => {

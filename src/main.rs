@@ -501,7 +501,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     quit_pending = true;
                     continue;
                 }
-                session.disconnect();
+                session.try_disconnect();
                 break;
             }
         };

@@ -81,6 +81,23 @@ impl Session {
         }
     }
 
+    pub fn try_disconnect(&mut self) {
+        if let Ok(mut connection) = self.connection.try_lock() {
+            if connection.connected() {
+                connection.disconnect().ok();
+                if let Ok(mut output_buffer) = self.output_buffer.lock() {
+                    output_buffer.clear()
+                }
+
+                if let Ok(mut parser) = self.telnet_parser.lock() {
+                    parser.options.reset_states();
+                };
+
+                self.stop_logging();
+            }
+        }
+    }
+
     pub fn connected(&self) -> bool {
         let connection = self.connection.lock().unwrap();
         connection.connected()
@@ -142,7 +159,7 @@ impl Session {
     }
 
     pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.disconnect();
+        self.try_disconnect();
         self.main_writer.send(Event::Quit(QuitMethod::System))?;
         self.timer_writer.send(TimerEvent::Quit)?;
         self.tts_ctrl.lock().unwrap().shutdown();

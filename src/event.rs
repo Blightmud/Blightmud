@@ -1,3 +1,4 @@
+use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
     model::{Connection, Line},
@@ -147,24 +148,16 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::Connect(Connection {
-                host,
-                port,
-                tls,
-                verify_cert,
-            }) => {
+            Event::Connect(connection) => {
                 self.session.disconnect();
-                if self.session.connect(&host, port, tls, verify_cert) {
-                    let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
-                    spawn_receive_thread(self.session.clone());
-                    spawn_transmit_thread(self.session.clone(), reader);
-                    transmit_writer.replace(writer);
-                } else {
-                    screen.print_error(&format!("Failed to connect to {}:{}", host, port));
-                }
+                spawn_connect_thread(self.session.clone(), connection);
                 Ok(())
             }
             Event::Connected(id) => {
+                let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
+                spawn_receive_thread(self.session.clone());
+                spawn_transmit_thread(self.session.clone(), reader);
+                transmit_writer.replace(writer);
                 let host = self.session.host();
                 let port = self.session.port();
                 debug!("Connected to {}:{}", host, port);

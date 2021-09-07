@@ -1,4 +1,4 @@
-use crate::{event::Event, net::TelnetHandler, session::Session};
+use crate::{event::Event, model::Connection, net::TelnetHandler, session::Session};
 use flate2::read::ZlibDecoder;
 use log::{debug, error};
 use std::{
@@ -65,6 +65,32 @@ impl From<&Session> for MudReceiver {
             decoder: None,
         }
     }
+}
+
+pub fn spawn_connect_thread(
+    mut session: Session,
+    connection: Connection,
+) -> thread::JoinHandle<()> {
+    thread::Builder::new()
+        .name("connect-thread".to_string())
+        .spawn(move || {
+            let Connection {
+                host,
+                port,
+                tls,
+                verify_cert,
+            } = connection;
+            if !session.connect(&host, port, tls, verify_cert) {
+                session
+                    .main_writer
+                    .send(Event::Error(format!(
+                        "Failed to connect to {}:{}",
+                        host, port
+                    )))
+                    .unwrap();
+            }
+        })
+        .unwrap()
 }
 
 pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {

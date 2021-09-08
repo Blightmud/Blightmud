@@ -34,6 +34,7 @@ end
 core.subneg_recv(function (proto, data)
     if proto == 24 and data[1] == 1 then
         local data = NEGOTIATION_STACK[index]:upper()
+        blight.debug("[TTYPE] Negotiating: " .. data)
         local payload = concat({0}, string_to_bytes(data))
         core.subneg_send(24, payload)
         index = index + 1

@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use lazy_static::lazy_static;
 use log::debug;
 use native_tls::{TlsConnector, TlsStream};
@@ -6,10 +6,11 @@ use std::{
     io::Read,
     io::Write,
     net::Shutdown,
-    net::{SocketAddr, TcpStream, ToSocketAddrs},
+    net::TcpStream,
     sync::{atomic::AtomicU16, atomic::Ordering, Arc, Mutex},
-    time::Duration,
 };
+
+use crate::net::open_tcp_stream;
 
 use super::RwStream;
 
@@ -67,29 +68,19 @@ impl MudConnection {
         self.tls = tls;
         self.verify_cert = verify_cert;
 
-        let timeout = Duration::new(5, 0);
-        let uri: SocketAddr = if let Some(addr) = format!("{}:{}", self.host, self.port)
-            .to_socket_addrs()?
-            .next()
-        {
-            addr
-        } else {
-            bail!("Invalid host or port")
-        };
-
         debug!(
             "Connecting to {}:{} tls: {} verify: {}",
             host, port, tls, verify_cert
         );
 
+        let stream = open_tcp_stream(&self.host, self.port)?;
         if tls {
-            let stream = TcpStream::connect_timeout(&uri, timeout)?;
             let connector = TlsConnector::builder()
                 .danger_accept_invalid_certs(!verify_cert)
                 .build()?;
             self.tls_stream = Some(RwStream::new(connector.connect(host, stream)?));
         } else {
-            self.stream = Some(RwStream::new(TcpStream::connect_timeout(&uri, timeout)?));
+            self.stream = Some(RwStream::new(stream));
         }
         self.id = connection_id();
         Ok(())

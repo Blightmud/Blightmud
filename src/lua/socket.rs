@@ -3,7 +3,14 @@ use std::{
     net::{Shutdown, TcpStream},
 };
 
-use mlua::{UserData, UserDataMethods};
+use log::debug;
+use mlua::{MetaMethod, UserData, UserDataMethods};
+
+use crate::{
+    event::Event,
+    lua::{backend::Backend, constants::BACKEND},
+    net::open_tcp_stream,
+};
 
 pub struct SocketLib;
 
@@ -11,10 +18,18 @@ impl UserData for SocketLib {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
         methods.add_function(
             "connect",
-            |_, (host, port): (String, u32)| -> mlua::Result<Option<Socket>> {
-                if let Ok(connection) = TcpStream::connect(format!("{}:{}", host, port)) {
+            |ctx, (host, port): (String, u16)| -> mlua::Result<Option<Socket>> {
+                let backend: Backend = ctx.named_registry_value(BACKEND)?;
+                if let Ok(connection) = open_tcp_stream(&host, port) {
                     Ok(Some(Socket { connection }))
                 } else {
+                    backend
+                        .writer
+                        .send(Event::Error(format!(
+                            "Unable to connect to {}:{}",
+                            host, port
+                        )))
+                        .unwrap();
                     Ok(None)
                 }
             },

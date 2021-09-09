@@ -55,6 +55,15 @@ impl TelnetHandler {
                         cmd::GA | cmd::EOR | cmd::NOP => {
                             if self.mode != TelnetMode::TerminatedPrompt {
                                 debug!("Setting telnet mode: TerminatedPrompt");
+                                if iac.command == cmd::GA {
+                                    self.main_writer
+                                        .send(Event::AddTag("GA".to_string()))
+                                        .unwrap();
+                                } else if iac.command == cmd::EOR {
+                                    self.main_writer
+                                        .send(Event::AddTag("EOR".to_string()))
+                                        .unwrap();
+                                }
                                 self.mode = TelnetMode::TerminatedPrompt;
                                 let mut output_buffer = self.output_buffer.lock().unwrap();
                                 output_buffer.telnet_mode(&self.mode);
@@ -80,6 +89,11 @@ impl TelnetHandler {
                             self.main_writer
                                 .send(Event::ProtoEnabled(neg.option))
                                 .unwrap();
+                            if neg.option == opt::EOR {
+                                self.main_writer
+                                    .send(Event::AddTag("EOR".to_string()))
+                                    .unwrap();
+                            }
                         }
                     }
                 }
@@ -91,6 +105,9 @@ impl TelnetHandler {
                 TelnetEvents::Subnegotiation(data) => match data.option {
                     opt::MCCP2 => {
                         debug!("Initiated MCCP2 compression");
+                        self.main_writer
+                            .send(Event::AddTag("MCCP2".to_string()))
+                            .unwrap();
                     }
                     opt => {
                         self.main_writer

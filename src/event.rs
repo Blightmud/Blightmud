@@ -25,57 +25,58 @@ pub enum QuitMethod {
 #[derive(Debug, PartialEq, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum Event {
-    Prompt(Line),
-    ServerSend(Vec<u8>),
-    ServerInput(Line),
-    MudOutput(Line),
-    Output(Line),
-    Error(String),
-    Info(String),
-    UserInputBuffer(String, usize),
+    AddTag(String),
+    AddTimedEvent(chrono::Duration, Option<u32>, u32, bool),
+    ClearTimers,
     Connect(Connection),
     Connected(u16),
-    Disconnect(u16),
-    Reconnect,
-    ProtoEnabled(u8),
-    EnableProto(u8),
     DisableProto(u8),
-    ProtoSubnegRecv(u8, Vec<u8>),
-    ProtoSubnegSend(u8, Vec<u8>),
-    AddTimedEvent(chrono::Duration, Option<u32>, u32, bool),
-    TimedEvent(u32),
+    Disconnect(u16),
     DropTimedEvent(u32),
-    TimerTick(u128),
-    ClearTimers,
-    RemoveTimer(u32),
-    LoadScript(String),
-    ResetScript,
-    StartLogging(String, bool),
-    StopLogging,
-    SettingChanged(String, bool),
-    ScrollLock(bool),
-    ScrollUp,
-    ScrollDown,
-    ScrollTop,
-    ScrollBottom,
+    EnableProto(u8),
+    Error(String),
     FindBackward(Regex),
     FindForward(Regex),
-    StatusAreaHeight(u16),
-    StatusLine(usize, String),
+    Info(String),
+    LoadScript(String),
+    MudOutput(Line),
+    Output(Line),
+    PlayMusic(String, SourceOptions),
+    PlaySFX(String, SourceOptions),
+    Prompt(Line),
+    ProtoEnabled(u8),
+    ProtoSubnegRecv(u8, Vec<u8>),
+    ProtoSubnegSend(u8, Vec<u8>),
+    Quit(QuitMethod),
+    Reconnect,
+    Redraw,
+    RemoveTimer(u32),
+    ResetScript,
+    ScrollBottom,
+    ScrollDown,
+    ScrollLock(bool),
+    ScrollTop,
+    ScrollUp,
+    ServerInput(Line),
+    ServerSend(Vec<u8>),
+    SettingChanged(String, bool),
     ShowHelp(String, bool),
-    TTSEnabled(bool),
     Speak(String, bool),
     SpeakStop,
-    TTSEvent(TTSEvent),
-    PlayMusic(String, SourceOptions),
+    StartLogging(String, bool),
+    StatusAreaHeight(u16),
+    StatusLine(usize, String),
+    StopLogging,
     StopMusic,
-    PlaySFX(String, SourceOptions),
     StopSFX,
-    Redraw,
-    Quit(QuitMethod),
+    TTSEnabled(bool),
+    TTSEvent(TTSEvent),
+    TimedEvent(u32),
+    TimerTick(u128),
+    UserInputBuffer(String, usize),
 }
-
-type Result = std::result::Result<(), Box<dyn Error>>;
+use anyhow::Result as AResult;
+type Result = AResult<()>;
 
 pub struct EventHandler {
     session: Session,
@@ -189,6 +190,7 @@ impl EventHandler {
                     }
                     transmit_writer.take();
                     screen.set_host("", 0)?;
+                    screen.clear_tags()?;
                 }
                 Ok(())
             }
@@ -282,6 +284,7 @@ impl EventHandler {
                 screen.print_info(&msg);
                 Ok(())
             }
+            Event::AddTag(tag) => screen.add_tag(&tag),
             _ => Err(BadEventRoutingError.into()),
         }
     }

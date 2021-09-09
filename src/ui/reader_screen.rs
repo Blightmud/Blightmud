@@ -345,6 +345,14 @@ impl UserInterface for ReaderScreen {
         Ok(())
     }
 
+    fn add_tag(&mut self, _: &str) -> Result<()> {
+        Ok(())
+    }
+
+    fn clear_tags(&mut self) -> Result<()> {
+        Ok(())
+    }
+
     fn set_status_area_height(&mut self, _height: u16) -> Result<()> {
         Ok(())
     }

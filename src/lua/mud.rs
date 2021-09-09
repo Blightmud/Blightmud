@@ -112,6 +112,11 @@ impl UserData for Mud {
             table.set(table.raw_len() + 1, callback)?;
             Ok(())
         });
+        methods.add_function("add_tag", |ctx, tag: String| {
+            let backend: Backend = ctx.named_registry_value(BACKEND)?;
+            backend.writer.send(Event::AddTag(tag)).unwrap();
+            Ok(())
+        });
     }
 }
 

@@ -110,3 +110,19 @@ line` for information about this object.
 
 The provided line object must be returned at the end of the callback otherwise
 modifications to the line will not be accounted for in later processing.
+
+##
+
+***mud.add_tag(tag)***
+Adds a tag for the current mud in the topbar of Blightmud after the hostname.
+
+- `tag` The tag you want to add
+
+```lua
+mud.add_tag("GMCP")
+mud.add_tag("MSDP")
+-- Will display "somemud.org:4000 [GMCP][MSDP]" in the top bar of Blightmud
+```
+
+The primary use for this function is to indicate what telnet protocols are
+active for the current mud.

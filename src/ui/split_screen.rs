@@ -4,6 +4,7 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::{model::Line, model::Regex, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
+use std::collections::HashSet;
 use std::{io::Write, sync::Arc, sync::Mutex};
 use termion::color::{self, Bg, Fg};
 use termion::cursor;
@@ -158,6 +159,7 @@ pub struct SplitScreen {
     history: History,
     scroll_data: ScrollData,
     connection: Option<String>,
+    tags: HashSet<String>,
 }
 
 impl UserInterface for SplitScreen {
@@ -447,6 +449,16 @@ impl UserInterface for SplitScreen {
         self.redraw_top_bar()
     }
 
+    fn add_tag(&mut self, tag: &str) -> Result<()> {
+        self.tags.insert(tag.to_string());
+        self.redraw_top_bar()
+    }
+
+    fn clear_tags(&mut self) -> Result<()> {
+        self.tags.clear();
+        self.redraw_top_bar()
+    }
+
     fn set_status_area_height(&mut self, height: u16) -> Result<()> {
         let height = height.clamp(1, 5);
         self.status_area
@@ -506,6 +518,7 @@ impl SplitScreen {
             history,
             scroll_data: ScrollData::new(),
             connection: None,
+            tags: HashSet::new(),
         })
     }
 
@@ -532,11 +545,19 @@ impl SplitScreen {
             termion::clear::CurrentLine,
             Fg(color::Green),
         )?;
-        let output = if let Some(connection) = &self.connection {
-            format!("═ {} ═", connection)
+        let host = if let Some(connection) = &self.connection {
+            format!("═ {} ", connection)
         } else {
             "".to_string()
         };
+        let mut tags = self
+            .tags
+            .iter()
+            .map(|s| format!("[{}]", s))
+            .collect::<Vec<String>>();
+        tags.sort();
+        let tags = tags.join("");
+        let output = format!("{}{} ", host, tags);
         write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
         write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
         Ok(())

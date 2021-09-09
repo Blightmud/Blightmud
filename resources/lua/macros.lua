@@ -174,10 +174,14 @@ alias.add("^/stop_log$", function ()
 end)
 alias.add("^/load.*$", function (m)
     local args = get_args(m[1])
-    if #args > 1 then
-        script.load(table.concat(args, " ", 2))
-    else
-        info("USAGE: /load <path>")
+    if args[1] == "/load" then
+        if #args > 1 then
+            script.load(table.concat(args, " ", 2))
+        else
+            info("USAGE: /load <path>")
+        end
+    elseif args[1] ~= "/load_plugin" then
+        mud.send(m[1], { gag=true, skip_log=true })
     end
 end)
 

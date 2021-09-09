@@ -3,8 +3,7 @@ use std::{
     net::{Shutdown, TcpStream},
 };
 
-use log::debug;
-use mlua::{MetaMethod, UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods};
 
 use crate::{
     event::Event,

@@ -22,7 +22,7 @@ mlua =  { version = "0.6.2", features = ["lua54", "send", "vendored"] }
 regex = "1.5.4"
 strip-ansi-escapes = "0.1.1"
 timer = "0.2.0"
-flate2 = "1.0.21"
+flate2 = "1.0.22"
 mdcat = { version = "0.23.2", default-features = false }
 pulldown-cmark = "0.8.0"
 syntect = "4.6.0"

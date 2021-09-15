@@ -64,7 +64,7 @@ permanent between Blightmud restarts.
 
 ```lua
 local permanent_data = {foes={"Newbian", "CuteKitty", "JackRipper"}, revenge=true}
-store.session_write("pk_settings", json.encode(permanent_data))
+store.disk_write("pk_settings", json.encode(permanent_data))
 ```
 
 ##
@@ -75,5 +75,5 @@ Returns value for specified key from disk storage.
 - `key`     The identifier for the data (same as used before with store.disk_write)
 
 ```lua
-local permanent_data = json.decode(store.session_read("pk_settings"))
+local permanent_data = json.decode(store.disk_read("pk_settings"))
 ```

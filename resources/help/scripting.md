@@ -13,6 +13,7 @@ core to interact with your game. You can read the documentation for each module
 by typing `/help <module>`.
 
 ## The following categories of methods exist:
+
 - `blight`      Module to interact with Blightmud. Print output etc.
 - `script`      Module to load and reset lua scripts.
 - `alias`       Custom commands that trigger callback functions.
@@ -34,3 +35,4 @@ by typing `/help <module>`.
 - `servers`     Server storage and handling
 - `ttype`       TTYPE negotiation configuration
 - `plugin`      Plugin handling
+- `json`        Json encoding and decoding

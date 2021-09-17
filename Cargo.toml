@@ -12,7 +12,7 @@ build = "build.rs"
 text-to-speech = ["tts"]
 
 [dependencies]
-libtelnet-rs = "1.1.2"
+libtelnet-rs = "2.0.0"
 termion = "1.5.6"
 log = "0.4.14"
 simple-logging = "2.0.2"

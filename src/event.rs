@@ -8,7 +8,7 @@ use crate::{
     ui::UserInterface,
     TelnetData,
 };
-use libtelnet_rs::events::TelnetEvents;
+use libtelnet_rs::{bytes::Bytes, events::TelnetEvents};
 use log::debug;
 use std::{
     error::Error,
@@ -45,8 +45,8 @@ pub enum Event {
     PlaySFX(String, SourceOptions),
     Prompt(Line),
     ProtoEnabled(u8),
-    ProtoSubnegRecv(u8, Vec<u8>),
-    ProtoSubnegSend(u8, Vec<u8>),
+    ProtoSubnegRecv(u8, Bytes),
+    ProtoSubnegSend(u8, Bytes),
     Quit(QuitMethod),
     Reconnect,
     Redraw,
@@ -58,7 +58,7 @@ pub enum Event {
     ScrollTop,
     ScrollUp,
     ServerInput(Line),
-    ServerSend(Vec<u8>),
+    ServerSend(Bytes),
     SettingChanged(String, bool),
     ShowHelp(String, bool),
     Speak(String, bool),

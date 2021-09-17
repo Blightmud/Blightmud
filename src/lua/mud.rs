@@ -1,3 +1,4 @@
+use libtelnet_rs::bytes::Bytes;
 use mlua::{Function, Table, UserData, UserDataMethods};
 
 use crate::{
@@ -93,7 +94,10 @@ impl UserData for Mud {
         );
         methods.add_function("send_bytes", |ctx, bytes: Vec<u8>| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
-            backend.writer.send(Event::ServerSend(bytes)).unwrap();
+            backend
+                .writer
+                .send(Event::ServerSend(Bytes::from(bytes)))
+                .unwrap();
             Ok(())
         });
         methods.add_function("input", |ctx, line: String| {
@@ -124,6 +128,7 @@ impl UserData for Mud {
 mod test_mud {
     use std::sync::mpsc::{channel, Receiver, Sender};
 
+    use libtelnet_rs::{bytes::Bytes, vbytes};
     use mlua::Lua;
 
     use crate::{
@@ -248,7 +253,7 @@ mod test_mud {
     fn test_send_bytes() {
         assert_event(
             "mud.send_bytes({ 0xff, 0xf1 })",
-            Event::ServerSend(vec![0xff, 0xf1]),
+            Event::ServerSend(vbytes!(&[0xff, 0xf1])),
         );
     }
 

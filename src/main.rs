@@ -1,5 +1,6 @@
 use audio::Player;
 use lazy_static::lazy_static;
+use libtelnet_rs::bytes::Bytes;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
 use std::path::PathBuf;
@@ -42,7 +43,7 @@ const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
 #[cfg(not(debug_assertions))]
 const XDG_CONFIG_DIR: &str = "~/.config/blightmud";
 
-type TelnetData = Option<Vec<u8>>;
+type TelnetData = Option<Bytes>;
 
 lazy_static! {
     pub static ref DATA_DIR: PathBuf = {

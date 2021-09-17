@@ -1,5 +1,6 @@
 use crate::{event::Event, model::Connection, net::TelnetHandler, session::Session};
 use flate2::read::ZlibDecoder;
+use libtelnet_rs::bytes::Bytes;
 use log::{debug, error};
 use std::{
     io::{Chain, Cursor, Read, Write},
@@ -127,7 +128,7 @@ pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
 
 pub fn spawn_transmit_thread(
     mut session: Session,
-    transmit_read: Receiver<Option<Vec<u8>>>,
+    transmit_read: Receiver<Option<Bytes>>,
 ) -> thread::JoinHandle<()> {
     let connection = session.connection.lock().unwrap().clone();
     thread::Builder::new()
@@ -138,7 +139,7 @@ pub fn spawn_transmit_thread(
             let connection_id = session.connection_id();
             debug!("Transmit stream spawned");
             while let Ok(Some(data)) = transmit_read.recv() {
-                if let Err(info) = connection.write_all(data.as_slice()) {
+                if let Err(info) = connection.write_all(&data) {
                     session.disconnect();
                     let error = format!("Failed to write to socket: {}", info).to_string();
                     session.send_event(Event::Error(error));

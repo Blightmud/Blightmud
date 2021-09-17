@@ -417,6 +417,7 @@ mod lua_script_tests {
     use crate::lua::constants::TIMED_CALLBACK_TABLE;
     use crate::model::{Connection, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
+    use libtelnet_rs::{bytes::Bytes, vbytes};
     use std::{
         collections::BTreeMap,
         sync::mpsc::{channel, Receiver, Sender},
@@ -634,7 +635,10 @@ mod lua_script_tests {
 
         assert_eq!(
             reader.recv(),
-            Ok(Event::ProtoSubnegSend(201, vec![255, 250, 86, 255, 240]))
+            Ok(Event::ProtoSubnegSend(
+                201,
+                vbytes!(&[255, 250, 86, 255, 240])
+            ))
         );
     }
 

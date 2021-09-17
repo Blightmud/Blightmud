@@ -1,5 +1,6 @@
 use std::sync::mpsc::Sender;
 
+use libtelnet_rs::bytes::Bytes;
 use log::debug;
 use mlua::{AnyUserData, Table, UserData, UserDataMethods};
 
@@ -67,7 +68,7 @@ impl UserData for Core {
                 .pairs::<i32, u8>()
                 .filter_map(Result::ok)
                 .map(|pair| pair.1)
-                .collect::<Vec<u8>>();
+                .collect::<Bytes>();
             debug!("lua subneg: {}", String::from_utf8_lossy(&data).to_mut());
             this.main_writer
                 .send(Event::ProtoSubnegSend(proto, data))

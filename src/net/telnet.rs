@@ -99,7 +99,7 @@ impl TelnetHandler {
                 }
                 TelnetEvents::DecompressImmediate(buffer) => {
                     debug!("Breaking on buff: {:?}", &buffer);
-                    result = Some(buffer);
+                    result = Some(buffer.to_vec());
                     break;
                 }
                 TelnetEvents::Subnegotiation(data) => match data.option {
@@ -111,7 +111,7 @@ impl TelnetHandler {
                     }
                     opt => {
                         self.main_writer
-                            .send(Event::ProtoSubnegRecv(opt, data.buffer.to_vec()))
+                            .send(Event::ProtoSubnegRecv(opt, data.buffer))
                             .unwrap();
                     }
                 },
@@ -123,7 +123,7 @@ impl TelnetHandler {
                 }
                 TelnetEvents::DataReceive(msg) => {
                     debug!("Data receive: {:?}", msg);
-                    if !msg.is_empty() && msg != [0] {
+                    if !msg.is_empty() && msg[0] != 0 {
                         if let Ok(mut output_buffer) = self.output_buffer.lock() {
                             let new_lines = output_buffer.receive(&msg);
                             for line in new_lines {

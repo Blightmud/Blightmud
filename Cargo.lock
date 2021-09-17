@@ -1072,9 +1072,12 @@ dependencies = [
 
 [[package]]
 name = "libtelnet-rs"
-version = "1.1.2"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "992ba607a47645788936f482802517100cb9e0f5f1c4ddd3c3a16d1edce77258"
+checksum = "8b91f14f906b14bbd9c2a4c6a81d6f01b825438de64adb3b15c8fcc223de25a1"
+dependencies = [
+ "bytes",
+]
 
 [[package]]
 name = "libz-sys"

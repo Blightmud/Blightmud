@@ -2,6 +2,8 @@ use super::history::History;
 use super::scroll_data::ScrollData;
 use super::user_interface::TerminalSizeError;
 use super::wrap_line;
+use crate::io::SaveData;
+use crate::model::{Settings, HIDE_TOPBAR};
 use crate::{model::Line, model::Regex, tts::TTSController, ui::ansi::*};
 use anyhow::Result;
 use std::collections::HashSet;
@@ -11,7 +13,6 @@ use termion::cursor;
 
 use super::UserInterface;
 
-const OUTPUT_START_LINE: u16 = 2;
 const SCROLL_LIVE_BUFFER_SIZE: u16 = 10;
 
 struct StatusArea {
@@ -152,6 +153,7 @@ pub struct SplitScreen {
     tts_ctrl: Arc<Mutex<TTSController>>,
     width: u16,
     height: u16,
+    output_start_line: u16,
     output_line: u16,
     prompt_line: u16,
     status_area: StatusArea,
@@ -166,6 +168,8 @@ impl UserInterface for SplitScreen {
     fn setup(&mut self) -> Result<()> {
         self.reset()?;
 
+        let settings = Settings::try_load()?;
+
         // Get params in case screen resized
         let (width, height) = termion::terminal_size()?;
         if width > 0 && height > 0 {
@@ -173,11 +177,12 @@ impl UserInterface for SplitScreen {
             self.height = height;
             self.output_line = height - self.status_area.height() - 1;
             self.prompt_line = height;
+            self.output_start_line = if settings.get(HIDE_TOPBAR)? { 1 } else { 2 };
 
             write!(
                 self.screen,
                 "{}{}",
-                ScrollRegion(OUTPUT_START_LINE, self.output_line),
+                ScrollRegion(self.output_start_line, self.output_line),
                 DisableOriginMode
             )
             .unwrap(); // Set scroll region, non origin mode
@@ -188,7 +193,7 @@ impl UserInterface for SplitScreen {
             write!(
                 self.screen,
                 "{}{}",
-                termion::cursor::Goto(1, OUTPUT_START_LINE),
+                termion::cursor::Goto(1, self.output_start_line),
                 termion::cursor::Save
             )?;
             Ok(())
@@ -321,7 +326,7 @@ impl UserInterface for SplitScreen {
             write!(
                 self.screen,
                 "{}{}",
-                ScrollRegion(OUTPUT_START_LINE, self.output_line),
+                ScrollRegion(self.output_start_line, self.output_line),
                 DisableOriginMode
             )?;
         } else if reset_scroll {
@@ -335,7 +340,7 @@ impl UserInterface for SplitScreen {
             let output_start_index = output_start_index as usize;
             for i in 0..output_range {
                 let index = output_start_index + i as usize;
-                let line_no = OUTPUT_START_LINE + i;
+                let line_no = self.output_start_line + i;
                 write!(
                     self.screen,
                     "{}{}{}",
@@ -500,6 +505,7 @@ impl SplitScreen {
     ) -> Result<Self> {
         let (width, height) = termion::terminal_size()?;
 
+        let output_start_line = 2;
         let status_area_height = 1;
         let output_line = height - status_area_height - 1;
         let prompt_line = height;
@@ -511,6 +517,7 @@ impl SplitScreen {
             tts_ctrl,
             width,
             height,
+            output_start_line,
             output_line,
             status_area,
             prompt_line,
@@ -538,28 +545,30 @@ impl SplitScreen {
     }
 
     fn redraw_top_bar(&mut self) -> Result<()> {
-        write!(
-            self.screen,
-            "{}{}{}",
-            termion::cursor::Goto(1, 1),
-            termion::clear::CurrentLine,
-            Fg(color::Green),
-        )?;
-        let host = if let Some(connection) = &self.connection {
-            format!("═ {} ", connection)
-        } else {
-            "".to_string()
-        };
-        let mut tags = self
-            .tags
-            .iter()
-            .map(|s| format!("[{}]", s))
-            .collect::<Vec<String>>();
-        tags.sort();
-        let tags = tags.join("");
-        let output = format!("{}{} ", host, tags);
-        write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
-        write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
+        if self.output_start_line > 1 {
+            write!(
+                self.screen,
+                "{}{}{}",
+                termion::cursor::Goto(1, 1),
+                termion::clear::CurrentLine,
+                Fg(color::Green),
+            )?;
+            let host = if let Some(connection) = &self.connection {
+                format!("═ {} ", connection)
+            } else {
+                "".to_string()
+            };
+            let mut tags = self
+                .tags
+                .iter()
+                .map(|s| format!("[{}]", s))
+                .collect::<Vec<String>>();
+            tags.sort();
+            let tags = tags.join("");
+            let output = format!("{}{} ", host, tags);
+            write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
+            write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
+        }
         Ok(())
     }
 
@@ -610,7 +619,7 @@ impl SplitScreen {
         let output_range = self.scroll_range();
         for i in 0..output_range {
             let index = self.scroll_data.pos + i as usize;
-            let line_no = OUTPUT_START_LINE + i;
+            let line_no = self.output_start_line + i;
             let mut line = self.history.inner[index].clone();
             if let Some(pattern) = &self.scroll_data.hilite {
                 line = pattern
@@ -639,14 +648,14 @@ impl SplitScreen {
 
     fn scroll_range(&self) -> u16 {
         if self.scroll_data.allow_split && self.height > SCROLL_LIVE_BUFFER_SIZE * 2 {
-            self.output_line - OUTPUT_START_LINE - SCROLL_LIVE_BUFFER_SIZE + 1
+            self.output_line - self.output_start_line - SCROLL_LIVE_BUFFER_SIZE + 1
         } else {
             self.output_range()
         }
     }
 
     fn output_range(&self) -> u16 {
-        self.output_line - OUTPUT_START_LINE + 1
+        self.output_line - self.output_start_line + 1
     }
 }
 

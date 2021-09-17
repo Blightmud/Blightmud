@@ -18,7 +18,8 @@ pub const CONFIRM_QUIT: &str = "confirm_quit";
 pub const SCROLL_SPLIT: &str = "scroll_split";
 pub const SCROLL_LOCK: &str = "scroll_lock";
 pub const READER_MODE: &str = "reader_mode";
-pub const SETTINGS: [&str; 8] = [
+pub const HIDE_TOPBAR: &str = "hide_topbar";
+pub const SETTINGS: [&str; 9] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
@@ -27,6 +28,7 @@ pub const SETTINGS: [&str; 8] = [
     SCROLL_SPLIT,
     SCROLL_LOCK,
     READER_MODE,
+    HIDE_TOPBAR,
 ];
 
 impl Settings {
@@ -59,6 +61,7 @@ impl Default for Settings {
         settings.insert(SCROLL_SPLIT.to_string(), true);
         settings.insert(SCROLL_LOCK.to_string(), true);
         settings.insert(READER_MODE.to_string(), false);
+        settings.insert(HIDE_TOPBAR.to_string(), false);
         Self { settings }
     }
 }

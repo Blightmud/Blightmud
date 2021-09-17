@@ -22,7 +22,7 @@ mod ui;
 
 use crate::event::{Event, QuitMethod};
 use crate::io::SaveData;
-use crate::model::{Servers, READER_MODE};
+use crate::model::{Servers, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
@@ -363,6 +363,9 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 SAVE_HISTORY => session.set_save_history(value),
                 READER_MODE => {
                     screen = ui::switch_screen(screen, &mut session, value)?;
+                }
+                HIDE_TOPBAR | SCROLL_SPLIT => {
+                    screen.setup()?;
                 }
                 _ => {}
             },

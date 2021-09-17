@@ -281,7 +281,7 @@ impl LuaScript {
         info!("Loading: {}", path);
         let file_path = expand_tilde(path);
         let mut file = File::open(file_path.as_ref())?;
-        let dir = file_path.rsplitn(2, '/').nth(1).unwrap_or("");
+        let dir = file_path.rsplit_once('/').unwrap_or(("", "")).0;
         let mut content = String::new();
         file.read_to_string(&mut content)?;
         self.exec_lua(&mut || -> LuaResult<()> {

@@ -89,7 +89,14 @@ end)
 
 -- Settings
 alias.add("^/settings$", function ()
-	for key, value in pairs(settings.list()) do
+    local list = settings.list()
+    local lkeys = {}
+    for key in pairs(list) do
+        table.insert(lkeys, key)
+    end
+    table.sort(lkeys)
+	for _,key in ipairs(lkeys) do
+        local value = list[key]
 		local key_format = cformat("<yellow>%-20s<reset>", key)
 		local value_format
 		if value then

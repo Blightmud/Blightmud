@@ -1,10 +1,6 @@
 use libtelnet_rs::{compatibility::CompatibilityTable, telnet::op_option as opt, Parser};
 use log::debug;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    mpsc::Sender,
-    Arc, Mutex,
-};
+use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 
 use crate::{
     event::QuitMethod,
@@ -15,6 +11,7 @@ use crate::{
     net::{OutputBuffer, TelnetMode},
     timer::TimerEvent,
     tts::TTSController,
+    ui::CommandBuffer,
     Event,
 };
 
@@ -34,6 +31,7 @@ pub struct Session {
     pub lua_script: Arc<Mutex<LuaScript>>,
     pub logger: Arc<Mutex<dyn LogWriter + Send>>,
     pub tts_ctrl: Arc<Mutex<TTSController>>,
+    pub command_buffer: Arc<Mutex<CommandBuffer>>,
 }
 
 #[cfg_attr(test, automock)]
@@ -146,14 +144,6 @@ impl Session {
         }
     }
 
-    pub fn save_history(&self) -> bool {
-        self.save_history.load(Ordering::Relaxed)
-    }
-
-    pub fn set_save_history(&self, toggle: bool) {
-        self.save_history.store(toggle, Ordering::Relaxed);
-    }
-
     pub fn send_event(&mut self, event: Event) {
         self.main_writer.send(event).unwrap();
     }
@@ -218,10 +208,12 @@ impl SessionBuilder {
         let dimensions = self.screen_dimensions.unwrap();
         let tts_enabled = self.tts_enabled;
         let save_history = self.save_history;
+        let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled)));
+        let lua_script = Arc::new(Mutex::new(LuaScript::new(main_writer.clone(), dimensions)));
         Session {
             connection: Arc::new(Mutex::new(MudConnection::new())),
             gmcp: Arc::new(AtomicBool::new(false)),
-            main_writer: main_writer.clone(),
+            main_writer,
             timer_writer,
             telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
                 BUFFER_SIZE,
@@ -232,9 +224,10 @@ impl SessionBuilder {
             ))),
             prompt_input: Arc::new(Mutex::new(String::new())),
             save_history: Arc::new(AtomicBool::new(save_history)),
-            lua_script: Arc::new(Mutex::new(LuaScript::new(main_writer, dimensions))),
+            lua_script: lua_script.clone(),
             logger: Arc::new(Mutex::new(Logger::default())),
-            tts_ctrl: Arc::new(Mutex::new(TTSController::new(tts_enabled))),
+            tts_ctrl: tts_ctrl.clone(),
+            command_buffer: Arc::new(Mutex::new(CommandBuffer::new(tts_ctrl, lua_script))),
         }
     }
 }

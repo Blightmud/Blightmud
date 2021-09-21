@@ -15,6 +15,7 @@ mod log;
 mod lua_script;
 mod mud;
 mod plugin;
+mod prompt;
 mod regex;
 mod script;
 mod servers;

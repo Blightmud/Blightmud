@@ -271,8 +271,8 @@ fn run(
 
     screen.setup()?;
 
-    let _input_thread = spawn_input_thread(session.clone());
-    let _signal_thread = register_terminal_resize_listener(session.clone());
+    let _ = spawn_input_thread(session.clone());
+    let _ = register_terminal_resize_listener(session.clone());
 
     let lua_scripts = {
         fs::read_dir(CONFIG_DIR.as_path())?
@@ -332,6 +332,19 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
         }
 
         match event {
+            Event::SetPromptInput(line) => {
+                if let Ok(mut buffer) = session.command_buffer.lock() {
+                    buffer.clear();
+                    buffer.set(line);
+                    session
+                        .main_writer
+                        .send(Event::UserInputBuffer(
+                            buffer.get_buffer(),
+                            buffer.get_pos(),
+                        ))
+                        .unwrap();
+                }
+            }
             Event::ServerSend(_)
             | Event::ServerInput(_)
             | Event::Connect(_)
@@ -360,7 +373,6 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
             Event::SettingChanged(name, value) => match name.as_str() {
-                SAVE_HISTORY => session.set_save_history(value),
                 READER_MODE => {
                     screen = ui::switch_screen(screen, &mut session, value)?;
                 }

@@ -20,3 +20,4 @@ Available settings are:
 - `scroll_lock`         Set scroll position at start of text when showing long help files
 - `tts_enabled`         Enable tts (only if compiled with TTS)
 - `reader_mode`         Switches to a screen reader friendly TUI. (Does not support `status area`.)
+- `hide_topbar`         Toggles the topbar

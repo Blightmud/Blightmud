@@ -1969,9 +1969,7 @@ dependencies = [
 
 [[package]]
 name = "rs-complete"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6a2f642296f120306509abee6c2b262db6690c11e1aed28dd9e0b002ef2ab2c"
+version = "1.2.0"
 dependencies = [
  "anyhow",
 ]

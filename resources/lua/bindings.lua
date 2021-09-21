@@ -2,8 +2,6 @@ local function bind(cmd, event)
 	blight.bind(cmd, function () blight.ui(event) end)
 end
 
-bind("ctrl-p", "previous_command")
-bind("ctrl-n", "next_command")
 bind("alt-b", "step_word_left")
 bind("\x1b[1;5D", "step_word_left")
 bind("alt-f", "step_word_right")
@@ -29,3 +27,9 @@ blight.bind("\x1b[1;5b", function () search.find_down() end)
 blight.bind("\x1b[5;5~", function () search.find_last_input() end)
 blight.bind("\x1b[6;5~", function () search.find_next_input() end)
 blight.bind("ctrl-s", function () tts:stop() end)
+
+-- History navigation
+blight.bind("up", history.previous_command)
+blight.bind("down", history.next_command)
+blight.bind("ctrl-p", history.previous_command)
+blight.bind("ctrl-n", history.next_command)

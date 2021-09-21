@@ -1,6 +1,7 @@
 pub use self::{
     ansi::*,
     command::spawn_input_thread,
+    command::CommandBuffer,
     help_handler::HelpHandler,
     reader_screen::ReaderScreen,
     screen::{create_screen, create_screen_writer, switch_screen},

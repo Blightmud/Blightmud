@@ -3,12 +3,16 @@ local mod = {}
 local commands = {}
 local orig_cmd = nil
 local index = nil
+local command_set = {}
 
 local search_index = nil
 local search_commands = nil
 
 if settings.get("save_history") then
     commands = json.decode(store.disk_read("__command_history") or "[]")
+    for _,c in ipairs(commands) do
+        command_set[c] = true
+    end
 end
 
 local function reset()
@@ -105,11 +109,27 @@ blight.on_quit(function ()
     end
 end)
 
+local function shift_commands(new_cmd)
+    if command_set[new_cmd] then
+        for i,cmd in ipairs(commands) do
+            if cmd == new_cmd then
+                table.remove(commands, i)
+            end
+        end
+    end
+    table.insert(commands, new_cmd)
+end
+
 mud.add_input_listener(function (line)
     reset()
     local str = line:line()
     if str ~= commands[#commands] and #str > 0 then
-        table.insert(commands, str)
+        command_set[str] = true
+        if settings.get("smart_history") then
+            shift_commands(str)
+        else
+            table.insert(commands, str)
+        end
     end
     if #commands > 100 then
         table.remove(commands, 1)

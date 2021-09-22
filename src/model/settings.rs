@@ -20,7 +20,8 @@ pub const SCROLL_LOCK: &str = "scroll_lock";
 pub const READER_MODE: &str = "reader_mode";
 pub const HIDE_TOPBAR: &str = "hide_topbar";
 pub const COMMAND_SEARCH: &str = "command_search";
-pub const SETTINGS: [&str; 10] = [
+pub const SMART_HISTORY: &str = "smart_history";
+pub const SETTINGS: [&str; 11] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
@@ -31,6 +32,7 @@ pub const SETTINGS: [&str; 10] = [
     READER_MODE,
     HIDE_TOPBAR,
     COMMAND_SEARCH,
+    SMART_HISTORY,
 ];
 
 impl Settings {
@@ -65,6 +67,7 @@ impl Default for Settings {
         settings.insert(READER_MODE.to_string(), false);
         settings.insert(HIDE_TOPBAR.to_string(), false);
         settings.insert(COMMAND_SEARCH.to_string(), false);
+        settings.insert(SMART_HISTORY.to_string(), false);
         Self { settings }
     }
 }

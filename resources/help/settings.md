@@ -16,6 +16,7 @@ Available settings are:
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
 - `save_history`        Save your last 100 commands to disk.
 - `command_search`      Makes command history context aware (See info below for details)
+- `smart_history`       Enable smart command history (See info below for details)
 - `confirm_quit`        Ask for confirmation before quitting Blightmud when pressing `ctrl-c`.
 - `scroll_split`        Split screen when scrolling
 - `scroll_lock`         Set scroll position at start of text when showing long help files
@@ -32,3 +33,10 @@ If you type something in the prompt and then hit `up` (`history.previous_command
 you will only find results that are prefixed with what you typed first.
 
 Eg. Type `sc`, hit `up`. Results can be `scent`, `score`, `scan`.
+
+***smart_history***
+Makes the command history slightly more useful.
+
+- A command will never appear twice in the history
+- First history command will always be the last typed command
+- Entering a previously entered command will shift it to the front of the history.

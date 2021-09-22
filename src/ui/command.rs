@@ -4,23 +4,13 @@ use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
 use rs_complete::CompletionTree;
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::thread;
 use std::{
     io::stdin,
-    path::PathBuf,
     sync::{mpsc::Sender, Arc, Mutex},
 };
 use termion::{event::Key, input::TermRead};
-
-const MAX_HISTORY: usize = 100;
-
-pub type History = VecDeque<String>;
-impl SaveData for History {
-    fn relative_path() -> PathBuf {
-        PathBuf::from("data/history.ron")
-    }
-}
 
 #[derive(Default)]
 struct CompletionStepData {
@@ -58,9 +48,6 @@ impl CompletionStepData {
 pub struct CommandBuffer {
     strbuf: String,
     buffer: Vec<char>,
-    cached_buffer: Vec<char>,
-    history: History,
-    current_index: usize,
     cursor_pos: usize,
     completion_tree: CompletionTree,
     completion: CompletionStepData,
@@ -76,9 +63,6 @@ impl CommandBuffer {
         Self {
             strbuf: String::new(),
             buffer: vec![],
-            cached_buffer: vec![],
-            current_index: 0,
-            history: History::default(),
             cursor_pos: 0,
             completion_tree: completion,
             completion: CompletionStepData::default(),
@@ -87,12 +71,12 @@ impl CommandBuffer {
         }
     }
 
-    fn get_buffer(&mut self) -> String {
+    pub fn get_buffer(&mut self) -> String {
         self.strbuf = self.buffer.iter().collect();
         self.strbuf.clone()
     }
 
-    fn get_pos(&self) -> usize {
+    pub fn get_pos(&self) -> usize {
         self.cursor_pos
     }
 
@@ -101,25 +85,11 @@ impl CommandBuffer {
         let cmd = if !self.buffer.is_empty() {
             let command = self.get_buffer();
             self.completion_tree.insert(&command);
-
-            if let Some(last_cmd) = self.history.iter().last() {
-                if &command != last_cmd {
-                    self.history.push_back(command.clone());
-                }
-            } else {
-                self.history.push_back(command.clone());
-            }
-
-            while self.history.len() > MAX_HISTORY {
-                self.history.pop_front();
-            }
-
             command
         } else {
             String::new()
         };
 
-        self.current_index = self.history.len();
         self.buffer.clear();
         self.cursor_pos = 0;
 
@@ -249,44 +219,13 @@ impl CommandBuffer {
         }
     }
 
-    fn previous(&mut self) {
-        if !self.history.is_empty() {
-            if self.current_index == self.history.len() {
-                self.cached_buffer = self.buffer.clone();
-            }
-
-            self.current_index = {
-                if self.current_index > 0 {
-                    self.current_index - 1
-                } else {
-                    self.current_index
-                }
-            };
-            self.buffer = self.history[self.current_index].chars().collect();
-            self.cursor_pos = self.buffer.len();
-            self.tts_ctrl.lock().unwrap().speak(&self.strbuf, true);
-        }
+    pub fn clear(&mut self) {
+        self.buffer.clear();
+        self.cursor_pos = self.buffer.len();
     }
 
-    fn next(&mut self) {
-        let new_index = {
-            if self.current_index < self.history.len() {
-                self.current_index + 1
-            } else {
-                self.current_index
-            }
-        };
-
-        if new_index != self.current_index {
-            self.current_index = new_index;
-            if self.current_index == self.history.len() {
-                self.buffer = self.cached_buffer.clone();
-                self.cached_buffer.clear();
-            } else {
-                self.buffer = self.history[self.current_index].chars().collect();
-            }
-        }
-        self.tts_ctrl.lock().unwrap().speak(&self.strbuf, true);
+    pub fn set(&mut self, line: String) {
+        self.buffer = line.chars().collect();
         self.cursor_pos = self.buffer.len();
     }
 }
@@ -305,24 +244,27 @@ fn parse_key_event(
     buffer: &mut CommandBuffer,
     writer: &Sender<Event>,
     tts_ctrl: &mut Arc<Mutex<TTSController>>,
-    save_history: bool,
+    script: &mut Arc<Mutex<LuaScript>>,
 ) {
     match key {
         Key::Char('\n') => {
             writer
                 .send(Event::ServerInput(Line::from(buffer.submit())))
                 .unwrap();
+            if let Ok(mut script) = script.lock() {
+                script.set_prompt_content(String::new());
+            }
         }
         Key::Char('\t') => buffer.tab_complete(),
         Key::Char(c) => {
             tts_ctrl.lock().unwrap().key_press(c);
             buffer.push_key(c);
+            if let Ok(mut script) = script.lock() {
+                script.set_prompt_content(buffer.get_buffer());
+            }
         }
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
         Key::Ctrl('c') => {
-            if save_history {
-                buffer.history.save();
-            }
             writer.send(Event::Quit(QuitMethod::CtrlC)).unwrap();
         }
         Key::PageUp => writer.send(Event::ScrollUp).unwrap(),
@@ -335,8 +277,6 @@ fn parse_key_event(
         Key::Right => buffer.step_right(),
         Key::Backspace => buffer.remove(),
         Key::Delete => buffer.delete_right(),
-        Key::Up => buffer.previous(),
-        Key::Down => buffer.next(),
         _ => {}
     };
 }
@@ -359,6 +299,8 @@ fn check_command_binds(
             }
             Key::Home => script.check_bindings("home"),
             Key::End => script.check_bindings("end"),
+            Key::Up => script.check_bindings("up"),
+            Key::Down => script.check_bindings("down"),
             _ => false,
         }
     }
@@ -418,8 +360,6 @@ fn handle_script_ui_io(
             UiEvent::DeleteWordLeft => buffer.delete_word_left(),
             UiEvent::DeleteWordRight => buffer.delete_word_right(),
             UiEvent::DeleteRight => buffer.delete_right(),
-            UiEvent::PreviousCommand => buffer.previous(),
-            UiEvent::NextCommand => buffer.next(),
             UiEvent::ScrollDown => writer.send(Event::ScrollDown).unwrap(),
             UiEvent::ScrollUp => writer.send(Event::ScrollUp).unwrap(),
             UiEvent::ScrollTop => writer.send(Event::ScrollTop).unwrap(),
@@ -439,48 +379,52 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
         .spawn(move || {
             debug!("Input stream spawned");
             let writer = session.main_writer.clone();
-            let script = session.lua_script.clone();
+            let mut script = session.lua_script.clone();
             let stdin = stdin();
-            let mut tts_ctrl = session.tts_ctrl.clone();
-            let mut buffer = CommandBuffer::new(tts_ctrl.clone(), script.clone());
-            for server in Servers::load().keys() {
-                buffer.completion_tree.insert(server);
-            }
-            buffer
-                .completion_tree
-                .insert(include_str!("../../resources/completions.txt"));
+            let buffer = session.command_buffer.clone();
+            let mut tts_ctrl = session.tts_ctrl;
 
-            let save_history = session.save_history();
-            if save_history {
-                buffer.history = History::load();
-                buffer.current_index = buffer.history.len();
-                for line in buffer.history.iter() {
-                    buffer.completion_tree.insert(line);
+            if let Ok(mut buffer) = buffer.lock() {
+                for server in Servers::load().keys() {
+                    buffer.completion_tree.insert(server);
                 }
+                buffer
+                    .completion_tree
+                    .insert(include_str!("../../resources/completions.txt"));
             }
 
             for e in stdin.events() {
                 match e.unwrap() {
                     termion::event::Event::Key(key) => {
-                        if !check_command_binds(key, &mut buffer, &script, &writer) {
-                            parse_key_event(key, &mut buffer, &writer, &mut tts_ctrl, save_history);
+                        if let Ok(mut buffer) = buffer.lock() {
+                            if !check_command_binds(key, &mut buffer, &script, &writer) {
+                                parse_key_event(
+                                    key,
+                                    &mut buffer,
+                                    &writer,
+                                    &mut tts_ctrl,
+                                    &mut script,
+                                );
+                            }
+                            writer
+                                .send(Event::UserInputBuffer(
+                                    buffer.get_buffer(),
+                                    buffer.get_pos(),
+                                ))
+                                .unwrap();
                         }
-                        writer
-                            .send(Event::UserInputBuffer(
-                                buffer.get_buffer(),
-                                buffer.get_pos(),
-                            ))
-                            .unwrap();
                     }
                     termion::event::Event::Mouse(event) => parse_mouse_event(event, &writer),
                     termion::event::Event::Unsupported(bytes) => {
                         if let Ok(escape) = String::from_utf8(bytes.clone()) {
-                            check_escape_bindings(
-                                &escape.to_lowercase(),
-                                &mut buffer,
-                                &script,
-                                &writer,
-                            );
+                            if let Ok(mut buffer) = buffer.lock() {
+                                check_escape_bindings(
+                                    &escape.to_lowercase(),
+                                    &mut buffer,
+                                    &script,
+                                    &writer,
+                                );
+                            }
                         } else {
                             writer
                                 .send(Event::Info(format!("Unknown command: {:?}", bytes)))
@@ -548,43 +492,6 @@ mod command_test {
         assert_eq!(buffer.get_pos(), 0);
         buffer.remove();
         assert_eq!(buffer.get_pos(), 0);
-    }
-
-    #[test]
-    fn test_no_history_empty_input() {
-        let mut buffer = get_command().0;
-        buffer.submit();
-        assert!(buffer.history.is_empty());
-    }
-
-    #[test]
-    fn no_duplicate_commands_in_history() {
-        let mut buffer = get_command().0;
-        push_string(&mut buffer, "test");
-        buffer.submit();
-        push_string(&mut buffer, "test");
-        buffer.submit();
-        push_string(&mut buffer, "test");
-        buffer.submit();
-        push_string(&mut buffer, "test");
-        buffer.submit();
-        push_string(&mut buffer, "random");
-        buffer.submit();
-        push_string(&mut buffer, "random");
-        buffer.submit();
-        push_string(&mut buffer, "random");
-        buffer.submit();
-        push_string(&mut buffer, "test");
-        buffer.submit();
-        push_string(&mut buffer, "random");
-        buffer.submit();
-
-        assert_eq!(buffer.history.len(), 4);
-        let mut it = buffer.history.iter();
-        assert_eq!(it.next(), Some(&"test".to_string()));
-        assert_eq!(it.next(), Some(&"random".to_string()));
-        assert_eq!(it.next(), Some(&"test".to_string()));
-        assert_eq!(it.next(), Some(&"random".to_string()));
     }
 
     #[test]

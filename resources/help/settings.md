@@ -15,8 +15,20 @@ Available settings are:
 - `logging_enabled`     See `/help logging`
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
 - `save_history`        Save your last 100 commands to disk.
+- `command_search`      Makes command history context aware (See info below for details)
 - `confirm_quit`        Ask for confirmation before quitting Blightmud when pressing `ctrl-c`.
 - `scroll_split`        Split screen when scrolling
 - `scroll_lock`         Set scroll position at start of text when showing long help files
 - `tts_enabled`         Enable tts (only if compiled with TTS)
 - `reader_mode`         Switches to a screen reader friendly TUI. (Does not support `status area`.)
+- `hide_topbar`         Toggles the topbar
+
+##
+
+***command_search***
+Makes command history stepping context aware.
+
+If you type something in the prompt and then hit `up` (`history.previous_command()`)
+you will only find results that are prefixed with what you typed first.
+
+Eg. Type `sc`, hit `up`. Results can be `scent`, `score`, `scan`.

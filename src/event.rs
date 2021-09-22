@@ -73,6 +73,7 @@ pub enum Event {
     TTSEvent(TTSEvent),
     TimedEvent(u32),
     TimerTick(u128),
+    SetPromptInput(String),
     UserInputBuffer(String, usize),
 }
 use anyhow::Result as AResult;

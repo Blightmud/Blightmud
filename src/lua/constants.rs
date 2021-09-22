@@ -12,6 +12,7 @@ pub const BLIGHT_ON_QUIT_LISTENER_TABLE: &str = "__on_quit_listeners";
 pub const BACKEND: &str = "__blight_backend_wrapper";
 pub const CONNECTION_ID: &str = "__blight_connection_id";
 pub const COMPLETION_CALLBACK_TABLE: &str = "__completion_callback_table";
+pub const PROMPT_CONTENT: &str = "__prompt_content";
 
 // Core tables
 pub const PROTO_ENABLED_LISTENERS_TABLE: &str = "__protocol_enabled_listeners";

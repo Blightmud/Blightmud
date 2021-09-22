@@ -6,6 +6,7 @@ use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{
     log::Log, mud::Mud, regex::RegexLib, settings::Settings, store::Store, timer::Timer, util::*,
 };
+use crate::lua::prompt::Prompt;
 use crate::{event::Event, lua::servers::Servers, model::Line};
 use anyhow::Result;
 use log::info;
@@ -53,6 +54,7 @@ fn create_default_lua_state(
         state.set_named_registry_value(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(COMPLETION_CALLBACK_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(PROMPT_CONTENT, String::new())?;
 
         globals.set("blight", blight)?;
         globals.set("core", Core::new(writer.clone()))?;
@@ -68,6 +70,7 @@ fn create_default_lua_state(
         globals.set("audio", Audio {})?;
         globals.set("socket", SocketLib {})?;
         globals.set("servers", Servers {})?;
+        globals.set("prompt", Prompt {})?;
 
         let lua_json = state
             .load(include_str!("../../resources/lua/json.lua"))
@@ -88,6 +91,10 @@ fn create_default_lua_state(
             .load(include_str!("../../resources/lua/search.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("search", lua_search)?;
+        let history = state
+            .load(include_str!("../../resources/lua/history.lua"))
+            .call::<_, mlua::Value>(())?;
+        globals.set("history", history)?;
 
         state
             .load(include_str!("../../resources/lua/defaults.lua"))
@@ -176,6 +183,14 @@ impl LuaScript {
             output_stack_trace(&self.writer, &msg.to_string());
         }
         result.ok()
+    }
+
+    pub fn set_prompt_content(&mut self, content: String) {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            self.state
+                .set_named_registry_value(PROMPT_CONTENT, content.clone())?;
+            Ok(())
+        });
     }
 
     pub fn on_mud_output(&self, line: &mut Line) {

@@ -32,6 +32,8 @@ by typing `/help <module>`.
 - `core`        Functions for advanced scripting and telnet protocol control
 - `socket`      Functions to handle opening and sending data over a socket
 - `audio`       Functions to handle audio
+- `history`     Module that handles command history
+- `prompt`      Module for interacting with the prompt and it's content
 - `servers`     Server storage and handling
 - `ttype`       TTYPE negotiation configuration
 - `plugin`      Plugin handling

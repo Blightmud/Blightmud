@@ -190,6 +190,8 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "scrolling" => "scrolling.md",
         "ttype" => "ttype.md",
         "json" => "json.md",
+        "prompt" => "prompt.md",
+        "history" => "history.md",
     }
 }
 

@@ -275,7 +275,12 @@ fn parse_key_event(
         // Input navigation
         Key::Left => buffer.step_left(),
         Key::Right => buffer.step_right(),
-        Key::Backspace => buffer.remove(),
+        Key::Backspace => {
+            buffer.remove();
+            if let Ok(mut script) = script.lock() {
+                script.set_prompt_content(buffer.get_buffer());
+            }
+        }
         Key::Delete => buffer.delete_right(),
         _ => {}
     };

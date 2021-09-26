@@ -74,6 +74,7 @@ impl UserData for Line {
             this.replacement = Some(line);
             Ok(())
         });
+        methods.add_method("source", |_, this, ()| Ok(this.inner.flags.source.clone()));
         methods.add_method(
             "replacement",
             |_, this, _: ()| -> mlua::Result<Option<String>> { Ok(this.replacement.clone()) },

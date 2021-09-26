@@ -81,6 +81,7 @@ impl UserData for Mud {
             |ctx, (msg, options): (String, Option<mlua::Table>)| {
                 let mut line = Line::from(msg);
                 line.flags.bypass_script = true;
+                line.flags.source = Some("script".to_string());
 
                 if let Some(table) = options {
                     line.flags.gag = table.get("gag")?;
@@ -101,7 +102,8 @@ impl UserData for Mud {
             Ok(())
         });
         methods.add_function("input", |ctx, line: String| {
-            let line = Line::from(line);
+            let mut line = Line::from(line);
+            line.flags.source = Some("script".to_string());
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend.writer.send(Event::ServerInput(line)).unwrap();
             Ok(())

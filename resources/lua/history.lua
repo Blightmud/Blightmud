@@ -28,14 +28,14 @@ end
 
 local function find_match_up()
     if not search_commands then
-        local command_set = {[orig_cmd]=true}
+        local command_subset = {[orig_cmd]=true}
         search_commands = {}
         for i,c in ipairs(commands) do
             if startsWith(c, orig_cmd) then
-                if not command_set[c] then
+                if not command_subset[c] then
                     table.insert(search_commands, i)
                 end
-                command_set[c] = true
+                command_subset[c] = true
             end
         end
         search_index = #search_commands

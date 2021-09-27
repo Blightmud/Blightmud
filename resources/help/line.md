@@ -63,3 +63,17 @@ Returns the replacement content for this line or nil if nothing has been set.
 Get or set the `matched` flag on this line. The `matched` flag tells if this line
 has been matched by a trigger or not. If you are writing advanced plugins whith
 full output capturing you are responsible for setting this yourself.
+
+##
+
+***line:source() -> String***
+Return the source of the line.
+
+Primarly used for input handling to differ between user input commands and
+script input commands.
+
+Possible values are:
+
+- `"user"`    When the line is coming from the users prompt.
+- `"script"`  When the line is sent to the mud from a lua script.
+- `nil`       When the line comes from neither of the above.

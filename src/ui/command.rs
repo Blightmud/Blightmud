@@ -248,9 +248,9 @@ fn parse_key_event(
 ) {
     match key {
         Key::Char('\n') => {
-            writer
-                .send(Event::ServerInput(Line::from(buffer.submit())))
-                .unwrap();
+            let mut line = Line::from(buffer.submit());
+            line.flags.source = Some("user".to_string());
+            writer.send(Event::ServerInput(line)).unwrap();
             if let Ok(mut script) = script.lock() {
                 script.set_prompt_content(String::new());
             }

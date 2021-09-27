@@ -13,6 +13,7 @@ pub struct Flags {
     pub tts_gag: bool,
     pub tts_interrupt: bool,
     pub separate_receives: bool,
+    pub source: Option<String>,
 }
 
 #[derive(Debug, Clone)]

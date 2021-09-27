@@ -1,4 +1,5 @@
 use crate::io::SaveData;
+use log::debug;
 use mlua::{AnyUserData, Result, UserData, UserDataMethods};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -43,6 +44,7 @@ impl UserData for Store {
             },
         );
         methods.add_function("disk_write", |_ctx, (key, val): (String, String)| {
+            debug!("Writing to disk: {} -> {}", key, val);
             let mut persistent_data = HashMap::load();
             persistent_data.insert(key, val);
             persistent_data.save();
@@ -50,10 +52,9 @@ impl UserData for Store {
         });
         methods.add_function("disk_read", |_ctx, key: String| -> Result<Option<String>> {
             let persistent_data: HashMap<String, String> = HashMap::load();
-            match persistent_data.get(key.as_str()) {
-                Some(val) => Ok(Some(val.to_string())),
-                _ => Ok(None),
-            }
+            let val = persistent_data.get(key.as_str()).map(|val| val.to_string());
+            debug!("Reading from disk: {} -> {:?}", key, val);
+            Ok(val)
         });
     }
 }

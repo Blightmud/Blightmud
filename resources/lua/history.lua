@@ -103,11 +103,14 @@ function mod.next_command()
     end
 end
 
-blight.on_quit(function ()
+local function write_to_disk()
     if settings.get("save_history") then
         store.disk_write("__command_history", json.encode(commands))
     end
-end)
+end
+
+blight.on_quit(write_to_disk)
+mud.on_disconnect(write_to_disk)
 
 local function shift_commands(new_cmd)
     if command_set[new_cmd] then

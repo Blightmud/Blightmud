@@ -363,6 +363,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn scroll_down(&mut self) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         if self.scroll_data.active {
             let output_range = self.scroll_range() as i32;
             let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
@@ -382,6 +383,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn scroll_to(&mut self, row: usize) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         if self.history.len() > self.scroll_range() as usize {
             let max_start_index = self.history.inner.len() as i32 - self.scroll_range() as i32;
             if max_start_index > 0 && row < max_start_index as usize {
@@ -405,6 +407,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn scroll_up(&mut self) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         let output_range: usize = self.scroll_range() as usize;
         if self.history.inner.len() > output_range {
             if !self.scroll_data.active {
@@ -418,6 +421,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn find_up(&mut self, pattern: &Regex) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         let pos = if self.scroll_data.active {
             self.scroll_data.pos
         } else if self.history.len() > self.scroll_range() as usize {
@@ -433,6 +437,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn find_down(&mut self, pattern: &Regex) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         if self.scroll_data.active {
             if let Some(line) = self
                 .history

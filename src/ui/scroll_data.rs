@@ -14,6 +14,7 @@ pub struct ScrollData {
     pub hilite: Option<Regex>,
     pub allow_split: bool,
     pub allow_scroll_lock: bool,
+    pub scroll_step: usize,
 }
 
 impl ScrollData {
@@ -27,6 +28,7 @@ impl ScrollData {
             hilite: None,
             allow_split: settings.get(SCROLL_SPLIT).unwrap_or(true),
             allow_scroll_lock: settings.get(SCROLL_LOCK).unwrap_or(true),
+            scroll_step: 5,
         }
     }
 
@@ -52,5 +54,49 @@ impl ScrollData {
 
     pub fn not_scrolled_or_split(&self) -> bool {
         !self.active || self.split
+    }
+
+    pub fn clamp(&mut self, history: &History) {
+        if self.active {
+            while self.pos >= history.len() {
+                self.pos -= history.drain_length;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::ui::history::History;
+
+    #[test]
+    fn test_general_user() {
+        let mut scroll = ScrollData::new();
+
+        assert!(scroll.lock(true).is_ok());
+        assert!(scroll.not_scrolled_or_split());
+        scroll.active = true;
+        scroll.pos = 1000;
+        assert!(!scroll.not_scrolled_or_split());
+
+        let history = History::new();
+        assert!(scroll.reset(&history).is_ok());
+        assert!(scroll.not_scrolled_or_split());
+    }
+
+    #[test]
+    fn confirm_clamp() {
+        let mut scroll = ScrollData::new();
+        scroll.active = true;
+        scroll.pos = 1200;
+
+        let mut history = History::new();
+        for _ in 0..1024 {
+            history.append("test")
+        }
+        assert!(scroll.pos > history.len());
+        scroll.clamp(&history);
+        assert_eq!(scroll.pos, 1200 - history.drain_length);
     }
 }

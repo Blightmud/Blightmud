@@ -258,6 +258,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn scroll_down(&mut self) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         if self.scroll_data.active {
             let output_range = self.output_line as i32;
             let max_start_index = self.history.inner.len() as i32 - output_range;
@@ -277,6 +278,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn scroll_to(&mut self, row: usize) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         if self.history.len() > self.output_line as usize {
             let max_start_index = self.history.inner.len() as i32 - self.output_line as i32;
             if max_start_index > 0 && row < max_start_index as usize {
@@ -300,6 +302,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn scroll_up(&mut self) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         let output_range = self.output_line as usize;
         if self.history.inner.len() > output_range {
             if !self.scroll_data.active {
@@ -313,6 +316,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn find_up(&mut self, pattern: &Regex) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         let scroll_range = self.output_line as usize;
         let pos = if self.scroll_data.active {
             self.scroll_data.pos
@@ -329,6 +333,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn find_down(&mut self, pattern: &Regex) -> Result<()> {
+        self.scroll_data.clamp(&self.history);
         if self.scroll_data.active {
             if let Some(line) = self
                 .history

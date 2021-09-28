@@ -38,6 +38,7 @@ jobs:
         with:
           allowUpdates: true
           draft: true
+          filterByMilestone: true
           artifacts: ${{ steps.deb_path.outputs.deb_path }}
           artifactContentType: application/vnd.debian.binary-package
           bodyFile: CHANGELOG.md

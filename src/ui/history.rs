@@ -69,3 +69,79 @@ impl History {
             .map(|index| pos - index - 1)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_basic() {
+        let mut history = History::new();
+        assert!(history.is_empty());
+        history.append("test");
+        assert!(!history.is_empty());
+        assert_eq!(history.len(), 1);
+    }
+
+    #[test]
+    fn test_remove_last() {
+        let mut history = History::new();
+        history.append("a nice line");
+        history.append("a complete line");
+        history.append("a par");
+
+        assert_eq!(history.len(), 3);
+        history.remove_last_if_prefix("a fancy prompt");
+        assert_eq!(history.len(), 3);
+        history.remove_last_if_prefix("a partial line");
+        assert_eq!(history.len(), 2);
+    }
+
+    #[test]
+    fn confirm_drain() {
+        let mut history = History::new();
+        for _ in 0..31 * 1024 {
+            history.append("test");
+        }
+        assert_eq!(history.len(), 31 * 1024);
+        for _ in 0..1024 {
+            history.append("test");
+        }
+        assert_eq!(history.len(), 31 * 1024);
+    }
+
+    #[test]
+    fn test_find() {
+        let mut history = History::new();
+        for i in 0..12000 {
+            if i % 1000 == 0 {
+                history.append("something");
+            } else {
+                history.append("nothing");
+            }
+        }
+        let mut index = history.len();
+        let mut goal = 11000;
+        let pattern = Regex::new("^something$").unwrap();
+        while index > 0 && goal > 0 {
+            index = if let Some(i) = history.find_backward(&pattern, index) {
+                i
+            } else {
+                0
+            };
+            assert_eq!(index, goal);
+            goal -= 1000;
+        }
+        goal += 1000;
+        while index < history.len() && goal <= 11000 {
+            index = if let Some(i) = history.find_forward(&pattern, index) {
+                i
+            } else {
+                0
+            };
+            assert_eq!(index, goal);
+            goal += 1000;
+            index += 1;
+        }
+    }
+}

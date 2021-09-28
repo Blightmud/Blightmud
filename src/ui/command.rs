@@ -167,14 +167,17 @@ impl CommandBuffer {
         }
     }
 
-    fn remove(&mut self) {
+    fn remove(&mut self) -> Option<char> {
         if self.cursor_pos > 0 {
-            if self.cursor_pos < self.buffer.len() {
-                self.buffer.remove(self.cursor_pos - 1);
+            let removed = if self.cursor_pos < self.buffer.len() {
+                Some(self.buffer.remove(self.cursor_pos - 1))
             } else {
-                self.buffer.pop();
-            }
+                self.buffer.pop()
+            };
             self.step_left();
+            removed
+        } else {
+            None
         }
     }
 
@@ -276,7 +279,11 @@ fn parse_key_event(
         Key::Left => buffer.step_left(),
         Key::Right => buffer.step_right(),
         Key::Backspace => {
-            buffer.remove();
+            if let Some(c) = buffer.remove() {
+                if let Ok(mut tts_ctrl) = tts_ctrl.lock() {
+                    tts_ctrl.key_press(c);
+                }
+            }
             if let Ok(mut script) = script.lock() {
                 script.set_prompt_content(buffer.get_buffer());
             }
@@ -359,7 +366,9 @@ fn handle_script_ui_io(
             UiEvent::StepToEnd => buffer.move_to_end(),
             UiEvent::StepWordLeft => buffer.step_word_left(),
             UiEvent::StepWordRight => buffer.step_word_right(),
-            UiEvent::Remove => buffer.remove(),
+            UiEvent::Remove => {
+                buffer.remove();
+            }
             UiEvent::DeleteToEnd => buffer.delete_to_end(),
             UiEvent::DeleteFromStart => buffer.delete_from_start(),
             UiEvent::DeleteWordLeft => buffer.delete_word_left(),

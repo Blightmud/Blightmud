@@ -62,6 +62,10 @@ me to the word **blight** and here we are.
 - Run `cargo build` to compile
 - Run `cargo run` to run
 
+Dependencies include, openssl, alsa-libs and pkg-config
+- Ubuntu    `apt install pkg-config libopenssl-dev libasound2-dev`
+- Arch      `pacman -S pkgconf alsa-lib openssl`
+
 ### Compile with text-to-speech
 
 - Install rust

@@ -29,7 +29,7 @@ alias.add("^/enable_plugin.*$", function (m)
     if #args == 1 then
         print("USAGE: /enable_plugin <plugin_name>")
     else
-        plugin.enable(m[2])
+        plugin.enable(args[2])
     end
 end)
 
@@ -38,7 +38,7 @@ alias.add("^/disable_plugin (.*)$", function (m)
     if #args == 1 then
         print("USAGE: /disable_plugin <plugin_name>")
     else
-        plugin.disable(m[2])
+        plugin.disable(args[2])
     end
 end)
 

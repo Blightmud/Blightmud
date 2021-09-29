@@ -14,7 +14,7 @@ local function reload_scripts()
 	blight.status_height(1)
 	blight.status_line(0, "")
 	script.reset()
-	script.load("/home/user/.config/blightmud/config.lua")
+	script.load("$CONFIGDIR/config.lua")
 end
 
 local function disconnect()

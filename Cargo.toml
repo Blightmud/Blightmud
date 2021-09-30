@@ -43,3 +43,12 @@ rodio = "0.14.0"
 [dev-dependencies]
 mockall = "0.10.2"
 mockall_double = "0.2.0"
+
+[package.metadata.rpm]
+package = "blightmud"
+
+[package.metadata.rpm.cargo]
+buildflags = ["--release"]
+
+[package.metadata.rpm.targets]
+blightmud = { path = "/usr/bin/blightmud" }

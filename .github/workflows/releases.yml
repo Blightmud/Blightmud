@@ -10,23 +10,31 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  package_deb:
-    name: Build DEB package
+  package_linux:
+    name: Build linux packages
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Install deps
-        run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev pkg-config
+        run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev pkg-config rpm
       - name: Install cargo-deb
         run: cargo install cargo-deb || true
+      - name: Install cargo-rpm
+        run: cargo install cargo-rpm || true
       - name: Package DEB
         run: cargo deb
       - name: Set .deb path
         id: deb_path
         run: |
           ls -1 target/debian/*.deb | awk '{print "::set-output name=deb_path::"$1}'
+      - name: Package RPM
+        run: cargo rpm build
+      - name: Set .rpm path
+        id: rpm_path
+        run: |
+          ls -1 target/release/rpmbuild/RPMS/x86_64/*.rpm | awk '{print "::set-output name=rpm_path::"$1}'
       - name: Generate changelog
         id: changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.1.1
@@ -43,11 +51,16 @@ jobs:
           artifactContentType: application/vnd.debian.binary-package
           bodyFile: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Artifact
+      - name: Upload deb
         uses: actions/upload-artifact@v1
         with:
           name: blightmud-deb
           path: ${{ steps.deb_path.outputs.deb_path }}
+      - name: Upload rpm
+        uses: actions/upload-artifact@v1
+        with:
+          name: blightmud-rpm
+          path: ${{ steps.rpm_path.outputs.rpm_path }}
 
   build_macos:
     name: Build for macOS

@@ -4,8 +4,8 @@ pub use self::{
     command::CommandBuffer,
     help_handler::HelpHandler,
     reader_screen::ReaderScreen,
-    screen::{create_screen, create_screen_writer, switch_screen},
     split_screen::SplitScreen,
+    ui_wrapper::UiWrapper,
     user_interface::{wrap_line, UserInterface},
 };
 
@@ -17,7 +17,7 @@ mod command;
 mod help_handler;
 mod history;
 mod reader_screen;
-mod screen;
 mod scroll_data;
 mod split_screen;
+mod ui_wrapper;
 mod user_interface;

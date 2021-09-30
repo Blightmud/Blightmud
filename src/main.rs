@@ -26,7 +26,7 @@ use crate::model::{Servers, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
-use crate::ui::spawn_input_thread;
+use crate::ui::{spawn_input_thread, UiWrapper, UserInterface};
 use event::EventHandler;
 use getopts::Options;
 use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, SAVE_HISTORY};
@@ -267,7 +267,7 @@ fn run(
     let mut event_handler = EventHandler::from(&session);
 
     let mut player = Player::new();
-    let mut screen = ui::create_screen(&session, false)?;
+    let mut screen: Box<dyn UserInterface> = Box::new(UiWrapper::new(&session, false)?);
 
     screen.setup()?;
 
@@ -374,7 +374,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
             Event::SettingChanged(name, value) => match name.as_str() {
                 READER_MODE => {
-                    screen = ui::switch_screen(screen, &mut session, value)?;
+                    screen = Box::new(UiWrapper::new_from(screen, &session, value)?);
                 }
                 HIDE_TOPBAR | SCROLL_SPLIT => {
                     screen.setup()?;

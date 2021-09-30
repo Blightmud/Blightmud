@@ -20,11 +20,19 @@ impl HelpHandler {
     }
 
     pub fn show_help(&self, file: &str, lock: bool) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("Drawing helpfile: {}", file);
+        debug!("Drawing help file: {}", file);
         if lock {
             self.writer.send(Event::ScrollLock(true))?;
         }
-        self.writer.send(self.parse_helpfile(file))?;
+        if let Some(line) = self.parse_helpfile(file) {
+            self.writer.send(Event::Output(line)).unwrap();
+        } else if let Some(line) = self.search_helpfiles(file) {
+            self.writer.send(Event::Output(line)).unwrap();
+        } else {
+            self.writer
+                .send(Event::Info("No help files found".to_string()))
+                .unwrap();
+        }
         if lock {
             self.writer.send(Event::ScrollLock(false))?;
         }
@@ -48,7 +56,7 @@ impl HelpHandler {
         crate::DATA_DIR.join("plugins").join(file).join("README.md")
     }
 
-    fn parse_markdown(&self, file_content: &str) -> Event {
+    fn parse_markdown(&self, file_content: &str) -> Option<Line> {
         let mut options = Options::empty();
         options.insert(Options::ENABLE_TASKLISTS);
         options.insert(Options::ENABLE_STRIKETHROUGH);
@@ -62,18 +70,25 @@ impl HelpHandler {
         let env = mdcat::Environment::for_local_directory(&base_dir).unwrap();
         if mdcat::push_tty(&md_settings(), &env, &mut md_bytes, parser).is_ok() {
             if let Ok(md_string) = String::from_utf8(md_bytes) {
-                Event::Output(Line::from(format!("\n\n{}", md_string)))
+                Some(Line::from(format!("\n\n{}", md_string)))
             } else {
-                Event::Info("Error parsing help file".to_string())
+                None
             }
         } else {
-            Event::Info("Error parsing help file".to_string())
+            None
         }
     }
 
-    fn parse_helpfile(&self, file: &str) -> Event {
+    fn parse_helpfile(&self, file: &str) -> Option<Line> {
         let plugin_help_path = self.get_plugin_helpfile_path(file);
-        if self.files.contains_key(file) {
+        if plugin_help_path.exists() {
+            if let Some(path) = plugin_help_path.to_str() {
+                let content = self.read_from_file(path);
+                self.parse_markdown(&content)
+            } else {
+                None
+            }
+        } else if self.files.contains_key(file) {
             let data_dir = crate::DATA_DIR.clone();
             let log_path = data_dir.join("logs");
             let datadir = if let Some(str_path) = data_dir.to_str() {
@@ -101,15 +116,27 @@ impl HelpHandler {
                 .replace("$CONFIGDIR", config_dir);
 
             self.parse_markdown(&file_content)
-        } else if plugin_help_path.exists() {
-            if let Some(path) = plugin_help_path.to_str() {
-                let content = self.read_from_file(path);
-                self.parse_markdown(&content)
-            } else {
-                Event::Info(format!("Invalid helpfile for plugin: {}", file))
-            }
         } else {
-            Event::Info("No such help file found".to_string())
+            None
+        }
+    }
+
+    pub fn search_helpfiles(&self, pattern: &str) -> Option<Line> {
+        let mut matches = vec![];
+        for key in self.files.keys() {
+            let content = self.file_content(key);
+            if content.contains(pattern) {
+                matches.push(key);
+            }
+        }
+        if !matches.is_empty() {
+            let mut output = "No such help file exists.\nThe following help files contain a match for your search:".to_string();
+            for key in matches {
+                output.push_str(&format!("\n- {}", key));
+            }
+            Some(Line::from(output))
+        } else {
+            None
         }
     }
 }
@@ -211,30 +238,26 @@ mod help_test {
     fn confirm_markdown_parsing() {
         let handler = handler();
         for file in handler.files.keys() {
-            assert!(match handler.parse_helpfile(file) {
-                Event::Output(_) => true,
-                _ => false,
-            });
+            assert!(handler.parse_helpfile(file).is_some());
         }
     }
 
     #[test]
     fn file_not_present() {
         let handler = handler();
-        assert_eq!(
-            handler.parse_helpfile("nothing"),
-            Event::Info("No such help file found".to_string())
-        );
+        assert_eq!(handler.parse_helpfile("nothing"), None);
     }
 
     #[test]
     fn confirm_help_render() {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
         let handler = HelpHandler::new(writer);
-        handler.show_help("nothing", false).unwrap();
+        handler
+            .show_help("defintitelydoesntmatchanything", false)
+            .unwrap();
         assert_eq!(
             reader.recv(),
-            Ok(Event::Info("No such help file found".to_string()))
+            Ok(Event::Info("No help files found".to_string()))
         );
         handler.show_help("help", false).unwrap();
         let line = if let Ok(Event::Output(line)) = reader.recv() {

@@ -4,10 +4,10 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{Settings, HIDE_TOPBAR};
-use crate::{model::Line, model::Regex, tts::TTSController, ui::ansi::*};
+use crate::{model::Line, model::Regex, ui::ansi::*};
 use anyhow::Result;
 use std::collections::HashSet;
-use std::{io::Write, sync::Arc, sync::Mutex};
+use std::io::Write;
 use termion::color::{self, Bg, Fg};
 use termion::cursor;
 
@@ -150,7 +150,6 @@ impl StatusArea {
 
 pub struct SplitScreen {
     screen: Box<dyn Write>,
-    tts_ctrl: Arc<Mutex<TTSController>>,
     width: u16,
     height: u16,
     output_start_line: u16,
@@ -205,18 +204,15 @@ impl UserInterface for SplitScreen {
     fn print_error(&mut self, output: &str) {
         let line = &format!("{}[!!] {}{}", Fg(color::Red), output, Fg(color::Reset));
         self.print_line(line, true);
-        self.tts_ctrl.lock().unwrap().speak_error(output);
     }
 
     fn print_info(&mut self, output: &str) {
         let line = &format!("[**] {}", output);
         self.print_line(line, true);
-        self.tts_ctrl.lock().unwrap().speak_info(output);
     }
 
     fn print_output(&mut self, line: &Line) {
         //debug!("UI: {:?}", line);
-        self.tts_ctrl.lock().unwrap().speak_line(line);
         if line.flags.separate_receives {
             if let Some(print_line) = line.print_line() {
                 self.history.remove_last_if_prefix(print_line);
@@ -243,7 +239,6 @@ impl UserInterface for SplitScreen {
 
     fn print_prompt(&mut self, prompt: &Line) {
         //debug!("UI: {:?}", prompt);
-        self.tts_ctrl.lock().unwrap().speak_line(prompt);
         if let Some(prompt_line) = prompt.print_line() {
             if !prompt_line.is_empty() {
                 self.history.append(prompt_line);
@@ -298,7 +293,6 @@ impl UserInterface for SplitScreen {
             self.reset_scroll().ok();
         }
         if let Some(line) = send.print_line() {
-            self.tts_ctrl.lock().unwrap().speak_input(line);
             let line = &format!(
                 "{}{}> {}{}",
                 termion::style::Reset,
@@ -503,11 +497,7 @@ impl UserInterface for SplitScreen {
 }
 
 impl SplitScreen {
-    pub fn new(
-        screen: Box<dyn Write>,
-        history: History,
-        tts_ctrl: Arc<Mutex<TTSController>>,
-    ) -> Result<Self> {
+    pub fn new(screen: Box<dyn Write>, history: History) -> Result<Self> {
         let (width, height) = termion::terminal_size()?;
 
         let output_start_line = 2;
@@ -519,7 +509,6 @@ impl SplitScreen {
 
         Ok(Self {
             screen,
-            tts_ctrl,
             width,
             height,
             output_start_line,

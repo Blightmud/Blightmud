@@ -20,7 +20,7 @@ impl HelpHandler {
     }
 
     pub fn show_help(&self, file: &str, lock: bool) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("Drawing helpfile: {}", file);
+        debug!("Drawing help file: {}", file);
         if lock {
             self.writer.send(Event::ScrollLock(true))?;
         }
@@ -130,7 +130,7 @@ impl HelpHandler {
             }
         }
         if !matches.is_empty() {
-            let mut output = "No such helpfile exists.\nThe following helpfiles contain a match for your search:".to_string();
+            let mut output = "No such help file exists.\nThe following help files contain a match for your search:".to_string();
             for key in matches {
                 output.push_str(&format!("\n- {}", key));
             }

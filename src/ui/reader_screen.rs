@@ -212,7 +212,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_send(&mut self, send: &Line) {
-        if self.scroll_data.active {
+        if self.scroll_data.active && send.flags.source != Some("script".to_string()) {
             self.reset_scroll().ok();
         }
         if let Some(print_line) = send.print_line() {

@@ -32,13 +32,13 @@ jobs:
         uses: heinrichreimer/github-changelog-generator-action@v2.1.1
         with:
           onlyLastTag: true
+          filterByMilestone: true
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Create/Update release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           draft: true
-          filterByMilestone: true
           artifacts: ${{ steps.deb_path.outputs.deb_path }}
           artifactContentType: application/vnd.debian.binary-package
           bodyFile: CHANGELOG.md

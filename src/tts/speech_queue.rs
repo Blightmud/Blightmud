@@ -89,12 +89,12 @@ impl SpeechQueue {
     }
 
     pub fn scan_back(&mut self, step: usize) -> Option<String> {
-        self.scan_index = (self.scan_index as i32 - step as i32).max(0) as usize;
+        self.scan_index = (self.scan_index - step).clamp(0, self.queue.len() - 1) as usize;
         Some(self.queue[self.scan_index].msg.clone())
     }
 
     pub fn scan_forward(&mut self, step: usize) -> Option<String> {
-        self.scan_index = (self.scan_index + step).min(self.queue.len());
+        self.scan_index = (self.scan_index + step).clamp(0, self.queue.len());
         if self.scan_index < self.queue.len() {
             Some(self.queue[self.scan_index].msg.clone())
         } else {

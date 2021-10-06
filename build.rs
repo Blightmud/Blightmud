@@ -28,10 +28,14 @@ fn main() {
             } else {
                 String::new()
             };
-        println!(
-            "cargo:rustc-env=GIT_DESCRIBE={}",
+
+        let git_describe_format = if git_describe.is_empty() {
+            String::new()
+        } else {
             format!(" ({})", git_describe.trim())
-        );
+        };
+
+        println!("cargo:rustc-env=GIT_DESCRIBE={}", git_describe_format);
     } else {
         println!("cargo:rustc-env=GIT_DESCRIBE=");
     }

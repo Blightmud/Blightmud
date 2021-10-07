@@ -58,22 +58,16 @@ jobs:
       - name: Formatting
         if: ${{ matrix.toolchain != 'nightly' }}
         run: cargo fmt -- --check
-      - name: Check
-        if: ${{ matrix.toolchain != 'nightly' }}
-        run: cargo check --locked
       - name: Check (all features)
         if: ${{ matrix.toolchain != 'nightly' }}
         run: cargo check --locked --all-features
-      - name: Clippy
-        if: ${{ matrix.toolchain != 'nightly' }}
-        run: cargo clippy --locked
       - name: Clippy (all features)
         if: ${{ matrix.toolchain != 'nightly' }}
         run: cargo clippy --locked --all-features
-      - name: Test
-        run: cargo test --locked
       - name: Test (all features)
         run: cargo test --locked --all-features
+      - name: Test release (all features)
+        run: cargo test --release --locked --all-features
       - name: Build
         run: cargo build --release --locked
       - name: Build (all features)

@@ -37,17 +37,17 @@ const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), env!("GIT_DESCRIBE"));
 
 const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
 
-#[cfg(not(debug_assertions))]
+#[cfg(all(not(test), not(debug_assertions)))]
 const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
 
-#[cfg(not(debug_assertions))]
+#[cfg(all(not(test), not(debug_assertions)))]
 const XDG_CONFIG_DIR: &str = "~/.config/blightmud";
 
 type TelnetData = Option<Bytes>;
 
 lazy_static! {
     pub static ref DATA_DIR: PathBuf = {
-        #[cfg(not(debug_assertions))]
+        #[cfg(all(not(test), not(debug_assertions)))]
         {
             let data_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
                 MACOS_DEPRECATED_DIR.to_path_buf()
@@ -68,7 +68,7 @@ lazy_static! {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/data")
     };
     pub static ref CONFIG_DIR: PathBuf = {
-        #[cfg(not(debug_assertions))]
+        #[cfg(all(not(test), not(debug_assertions)))]
         {
             let config_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
                 MACOS_DEPRECATED_DIR.to_path_buf()

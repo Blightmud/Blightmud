@@ -1,6 +1,6 @@
 [package]
 name = "blightmud"
-version = "3.4.0"
+version = "3.4.1"
 description = "A terminal mud-client"
 readme = "README.md"
 license = "GPL3"

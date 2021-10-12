@@ -198,7 +198,7 @@ impl UserInterface for ReaderScreen {
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
         if let Some((existing, orig)) = self.prompt_input.clone() {
             if input.starts_with(&existing) {
-                let input = input[orig..].to_owned();
+                let input = input[existing.len()..].to_owned();
                 self.print_prompt_input_suffix(&input, orig, pos);
             } else if existing.starts_with(input) {
                 self.trim_prompt_input(pos);

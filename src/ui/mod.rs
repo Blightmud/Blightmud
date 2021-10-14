@@ -5,6 +5,7 @@ pub use self::{
     help_handler::HelpHandler,
     reader_screen::ReaderScreen,
     split_screen::SplitScreen,
+    headless_screen::HeadlessScreen,
     ui_wrapper::UiWrapper,
     user_interface::{wrap_line, UserInterface},
 };
@@ -19,5 +20,6 @@ mod history;
 mod reader_screen;
 mod scroll_data;
 mod split_screen;
+mod headless_screen;
 mod ui_wrapper;
 mod user_interface;

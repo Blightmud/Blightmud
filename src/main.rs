@@ -172,6 +172,7 @@ fn setup_options() -> Options {
     opts.optflag("v", "version", "Print version information");
     opts.optflag("V", "verbose", "Enable verbose logging");
     opts.optflag("r", "reader-mode", "Force screen reader friendly mode");
+    opts.optflag("H", "headless-mode", "Runs Blightmud without a TUI");
 
     opts
 }
@@ -251,7 +252,9 @@ fn main() {
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .build();
 
-    if let Err(error) = run(main_thread_read, session) {
+    let headless = matches.opt_present("headless-mode");
+
+    if let Err(error) = run(main_thread_read, session, headless) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
     }
@@ -262,13 +265,19 @@ fn main() {
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
+    headless: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
     let mut player = Player::new();
-    let mut screen: Box<dyn UserInterface> = Box::new(UiWrapper::new(&session, false)?);
+
+    let mut screen: Box<dyn UserInterface> = if !headless {
+        Box::new(UiWrapper::new(&session, false)?)
+    } else {
+        Box::new(UiWrapper::headless(&session)?)
+    };
 
     let mut fs_monitor = FSMonitor::new(session.main_writer.clone())?;
 

@@ -1,11 +1,11 @@
 # Bindings
 
 It is possible bind certain key commands in lua script to perform actions when
-pressed. This also include re-binding keys to a setup you are more comfortable
+pressed. This also include rebinding keys to a setup you are more comfortable
 with rather then the default.
 
-- `Ctrl-<char>` ex. `Ctrl-a, Ctrl-b` but not `Ctrl-PgUp`, there is no distinction for capitalization
-- `Alt-<char>` ex. `Alt-a, Alt-b` but not `Alt-PgUp`, there is no distinction for capitalization
+- `Ctrl-<char>` eg. `Ctrl-a, Ctrl-b` but not `Ctrl-PgUp`, there is no distinction for capitalization
+- `Alt-<char>` eg. `Alt-a, Alt-b` but not `Alt-PgUp`, there is no distinction for capitalization
 - `F1-F12`
 
 You may also bind on escape sequences. For example `\x1b[1;5A` (ctrl-up). When
@@ -16,8 +16,8 @@ will make it easy for you to find the escape sequence you want to bind.
 Is the command to use when creating a binding.
 
 `cmd` has to be in the following format:
-- `Ctrl-{}` where {} is a character, ex. a, b, c, etc.
-- `Alt-{}` where {} is a character, ex. a, b, c, etc.
+- `Ctrl-{}` where {} is a character, eg. a, b, c, etc.
+- `Alt-{}` where {} is a character, eg. a, b, c, etc.
 - `fn` where n is a number from 1-12
 - Or an escape sequence such as `\x1b[1;5A`
 

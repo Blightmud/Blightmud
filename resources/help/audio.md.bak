@@ -6,7 +6,7 @@ tunes or adding audio support to a mud.
 There are two available channels to play audio through. `music` and `sfx`.
 Behind the scenes they are the same thing. Audio sinks to play audio from. The
 reason there are two is so that you may play ambiance or background music and
-also sound effects in parallel.
+also sound effects in paralell.
 
 The audio module supports the following formats:
 

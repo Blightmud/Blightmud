@@ -52,7 +52,7 @@ impl TelnetHandler {
                 TelnetEvents::IAC(iac) => {
                     debug!("IAC: {}", iac.command);
                     match iac.command {
-                        cmd::GA | cmd::EOR | cmd::NOP => {
+                        cmd::GA | cmd::EOR => {
                             if self.mode != TelnetMode::TerminatedPrompt {
                                 debug!("Setting telnet mode: TerminatedPrompt");
                                 if iac.command == cmd::GA {

@@ -10,6 +10,8 @@ mod blight;
 mod constants;
 mod core;
 mod exec_response;
+mod fs;
+mod fs_event;
 mod line;
 mod log;
 mod lua_script;

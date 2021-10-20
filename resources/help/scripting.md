@@ -35,6 +35,7 @@ by typing `/help <module>`.
 - `history`     Module that handles command history
 - `prompt`      Module for interacting with the prompt and it's content
 - `servers`     Server storage and handling
+- `fs`          Filesystem monitoring
 - `ttype`       TTYPE negotiation configuration
 - `plugin`      Plugin handling
 - `json`        Json encoding and decoding

@@ -1,3 +1,4 @@
+use crate::io::FSEvent;
 use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
@@ -75,6 +76,8 @@ pub enum Event {
     TimerTick(u128),
     SetPromptInput(String),
     UserInputBuffer(String, usize),
+    FSEvent(FSEvent),
+    FSMonitor(String),
 }
 use anyhow::Result as AResult;
 type Result = AResult<()>;

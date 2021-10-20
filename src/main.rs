@@ -3,6 +3,7 @@ use lazy_static::lazy_static;
 use libtelnet_rs::bytes::Bytes;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
+use notify::Watcher;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
@@ -21,7 +22,7 @@ mod tts;
 mod ui;
 
 use crate::event::{Event, QuitMethod};
-use crate::io::SaveData;
+use crate::io::{FSMonitor, SaveData};
 use crate::model::{Servers, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
@@ -269,6 +270,8 @@ fn run(
     let mut player = Player::new();
     let mut screen: Box<dyn UserInterface> = Box::new(UiWrapper::new(&session, false)?);
 
+    let mut fs_monitor = FSMonitor::new(session.main_writer.clone())?;
+
     screen.setup()?;
 
     let _ = spawn_input_thread(session.clone());
@@ -499,6 +502,17 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
             Event::RemoveTimer(idx) => {
                 session.timer_writer.send(TimerEvent::Remove(idx))?;
+            }
+            Event::FSMonitor(path) => {
+                fs_monitor.watch(&path, notify::RecursiveMode::Recursive)?;
+            }
+            Event::FSEvent(e) => {
+                if let Ok(script) = session.lua_script.lock() {
+                    script.handle_fs_event(e)?;
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
+                }
             }
             Event::Redraw => {
                 screen.setup()?;

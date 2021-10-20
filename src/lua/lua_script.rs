@@ -1,3 +1,4 @@
+use super::fs_event::FSEvent;
 use super::{
     audio::Audio, backend::Backend, blight::*, line::Line as LuaLine, plugin, script::Script,
     socket::SocketLib, tts::Tts,
@@ -6,10 +7,11 @@ use super::{constants::*, core::Core, ui_event::UiEvent};
 use super::{
     log::Log, mud::Mud, regex::RegexLib, settings::Settings, store::Store, timer::Timer, util::*,
 };
+use crate::lua::fs::Fs;
 use crate::lua::prompt::Prompt;
 use crate::{event::Event, lua::servers::Servers, model::Line};
 use anyhow::Result;
-use log::info;
+use log::{debug, info};
 use mlua::{AnyUserData, Lua, Result as LuaResult};
 use std::io::prelude::*;
 use std::{fs::File, sync::mpsc::Sender};
@@ -54,6 +56,7 @@ fn create_default_lua_state(
         state.set_named_registry_value(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(COMPLETION_CALLBACK_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(FS_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(PROMPT_CONTENT, String::new())?;
 
         globals.set("blight", blight)?;
@@ -61,6 +64,7 @@ fn create_default_lua_state(
         globals.set("tts", tts)?;
         globals.set("regex", RegexLib {})?;
         globals.set("mud", Mud::new())?;
+        globals.set("fs", Fs {})?;
         globals.set("log", Log::new())?;
         globals.set("timer", Timer::new())?;
         globals.set("script", Script {})?;
@@ -163,6 +167,20 @@ impl LuaScript {
     pub fn reset(&mut self, dimensions: (u16, u16)) {
         let store = self.state.globals().get(Store::LUA_GLOBAL_NAME).ok();
         self.state = create_default_lua_state(self.writer.clone(), dimensions, store);
+    }
+
+    pub fn handle_fs_event(&self, event: crate::io::FSEvent) -> Result<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            let table: mlua::Table = self.state.named_registry_value(FS_LISTENERS)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
+                let (_, cb) = pair?;
+                let fs_event = FSEvent::from(event.clone());
+                debug!("FSEVENT(lua): {:?}", fs_event);
+                cb.call::<_, ()>(fs_event)?;
+            }
+            Ok(())
+        });
+        Ok(())
     }
 
     pub fn get_output_lines(&self) -> Vec<Line> {

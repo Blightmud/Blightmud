@@ -128,12 +128,12 @@ mud.add_input_listener(function (line)
     if line:source() == "user" then
         local str = line:line()
         if str ~= commands[#commands] and #str > 0 then
-            command_set[str] = true
             if settings.get("smart_history") then
                 shift_commands(str)
             else
                 table.insert(commands, str)
             end
+            command_set[str] = true
         end
         if #commands > 100 then
             table.remove(commands, 1)

@@ -463,9 +463,13 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
             Event::ResetScript => {
                 info!("Clearing scripts");
-                screen.print_info("Clearing scripts...");
                 if let Ok(mut script) = session.lua_script.lock() {
-                    script.reset((screen.width(), screen.height()));
+                    script.on_reset();
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
+                    screen.print_info("Clearing scripts...");
+                    script.reset((screen.width(), screen.height()))?;
                     screen.print_info("Done");
                 }
                 session.timer_writer.send(TimerEvent::Clear(true))?;

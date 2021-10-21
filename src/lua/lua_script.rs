@@ -57,6 +57,7 @@ fn create_default_lua_state(
         state.set_named_registry_value(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(COMPLETION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(FS_LISTENERS, state.create_table()?)?;
+        state.set_named_registry_value(SCRIPT_RESET_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(PROMPT_CONTENT, String::new())?;
 
         globals.set("blight", blight)?;
@@ -164,9 +165,21 @@ impl LuaScript {
         }
     }
 
-    pub fn reset(&mut self, dimensions: (u16, u16)) {
-        let store = self.state.globals().get(Store::LUA_GLOBAL_NAME).ok();
+    pub fn on_reset(&mut self) {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            let table: mlua::Table = self.state.named_registry_value(SCRIPT_RESET_LISTENERS)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
+                let (_, cb) = pair?;
+                cb.call::<_, ()>(())?;
+            }
+            Ok(())
+        });
+    }
+
+    pub fn reset(&mut self, dimensions: (u16, u16)) -> Result<()> {
+        let store = self.state.globals().get(Store::LUA_GLOBAL_NAME)?;
         self.state = create_default_lua_state(self.writer.clone(), dimensions, store);
+        Ok(())
     }
 
     pub fn handle_fs_event(&self, event: crate::io::FSEvent) -> Result<()> {
@@ -868,7 +881,7 @@ mod lua_script_tests {
                 .unwrap(),
             12
         );
-        lua.reset((100, 100));
+        lua.reset((100, 100)).unwrap();
         lua.state.load(lua_code).exec().unwrap();
         lua.on_connect("server", 1000, 13);
         assert_eq!(
@@ -913,7 +926,7 @@ mod lua_script_tests {
                 Line::from("disconnected3"),
             ]
         );
-        lua.reset((100, 100));
+        lua.reset((100, 100)).unwrap();
         lua.state.load(lua_code).exec().unwrap();
         lua.on_disconnect();
         assert_eq!(

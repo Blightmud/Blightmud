@@ -114,6 +114,7 @@ end
 
 blight.on_quit(write_to_disk)
 mud.on_disconnect(write_to_disk)
+script.on_reset(write_to_disk)
 
 local function shift_commands(new_cmd)
     if command_set[new_cmd] then

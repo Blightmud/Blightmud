@@ -14,6 +14,7 @@ pub const CONNECTION_ID: &str = "__blight_connection_id";
 pub const COMPLETION_CALLBACK_TABLE: &str = "__completion_callback_table";
 pub const PROMPT_CONTENT: &str = "__prompt_content";
 pub const FS_LISTENERS: &str = "__fs_listeners";
+pub const SCRIPT_RESET_LISTENERS: &str = "__script_reset_listeners";
 
 // Core tables
 pub const PROTO_ENABLED_LISTENERS_TABLE: &str = "__protocol_enabled_listeners";

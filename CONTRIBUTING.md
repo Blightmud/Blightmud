@@ -52,7 +52,7 @@ Before you commit please perform the following tasks:
 
 - Considder if what you added is testable. If it is then write a test
 - `cargo fmt`
-- `cargo clippy` (ignore the complex main.rs:run() warning for now)
+- `cargo clippy`
 - `cargo test`
 
 ### Naming and casing

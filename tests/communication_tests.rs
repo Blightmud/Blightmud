@@ -1,4 +1,4 @@
-use std::{ascii::AsciiExt, env};
+use std::env;
 
 use blightmud::{RuntimeConfig, PROJECT_NAME, VERSION};
 use common::{server::Connection, Server};
@@ -12,6 +12,7 @@ fn setup() -> Connection {
 
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
+    rt.no_panic_hook = true;
     rt.connect = Some(format!("localhost:{}", port));
     common::start_blightmud(rt);
 

@@ -137,6 +137,7 @@ pub struct RuntimeConfig {
     pub tls: bool,
     pub no_verify: bool,
     pub connect: Option<String>,
+    pub no_panic_hook: bool,
 }
 
 impl From<Matches> for RuntimeConfig {
@@ -160,13 +161,14 @@ impl From<Matches> for RuntimeConfig {
             tls: matches.opt_present("tls"),
             no_verify: matches.opt_present("no-verify"),
             connect,
+            no_panic_hook: false,
         }
     }
 }
 
 pub fn start(rt: RuntimeConfig) {
-    if !rt.headless_mode {
-        register_panic_hook();
+    if !rt.no_panic_hook {
+        register_panic_hook(rt.headless_mode);
     }
     let log_level = if rt.verbose {
         log::LevelFilter::Debug

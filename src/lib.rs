@@ -331,7 +331,19 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::Connected(_)
             | Event::Reconnect
             | Event::Disconnect(_) => {
-                event_handler.handle_server_events(event, &mut screen, &mut transmit_writer)?;
+                event_handler.handle_server_events(
+                    event.clone(),
+                    &mut screen,
+                    &mut transmit_writer,
+                )?;
+                if let Event::Disconnect(_) = event {
+                    if headless {
+                        session
+                            .main_writer
+                            .send(Event::Quit(QuitMethod::System))
+                            .unwrap();
+                    }
+                }
             }
             Event::MudOutput(_)
             | Event::Output(_)

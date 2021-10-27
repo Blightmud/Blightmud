@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, thread::{self, JoinHandle}};
 
 use blightmud::{RuntimeConfig, PROJECT_NAME, VERSION};
 use common::{server::Connection, Server};
@@ -6,7 +6,7 @@ use libtelnet_rs::telnet::{op_command::*, op_option::*};
 
 mod common;
 
-fn setup() -> Connection {
+fn setup() -> (Connection, JoinHandle<()>) {
     let port = common::random_port();
     let mut server = Server::bind(port);
 
@@ -14,19 +14,19 @@ fn setup() -> Connection {
     rt.headless_mode = true;
     rt.no_panic_hook = true;
     rt.connect = Some(format!("localhost:{}", port));
-    common::start_blightmud(rt);
+    let handle = common::start_blightmud(rt);
 
     let connection = server.listen();
     assert!(connection.is_ok());
     let connection = connection.unwrap();
     assert!(connection.stream.is_some());
 
-    connection
+    (connection, handle)
 }
 
 #[test]
 fn test_ttype_negotiation() -> std::io::Result<()> {
-    let mut connection = setup();
+    let (mut connection, handle) = setup();
 
     connection.send(&[IAC, WILL, TTYPE]);
     assert_eq!(connection.recv(), &[IAC, DO, TTYPE]);
@@ -58,12 +58,13 @@ fn test_ttype_negotiation() -> std::io::Result<()> {
     );
 
     connection.close();
+    handle.join().unwrap();
     Ok(())
 }
 
 #[test]
 fn test_gmcp_negotiation() -> std::io::Result<()> {
-    let mut connection = setup();
+    let (mut connection, handle) = setup();
 
     connection.send(&[IAC, WILL, GMCP]);
     assert_eq!(connection.recv(), &[IAC, DO, GMCP]);
@@ -94,5 +95,6 @@ fn test_gmcp_negotiation() -> std::io::Result<()> {
     assert!(success);
 
     connection.close();
+    handle.join().unwrap();
     Ok(())
 }

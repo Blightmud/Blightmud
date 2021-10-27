@@ -1,6 +1,6 @@
 use std::{ascii::AsciiExt, env};
 
-use blightmud::{PROJECT_NAME, RuntimeConfig, VERSION};
+use blightmud::{RuntimeConfig, PROJECT_NAME, VERSION};
 use common::{server::Connection, Server};
 use libtelnet_rs::telnet::{op_command::*, op_option::*};
 
@@ -42,9 +42,12 @@ fn test_ttype_negotiation() -> std::io::Result<()> {
     };
     assert_eq!(
         connection.recv(),
-        vec![&[IAC, SB, TTYPE, IS][..],
-        &term.bytes().collect::<Vec<u8>>()[..],
-        &[IAC, SE][..]].concat(),
+        vec![
+            &[IAC, SB, TTYPE, IS][..],
+            &term.bytes().collect::<Vec<u8>>()[..],
+            &[IAC, SE][..]
+        ]
+        .concat(),
     );
 
     connection.send(&[IAC, SB, TTYPE, SEND, IAC, SE]);
@@ -64,20 +67,28 @@ fn test_gmcp_negotiation() -> std::io::Result<()> {
     connection.send(&[IAC, WILL, GMCP]);
     assert_eq!(connection.recv(), &[IAC, DO, GMCP]);
     let response = connection.recv();
-    let expected1 = format!("Core.Hello {{\"Version\":\"{}\",\"Client\":\"{}\"}}", VERSION, PROJECT_NAME);
-    let expected2 = format!("Core.Hello {{\"Client\":\"{}\",\"Version\":\"{}\"}}", PROJECT_NAME, VERSION);
-    let success = response == 
-        vec![
+    let expected1 = format!(
+        "Core.Hello {{\"Version\":\"{}\",\"Client\":\"{}\"}}",
+        VERSION, PROJECT_NAME
+    );
+    let expected2 = format!(
+        "Core.Hello {{\"Client\":\"{}\",\"Version\":\"{}\"}}",
+        PROJECT_NAME, VERSION
+    );
+    let success = response
+        == vec![
             &[IAC, SB, GMCP][..],
             &expected1.bytes().collect::<Vec<u8>>()[..],
-            &[IAC, SE][..]
-        ].concat()
-        || response ==
-        vec![
-            &[IAC, SB, GMCP][..],
-            &expected2.bytes().collect::<Vec<u8>>()[..],
-            &[IAC, SE][..]
-        ].concat();
+            &[IAC, SE][..],
+        ]
+        .concat()
+        || response
+            == vec![
+                &[IAC, SB, GMCP][..],
+                &expected2.bytes().collect::<Vec<u8>>()[..],
+                &[IAC, SE][..],
+            ]
+            .concat();
 
     assert!(success);
 

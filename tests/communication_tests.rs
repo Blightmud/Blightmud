@@ -1,4 +1,4 @@
-use std::{env, thread::{self, JoinHandle}};
+use std::{env, thread::JoinHandle};
 
 use blightmud::{RuntimeConfig, PROJECT_NAME, VERSION};
 use common::{server::Connection, Server};
@@ -13,7 +13,7 @@ fn setup() -> (Connection, JoinHandle<()>) {
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
     rt.no_panic_hook = true;
-    rt.connect = Some(format!("localhost:{}", port));
+    rt.connect = Some(format!("127.0.0.1:{}", port));
     let handle = common::start_blightmud(rt);
 
     let connection = server.listen();

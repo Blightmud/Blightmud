@@ -11,7 +11,7 @@ fn test_connect() {
 
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
-    rt.connect = Some("localhost:9876".to_string());
+    rt.connect = Some("127.0.0.1:9876".to_string());
     common::start_blightmud(rt);
 
     let connection = server.listen();

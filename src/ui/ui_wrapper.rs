@@ -10,7 +10,7 @@ use crate::{
     tts::TTSController,
 };
 
-use super::{HeadlessScreen, ReaderScreen, SplitScreen, UserInterface, history::History};
+use super::{history::History, HeadlessScreen, ReaderScreen, SplitScreen, UserInterface};
 use anyhow::Result;
 use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 

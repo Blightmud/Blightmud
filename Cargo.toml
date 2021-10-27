@@ -8,6 +8,10 @@ authors = ["Linus Probert"]
 edition = "2021"
 build = "build.rs"
 
+[lib]
+doctest = false
+crate-type = ["rlib"]
+
 [features]
 text-to-speech = ["tts"]
 
@@ -44,6 +48,7 @@ notify = "4.0.17"
 [dev-dependencies]
 mockall = "0.10.2"
 mockall_double = "0.2.0"
+portpicker = "0.1.1"
 
 [package.metadata.rpm]
 package = "blightmud"

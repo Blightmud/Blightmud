@@ -2,8 +2,7 @@ use anyhow::bail;
 
 use super::UserInterface;
 
-pub struct HeadlessScreen {
-}
+pub struct HeadlessScreen {}
 
 impl UserInterface for HeadlessScreen {
     fn setup(&mut self) -> anyhow::Result<()> {
@@ -18,14 +17,11 @@ impl UserInterface for HeadlessScreen {
         println!("[**] {}", output);
     }
 
-    fn print_output(&mut self, _line: &crate::model::Line) {
-    }
+    fn print_output(&mut self, _line: &crate::model::Line) {}
 
-    fn print_prompt(&mut self, _prompt: &crate::model::Line) {
-    }
+    fn print_prompt(&mut self, _prompt: &crate::model::Line) {}
 
-    fn print_prompt_input(&mut self, _input: &str, _pos: usize) {
-    }
+    fn print_prompt_input(&mut self, _input: &str, _pos: usize) {}
 
     fn print_send(&mut self, send: &crate::model::Line) {
         if let Some(print_line) = send.print_line() {
@@ -89,8 +85,7 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
-    fn flush(&mut self) {
-    }
+    fn flush(&mut self) {}
 
     fn width(&self) -> u16 {
         0
@@ -100,7 +95,9 @@ impl UserInterface for HeadlessScreen {
         0
     }
 
-    fn destroy(self: Box<Self>) -> anyhow::Result<(Box<dyn std::io::Write>, super::history::History)> {
+    fn destroy(
+        self: Box<Self>,
+    ) -> anyhow::Result<(Box<dyn std::io::Write>, super::history::History)> {
         bail!("Can't destroy a headless ui")
     }
 }

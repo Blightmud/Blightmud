@@ -239,7 +239,11 @@ fn run(
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
-    let mut player = Player::new();
+    let mut player = if !cfg!(debug_assertions) {
+        Player::new()
+    } else {
+        Player::disabled()
+    };
 
     let mut screen: Box<dyn UserInterface> = if !headless {
         Box::new(UiWrapper::new(&session, false)?)

@@ -46,6 +46,15 @@ impl Player {
         }
     }
 
+    pub fn disabled() -> Self {
+        Self {
+            _stream: None,
+            handle: None,
+            music: None,
+            sfx: None,
+        }
+    }
+
     pub fn play_music(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.music.is_none() {
             if let Some(handle) = &self.handle {

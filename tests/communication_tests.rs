@@ -67,8 +67,7 @@ fn test_gmcp_negotiation() -> std::io::Result<()> {
     let (mut connection, handle) = setup();
 
     connection.send(&[IAC, WILL, GMCP]);
-    assert_eq!(connection.recv(), &[IAC, DO, GMCP]);
-    let response = connection.recv();
+    assert_eq!(connection.read(3), &[IAC, DO, GMCP]);
     let expected1 = format!(
         "Core.Hello {{\"Version\":\"{}\",\"Client\":\"{}\"}}",
         VERSION, PROJECT_NAME
@@ -77,22 +76,21 @@ fn test_gmcp_negotiation() -> std::io::Result<()> {
         "Core.Hello {{\"Client\":\"{}\",\"Version\":\"{}\"}}",
         PROJECT_NAME, VERSION
     );
-    let success = response
-        == vec![
-            &[IAC, SB, GMCP][..],
-            &expected1.bytes().collect::<Vec<u8>>()[..],
-            &[IAC, SE][..],
-        ]
-        .concat()
-        || response
-            == vec![
-                &[IAC, SB, GMCP][..],
-                &expected2.bytes().collect::<Vec<u8>>()[..],
-                &[IAC, SE][..],
-            ]
-            .concat();
+    let alt1 = vec![
+        &[IAC, SB, GMCP][..],
+        &expected1.bytes().collect::<Vec<u8>>()[..],
+        &[IAC, SE][..],
+    ]
+    .concat();
+    let alt2 = vec![
+        &[IAC, SB, GMCP][..],
+        &expected2.bytes().collect::<Vec<u8>>()[..],
+        &[IAC, SE][..],
+    ]
+    .concat();
 
-    assert!(success);
+    let response = connection.read(alt1.len());
+    assert!(response == alt1 || response == alt2);
 
     connection.close();
     handle.join().unwrap();

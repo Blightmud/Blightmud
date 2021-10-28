@@ -7,11 +7,11 @@ mod common;
 
 #[test]
 fn test_connect() {
-    let mut server = Server::bind(9876);
+    let mut server = Server::bind(0);
 
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
-    rt.connect = Some("127.0.0.1:9876".to_string());
+    rt.connect = Some(format!("{}", server.local_addr));
     common::start_blightmud(rt);
 
     let connection = server.listen();

@@ -219,6 +219,7 @@ pub fn start(rt: RuntimeConfig) {
         .timer_writer(timer_writer)
         .screen_dimensions(dimensions)
         .tts_enabled(rt.use_tts)
+        .headless(rt.headless_mode)
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .build();
 

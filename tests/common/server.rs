@@ -30,6 +30,19 @@ impl Connection {
         }
     }
 
+    pub fn read(&mut self, len: usize) -> Vec<u8> {
+        if let Some(stream) = self.stream.as_mut() {
+            let mut buffer = vec![0u8; len];
+            if let Ok(_) = stream.read(&mut buffer) {
+                buffer
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        }
+    }
+
     pub fn recv_string(&mut self) -> String {
         let data = self.recv();
         String::from_utf8_lossy(&data).to_owned().to_string()

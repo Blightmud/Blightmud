@@ -43,7 +43,7 @@ jobs:
       - name: Installing dependencies
         run: sudo apt-get install libasound2-dev
       - name: Run tests
-        run: cargo test
+        run: cargo test -- --nocapture
         env:
           RUSTFLAGS: '-Zinstrument-coverage'
       - name: Run grcov

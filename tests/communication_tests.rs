@@ -12,6 +12,7 @@ fn setup() -> (Connection, JoinHandle<()>) {
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
     rt.no_panic_hook = true;
+    println!("Test server running at: {}", server.local_addr);
     rt.connect = Some(format!("{}", server.local_addr));
     let handle = common::start_blightmud(rt);
 

@@ -120,8 +120,8 @@ pub fn spawn_timer_thread(main_thread_writer: Sender<Event>) -> Sender<TimerEven
                         TimerEvent::Tick => {
                             main_thread_writer
                                 .send(Event::TimerTick(start.elapsed().as_millis()))
-                                .unwrap();
-                        }
+                                .ok();
+                            }
                         TimerEvent::Remove(cbid) => {
                             schedule.remove_job(cbid);
                         }

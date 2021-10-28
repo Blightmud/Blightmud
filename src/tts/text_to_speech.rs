@@ -322,7 +322,7 @@ fn setup_callbacks(tts: &mut TTS, tx: Sender<TTSEvent>) -> Result<(), tts::Error
 
 #[cfg(feature = "tts")]
 fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
-    if !cfg!(test) {
+    if !cfg!(debug_assertions) {
         let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
         let ttx = tx.clone();
         thread::Builder::new()

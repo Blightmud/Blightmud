@@ -213,7 +213,7 @@ pub fn start(rt: RuntimeConfig) {
         settings.save();
     }
 
-    let dimensions = termion::terminal_size().unwrap();
+    let dimensions = termion::terminal_size().unwrap_or((100, 100));
     let session = SessionBuilder::new()
         .main_writer(main_writer)
         .timer_writer(timer_writer)

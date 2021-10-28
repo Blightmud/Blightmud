@@ -1,10 +1,9 @@
-use std::env;
-use std::panic;
+use std::{env, panic};
 
 use crate::VERSION;
 
-pub fn register_panic_hook() {
-    panic::set_hook(Box::new(|panic_info| {
+pub fn register_panic_hook(headless: bool) {
+    panic::set_hook(Box::new(move |panic_info| {
         let meta = human_panic::Metadata {
             version: VERSION.into(),
             name: env!("CARGO_PKG_NAME").into(),
@@ -18,11 +17,12 @@ pub fn register_panic_hook() {
             "<Unable to create dump file>".to_string()
         };
 
-        // Attempt to reset the terminal since we crashed
-        println!("\x1b[2J\x1b[r\x1b[?1049l");
+        if !headless {
+            // Attempt to reset the terminal since we crashed
+            println!("\x1b[2J\x1b[r\x1b[?1049l");
+        }
 
         println!("\x1b[31m");
-
         r#"
         Blightmud crashed !!!
 

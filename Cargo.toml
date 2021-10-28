@@ -8,6 +8,10 @@ authors = ["Linus Probert"]
 edition = "2021"
 build = "build.rs"
 
+[lib]
+doctest = false
+crate-type = ["rlib"]
+
 [features]
 text-to-speech = ["tts"]
 

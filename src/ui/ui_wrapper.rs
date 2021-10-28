@@ -10,7 +10,7 @@ use crate::{
     tts::TTSController,
 };
 
-use super::{history::History, ReaderScreen, SplitScreen, UserInterface};
+use super::{history::History, HeadlessScreen, ReaderScreen, SplitScreen, UserInterface};
 use anyhow::Result;
 use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 
@@ -63,6 +63,13 @@ impl UiWrapper {
         screen.setup()?;
         Ok(Self {
             screen,
+            tts_ctrl: session.tts_ctrl.clone(),
+        })
+    }
+
+    pub fn headless(session: &Session) -> Result<Self> {
+        Ok(Self {
+            screen: Box::new(HeadlessScreen {}),
             tts_ctrl: session.tts_ctrl.clone(),
         })
     }

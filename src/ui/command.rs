@@ -470,7 +470,7 @@ mod command_test {
     fn get_command() -> (CommandBuffer, Receiver<Event>) {
         let (tx, rx): (Sender<Event>, Receiver<Event>) = channel();
         let buffer = CommandBuffer::new(
-            Arc::new(Mutex::new(TTSController::new(false))),
+            Arc::new(Mutex::new(TTSController::new(false, true))),
             Arc::new(Mutex::new(LuaScript::new(tx, (100, 100)))),
         );
         (buffer, rx)

@@ -60,8 +60,9 @@ impl SaveData for TTSSettings {
 }
 
 impl TTSController {
-    pub fn new(enabled: bool) -> Self {
-        let rt = spawn_tts_thread();
+    pub fn new(enabled: bool, no_thread: bool) -> Self {
+        let rt = if !no_thread { spawn_tts_thread() } else { None };
+
         let settings = if !cfg!(test) {
             TTSSettings::load()
         } else {
@@ -322,7 +323,12 @@ fn setup_callbacks(tts: &mut TTS, tx: Sender<TTSEvent>) -> Result<(), tts::Error
 
 #[cfg(feature = "tts")]
 fn spawn_tts_thread() -> Option<Sender<TTSEvent>> {
-    if !cfg!(test) {
+    if cfg!(not(any(debug_assertions, test))) {
+        println!(
+            "spawn_tts_thread({}, {})",
+            cfg!(debug_assertions),
+            cfg!(test)
+        );
         let (tx, rx): (Sender<TTSEvent>, Receiver<TTSEvent>) = channel();
         let ttx = tx.clone();
         thread::Builder::new()

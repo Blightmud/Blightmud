@@ -164,6 +164,7 @@ pub struct SessionBuilder {
     screen_dimensions: Option<(u16, u16)>,
     tts_enabled: bool,
     save_history: bool,
+    headless: bool,
 }
 
 impl SessionBuilder {
@@ -174,6 +175,7 @@ impl SessionBuilder {
             screen_dimensions: None,
             tts_enabled: false,
             save_history: false,
+            headless: false,
         }
     }
 
@@ -202,13 +204,19 @@ impl SessionBuilder {
         self
     }
 
+    pub fn headless(mut self, headless: bool) -> Self {
+        self.headless = headless;
+        self
+    }
+
     pub fn build(self) -> Session {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
         let dimensions = self.screen_dimensions.unwrap();
         let tts_enabled = self.tts_enabled;
         let save_history = self.save_history;
-        let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled)));
+        let headless = self.headless;
+        let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled, headless)));
         let lua_script = Arc::new(Mutex::new(LuaScript::new(main_writer.clone(), dimensions)));
         Session {
             connection: Arc::new(Mutex::new(MudConnection::new())),

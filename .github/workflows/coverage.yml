@@ -43,9 +43,10 @@ jobs:
       - name: Installing dependencies
         run: sudo apt-get install libasound2-dev
       - name: Run tests
-        run: cargo test
+        run: cargo test -- --nocapture
         env:
           RUSTFLAGS: '-Zinstrument-coverage'
+          LLVM_PROFILE_FILE: 'report-%p-%m.profraw'
       - name: Run grcov
         run: grcov . --binary-path target/debug/deps/ -s . -t lcov --branch --ignore-not-existing --ignore '../**' --ignore '/*' -o coverage.lcov
       - name: Coveralls upload

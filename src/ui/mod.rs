@@ -2,6 +2,7 @@ pub use self::{
     ansi::*,
     command::spawn_input_thread,
     command::CommandBuffer,
+    headless_screen::HeadlessScreen,
     help_handler::HelpHandler,
     reader_screen::ReaderScreen,
     split_screen::SplitScreen,
@@ -14,6 +15,7 @@ pub use self::user_interface::MockUserInterface;
 
 mod ansi;
 mod command;
+mod headless_screen;
 mod help_handler;
 mod history;
 mod reader_screen;

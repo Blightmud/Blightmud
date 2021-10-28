@@ -1,6 +1,6 @@
 core.enable_protocol(24)
 local program, _ = blight.version()
-local term = os.getenv("TERM")
+local term = os.getenv("TERM") or "xterm-256color"
 local mtts = "MTTS 271"
 
 local index = 1

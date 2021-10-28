@@ -7,13 +7,12 @@ use libtelnet_rs::telnet::{op_command::*, op_option::*};
 mod common;
 
 fn setup() -> (Connection, JoinHandle<()>) {
-    let port = common::random_port();
-    let mut server = Server::bind(port);
+    let mut server = Server::bind(0);
 
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
     rt.no_panic_hook = true;
-    rt.connect = Some(format!("127.0.0.1:{}", port));
+    rt.connect = Some(format!("{}", server.local_addr));
     let handle = common::start_blightmud(rt);
 
     let connection = server.listen();

@@ -48,7 +48,6 @@ notify = "4.0.17"
 [dev-dependencies]
 mockall = "0.10.2"
 mockall_double = "0.2.0"
-portpicker = "0.1.1"
 
 [package.metadata.rpm]
 package = "blightmud"

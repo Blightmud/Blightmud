@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 use std::{
     io::{Read, Write},
-    net::{TcpListener, TcpStream},
+    net::{SocketAddr, TcpListener, TcpStream},
     sync::{
         mpsc::{channel, Receiver, Sender},
         Arc, Mutex,
@@ -64,16 +64,19 @@ impl Clone for Connection {
 
 pub struct Server {
     connection_receiver: Receiver<Connection>,
+    pub local_addr: SocketAddr,
 }
 
 impl Server {
     pub fn bind(port: u16) -> Self {
         let (tx, rx): (Sender<Connection>, Receiver<Connection>) = channel();
-        let server = Self {
+        let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).unwrap();
+        let local_addr = listener.local_addr().unwrap();
+        spawn_listener_thread(tx, listener);
+        Self {
             connection_receiver: rx,
-        };
-        spawn_listener_thread(tx, port);
-        server
+            local_addr,
+        }
     }
 
     pub fn listen(&mut self) -> Result<Connection> {
@@ -85,9 +88,8 @@ impl Server {
     }
 }
 
-fn spawn_listener_thread(tx: Sender<Connection>, port: u16) {
+fn spawn_listener_thread(tx: Sender<Connection>, listener: TcpListener) {
     thread::spawn(move || -> Result<()> {
-        let listener = TcpListener::bind(format!("127.0.0.1:{}", port))?;
         for stream in listener.incoming() {
             if let Ok(stream) = stream {
                 tx.send(Connection {

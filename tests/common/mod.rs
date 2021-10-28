@@ -10,8 +10,3 @@ pub fn start_blightmud(rt: RuntimeConfig) -> JoinHandle<()> {
         blightmud::start(rt);
     })
 }
-
-#[allow(dead_code)]
-pub fn random_port() -> u16 {
-    portpicker::pick_unused_port().unwrap()
-}

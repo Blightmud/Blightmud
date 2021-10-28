@@ -138,6 +138,7 @@ pub struct RuntimeConfig {
     pub no_verify: bool,
     pub connect: Option<String>,
     pub no_panic_hook: bool,
+    pub script: Option<String>,
 }
 
 impl From<Matches> for RuntimeConfig {
@@ -162,6 +163,7 @@ impl From<Matches> for RuntimeConfig {
             no_verify: matches.opt_present("no-verify"),
             connect,
             no_panic_hook: false,
+            script: None,
         }
     }
 }
@@ -185,28 +187,6 @@ pub fn start(rt: RuntimeConfig) {
     let (main_writer, main_thread_read): (Sender<Event>, Receiver<Event>) = channel();
     let timer_writer = spawn_timer_thread(main_writer.clone());
 
-    if let Some(connect) = rt.connect {
-        let split: Vec<&str> = connect.split(':').collect();
-        let host = split[0];
-        let port: u16 = split[1].parse().unwrap();
-        let tls = rt.tls;
-        let no_verify = rt.no_verify;
-        main_writer
-            .send(Event::Connect(Connection::new(host, port, tls, !no_verify)))
-            .unwrap();
-    } else if let Some(world) = rt.world {
-        let servers = Servers::try_load().expect("Error loading servers.ron");
-        if servers.contains_key(&world) {
-            main_writer
-                .send(Event::Connect(servers.get(&world).unwrap().clone()))
-                .unwrap();
-        }
-    } else {
-        main_writer
-            .send(Event::ShowHelp("welcome".to_string(), false))
-            .unwrap();
-    }
-
     let mut settings = Settings::try_load().expect("Error loading settings.ron");
     if rt.reader_mode {
         settings.set(READER_MODE, true).unwrap();
@@ -223,7 +203,7 @@ pub fn start(rt: RuntimeConfig) {
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .build();
 
-    if let Err(error) = run(main_thread_read, session, rt.headless_mode) {
+    if let Err(error) = run(main_thread_read, session, rt) {
         error!("Panic: {}", error.to_string());
         panic!("[!!] Panic: {:?}", error);
     }
@@ -231,10 +211,35 @@ pub fn start(rt: RuntimeConfig) {
     info!("Shutting down");
 }
 
+fn handle_config(main_writer: &Sender<Event>, rt: &RuntimeConfig) {
+    if let Some(path) = &rt.script {
+        main_writer.send(Event::LoadScript(path.clone())).unwrap();
+    }
+    if let Some(connect) = &rt.connect {
+        let split: Vec<&str> = connect.split(':').collect();
+        let host = split[0];
+        let port: u16 = split[1].parse().unwrap();
+        let tls = rt.tls;
+        let no_verify = rt.no_verify;
+        main_writer
+            .send(Event::Connect(Connection::new(host, port, tls, !no_verify)))
+            .unwrap();
+    } else if let Some(world) = &rt.world {
+        let servers = Servers::try_load().expect("Error loading servers.ron");
+        if let Some(world) = servers.get(world) {
+            main_writer.send(Event::Connect(world.clone())).unwrap();
+        }
+    } else {
+        main_writer
+            .send(Event::ShowHelp("welcome".to_string(), false))
+            .unwrap();
+    }
+}
+
 fn run(
     main_thread_read: Receiver<Event>,
     mut session: Session,
-    headless: bool,
+    rt: RuntimeConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
@@ -246,7 +251,7 @@ fn run(
         Player::disabled()
     };
 
-    let mut screen: Box<dyn UserInterface> = if !headless {
+    let mut screen: Box<dyn UserInterface> = if !rt.headless_mode {
         Box::new(UiWrapper::new(&session, false)?)
     } else {
         Box::new(UiWrapper::headless(&session)?)
@@ -304,6 +309,9 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
         }
     }
+
+    handle_config(&session.main_writer, &rt);
+
     let mut quit_pending = false;
     while let Ok(event) = main_thread_read.recv() {
         if quit_pending {
@@ -342,7 +350,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     &mut transmit_writer,
                 )?;
                 if let Event::Disconnect(_) = event {
-                    if headless {
+                    if rt.headless_mode {
                         session
                             .main_writer
                             .send(Event::Quit(QuitMethod::System))

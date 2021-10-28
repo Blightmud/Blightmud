@@ -1,28 +1,10 @@
-use std::{env, thread::JoinHandle};
+use std::env;
 
-use blightmud::{RuntimeConfig, PROJECT_NAME, VERSION};
-use common::{server::Connection, Server};
+use blightmud::{PROJECT_NAME, VERSION};
+use common::setup;
 use libtelnet_rs::telnet::{op_command::*, op_option::*};
 
 mod common;
-
-fn setup() -> (Connection, JoinHandle<()>) {
-    let mut server = Server::bind(0);
-
-    let mut rt = RuntimeConfig::default();
-    rt.headless_mode = true;
-    rt.no_panic_hook = true;
-    println!("Test server running at: {}", server.local_addr);
-    rt.connect = Some(format!("{}", server.local_addr));
-    let handle = common::start_blightmud(rt);
-
-    let connection = server.listen();
-    assert!(connection.is_ok());
-    let connection = connection.unwrap();
-    assert!(connection.stream.is_some());
-
-    (connection, handle)
-}
 
 #[test]
 fn test_ttype_negotiation() -> std::io::Result<()> {

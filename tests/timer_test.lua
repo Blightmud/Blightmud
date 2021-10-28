@@ -1,0 +1,5 @@
+mud.on_connect(function ()
+    timer.add(0.1, 5, function ()
+        mud.send_bytes({ 255, 241 })
+    end)
+end)

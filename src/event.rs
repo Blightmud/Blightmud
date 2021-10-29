@@ -41,6 +41,7 @@ pub enum Event {
     FindForward(Regex),
     Info(String),
     LoadScript(String),
+    EvalScript(String),
     MudOutput(Line),
     Output(Line),
     PlayMusic(String, SourceOptions),

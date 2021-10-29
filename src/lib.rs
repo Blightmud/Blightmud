@@ -153,6 +153,7 @@ pub struct RuntimeConfig {
     pub no_verify: bool,
     pub connect: Option<String>,
     pub script: Option<String>,
+    pub eval: Option<String>,
     pub integration_test: bool,
 }
 
@@ -178,6 +179,7 @@ impl From<Matches> for RuntimeConfig {
             no_verify: matches.opt_present("no-verify"),
             connect,
             script: None,
+            eval: None,
             integration_test: false,
         }
     }
@@ -226,7 +228,10 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
 
 fn handle_config(main_writer: &Sender<Event>, rt: &RuntimeConfig) {
     if let Some(path) = &rt.script {
-        main_writer.send(Event::LoadScript(path.clone())).unwrap();
+        main_writer.send(Event::LoadScript(path.clone())).ok();
+    }
+    if let Some(script) = &rt.eval {
+        main_writer.send(Event::EvalScript(script.clone())).ok();
     }
     if let Some(connect) = &rt.connect {
         let split: Vec<&str> = connect.split(':').collect();
@@ -468,6 +473,17 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     screen.print_error(&format!("Failed to load file: {}", err));
                 } else {
                     screen.print_info(&format!("Loaded script: {}", path));
+                    lua.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
+                }
+            }
+            Event::EvalScript(script) => {
+                let mut lua = session.lua_script.lock().unwrap();
+                if let Err(err) = lua.eval(&script) {
+                    screen.print_error(&format!("Script eval failed: {}", err));
+                } else {
+                    screen.print_info("Evaluated script");
                     lua.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });

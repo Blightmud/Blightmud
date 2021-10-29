@@ -7,11 +7,11 @@ mod common;
 fn timer_test() {
     let (mut connection, handle) = setup();
 
-    assert_eq!(connection.recv(), &[IAC, NOP]);
-    assert_eq!(connection.recv(), &[IAC, NOP]);
-    assert_eq!(connection.recv(), &[IAC, NOP]);
-    assert_eq!(connection.recv(), &[IAC, NOP]);
-    assert_eq!(connection.recv(), &[IAC, NOP]);
+    assert_eq!(connection.read(2), &[IAC, NOP]);
+    assert_eq!(connection.read(2), &[IAC, NOP]);
+    assert_eq!(connection.read(2), &[IAC, NOP]);
+    assert_eq!(connection.read(2), &[IAC, NOP]);
+    assert_eq!(connection.read(2), &[IAC, NOP]);
 
     connection.close();
 

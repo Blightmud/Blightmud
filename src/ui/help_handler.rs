@@ -3,6 +3,7 @@ use crate::{event::Event, model::Line, VERSION};
 use std::path::{Path, PathBuf};
 use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
+use anyhow::Result;
 use log::debug;
 use mdcat::{ResourceAccess, Settings as MDSettings, TerminalCapabilities, TerminalSize};
 use pulldown_cmark::{Options, Parser};
@@ -19,7 +20,7 @@ impl HelpHandler {
         Self { writer, files }
     }
 
-    pub fn show_help(&self, file: &str, lock: bool) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn show_help(&self, file: &str, lock: bool) -> Result<()> {
         debug!("Drawing help file: {}", file);
         if lock {
             self.writer.send(Event::ScrollLock(true))?;

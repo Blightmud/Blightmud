@@ -1,3 +1,4 @@
+use anyhow::Result;
 use libtelnet_rs::{compatibility::CompatibilityTable, telnet::op_option as opt, Parser};
 use log::debug;
 use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
@@ -148,7 +149,7 @@ impl Session {
         self.main_writer.send(event).unwrap();
     }
 
-    pub fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn close(&mut self) -> Result<()> {
         self.try_disconnect();
         self.main_writer.send(Event::Quit(QuitMethod::System))?;
         self.timer_writer.send(TimerEvent::Quit)?;

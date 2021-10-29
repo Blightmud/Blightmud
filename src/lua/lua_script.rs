@@ -341,6 +341,14 @@ impl LuaScript {
         Ok(())
     }
 
+    pub fn eval(&mut self, script: &str) -> Result<()> {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            self.state.load(script).exec()?;
+            Ok(())
+        });
+        Ok(())
+    }
+
     pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
         self.exec_lua(&mut || -> LuaResult<()> {
             self.state.set_named_registry_value(CONNECTION_ID, id)?;

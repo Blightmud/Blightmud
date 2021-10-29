@@ -1,6 +1,6 @@
 use std::env;
 
-use blightmud::{RuntimeConfig, PROJECT_NAME, VERSION};
+use blightmud::{register_panic_hook, RuntimeConfig, PROJECT_NAME, VERSION};
 use getopts::Options;
 
 fn print_help(program: &str, opts: Options) {
@@ -78,5 +78,37 @@ fn main() {
         }
     }
 
-    blightmud::start(rt);
+    register_panic_hook(rt.headless_mode);
+    if let Err(error) = blightmud::start(rt) {
+        panic!("Panic: {}", error);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use blightmud::RuntimeConfig;
+
+    #[test]
+    fn test_config_parse() {
+        let args: Vec<String> = vec![
+            "blightmud",
+            "--verbose",
+            "--tts",
+            "--connect",
+            "localhost:8080",
+        ]
+        .iter()
+        .map(|s| String::from(*s))
+        .collect();
+        let opts = setup_options();
+        let matches = match opts.parse(&args[1..]) {
+            Ok(m) => m,
+            Err(f) => panic!("{}", f.to_string()),
+        };
+        let rt = RuntimeConfig::from(matches);
+        assert!(rt.verbose);
+        assert!(rt.use_tts);
+        assert_eq!(rt.connect, Some("localhost:8080".to_string()));
+    }
 }

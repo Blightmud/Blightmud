@@ -43,7 +43,7 @@ jobs:
       - name: Installing dependencies
         run: sudo apt-get install libasound2-dev
       - name: Run tests
-        run: cargo test -- --nocapture
+        run: cargo test
         env:
           RUSTFLAGS: '-Zinstrument-coverage'
           LLVM_PROFILE_FILE: 'report-%p-%m.profraw'

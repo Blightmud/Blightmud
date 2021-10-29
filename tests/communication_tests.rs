@@ -1,7 +1,7 @@
 use std::env;
 
 use blightmud::{PROJECT_NAME, VERSION};
-use common::setup;
+use common::{join_blightmud, setup};
 use libtelnet_rs::telnet::{op_command::*, op_option::*};
 
 mod common;
@@ -11,7 +11,7 @@ fn test_ttype_negotiation() -> std::io::Result<()> {
     let (mut connection, handle) = setup();
 
     connection.send(&[IAC, WILL, TTYPE]);
-    assert_eq!(connection.recv(), &[IAC, DO, TTYPE]);
+    assert_eq!(connection.read(3), &[IAC, DO, TTYPE]);
     connection.send(&[IAC, SB, TTYPE, SEND, IAC, SE]);
     assert_eq!(
         connection.recv(),
@@ -40,7 +40,7 @@ fn test_ttype_negotiation() -> std::io::Result<()> {
     );
 
     connection.close();
-    handle.join().unwrap();
+    join_blightmud(handle);
     Ok(())
 }
 
@@ -75,6 +75,6 @@ fn test_gmcp_negotiation() -> std::io::Result<()> {
     assert!(response == alt1 || response == alt2);
 
     connection.close();
-    handle.join().unwrap();
+    join_blightmud(handle);
     Ok(())
 }

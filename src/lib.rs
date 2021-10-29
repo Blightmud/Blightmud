@@ -1,6 +1,5 @@
 use anyhow::{bail, Result};
 use audio::Player;
-use core::fmt;
 use lazy_static::lazy_static;
 use libtelnet_rs::bytes::Bytes;
 use libtelnet_rs::events::TelnetEvents;
@@ -96,19 +95,6 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, Clone)]
-pub struct BlightmudError {
-    msg: String,
-}
-
-impl fmt::Display for BlightmudError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Uncaught error: {}", self.msg)
-    }
-}
-
-impl std::error::Error for BlightmudError {}
-
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
     let mut signals =
         signal_hook::iterator::Signals::new(&[signal_hook::consts::SIGWINCH]).unwrap();
@@ -159,16 +145,8 @@ pub struct RuntimeConfig {
 
 impl From<Matches> for RuntimeConfig {
     fn from(matches: Matches) -> Self {
-        let world = if let Ok(world) = matches.opt_get::<String>("world") {
-            world
-        } else {
-            None
-        };
-        let connect = if let Ok(connect) = matches.opt_get::<String>("connect") {
-            connect
-        } else {
-            None
-        };
+        let world = matches.opt_get::<String>("world").ok().unwrap();
+        let connect = matches.opt_get::<String>("connect").ok().unwrap();
         Self {
             reader_mode: matches.opt_present("reader-mode"),
             headless_mode: false,

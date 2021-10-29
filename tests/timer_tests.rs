@@ -15,5 +15,5 @@ fn timer_test() {
 
     connection.close();
 
-    handle.join().unwrap();
+    assert!(handle.join().is_ok(), "Blightmud didn't exit cleanly");
 }

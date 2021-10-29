@@ -21,6 +21,7 @@ pub enum QuitMethod {
     CtrlC,
     Script,
     System,
+    Error(String),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -78,6 +79,7 @@ pub enum Event {
     UserInputBuffer(String, usize),
     FSEvent(FSEvent),
     FSMonitor(String),
+    LuaError(String),
 }
 use anyhow::Result as AResult;
 type Result = AResult<()>;

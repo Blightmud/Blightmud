@@ -1,4 +1,6 @@
+use anyhow::{bail, Result};
 use audio::Player;
+use core::fmt;
 use lazy_static::lazy_static;
 use libtelnet_rs::bytes::Bytes;
 use libtelnet_rs::events::TelnetEvents;
@@ -7,6 +9,7 @@ use notify::Watcher;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
+pub use tools::register_panic_hook;
 use ui::HelpHandler;
 
 mod audio;
@@ -32,7 +35,6 @@ use event::EventHandler;
 use getopts::Matches;
 use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, SAVE_HISTORY};
 use net::check_latest_version;
-use tools::register_panic_hook;
 
 pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), env!("GIT_DESCRIBE"));
 pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -94,6 +96,19 @@ lazy_static! {
     };
 }
 
+#[derive(Debug, Clone)]
+pub struct BlightmudError {
+    msg: String,
+}
+
+impl fmt::Display for BlightmudError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Uncaught error: {}", self.msg)
+    }
+}
+
+impl std::error::Error for BlightmudError {}
+
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
     let mut signals =
         signal_hook::iterator::Signals::new(&[signal_hook::consts::SIGWINCH]).unwrap();
@@ -137,8 +152,8 @@ pub struct RuntimeConfig {
     pub tls: bool,
     pub no_verify: bool,
     pub connect: Option<String>,
-    pub no_panic_hook: bool,
     pub script: Option<String>,
+    pub integration_test: bool,
 }
 
 impl From<Matches> for RuntimeConfig {
@@ -162,16 +177,13 @@ impl From<Matches> for RuntimeConfig {
             tls: matches.opt_present("tls"),
             no_verify: matches.opt_present("no-verify"),
             connect,
-            no_panic_hook: false,
             script: None,
+            integration_test: false,
         }
     }
 }
 
-pub fn start(rt: RuntimeConfig) {
-    if !rt.no_panic_hook {
-        register_panic_hook(rt.headless_mode);
-    }
+pub fn start(rt: RuntimeConfig) -> Result<()> {
     let log_level = if rt.verbose {
         log::LevelFilter::Debug
     } else {
@@ -204,11 +216,12 @@ pub fn start(rt: RuntimeConfig) {
         .build();
 
     if let Err(error) = run(main_thread_read, session, rt) {
-        error!("Panic: {}", error.to_string());
-        panic!("[!!] Panic: {:?}", error);
+        error!("Panic: {}", error);
+        Err(error)
+    } else {
+        info!("Shutting down");
+        Ok(())
     }
-
-    info!("Shutting down");
 }
 
 fn handle_config(main_writer: &Sender<Event>, rt: &RuntimeConfig) {
@@ -236,11 +249,7 @@ fn handle_config(main_writer: &Sender<Event>, rt: &RuntimeConfig) {
     }
 }
 
-fn run(
-    main_thread_read: Receiver<Event>,
-    mut session: Session,
-    rt: RuntimeConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfig) -> Result<()> {
     let mut transmit_writer: Option<Sender<TelnetData>> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
@@ -313,6 +322,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
     handle_config(&session.main_writer, &rt);
 
     let mut quit_pending = false;
+    let mut quit_error: Option<String> = None;
     while let Ok(event) = main_thread_read.recv() {
         if quit_pending {
             quit_pending = matches!(
@@ -350,7 +360,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     &mut transmit_writer,
                 )?;
                 if let Event::Disconnect(_) = event {
-                    if rt.headless_mode {
+                    if rt.integration_test {
                         session
                             .main_writer
                             .send(Event::Quit(QuitMethod::System))
@@ -463,6 +473,14 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     });
                 }
             }
+            Event::LuaError(error) => {
+                if rt.integration_test {
+                    session
+                        .main_writer
+                        .send(Event::Quit(QuitMethod::Error(error)))
+                        .unwrap();
+                }
+            }
             Event::ResetScript => {
                 info!("Clearing scripts");
                 if let Ok(mut script) = session.lua_script.lock() {
@@ -537,6 +555,8 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     screen.flush();
                     quit_pending = true;
                     continue;
+                } else if let QuitMethod::Error(error) = method {
+                    quit_error = Some(error);
                 }
                 session.try_disconnect();
                 break;
@@ -553,5 +573,10 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
     }
     screen.reset()?;
     session.close()?;
-    Ok(())
+    match quit_error {
+        Some(error) => {
+            bail!("{}", error)
+        }
+        None => Ok(()),
+    }
 }

@@ -1,18 +1,21 @@
-local ok, server = pcall(servers.get, "test_world")
+local WORLD = "testing_world_name"
+
+local ok, server = pcall(servers.get, WORLD)
 if ok then
     servers.remove(server.name)
 end
 
-servers.add("test_world", "0.0.0.0", 9876)
 
-server = servers.get("test_world")
+servers.add(WORLD, "0.0.0.0", 9876, false, false)
 
-assert(server.name == "test_world")
+server = servers.get(WORLD)
+
+assert(server.name == WORLD)
 assert(server.host == "0.0.0.0")
 assert(server.port == 9876)
 assert(not server.tls)
 assert(not server.verify_cert)
-servers.remove("test_world")
-assert(not pcall(servers.get, "test_world"))
+servers.remove(WORLD)
+assert(not pcall(servers.get, WORLD))
 
 blight.quit()

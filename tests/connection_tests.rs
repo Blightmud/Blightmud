@@ -18,7 +18,7 @@ fn test_connect() {
     let connection = connection.unwrap();
     assert!(connection.stream.is_some());
     connection.close();
-    assert!(handle.join().is_ok(), "Blightmud didn't exit cleanly");
+    join_blightmud(handle)
 }
 
 #[test]

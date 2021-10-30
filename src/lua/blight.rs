@@ -329,6 +329,16 @@ mod test_blight {
     }
 
     #[test]
+    fn test_bad_ui_event() {
+        let (lua, reader) = get_lua_state();
+        lua.load("blight.ui(\"schplort\")").exec().unwrap();
+        assert_eq!(
+            reader.recv(),
+            Ok(Event::Error("Invalid ui command: schplort".to_string()))
+        );
+    }
+
+    #[test]
     fn test_command_bindings() {
         let (lua, _) = get_lua_state();
         lua.load("blight.bind(\"f1\", function () end)")

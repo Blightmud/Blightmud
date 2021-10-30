@@ -17,9 +17,13 @@ impl UserInterface for HeadlessScreen {
         println!("[**] {}", output);
     }
 
-    fn print_output(&mut self, _line: &crate::model::Line) {}
+    fn print_output(&mut self, line: &crate::model::Line) {
+        println!("[<<] {}", line);
+    }
 
-    fn print_prompt(&mut self, _prompt: &crate::model::Line) {}
+    fn print_prompt(&mut self, prompt: &crate::model::Line) {
+        println!("[%%] {}", prompt);
+    }
 
     fn print_prompt_input(&mut self, _input: &str, _pos: usize) {}
 

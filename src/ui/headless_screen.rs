@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use anyhow::bail;
 
 use super::UserInterface;
@@ -89,7 +91,9 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
-    fn flush(&mut self) {}
+    fn flush(&mut self) {
+        std::io::stdout().flush().ok();
+    }
 
     fn width(&self) -> u16 {
         0

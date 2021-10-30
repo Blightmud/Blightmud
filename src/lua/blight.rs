@@ -167,9 +167,12 @@ mod test_blight {
     use mlua::{AnyUserData, Lua};
 
     use crate::event::{Event, QuitMethod};
+    use crate::lua::UiEvent;
 
     use super::Blight;
-    use crate::lua::constants::{BLIGHT_ON_QUIT_LISTENER_TABLE, COMPLETION_CALLBACK_TABLE};
+    use crate::lua::constants::{
+        BLIGHT_ON_QUIT_LISTENER_TABLE, COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE,
+    };
     use crate::{PROJECT_NAME, VERSION};
 
     fn get_lua_state() -> (Lua, Receiver<Event>) {
@@ -182,6 +185,8 @@ mod test_blight {
         lua.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, lua.create_table().unwrap())
             .unwrap();
         lua.set_named_registry_value(COMPLETION_CALLBACK_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(COMMAND_BINDING_TABLE, lua.create_table().unwrap())
             .unwrap();
         (lua, reader)
     }
@@ -301,5 +306,37 @@ mod test_blight {
             reader.recv(),
             Ok(Event::ShowHelp("test2".to_string(), true))
         );
+    }
+
+    #[test]
+    fn confirm_ui_events() {
+        let (lua, _) = get_lua_state();
+        lua.load("blight.ui(\"step_left\")").exec().unwrap();
+        lua.load("blight.ui(\"step_right\")").exec().unwrap();
+        lua.load("blight.ui(\"scroll_up\")").exec().unwrap();
+        lua.load("blight.ui(\"scroll_down\")").exec().unwrap();
+
+        let mut blight: Blight = lua.globals().get("blight").unwrap();
+        assert_eq!(
+            blight.get_ui_events(),
+            vec![
+                UiEvent::StepLeft,
+                UiEvent::StepRight,
+                UiEvent::ScrollUp,
+                UiEvent::ScrollDown
+            ]
+        );
+    }
+
+    #[test]
+    fn test_command_bindings() {
+        let (lua, _) = get_lua_state();
+        lua.load("blight.bind(\"f1\", function () end)")
+            .exec()
+            .unwrap();
+        let bindings: mlua::Table = lua.named_registry_value(COMMAND_BINDING_TABLE).unwrap();
+        assert!(bindings.get::<_, mlua::Function>("f1").is_ok());
+        lua.load("blight.unbind(\"f1\")").exec().unwrap();
+        assert!(bindings.get::<_, mlua::Function>("f1").is_err());
     }
 }

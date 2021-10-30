@@ -18,6 +18,11 @@ fn test_server() {
 }
 
 #[test]
+fn test_lua_script() {
+    test_script("tests/script_tests.lua");
+}
+
+#[test]
 fn test_mud() -> Result<()> {
     let mut server = common::Server::bind(0);
     let mut rt = RuntimeConfig::default();

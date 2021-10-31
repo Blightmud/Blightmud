@@ -343,12 +343,10 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     &mut transmit_writer,
                 )?;
                 if let Event::Disconnect(_) = event {
-                    if rt.integration_test {
-                        session
-                            .main_writer
-                            .send(Event::Quit(QuitMethod::System))
-                            .unwrap();
-                    }
+                    session
+                        .main_writer
+                        .send(Event::Quit(QuitMethod::System))
+                        .unwrap();
                 }
             }
             Event::MudOutput(_)

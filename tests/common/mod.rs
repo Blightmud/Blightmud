@@ -27,6 +27,7 @@ pub fn setup() -> (Connection, JoinHandle<Result<()>>) {
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
     rt.script = Some("tests/timer_test.lua".to_string());
+    rt.eval = Some(include_str!("quit_on_disconnect.lua").to_string());
     rt.integration_test = true;
     println!("Test server running at: {}", server.local_addr);
     rt.connect = Some(format!("{}", server.local_addr));

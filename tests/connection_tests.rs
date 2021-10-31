@@ -48,3 +48,15 @@ fn test_connect_world() {
     connection.close();
     join_blightmud(handle);
 }
+
+#[test]
+fn test_reconnect_world() {
+    let server = Server::bind(0);
+
+    let mut rt = RuntimeConfig::default();
+    rt.headless_mode = true;
+    rt.integration_test = true;
+    rt.connect = Some(server.local_addr.to_string());
+    rt.script = Some("tests/test_reconnect.lua".to_string());
+    join_blightmud(common::start_blightmud(rt))
+}

@@ -1261,9 +1261,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "mdcat"
-version = "0.23.2"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28244d5bddfe9444286e9796f0607216a79e65c0fbefe8e0c8742b310d652ff9"
+checksum = "1394c5fd4d59df48fc84b55190ffd833997adb9da40ad4fbcbf51ed136e56068"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",

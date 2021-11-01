@@ -10,6 +10,7 @@ fn test_connect() {
     println!("Test server running at: {}", server.local_addr);
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
+    rt.eval = Some(include_str!("common/quit_on_disconnect.lua").to_string());
     rt.connect = Some(format!("{}", server.local_addr));
     rt.integration_test = true;
     let handle = common::start_blightmud(rt);

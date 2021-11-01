@@ -10,6 +10,7 @@ fn test_connect() {
     println!("Test server running at: {}", server.local_addr);
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
+    rt.eval = Some(include_str!("common/quit_on_disconnect.lua").to_string());
     rt.connect = Some(format!("{}", server.local_addr));
     rt.integration_test = true;
     let handle = common::start_blightmud(rt);
@@ -47,4 +48,16 @@ fn test_connect_world() {
     assert!(connection.stream.is_some());
     connection.close();
     join_blightmud(handle);
+}
+
+#[test]
+fn test_reconnect_world() {
+    let server = Server::bind(0);
+
+    let mut rt = RuntimeConfig::default();
+    rt.headless_mode = true;
+    rt.integration_test = true;
+    rt.connect = Some(server.local_addr.to_string());
+    rt.script = Some("tests/test_reconnect.lua".to_string());
+    join_blightmud(common::start_blightmud(rt))
 }

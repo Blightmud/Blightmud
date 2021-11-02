@@ -409,12 +409,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "const-sha1"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb58b6451e8c2a812ad979ed1d83378caa5e927eef2622017a45f251457c2c9d"
-
-[[package]]
 name = "core-foundation"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2629,9 +2623,9 @@ dependencies = [
 
 [[package]]
 name = "tts"
-version = "0.17.3"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3701ee536e3a14925c181a858e087ec7a7129c437f06acd3c6d785b463f1c060"
+checksum = "f39c3512a77c740285789e8edfb19d1c5ed72571607b1d3e509b3f169d44055b"
 dependencies = [
  "cocoa-foundation",
  "dyn-clonable",
@@ -2639,7 +2633,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log",
- "ndk-glue 0.3.0",
+ "ndk-glue 0.4.0",
  "objc",
  "speech-dispatcher",
  "thiserror",
@@ -2943,33 +2937,25 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows"
-version = "0.9.1"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "361f3533a83ee1a28c9be59683f40043db02dbedf6479ce8795657386195c97f"
+checksum = "9bce04249a9644c157f4529ea958f5d9e0129280e3700378884afa2903fd3d56"
 dependencies = [
- "const-sha1",
- "windows_gen",
- "windows_macros",
+ "windows_i686_msvc",
+ "windows_x86_64_msvc",
 ]
 
 [[package]]
-name = "windows_gen"
-version = "0.9.1"
+name = "windows_i686_msvc"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54154dbc515d58723f6b6053c12f1065da7389f733660581b2391bd1af480452"
-dependencies = [
- "syn",
-]
+checksum = "65911a6b53be443df22004ae7d82121dabce94d74ba5735081788115b81cb919"
 
 [[package]]
-name = "windows_macros"
-version = "0.9.1"
+name = "windows_x86_64_msvc"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f7794c652845dc466cb8dc1b86c08345707c8144bc53e9086430047c7d33b76"
-dependencies = [
- "syn",
- "windows_gen",
-]
+checksum = "8c8c8e2d709fbc4e6ff5d75503cbad8241c5df62fd60f62c0f8eef6e86689e63"
 
 [[package]]
 name = "ws2_32-sys"

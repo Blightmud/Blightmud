@@ -40,7 +40,7 @@ curl = "0.4.40"
 human-panic = "1.0.3"
 native-tls = "0.2.8"
 tts = { version = "0.18.0", optional = true }
-serde_json = "1.0.68"
+serde_json = "1.0.69"
 git2 = "0.13.23"
 rodio = "0.14.0"
 notify = "4.0.17"

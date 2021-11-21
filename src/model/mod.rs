@@ -1,8 +1,10 @@
+mod completions;
 mod connection;
 mod line;
 mod regex;
 mod settings;
 pub use self::regex::Regex;
+pub use completions::Completions;
 pub use connection::{Connection, Servers};
 pub use line::Line;
 pub use settings::*;

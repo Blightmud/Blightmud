@@ -1,5 +1,5 @@
 use crate::event::QuitMethod;
-use crate::model::{Line, Servers};
+use crate::model::{Completions, Line, Servers};
 use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
@@ -194,12 +194,10 @@ impl CommandBuffer {
     fn tab_complete(&mut self) {
         if self.buffer.len() > 1 {
             if self.completion.is_empty() {
-                let mut completions = vec![];
-                if let Some(mut options) = self.script.lock().unwrap().tab_complete(&self.strbuf) {
-                    completions.append(&mut options);
-                }
+                let mut completions = Completions::default();
+                completions.merge(self.script.lock().unwrap().tab_complete(&self.strbuf));
                 if let Some(mut options) = self.completion_tree.complete(&self.strbuf) {
-                    completions.append(&mut options);
+                    completions.add_all(&mut options);
                 }
 
                 // Remove duplicates but preserve order of occurence

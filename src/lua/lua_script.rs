@@ -9,10 +9,11 @@ use super::{
 };
 use crate::lua::fs::Fs;
 use crate::lua::prompt::Prompt;
+use crate::model::Completions;
 use crate::{event::Event, lua::servers::Servers, model::Line};
 use anyhow::Result;
 use log::{debug, info};
-use mlua::{AnyUserData, Lua, Result as LuaResult};
+use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, Value};
 use std::io::prelude::*;
 use std::{fs::File, sync::mpsc::Sender};
 
@@ -411,26 +412,32 @@ impl LuaScript {
         });
     }
 
-    pub fn tab_complete(&mut self, input: &str) -> Option<Vec<String>> {
-        self.exec_lua(&mut || -> LuaResult<Option<Vec<String>>> {
+    pub fn tab_complete(&mut self, input: &str) -> Completions {
+        self.exec_lua(&mut || -> LuaResult<Completions> {
+            let mut completions = Completions::default();
             let cb_table: mlua::Table =
                 self.state.named_registry_value(COMPLETION_CALLBACK_TABLE)?;
-            let mut completions = vec![];
             for cb in cb_table.sequence_values::<mlua::Function>() {
                 let cb = cb?;
-                let result = cb.call::<_, Option<Vec<String>>>(input.to_string())?;
-                if let Some(mut options) = result {
-                    options.sort();
-                    completions.append(&mut options);
+                let result = cb.call::<_, mlua::MultiValue>(input.to_string())?;
+                if !result.is_empty() {
+                    let mut it = result.into_iter();
+                    if let Some(Value::Table(table)) = it.next() {
+                        if let Ok(mut comps) =
+                            Vec::<String>::from_lua(Value::Table(table), &self.state)
+                        {
+                            comps.sort();
+                            completions.add_all(&mut comps);
+                        }
+                    }
+                    if let Some(Value::Boolean(lock)) = it.next() {
+                        completions.lock(lock);
+                    }
                 }
             }
-            Ok(if completions.is_empty() {
-                None
-            } else {
-                Some(completions)
-            })
+            Ok(completions)
         })
-        .unwrap_or(None)
+        .unwrap_or_default()
     }
 
     pub fn check_bindings(&mut self, cmd: &str) -> bool {
@@ -469,6 +476,7 @@ mod lua_script_tests {
     use super::CONNECTION_ID;
     use crate::event::QuitMethod;
     use crate::lua::constants::TIMED_CALLBACK_TABLE;
+    use crate::model::Completions;
     use crate::model::{Connection, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
     use libtelnet_rs::{bytes::Bytes, vbytes};
@@ -1241,12 +1249,46 @@ mod lua_script_tests {
 
         assert_eq!(
             lua.tab_complete(&"bat".to_string()),
-            Some(vec!["batman".to_string()])
+            Completions::from(vec!["batman".to_string()])
         );
         assert_eq!(
             lua.tab_complete(&"batm".to_string()),
-            Some(vec!["batman".to_string(), "batmobile".to_string()])
+            Completions::from(vec!["batman".to_string(), "batmobile".to_string()])
         );
-        assert_eq!(lua.tab_complete(&"rob".to_string()), None);
+        assert_eq!(lua.tab_complete(&"rob".to_string()), Completions::default());
+    }
+
+    #[test]
+    fn confirm_completion_lock() {
+        let (mut lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+                blight.on_complete(function (input)
+                    if input == "bat" then
+                        return {"batman"}, true
+                    elseif input == "batm" then
+                        return {"batman", "batmobile"}, false
+                    elseif input == "fail" then
+                        return true
+                    else
+                        return {}, true
+                    end
+                end)
+                "#,
+            )
+            .exec()
+            .unwrap();
+
+        let mut result = Completions::from(vec!["batman".to_string()]);
+        result.lock(true);
+        assert_eq!(lua.tab_complete(&"bat".to_string()), result);
+        let result = Completions::from(vec!["batman".to_string(), "batmobile".to_string()]);
+        assert_eq!(lua.tab_complete(&"batm".to_string()), result);
+        let mut result = Completions::default();
+        result.lock(true);
+        assert_eq!(lua.tab_complete(&"rob".to_string()), result);
+        let result = Completions::default();
+        assert_eq!(lua.tab_complete(&"fail".to_string()), result);
     }
 }

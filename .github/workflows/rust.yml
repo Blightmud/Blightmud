@@ -1,4 +1,4 @@
-name: Rust
+name: Test & Build
 
 on:
   pull_request:
@@ -9,7 +9,6 @@ on:
       - "*_impl"
 
 env:
-  CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -55,15 +54,6 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           profile: minimal
           override: true
-      - name: Formatting
-        if: ${{ matrix.toolchain != 'nightly' }}
-        run: cargo fmt -- --check
-      - name: Check (all features)
-        if: ${{ matrix.toolchain != 'nightly' }}
-        run: cargo check --locked --all-features
-      - name: Clippy (all features)
-        if: ${{ matrix.toolchain != 'nightly' }}
-        run: cargo clippy --locked --all-features
       - name: Test (all features)
         run: cargo test --locked --all-features
       - name: Test release (all features)

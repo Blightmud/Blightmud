@@ -1,0 +1,42 @@
+name: Format & Lint
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - dev
+      - "*_impl"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            ~/.cargo/bin
+          key: ubuntu-latest-check-lint-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Updating repository
+        run: sudo apt-get update
+      - name: Installing dependencies
+        run: sudo apt-get install libasound2-dev libspeechd-dev
+      - name: Setup toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+          override: true
+      - name: Formatting
+        run: cargo fmt -- --check
+      - name: Check (all features)
+        run: cargo check --locked --all-features
+      - name: Clippy (all features)
+        run: cargo clippy --locked --all-features

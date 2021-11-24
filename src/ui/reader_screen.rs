@@ -80,12 +80,23 @@ impl ReaderScreen {
 
     #[inline]
     fn print_prompt_input(&mut self, line: &str, pos: usize) {
+        let mut input = line;
+        let mut pos = pos;
+        let width = self.width as usize;
+        while input.len() >= width && pos >= width {
+            let (_, last) = input.split_at(self.width as usize);
+            input = last;
+            pos -= width;
+        }
+        if input.len() >= width {
+            input = input.split_at(width).0;
+        }
         write!(
             self.screen,
             "{}{}{}{}",
             Goto(1, self.prompt_line),
-            clear::AfterCursor,
-            line,
+            clear::CurrentLine,
+            input,
             Goto(pos as u16 + 1, self.prompt_line)
         )
         .unwrap();
@@ -196,14 +207,28 @@ impl UserInterface for ReaderScreen {
 
     // This is fancy logic to make 'tdsr' less noisy
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
-        if let Some((existing, orig)) = self.prompt_input.clone() {
-            if input.starts_with(&existing) {
-                let input = input[existing.len()..].to_owned();
-                self.print_prompt_input_suffix(&input, orig, pos);
-            } else if existing.starts_with(input) {
-                self.trim_prompt_input(pos);
-            } else {
+        let mut pos = pos;
+        let width = self.width as usize;
+        if let Some((existing, orig)) = &self.prompt_input {
+            if (width - 1..width + 1).contains(&pos) {
+                // Fall back to default behaviour when the prompt wraps
                 self.print_prompt_input(input, pos);
+            } else {
+                let mut orig = *orig;
+                while pos >= width {
+                    pos -= width;
+                    if orig >= width {
+                        orig -= width;
+                    }
+                }
+                if input.starts_with(existing) {
+                    let input = input[existing.len()..].to_owned();
+                    self.print_prompt_input_suffix(&input, orig, pos);
+                } else if existing.starts_with(input) {
+                    self.trim_prompt_input(pos);
+                } else {
+                    self.print_prompt_input(input, pos);
+                }
             }
         } else {
             self.print_prompt_input(input, pos);

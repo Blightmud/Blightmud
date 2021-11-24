@@ -33,6 +33,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
             ~/.cargo/bin
+            ./target
           key: ${{ matrix.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Updating repository
         if: ${{ matrix.os == 'ubuntu-latest' }}

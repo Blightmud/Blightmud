@@ -50,7 +50,7 @@ Sends the provided msg string as GMCP to the MUD.
 
 ```lua
 data = { char = { hp = "1234" } }
-gmcp.send_gmcp("Char.Health " .. json.encode(data))
+gmcp.send("Char.Health " .. json.encode(data))
 ```
 
 ##

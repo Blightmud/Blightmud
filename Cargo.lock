@@ -226,7 +226,7 @@ dependencies = [
  "mockall_double",
  "native-tls",
  "notify",
- "pulldown-cmark",
+ "pulldown-cmark 0.8.0",
  "regex",
  "rodio",
  "ron",
@@ -1299,9 +1299,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "mdcat"
-version = "0.24.2"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3ec8649b3002eef8d07bdff1949af4e725fd24b4a771cc7d359afbc8f36e858"
+checksum = "83dd88bf80d108af35c2c1782b94e3832dd4818a1535e4f97afd2f4a8fcb1a61"
 dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
@@ -1313,7 +1313,7 @@ dependencies = [
  "image",
  "libc",
  "mime",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.0",
  "shell-words",
  "syntect",
  "terminal_size",
@@ -2039,6 +2039,17 @@ checksum = "ffade02495f22453cd593159ea2f59827aae7f53fa8323f756799b670881dcf8"
 dependencies = [
  "bitflags",
  "getopts",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acd16514d1af5f7a71f909a44ef253cdb712a376d7ebc8ae4a471a9be9743548"
+dependencies = [
+ "bitflags",
  "memchr",
  "unicase",
 ]

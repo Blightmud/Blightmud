@@ -226,7 +226,7 @@ dependencies = [
  "mockall_double",
  "native-tls",
  "notify",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.0",
  "regex",
  "rodio",
  "ron",
@@ -1313,7 +1313,7 @@ dependencies = [
  "image",
  "libc",
  "mime",
- "pulldown-cmark",
+ "pulldown-cmark 0.8.0",
  "shell-words",
  "syntect",
  "terminal_size",
@@ -2036,6 +2036,17 @@ name = "pulldown-cmark"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffade02495f22453cd593159ea2f59827aae7f53fa8323f756799b670881dcf8"
+dependencies = [
+ "bitflags",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acd16514d1af5f7a71f909a44ef253cdb712a376d7ebc8ae4a471a9be9743548"
 dependencies = [
  "bitflags",
  "getopts",

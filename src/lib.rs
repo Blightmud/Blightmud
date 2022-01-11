@@ -237,7 +237,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
-    let mut player = if !cfg!(debug_assertions) {
+    let mut player = if !rt.integration_test {
         Player::new()
     } else {
         Player::disabled()

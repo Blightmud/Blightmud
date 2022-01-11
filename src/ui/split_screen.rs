@@ -559,7 +559,10 @@ impl SplitScreen {
                 .collect::<Vec<String>>();
             tags.sort();
             let tags = tags.join("");
-            let output = format!("{}{} ", host, tags);
+            let mut output = format!("{}{}", host, tags);
+            if output.len() > 0 {
+                output.push(' ');
+            }
             write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
             write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
         }

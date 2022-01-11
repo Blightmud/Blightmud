@@ -41,7 +41,7 @@ me to the word **blight** and here we are.
   - Keybindings
   - Audio playback (music/ambiance and sound effects)
   - Text-To-Speech
-  - Mouse scrolling (experimental)
+  - Mouse scrolling
   - Plugins
   - Sockets (TCP connecting and sending only)
 - Low resource and fast

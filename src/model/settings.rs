@@ -59,7 +59,7 @@ impl Default for Settings {
         let mut settings: HashMap<String, bool> = HashMap::new();
         settings.insert(LOGGING_ENABLED.to_string(), false);
         settings.insert(TTS_ENABLED.to_string(), true);
-        settings.insert(MOUSE_ENABLED.to_string(), true);
+        settings.insert(MOUSE_ENABLED.to_string(), false);
         settings.insert(SAVE_HISTORY.to_string(), false);
         settings.insert(CONFIRM_QUIT.to_string(), true);
         settings.insert(SCROLL_SPLIT.to_string(), true);

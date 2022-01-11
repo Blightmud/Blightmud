@@ -14,6 +14,7 @@ Available settings are:
 
 - `logging_enabled`     See `/help logging`
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
+                        (See additional details below)
 - `save_history`        Save your last 100 commands to disk.
 - `command_search`      Makes command history context aware (See info below for details)
 - `smart_history`       Enable smart command history (See info below for details)
@@ -25,6 +26,13 @@ Available settings are:
 - `hide_topbar`         Toggles the topbar
 
 ##
+
+***mouse_enabled***
+This mode will capture mouse events to the terminal in order to allow mouse
+scroll-wheel scrolling. One of the more noticable effects of this is that mouse
+text selection won't work in blightmud. So far holding `shift` (or `cmd` on
+some Apple devices) will allow you to select text using the mouse as normal on
+most terminal emulators (every one we have encountered so far).
 
 ***command_search***
 Makes command history stepping context aware.

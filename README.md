@@ -83,6 +83,7 @@ commands that might fit your system:
 
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page
 - **Archlinux/Manjaro**  : Packages are available on [AUR](https://aur.archlinux.org/packages/?O=0&K=blightmud)
+- **NixOS/Nix**          : Packages are available in [NixPkgs](https://search.nixos.org/packages?channel=21.11&from=0&size=50&sort=relevance&type=packages&query=blightmud).
 - **Mac/Homebrew**       : We have a homebrew tap `brew tap Blightmud/blightmud` (intel only, if you're on Apple Silcon (darwin) compiling is the best option)
 - **Cargo**              : If you have rust installed just run `cargo install --git https://github.com/blightmud/blightmud blightmud` from your favourite terminal.
 - **Other/Alternative**  : Download source and run `cargo install --path .` from the project root

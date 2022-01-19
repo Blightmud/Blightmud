@@ -514,7 +514,9 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 session.timer_writer.send(TimerEvent::Remove(idx))?;
             }
             Event::FSMonitor(path) => {
-                fs_monitor.watch(&path, notify::RecursiveMode::Recursive)?;
+                if let Err(err) = fs_monitor.watch(&path, notify::RecursiveMode::Recursive) {
+                    screen.print_error(&format!("Failed to monitor `{path}`: {err}"));
+                }
             }
             Event::FSEvent(e) => {
                 if let Ok(script) = session.lua_script.lock() {

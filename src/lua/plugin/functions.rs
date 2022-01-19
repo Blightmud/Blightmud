@@ -97,10 +97,7 @@ pub fn update_plugin(main_writer: Sender<Event>, name: &str) {
             .unwrap();
         if let Err(err) = updater() {
             main_writer
-                .send(Event::Error(format!(
-                    "Plugin update failed: {}",
-                    err.to_string()
-                )))
+                .send(Event::Error(format!("Plugin update failed: {err}",)))
                 .unwrap();
         } else {
             main_writer

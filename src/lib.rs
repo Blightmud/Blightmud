@@ -29,6 +29,7 @@ use crate::model::{Servers, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
+use crate::tools::util::expand_tilde;
 use crate::ui::{spawn_input_thread, UiWrapper, UserInterface};
 use event::EventHandler;
 use getopts::Matches;
@@ -53,7 +54,7 @@ lazy_static! {
             let data_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
                 MACOS_DEPRECATED_DIR.to_path_buf()
             } else {
-                PathBuf::from(crate::lua::util::expand_tilde(XDG_DATA_DIR).as_ref())
+                PathBuf::from(expand_tilde(XDG_DATA_DIR).as_ref())
             };
 
             let _ = std::fs::create_dir_all(&data_dir);
@@ -74,7 +75,7 @@ lazy_static! {
             let config_dir = if cfg!(target_os = "macos") && MACOS_DEPRECATED_DIR.exists() {
                 MACOS_DEPRECATED_DIR.to_path_buf()
             } else {
-                PathBuf::from(crate::lua::util::expand_tilde(XDG_CONFIG_DIR).as_ref())
+                PathBuf::from(expand_tilde(XDG_CONFIG_DIR).as_ref())
             };
 
             let _ = std::fs::create_dir_all(&config_dir);
@@ -89,10 +90,8 @@ lazy_static! {
         #[cfg(all(not(test), debug_assertions))]
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(".run/config")
     };
-    pub static ref MACOS_DEPRECATED_DIR: PathBuf = {
-        use crate::lua::util;
-        PathBuf::from(util::expand_tilde("~/Library/Application Support/blightmud").as_ref())
-    };
+    pub static ref MACOS_DEPRECATED_DIR: PathBuf =
+        PathBuf::from(expand_tilde("~/Library/Application Support/blightmud").as_ref());
 }
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
@@ -514,7 +513,10 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 session.timer_writer.send(TimerEvent::Remove(idx))?;
             }
             Event::FSMonitor(path) => {
-                if let Err(err) = fs_monitor.watch(&path, notify::RecursiveMode::Recursive) {
+                if let Err(err) = fs_monitor.watch(
+                    expand_tilde(&path).as_ref(),
+                    notify::RecursiveMode::Recursive,
+                ) {
                     screen.print_error(&format!("Failed to monitor `{path}`: {err}"));
                 }
             }

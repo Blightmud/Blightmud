@@ -10,6 +10,7 @@ use super::{
 use crate::lua::fs::Fs;
 use crate::lua::prompt::Prompt;
 use crate::model::Completions;
+use crate::tools::util::expand_tilde;
 use crate::{event::Event, lua::servers::Servers, model::Line};
 use anyhow::Result;
 use log::{debug, info};

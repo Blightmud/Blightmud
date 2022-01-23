@@ -560,7 +560,7 @@ impl SplitScreen {
             tags.sort();
             let tags = tags.join("");
             let mut output = format!("{}{}", host, tags);
-            if output.len() > 0 {
+            if !output.is_empty() {
                 output.push(' ');
             }
             write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator

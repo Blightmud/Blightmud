@@ -215,7 +215,7 @@ impl CommandBuffer {
             if let Some(comp) = self.completion.next() {
                 self.tts_ctrl.lock().unwrap().speak(comp, true);
                 self.buffer = comp.chars().collect();
-                self.cursor_pos = comp.len();
+                self.cursor_pos = self.buffer.len();
             }
         }
     }
@@ -632,5 +632,17 @@ mod command_test {
         push_string(&mut buffer, "bat");
         buffer.tab_complete();
         assert_eq!(buffer.completion.options, vec!["batman".to_string()]);
+    }
+
+    #[test]
+    fn test_completion_with_big_chars() {
+        // Issue #522
+        let mut buffer = get_command().0;
+        push_string(&mut buffer, "fend");
+        buffer.completion.options = vec!["fender🎸".to_string()];
+        buffer.tab_complete();
+        assert_eq!(buffer.completion.options, vec!["fender🎸".to_string()]);
+        assert_eq!(buffer.buffer, vec!['f', 'e', 'n', 'd', 'e', 'r', '🎸']);
+        assert_eq!(buffer.cursor_pos, 7);
     }
 }

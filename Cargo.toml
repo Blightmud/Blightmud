@@ -42,7 +42,7 @@ native-tls = "0.2.8"
 tts = { version = "0.20.1", optional = true }
 serde_json = "1.0.73"
 git2 = "0.13.25"
-rodio = "0.14.0"
+rodio = "0.15.0"
 notify = "4.0.17"
 
 [dev-dependencies]

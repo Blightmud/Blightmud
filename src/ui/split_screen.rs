@@ -263,13 +263,18 @@ impl UserInterface for SplitScreen {
         let mut input = input;
         let mut pos = pos;
         let width = self.width as usize;
-        while input.len() >= width && pos >= width {
-            let (_, last) = input.split_at(self.width as usize);
-            input = last;
+        while input.chars().count() >= width && pos >= width {
+            if let Some((i, _)) = input.char_indices().nth(width) {
+                input = input.split_at(i).1;
+            } else {
+                input = "";
+            }
             pos -= width;
         }
-        if input.len() >= width {
-            input = input.split_at(width).0;
+        if input.chars().count() >= width {
+            if let Some((i, _)) = input.char_indices().nth(width) {
+                input = input.split_at(i).0;
+            }
         }
         self.cursor_prompt_pos = pos as u16 + 1;
         write!(

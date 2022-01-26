@@ -79,17 +79,22 @@ impl ReaderScreen {
     }
 
     #[inline]
-    fn print_prompt_input(&mut self, line: &str, pos: usize) {
+    fn print_wrapped_prompt_input(&mut self, line: &str, pos: usize) {
         let mut input = line;
         let mut pos = pos;
         let width = self.width as usize;
-        while input.len() >= width && pos >= width {
-            let (_, last) = input.split_at(self.width as usize);
-            input = last;
+        while input.chars().count() >= width && pos >= width {
+            if let Some((i, _)) = input.char_indices().nth(width) {
+                input = input.split_at(i).1;
+            } else {
+                input = "";
+            }
             pos -= width;
         }
-        if input.len() >= width {
-            input = input.split_at(width).0;
+        if input.chars().count() >= width {
+            if let Some((i, _)) = input.char_indices().nth(width) {
+                input = input.split_at(i).0;
+            }
         }
         write!(
             self.screen,
@@ -212,7 +217,7 @@ impl UserInterface for ReaderScreen {
         if let Some((existing, orig)) = &self.prompt_input {
             if (width - 1..width + 1).contains(&pos) {
                 // Fall back to default behaviour when the prompt wraps
-                self.print_prompt_input(input, pos);
+                self.print_wrapped_prompt_input(input, pos);
             } else {
                 let mut orig = *orig;
                 while pos >= width {
@@ -227,11 +232,11 @@ impl UserInterface for ReaderScreen {
                 } else if existing.starts_with(input) {
                     self.trim_prompt_input(pos);
                 } else {
-                    self.print_prompt_input(input, pos);
+                    self.print_wrapped_prompt_input(input, pos);
                 }
             }
         } else {
-            self.print_prompt_input(input, pos);
+            self.print_wrapped_prompt_input(input, pos);
         }
         self.prompt_input = Some((input.to_string(), pos));
     }

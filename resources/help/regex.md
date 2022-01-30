@@ -25,6 +25,10 @@ assert(not re:test("This is a good and bad line"))
 
 ***regex:match(string)***
 Matches a regex against a string and returns the capture groups in a table.
+This method only matches once and will return the "leftmost" match in the string.
+
+The results are returned as a table containing the match followed by capture
+groups or nil.
 
 ```lua
 local re = regex.new("^a (\\w+) string$")
@@ -37,6 +41,27 @@ assert(re:match("12345") == nil)
 ```
 
 ##
+
+***regex:match_all(string)***
+Matches a regex against a string and returns the capture groups in a table.
+This method returns all non overlapping matches within the string.
+
+The results are returned as a table of tables containing the match and capture
+groups or nil.
+
+```lua
+local re = regex.new("(\\w+): (\\d+)")
+
+local matches = re:match_all("homer: 36, bart: 10")
+assert(matches[1][1] == "homer: 36")
+assert(matches[1][2] == "homer")
+assert(matches[1][3] == "36")
+
+assert(matches[2][1] == "bart: 10")
+assert(matches[2][2] == "bart")
+assert(matches[2][3] == "10")
+```
+
 
 ***regex:replace(string, replace[, count])***
 Replaces non overlapping matches of a regex in a string with the provided

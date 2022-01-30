@@ -72,6 +72,10 @@ local function GMCP()
         core.subneg_send(OPT, string_to_bytes("Core.Supports.Add [\"" .. mod .. " 1\"]"))
     end
 
+    local unregister = function (mod)
+        core.subneg_send(OPT, string_to_bytes("Core.Supports.Remove [\"" .. mod .. " 1\"]"))
+    end
+
     local receive = function (mod, callback)
         if self.receivers[mod] == nil then
             self.receivers[mod] = {}
@@ -105,6 +109,7 @@ local function GMCP()
         send = send,
         receive = receive,
         register = register,
+        unregister = unregister,
         echo = echo,
         _subneg_recv = _subneg_recv,
         _on_enable = _on_enable,

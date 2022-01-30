@@ -28,6 +28,18 @@ gmcp.register("Room.Info")
 
 ##
 
+***gmcp.unregister(module)***
+Instructs the server that our client (you) don't want to receive updates for
+the defined module.
+
+- `module`  The name of the GMCP module to not receive updates anymore.
+
+```lua
+gmcp.unregister("Room.Info")
+```
+
+##
+
 ***gmcp.receive(module, callback)***
 Registers a callback that is executed and provided with the GMCP data when
 the specified module data is received from the server. The data you receive

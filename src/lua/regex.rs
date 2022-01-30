@@ -50,6 +50,30 @@ impl UserData for Regex {
                 Ok(matches)
             },
         );
+        methods.add_method(
+            "match_all",
+            |_, this, src: String| -> mlua::Result<Option<Vec<Vec<String>>>> {
+                let re = &this.regex;
+                let matches = re
+                    .captures_iter(&src)
+                    .map(|captures| {
+                        captures
+                            .iter()
+                            .map(|c| match c {
+                                Some(m) => m.as_str().to_string(),
+                                None => String::new(),
+                            })
+                            .collect::<Vec<String>>()
+                    })
+                    .collect::<Vec<Vec<String>>>();
+
+                if !matches.is_empty() {
+                    Ok(Some(matches))
+                } else {
+                    Ok(None)
+                }
+            },
+        );
         methods.add_method_mut(
             "replace",
             |_,
@@ -131,6 +155,31 @@ mod test_regexp {
             .call(())
             .unwrap();
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_match_all() {
+        let state = get_lua();
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("(\\w+): (\\d+)")
+            return re:match_all("homer: 42, bart: 10, lisa: 8")
+            "#,
+                )
+                .call::<_, Option<Vec<Vec<String>>>>(())
+                .unwrap(),
+            Some(vec![
+                vec![
+                    "homer: 42".to_string(),
+                    "homer".to_string(),
+                    "42".to_string()
+                ],
+                vec!["bart: 10".to_string(), "bart".to_string(), "10".to_string()],
+                vec!["lisa: 8".to_string(), "lisa".to_string(), "8".to_string()],
+            ])
+        );
     }
 
     #[test]

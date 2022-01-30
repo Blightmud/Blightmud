@@ -1099,7 +1099,7 @@ mod lua_script_tests {
     fn confirm_search_macros() {
         let (lua, reader) = get_lua();
         lua.on_mud_input(&mut Line::from("/search test1"));
-        let re = Regex::new("test1").unwrap();
+        let re = Regex::new("test1", None).unwrap();
         assert_eq!(reader.recv().unwrap(), Event::FindBackward(re.clone()));
         lua.on_mud_input(&mut Line::from("/s test1"));
         assert_eq!(reader.recv().unwrap(), Event::FindBackward(re));

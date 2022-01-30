@@ -122,7 +122,7 @@ mod test {
         }
         let mut index = history.len();
         let mut goal = 11000;
-        let pattern = Regex::new("^something$").unwrap();
+        let pattern = Regex::new("^something$", None).unwrap();
         while index > 0 && goal > 0 {
             index = if let Some(i) = history.find_backward(&pattern, index) {
                 i

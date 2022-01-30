@@ -690,7 +690,7 @@ mod screen_test {
 
         let mut history = History::new();
         history.append(line);
-        let re = crate::model::Regex::new("and lines").unwrap();
+        let re = crate::model::Regex::new("and lines", None).unwrap();
         assert_eq!(history.find_forward(&re, 0), Some(3));
         assert_eq!(history.find_forward(&re, 4), None);
         assert_eq!(history.find_backward(&re, 4), Some(3));

@@ -278,7 +278,7 @@ mod test_blight {
     #[test]
     fn find() {
         let (lua, reader) = get_lua_state();
-        let re = crate::model::Regex::new("test").unwrap();
+        let re = crate::model::Regex::new("test", None).unwrap();
         lua.load(r#"blight.find_forward(regex.new("test"))"#)
             .exec()
             .unwrap();

@@ -3,7 +3,7 @@ mod connection;
 mod line;
 mod regex;
 mod settings;
-pub use self::regex::Regex;
+pub use self::{regex::Regex, regex::RegexOptions};
 pub use completions::Completions;
 pub use connection::{Connection, Servers};
 pub use line::Line;

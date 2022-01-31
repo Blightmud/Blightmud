@@ -1,17 +1,32 @@
-use crate::model::Regex as Re;
-use mlua::{UserData, UserDataMethods};
+use crate::model::{Regex as Re, RegexOptions};
+use mlua::{Table, UserData, UserDataMethods};
 use std::fmt::{Display, Formatter};
+
+fn parse_regex_options(opts: &Option<Table>) -> RegexOptions {
+    let mut options = RegexOptions::default();
+    if let Some(opts) = &opts {
+        options.case_insensitive = opts
+            .get("case_insensitive")
+            .unwrap_or(options.case_insensitive);
+        options.multi_line = opts.get("multi_line").unwrap_or(options.multi_line);
+    }
+    options
+}
 
 pub struct RegexLib;
 
 impl UserData for RegexLib {
     fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
-        methods.add_function("new", |_, pattern: String| -> mlua::Result<Regex> {
-            match Re::new(&pattern) {
-                Ok(re) => Ok(Regex { regex: re }),
-                Err(msg) => Err(mlua::Error::RuntimeError(msg.to_string())),
-            }
-        });
+        methods.add_function(
+            "new",
+            |_, (pattern, opts): (String, Option<Table>)| -> mlua::Result<Regex> {
+                let options = parse_regex_options(&opts);
+                match Re::new(&pattern, Some(options)) {
+                    Ok(re) => Ok(Regex { regex: re }),
+                    Err(msg) => Err(mlua::Error::RuntimeError(msg.to_string())),
+                }
+            },
+        );
     }
 }
 
@@ -232,6 +247,47 @@ mod test_regexp {
                 .call::<_, String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 07/05/2014".to_string()
+        );
+    }
+
+    #[test]
+    fn test_options() {
+        let state = get_lua();
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^test$", {case_insensitive = true})
+            return re:test("TEST")
+            "#,
+                )
+                .call::<_, bool>(())
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^test$", {multi_line = true})
+            return re:test("test\ntest")
+            "#,
+                )
+                .call::<_, bool>(())
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^test$")
+            return re:test("test\ntest")
+            "#,
+                )
+                .call::<_, bool>(())
+                .unwrap(),
+            false
         );
     }
 }

@@ -5,8 +5,15 @@ be created and used to match and replace content in strings.
 
 ##
 
-***regex.new(pattern)***
+***regex.new(pattern, options)***
 Creates a new regular expression.
+
+- `pattern` Regex-pattern
+- `options` An optional table of options (see `Options` below)
+
+**Options**
+- `case_insensitive` Regex-flag (i): case insensitive match
+- `multi_line`       Regex-flag (m): ^ and $ match start/end of line
 
 ##
 

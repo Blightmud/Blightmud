@@ -428,17 +428,17 @@ mod event_test {
     #[test]
     fn test_find() {
         let (session, _reader, _timer_reader) = build_session();
-        let re = Regex::new("test").unwrap();
+        let re = Regex::new("test", None).unwrap();
         let mut screen = MockUserInterface::new();
         screen
             .expect_find_down()
             .times(1)
-            .withf(|other| *other == Regex::new("test").unwrap())
+            .withf(|other| *other == Regex::new("test", None).unwrap())
             .returning(|_| Ok(()));
         screen
             .expect_find_up()
             .times(1)
-            .withf(|other| *other == Regex::new("test").unwrap())
+            .withf(|other| *other == Regex::new("test", None).unwrap())
             .returning(|_| Ok(()));
         let handler = EventHandler::from(&session);
         let mut screen: Box<dyn UserInterface> = Box::new(screen);

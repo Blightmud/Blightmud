@@ -13,9 +13,9 @@ if you get confused.
 There are essentially 4 core threads running when the client is running.
 
 - *main_thread* (main.rs:run())                           : (acts as a router for all [Events](src/event.rs))
-- *transmit_thread* [tcp_stream.rs](src/tcp_stream.rs)    : Handles sending bytes to server
-- *receive_thread* [tcp_stream.rs](src/tcp_stream.rs)     : Handles reading bytes from server
-- *input_thread* [command.rs](rsc/command.rs)             : Reads keyboard input
+- *transmit_thread* [tcp_stream.rs](src/net/tcp_stream.rs)    : Handles sending bytes to server
+- *receive_thread* [tcp_stream.rs](src/net/tcp_stream.rs)     : Handles reading bytes from server
+- *input_thread* [command.rs](src/ui/command.rs)             : Reads keyboard input
 
 All these threads send [events](src/event.rs) through a channel Sender to the
 *main_thread* that acts as a router distributing the data to the right handler.

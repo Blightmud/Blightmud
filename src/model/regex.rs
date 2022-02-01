@@ -8,6 +8,9 @@ use anyhow::Result;
 pub struct RegexOptions {
     pub case_insensitive: bool,
     pub multi_line: bool,
+    pub dot_matches_new_line: bool,
+    pub swap_greed: bool,
+    pub ignore_whitespace: bool,
 }
 
 impl Default for RegexOptions {
@@ -15,6 +18,9 @@ impl Default for RegexOptions {
         Self {
             case_insensitive: false,
             multi_line: false,
+            dot_matches_new_line: false,
+            swap_greed: false,
+            ignore_whitespace: false,
         }
     }
 }
@@ -30,6 +36,9 @@ impl Regex {
         if let Some(options) = options {
             regex_builder.case_insensitive(options.case_insensitive);
             regex_builder.multi_line(options.multi_line);
+            regex_builder.dot_matches_new_line(options.dot_matches_new_line);
+            regex_builder.swap_greed(options.swap_greed);
+            regex_builder.ignore_whitespace(options.ignore_whitespace);
         }
         Ok(Self {
             inner: regex_builder.build()?,

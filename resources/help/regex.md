@@ -12,8 +12,11 @@ Creates a new regular expression.
 - `options` An optional table of options (see `Options` below)
 
 **Options**
-- `case_insensitive` Regex-flag (i): case insensitive match
-- `multi_line`       Regex-flag (m): ^ and $ match start/end of line
+- `case_insensitive`     Regex flag (i): case insensitive match
+- `multi_line`           Regex flag (m): ^ and $ match start/end of line
+- `dot_matches_new_line` Regex flag (s): Dot matches newline
+- `swap_greed`           Regex flag (U): Make quantifiers lazy
+- `ignore_whitespace`    Regex flag (x): Ignore withespace, # as commet
 
 ##
 

@@ -9,6 +9,13 @@ fn parse_regex_options(opts: &Option<Table>) -> RegexOptions {
             .get("case_insensitive")
             .unwrap_or(options.case_insensitive);
         options.multi_line = opts.get("multi_line").unwrap_or(options.multi_line);
+        options.dot_matches_new_line = opts
+            .get("dot_matches_new_line")
+            .unwrap_or(options.dot_matches_new_line);
+        options.swap_greed = opts.get("swap_greed").unwrap_or(options.swap_greed);
+        options.ignore_whitespace = opts
+            .get("ignore_whitespace")
+            .unwrap_or(options.ignore_whitespace);
     }
     options
 }
@@ -269,6 +276,18 @@ mod test_regexp {
             state
                 .load(
                     r#"
+            local re = regex.new("^test$")
+            return re:test("TEST")
+            "#,
+                )
+                .call::<_, bool>(())
+                .unwrap(),
+            false
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
             local re = regex.new("^test$", {multi_line = true})
             return re:test("test\ntest")
             "#,
@@ -288,6 +307,78 @@ mod test_regexp {
                 .call::<_, bool>(())
                 .unwrap(),
             false
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^start.*end$", {dot_matches_new_line = true})
+            return re:test("start of text \n text end")
+            "#,
+                )
+                .call::<_, bool>(())
+                .unwrap(),
+            true
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^start.*end$")
+            return re:test("start of text \n text end")
+            "#,
+                )
+                .call::<_, bool>(())
+                .unwrap(),
+            false
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("(a+)", {swap_greed = true})
+            return re:match("lot of aaaaaas")
+            "#,
+                )
+                .call::<_, Option<Vec<String>>>(())
+                .unwrap(),
+            Some(vec!["a".to_string(), "a".to_string()])
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("(a+)")
+            return re:match("lot of aaaaaas")
+            "#,
+                )
+                .call::<_, Option<Vec<String>>>(())
+                .unwrap(),
+            Some(vec!["aaaaaa".to_string(), "aaaaaa".to_string()])
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^(t e s t) # this is a comment$", {ignore_whitespace = true})
+            return re:match("test")
+            "#,
+                )
+                .call::<_, Option<Vec<String>>>(())
+                .unwrap(),
+            Some(vec!["test".to_string(), "test".to_string()])
+        );
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^(t e s t) # this is a comment$")
+            return re:match("test")
+            "#,
+                )
+                .call::<_, Option<Vec<String>>>(())
+                .unwrap(),
+            None
         );
     }
 }

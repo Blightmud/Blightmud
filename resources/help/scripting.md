@@ -2,9 +2,12 @@
 
 The default scripting language for Blightmud is Lua.
 
-You can manually load your script files with the `/load` command or you can 
+You can manually load your script files with the `/load` command or you can
 auto-load them as configuration scripts. 
 See `/help config_scripts` for more information on auto-loading scripts.
+
+If you just want to look at some examples of triggers and aliases before
+reading docs then check out `/help script_example`.
 
 Alternatively, you can execute Lua directly with the `/lua` command.
 

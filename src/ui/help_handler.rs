@@ -221,6 +221,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "json" => "json.md",
         "prompt" => "prompt.md",
         "history" => "history.md",
+        "script_example" => "scripte_example.md"
     }
 }
 

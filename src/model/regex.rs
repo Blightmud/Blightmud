@@ -4,25 +4,13 @@ use std::ops::DerefMut;
 
 use anyhow::Result;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct RegexOptions {
     pub case_insensitive: bool,
     pub multi_line: bool,
     pub dot_matches_new_line: bool,
     pub swap_greed: bool,
     pub ignore_whitespace: bool,
-}
-
-impl Default for RegexOptions {
-    fn default() -> Self {
-        Self {
-            case_insensitive: false,
-            multi_line: false,
-            dot_matches_new_line: false,
-            swap_greed: false,
-            ignore_whitespace: false,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

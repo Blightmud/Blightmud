@@ -800,12 +800,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 
 [[package]]
-name = "gcc"
-version = "0.3.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
-
-[[package]]
 name = "gethostname"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2282,9 +2276,9 @@ dependencies = [
 
 [[package]]
 name = "speech-dispatcher"
-version = "0.10.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c04e0e6004980d1b81d175356b8f7ecfaab345ce1a10e11af29639b6996a2050"
+checksum = "fbab517fe176eb95d9bcc23c5ba75500fc5157d13a6978cfe135395fa149e151"
 dependencies = [
  "lazy_static",
  "speech-dispatcher-sys",
@@ -2292,12 +2286,11 @@ dependencies = [
 
 [[package]]
 name = "speech-dispatcher-sys"
-version = "0.5.2"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b662a91fe7e39d3d11edcf0297c717a8c05683a6c6445df9aba83b034b2b2db5"
+checksum = "6c3e8acdf2b1f4bb13f1813b40b52f3edf4cc94d8a55fe713a584f672a10388d"
 dependencies = [
  "bindgen 0.59.2",
- "gcc",
 ]
 
 [[package]]
@@ -2526,9 +2519,9 @@ dependencies = [
 
 [[package]]
 name = "tts"
-version = "0.20.1"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3329496ed5cf3596f9e0726415774bf47558f1d2cb65c09f56c4297bde05ec9"
+checksum = "5dd3cc4cfd63db314c5b82e8b60cba72869f048c4e6d26e7ec1645bf4de2ca2d"
 dependencies = [
  "cocoa-foundation",
  "dyn-clonable",

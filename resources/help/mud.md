@@ -127,5 +127,7 @@ mud.add_tag("MSDP")
 The primary use for this function is to indicate what telnet protocols are
 active for the current mud.
 
+##
+
 ***mud.clear_tags()***
 Removes all tags from the topbar of Blightmud except for the hostname

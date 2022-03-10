@@ -29,6 +29,7 @@ pub enum QuitMethod {
 pub enum Event {
     AddTag(String),
     AddTimedEvent(chrono::Duration, Option<u32>, u32, bool),
+    ClearTags,
     ClearTimers,
     Connect(Connection),
     Connected(u16),
@@ -289,6 +290,10 @@ impl EventHandler {
             }
             Event::Info(msg) => {
                 screen.print_info(&msg);
+                Ok(())
+            }            
+            Event::ClearTags => {
+                screen.clear_tags()?;
                 Ok(())
             }
             Event::AddTag(tag) => screen.add_tag(&tag),

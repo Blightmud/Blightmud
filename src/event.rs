@@ -291,7 +291,7 @@ impl EventHandler {
             Event::Info(msg) => {
                 screen.print_info(&msg);
                 Ok(())
-            }            
+            }
             Event::ClearTags => {
                 screen.clear_tags()?;
                 Ok(())

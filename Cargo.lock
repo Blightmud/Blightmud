@@ -2413,9 +2413,9 @@ dependencies = [
 
 [[package]]
 name = "speech-dispatcher"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbab517fe176eb95d9bcc23c5ba75500fc5157d13a6978cfe135395fa149e151"
+checksum = "011a4f56750a1a31b41df25e27e55a4d46b3190bfa8f8d2f4c097446ad9702af"
 dependencies = [
  "lazy_static",
  "speech-dispatcher-sys",
@@ -2680,9 +2680,9 @@ dependencies = [
 
 [[package]]
 name = "tts"
-version = "0.20.4"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f14cef4d39fc1b2a69d163772c9015d6e33d694a1f1e2047ec32274675a17cb"
+checksum = "78d96b1f6863d917e6ec90f081e9f4cde8762e2e1b3774b37724c1bab99f5bd6"
 dependencies = [
  "cocoa-foundation",
  "dyn-clonable",

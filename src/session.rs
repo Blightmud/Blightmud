@@ -102,11 +102,6 @@ impl Session {
         connection.connected()
     }
 
-    pub fn connection_id(&self) -> u16 {
-        let connection = self.connection.lock().unwrap();
-        connection.id
-    }
-
     pub fn host(&self) -> String {
         let connection = self.connection.lock().unwrap();
         connection.host.clone()

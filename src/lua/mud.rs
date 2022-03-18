@@ -9,7 +9,7 @@ use crate::{
 use super::{
     backend::Backend,
     constants::{
-        BACKEND, CONNECTION_ID, MUD_INPUT_LISTENER_TABLE, MUD_OUTPUT_LISTENER_TABLE,
+        BACKEND, MUD_INPUT_LISTENER_TABLE, MUD_OUTPUT_LISTENER_TABLE,
         ON_CONNECTION_CALLBACK_TABLE, ON_DISCONNECT_CALLBACK_TABLE,
     },
 };
@@ -66,9 +66,8 @@ impl UserData for Mud {
             },
         );
         methods.add_function("disconnect", |ctx, ()| {
-            let conn_id: u16 = ctx.named_registry_value(CONNECTION_ID).unwrap_or_default();
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
-            backend.writer.send(Event::Disconnect(conn_id)).unwrap();
+            backend.writer.send(Event::Disconnect).unwrap();
             Ok(())
         });
         methods.add_function("reconnect", |ctx, ()| {

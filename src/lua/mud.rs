@@ -146,7 +146,7 @@ mod test_mud {
         model::Line,
     };
 
-    use super::{Mud, CONNECTION_ID};
+    use super::Mud;
 
     #[test]
     fn test_output_register() {
@@ -239,7 +239,7 @@ mod test_mud {
 
     #[test]
     fn test_default_disconnect() {
-        assert_event("mud.disconnect()", Event::Disconnect(0));
+        assert_event("mud.disconnect()", Event::Disconnect);
     }
 
     #[test]
@@ -249,10 +249,9 @@ mod test_mud {
         let mud = Mud::new();
         let lua = Lua::new();
         lua.set_named_registry_value(BACKEND, backend).unwrap();
-        lua.set_named_registry_value(CONNECTION_ID, 4).unwrap();
         lua.globals().set("mud", mud).unwrap();
         lua.load("mud.disconnect()").exec().unwrap();
-        assert_eq!(reader.recv().unwrap(), Event::Disconnect(4));
+        assert_eq!(reader.recv().unwrap(), Event::Disconnect);
     }
 
     #[test]

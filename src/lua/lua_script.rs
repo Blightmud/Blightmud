@@ -1044,11 +1044,8 @@ mod lua_script_tests {
             reader.recv().unwrap(),
             Event::Connect(Connection::new("example.com", 4000, true, false))
         );
-        lua.state
-            .set_named_registry_value(CONNECTION_ID, 4)
-            .unwrap();
         lua.on_mud_input(&mut Line::from("/disconnect"));
-        assert_eq!(reader.recv().unwrap(), Event::Disconnect(4));
+        assert_eq!(reader.recv().unwrap(), Event::Disconnect);
 
         lua.on_mud_input(&mut Line::from("/reconnect"));
         assert_eq!(reader.recv().unwrap(), Event::Reconnect);

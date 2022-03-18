@@ -101,7 +101,6 @@ pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
             let mut mud_receiver = MudReceiver::from(&session);
             let writer = &session.main_writer;
             let mut telnet_handler = TelnetHandler::new(session.clone());
-            let connection_id = session.connection_id();
 
             debug!("Receive stream spawned");
             let mut remaining_bytes = None;
@@ -115,7 +114,7 @@ pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
                     writer
                         .send(Event::Info("Connection closed".to_string()))
                         .unwrap();
-                    writer.send(Event::Disconnect(connection_id)).unwrap();
+                    writer.send(Event::Disconnect).unwrap();
                     break;
                 }
 
@@ -136,14 +135,13 @@ pub fn spawn_transmit_thread(
         .spawn(move || {
             let mut connection = connection;
             let transmit_read = transmit_read;
-            let connection_id = session.connection_id();
             debug!("Transmit stream spawned");
             while let Ok(Some(data)) = transmit_read.recv() {
                 if let Err(info) = connection.write_all(&data) {
                     session.disconnect();
                     let error = format!("Failed to write to socket: {}", info).to_string();
                     session.send_event(Event::Error(error));
-                    session.send_event(Event::Disconnect(connection_id));
+                    session.send_event(Event::Disconnect);
                 }
             }
             debug!("Transmit stream closing");

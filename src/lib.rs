@@ -335,7 +335,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::Connect(_)
             | Event::Connected(_)
             | Event::Reconnect
-            | Event::Disconnect(_) => {
+            | Event::Disconnect => {
                 event_handler.handle_server_events(
                     event.clone(),
                     &mut screen,

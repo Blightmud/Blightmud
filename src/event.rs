@@ -34,7 +34,7 @@ pub enum Event {
     Connect(Connection),
     Connected(u16),
     DisableProto(u8),
-    Disconnect(u16),
+    Disconnect,
     DropTimedEvent(u32),
     EnableProto(u8),
     Error(String),
@@ -179,8 +179,8 @@ impl EventHandler {
                 }
                 Ok(())
             }
-            Event::Disconnect(id) => {
-                if self.session.connection_id() == id && self.session.connected() {
+            Event::Disconnect => {
+                if self.session.connected() {
                     self.session.disconnect();
                     screen.print_info(&format!(
                         "Disconnecting from: {}:{}",

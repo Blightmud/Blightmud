@@ -358,24 +358,24 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.0.14"
+version = "3.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b63edc3f163b3c71ec8aa23f9bd6070f77edbf3d1d198b164afa90ff00e4ec62"
+checksum = "71c47df61d9e16dc010b55dba1952a57d8c215dbb533fd13cdd13369aac73b1c"
 dependencies = [
  "bitflags",
  "indexmap",
  "lazy_static",
  "os_str_bytes",
- "textwrap 0.14.2",
+ "textwrap 0.15.0",
 ]
 
 [[package]]
 name = "clap_complete"
-version = "3.0.6"
+version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "678db4c39c013cc68b54d372bce2efc58e30a0337c497c9032fd196802df3bc3"
+checksum = "df6f3613c0a3cddfd78b41b10203eb322cb29b600cbdf808a7d3db95691b8e25"
 dependencies = [
- "clap 3.0.14",
+ "clap 3.1.8",
 ]
 
 [[package]]
@@ -1320,6 +1320,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "matchers"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
+dependencies = [
+ "regex-automata",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1327,14 +1336,14 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "mdcat"
-version = "0.26.1"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "355cc8e37ea701ed64b9024dd9911a7805592445b93767f60811769fc34e84b1"
+checksum = "395dc203b493fdb1aaa07b73ea20a129485e161b355679550fdaffba71f73f3f"
 dependencies = [
  "ansi_term",
  "anyhow",
  "base64",
- "clap 3.0.14",
+ "clap 3.1.8",
  "clap_complete",
  "env_proxy",
  "fehler",
@@ -1346,6 +1355,8 @@ dependencies = [
  "shell-words",
  "syntect",
  "terminal_size",
+ "tracing",
+ "tracing-subscriber",
  "ureq",
  "url",
 ]
@@ -1954,6 +1965,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "pin-project-lite"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e280fbe77cc62c91527259e9442153f4688736748d24660126286329742b4c6c"
+
+[[package]]
 name = "pkg-config"
 version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2112,6 +2129,15 @@ checksum = "1a11647b6b25ff05a515cb92c365cec08801e83423a235b51e231e1808747286"
 dependencies = [
  "aho-corasick",
  "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
+dependencies = [
  "regex-syntax",
 ]
 
@@ -2328,6 +2354,15 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "sharded-slab"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
+dependencies = [
+ "lazy_static",
 ]
 
 [[package]]
@@ -2568,9 +2603,9 @@ dependencies = [
 
 [[package]]
 name = "textwrap"
-version = "0.14.2"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
+checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 
 [[package]]
 name = "thiserror"
@@ -2601,6 +2636,15 @@ dependencies = [
  "libc",
  "redox_syscall 0.1.57",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "thread_local"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
+dependencies = [
+ "once_cell",
 ]
 
 [[package]]
@@ -2676,6 +2720,68 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a31142970826733df8241ef35dc040ef98c679ab14d7c3e54d827099b3acecaa"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "tracing"
+version = "0.1.33"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80b9fa4360528139bc96100c160b7ae879f5567f49f1782b0b02035b0358ebf3"
+dependencies = [
+ "cfg-if 1.0.0",
+ "pin-project-lite",
+ "tracing-attributes",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e65ce065b4b5c53e73bb28912318cb8c9e9ad3921f1d669eb0e68b4c8143a2b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90442985ee2f57c9e1b548ee72ae842f4a9a20e3f417cc38dbc5dc684d9bb4ee"
+dependencies = [
+ "lazy_static",
+ "valuable",
+]
+
+[[package]]
+name = "tracing-log"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6923477a48e41c1951f1999ef8bb5a3023eb723ceadafe78ffb65dc366761e3"
+dependencies = [
+ "lazy_static",
+ "log",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-subscriber"
+version = "0.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bc28f93baff38037f64e6f43d34cfa1605f27a49c34e8a04c5e78b0babf2596"
+dependencies = [
+ "ansi_term",
+ "lazy_static",
+ "matchers",
+ "regex",
+ "sharded-slab",
+ "smallvec",
+ "thread_local",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
 ]
 
 [[package]]
@@ -2785,6 +2891,12 @@ checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 dependencies = [
  "getrandom",
 ]
+
+[[package]]
+name = "valuable"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
 name = "vcpkg"

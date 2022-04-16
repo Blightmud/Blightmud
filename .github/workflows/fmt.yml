@@ -37,6 +37,6 @@ jobs:
       - name: Formatting
         run: cargo fmt -- --check
       - name: Check (all features)
-        run: cargo check --locked --all-features
+        run: cargo check --locked
       - name: Clippy (all features)
-        run: cargo clippy --locked --all-features
+        run: cargo clippy --locked

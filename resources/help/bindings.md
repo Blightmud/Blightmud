@@ -23,7 +23,7 @@ Is the command to use when creating a binding.
 
 ```lua
 blight.bind("f1", function ()
-    blight.send("kick " .. target)
+    mud.send("kick " .. target)
 end)
 blight.bind("\x1b[1;5D", function ()
     blight.ui("step_word_left")

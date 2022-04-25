@@ -5,7 +5,9 @@ pressed. This also include re-binding keys to a setup you are more comfortable
 with rather then the default.
 
 - `Ctrl-<char>` ex. `Ctrl-a, Ctrl-b` but not `Ctrl-PgUp`, there is no distinction for capitalization
-- `Alt-<char>` ex. `Alt-a, Alt-b` but not `Alt-PgUp`, there is no distinction for capitalization
+- `Alt-<char>` ex. `Alt-a, Alt-b` but not `Alt-PgUp`, there is distinction for capitalization.
+  For example `Alt-H`, which is basically `Alt-Shift-h`, and `Alt-h` are treated
+  as different bindings.
 - `F1-F12`
 
 You may also bind on escape sequences. For example `\x1b[1;5A` (ctrl-up). When
@@ -17,7 +19,7 @@ Is the command to use when creating a binding.
 
 `cmd` has to be in the following format:
 - `Ctrl-{}` where {} is a character, ex. a, b, c, etc.
-- `Alt-{}` where {} is a character, ex. a, b, c, etc.
+- `Alt-{}` where {} is a character, ex. a, b, c, A, B, C, etc.
 - `fn` where n is a number from 1-12
 - Or an escape sequence such as `\x1b[1;5A`
 

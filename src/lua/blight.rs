@@ -59,7 +59,14 @@ impl UserData for Blight {
         });
         methods.add_function("bind", |ctx, (cmd, callback): (String, mlua::Function)| {
             let bind_table: mlua::Table = ctx.named_registry_value(COMMAND_BINDING_TABLE)?;
-            bind_table.set(cmd.to_lowercase(), callback)?;
+            if cmd.to_lowercase().starts_with("alt-") {
+                let (_, right) = cmd.split_at(3);
+                let mut cmd = "alt".to_string();
+                cmd.push_str(right);
+                bind_table.set(cmd, callback)?;
+            } else {
+                bind_table.set(cmd.to_lowercase(), callback)?;
+            }
             Ok(())
         });
         methods.add_function("unbind", |ctx, cmd: String| {
@@ -348,5 +355,16 @@ mod test_blight {
         assert!(bindings.get::<_, mlua::Function>("f1").is_ok());
         lua.load("blight.unbind(\"f1\")").exec().unwrap();
         assert!(bindings.get::<_, mlua::Function>("f1").is_err());
+    }
+
+    #[test]
+    fn test_command_bindings_alt_with_capitalized_letter() {
+        let (lua, _) = get_lua_state();
+        lua.load("blight.bind(\"Alt-H\", function () end)")
+            .exec()
+            .unwrap();
+        let bindings: mlua::Table = lua.named_registry_value(COMMAND_BINDING_TABLE).unwrap();
+        assert!(bindings.get::<_, mlua::Function>("alt-H").is_ok());
+        assert!(bindings.get::<_, mlua::Function>("alt-h").is_err());
     }
 }

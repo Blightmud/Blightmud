@@ -59,9 +59,9 @@ impl UserData for Blight {
         });
         methods.add_function("bind", |ctx, (cmd, callback): (String, mlua::Function)| {
             let bind_table: mlua::Table = ctx.named_registry_value(COMMAND_BINDING_TABLE)?;
-            if let Some(n) = cmd.find('-') {
-                let (cmd, right) = cmd.split_at(n);
-                let mut cmd = cmd.to_lowercase();
+            if cmd.to_lowercase().starts_with("alt-") {
+                let (_, right) = cmd.split_at(3);
+                let mut cmd = "alt".to_string();
                 cmd.push_str(right);
                 bind_table.set(cmd, callback)?;
             } else {
@@ -358,7 +358,7 @@ mod test_blight {
     }
 
     #[test]
-    fn test_command_bindings_with_capitalized_letter() {
+    fn test_command_bindings_alt_with_capitalized_letter() {
         let (lua, _) = get_lua_state();
         lua.load("blight.bind(\"Alt-H\", function () end)")
             .exec()

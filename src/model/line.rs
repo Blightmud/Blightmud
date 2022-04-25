@@ -46,7 +46,7 @@ fn get_content_from(line: &str) -> (String, String, bool) {
     } else {
         "".to_string()
     };
-    let clean_content = clean_content.replace("\r", "");
+    let clean_content = clean_content.replace('\r', "");
     (content, clean_content, clean_utf8)
 }
 

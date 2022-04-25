@@ -7,7 +7,7 @@ pub fn register_panic_hook(headless: bool) {
         let meta = human_panic::Metadata {
             version: VERSION.into(),
             name: env!("CARGO_PKG_NAME").into(),
-            authors: env!("CARGO_PKG_AUTHORS").replace(":", ", ").into(),
+            authors: env!("CARGO_PKG_AUTHORS").replace(':', ", ").into(),
             homepage: env!("CARGO_PKG_HOMEPAGE").into(),
         };
 

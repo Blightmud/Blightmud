@@ -11,7 +11,7 @@ mud.on_disconnect(function ()
     if connection_count == 1 then
         mud.reconnect()
     else
-        assert_eq(connection_count, 2)
+        assert_ge(connection_count, 2)
         blight.quit()
     end
 end)

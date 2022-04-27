@@ -353,6 +353,7 @@ impl LuaScript {
 
     pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
         self.exec_lua(&mut || -> LuaResult<()> {
+            self.state.set_named_registry_value(IS_CONNECTED, true)?;
             self.state.set_named_registry_value(CONNECTION_ID, id)?;
             let table: mlua::Table = self
                 .state
@@ -367,6 +368,7 @@ impl LuaScript {
 
     pub fn on_disconnect(&mut self) {
         self.exec_lua(&mut || -> LuaResult<()> {
+            self.state.set_named_registry_value(IS_CONNECTED, false)?;
             let table: mlua::Table = self
                 .state
                 .named_registry_value(ON_DISCONNECT_CALLBACK_TABLE)?;

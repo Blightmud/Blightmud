@@ -255,7 +255,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
     let _ = spawn_input_thread(session.clone());
     let _ = register_terminal_resize_listener(session.clone());
 
-    let lua_scripts = {
+    let lua_scripts = if !rt.integration_test {
         fs::read_dir(CONFIG_DIR.as_path())?
             .filter_map(|entry| match entry {
                 Ok(file) => {
@@ -272,6 +272,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
                 _ => None,
             })
             .collect::<Vec<PathBuf>>()
+    } else {
+        vec![]
     };
 
     for script in lua_scripts {

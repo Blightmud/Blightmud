@@ -9,8 +9,8 @@ use crate::{
 use super::{
     backend::Backend,
     constants::{
-        BACKEND, MUD_INPUT_LISTENER_TABLE, MUD_OUTPUT_LISTENER_TABLE, ON_CONNECTION_CALLBACK_TABLE,
-        ON_DISCONNECT_CALLBACK_TABLE,
+        BACKEND, IS_CONNECTED, MUD_INPUT_LISTENER_TABLE, MUD_OUTPUT_LISTENER_TABLE,
+        ON_CONNECTION_CALLBACK_TABLE, ON_DISCONNECT_CALLBACK_TABLE,
     },
 };
 
@@ -116,6 +116,10 @@ impl UserData for Mud {
             let table: mlua::Table = ctx.named_registry_value(ON_DISCONNECT_CALLBACK_TABLE)?;
             table.set(table.raw_len() + 1, callback)?;
             Ok(())
+        });
+        methods.add_function("is_connected", |ctx, ()| {
+            let value: bool = ctx.named_registry_value(IS_CONNECTED)?;
+            Ok(value)
         });
         methods.add_function("add_tag", |ctx, tag: String| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;

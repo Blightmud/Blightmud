@@ -1,5 +1,6 @@
 pub const ON_CONNECTION_CALLBACK_TABLE: &str = "__connection_callback_table";
 pub const ON_DISCONNECT_CALLBACK_TABLE: &str = "__disconnect_callback_table";
+pub const IS_CONNECTED: &str = "__is_connected_bool";
 pub const TIMED_CALLBACK_TABLE: &str = "__timed_callback_table";
 pub const TIMED_CALLBACK_TABLE_CORE: &str = "__timed_callback_table_core";
 pub const TIMED_NEXT_ID: &str = "__timed_next_id";

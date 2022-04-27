@@ -78,6 +78,11 @@ end)
 
 ##
 
+***mud.is_connected() -> bool***
+Returns mud connection state
+
+##
+
 ***mud.reconnect()***
 Reconnect to the current/last connected server
 

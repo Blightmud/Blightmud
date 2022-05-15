@@ -6,3 +6,5 @@
 /.run/
 /.vscode
 *.bak
+/scripts/blightmud-pkg
+/scripts/homebrew-blightmud

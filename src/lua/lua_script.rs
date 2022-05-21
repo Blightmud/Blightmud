@@ -61,6 +61,7 @@ fn create_default_lua_state(
         state.set_named_registry_value(FS_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(SCRIPT_RESET_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(PROMPT_CONTENT, String::new())?;
+        state.set_named_registry_value(STATUS_AREA_HEIGHT, 1)?;
 
         globals.set("blight", blight)?;
         globals.set("core", Core::new(writer.clone()))?;

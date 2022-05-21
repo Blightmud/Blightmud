@@ -96,13 +96,19 @@ impl UserData for Blight {
             let this = this_aux.borrow::<Blight>()?;
             Ok(this.core_mode)
         });
-        methods.add_function("status_height", |ctx, height: u16| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
-            let this = this_aux.borrow::<Blight>()?;
-            this.main_writer
-                .send(Event::StatusAreaHeight(height))
-                .unwrap();
-            Ok(())
+        methods.add_function("status_height", |ctx, requested: Option<u16>| {
+            let height: u16 = if let Some(height) = requested {
+                let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                this.main_writer
+                    .send(Event::StatusAreaHeight(height))
+                    .unwrap();
+                ctx.set_named_registry_value(STATUS_AREA_HEIGHT, height)?;
+                height
+            } else {
+                ctx.named_registry_value(STATUS_AREA_HEIGHT)?
+            };
+            Ok(height)
         });
         methods.add_function("status_line", |ctx, (index, line): (usize, String)| {
             let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
@@ -179,6 +185,7 @@ mod test_blight {
     use super::Blight;
     use crate::lua::constants::{
         BLIGHT_ON_QUIT_LISTENER_TABLE, COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE,
+        STATUS_AREA_HEIGHT,
     };
     use crate::{PROJECT_NAME, VERSION};
 
@@ -194,6 +201,8 @@ mod test_blight {
         lua.set_named_registry_value(COMPLETION_CALLBACK_TABLE, lua.create_table().unwrap())
             .unwrap();
         lua.set_named_registry_value(COMMAND_BINDING_TABLE, lua.create_table().unwrap())
+            .unwrap();
+        lua.set_named_registry_value(STATUS_AREA_HEIGHT, 1u16)
             .unwrap();
         (lua, reader)
     }
@@ -366,5 +375,35 @@ mod test_blight {
         let bindings: mlua::Table = lua.named_registry_value(COMMAND_BINDING_TABLE).unwrap();
         assert!(bindings.get::<_, mlua::Function>("alt-H").is_ok());
         assert!(bindings.get::<_, mlua::Function>("alt-h").is_err());
+    }
+
+    #[test]
+    fn test_status_height() {
+        let (lua, _reader) = get_lua_state();
+        let height = lua
+            .load("return blight.status_height()")
+            .call::<_, u16>(())
+            .unwrap();
+        assert_eq!(height, 1);
+        let height = lua
+            .load("return blight.status_height(3)")
+            .call::<_, u16>(())
+            .unwrap();
+        assert_eq!(height, 3);
+        let height = lua
+            .load("return blight.status_height()")
+            .call::<_, u16>(())
+            .unwrap();
+        assert_eq!(height, 3);
+        let height = lua
+            .load("return blight.status_height(1)")
+            .call::<_, u16>(())
+            .unwrap();
+        assert_eq!(height, 1);
+        let height = lua
+            .load("return blight.status_height()")
+            .call::<_, u16>(())
+            .unwrap();
+        assert_eq!(height, 1);
     }
 }

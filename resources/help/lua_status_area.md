@@ -4,10 +4,12 @@ These methods allow you to control the height and content in the status area.
 
 ##
 
-***blight.status_height(height)***
-Sets the status area height to the specified number. The first and last row will always be rendered as bars. But you can still print to these bars
+***blight.status_height([height]) -> int***
+Set or get the status area height. The first and last row will always be
+rendered as bars. But you can still print to these bars
 
-- `height`  The height to set (1 <= height <= 5)
+- `height`  The height to set (1 <= height <= 5) *Optional*
+- Returns the current status area height
 
 ***blight.status_line(index, line)***
 Prints a line to the status area. If you print to a 'bar line' the content will be integrated into the bar. The "(more)" info shown when scrolling will always

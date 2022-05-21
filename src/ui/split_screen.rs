@@ -533,7 +533,7 @@ impl SplitScreen {
             connection: None,
             tags: HashSet::new(),
             prompt_input: String::new(),
-            prompt_input_pos: 1,
+            prompt_input_pos: 0,
         })
     }
 

@@ -161,6 +161,8 @@ pub struct SplitScreen {
     scroll_data: ScrollData,
     connection: Option<String>,
     tags: HashSet<String>,
+    prompt_input: String,
+    prompt_input_pos: usize,
 }
 
 impl UserInterface for SplitScreen {
@@ -259,6 +261,9 @@ impl UserInterface for SplitScreen {
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
         // Sanity check
         debug_assert!(pos <= input.len());
+
+        self.prompt_input = input.to_string();
+        self.prompt_input_pos = pos;
 
         let mut input = input;
         let mut pos = pos;
@@ -473,6 +478,8 @@ impl UserInterface for SplitScreen {
         self.status_area
             .set_height(height, self.height - height - 1);
         self.setup()?;
+        let input_str = self.prompt_input.as_str().to_owned();
+        self.print_prompt_input(&input_str, self.prompt_input_pos);
         Ok(())
     }
 
@@ -525,6 +532,8 @@ impl SplitScreen {
             scroll_data: ScrollData::new(),
             connection: None,
             tags: HashSet::new(),
+            prompt_input: String::new(),
+            prompt_input_pos: 1
         })
     }
 

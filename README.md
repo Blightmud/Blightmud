@@ -91,7 +91,7 @@ commands that might fit your system:
 
 ## Support, questions and help
 
-Join our [discord](https://discord.gg/qnxgUC5)
+Join our [discord](https://discord.gg/qnxgUC5) post an [issue](https://github.com/Blightmud/Blightmud/issues/new/choose) or post a question in [discussions](https://github.com/Blightmud/Blightmud/discussions)
 
 ## Contributing
 

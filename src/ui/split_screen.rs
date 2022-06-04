@@ -154,6 +154,8 @@ pub struct SplitScreen {
     height: u16,
     output_start_line: u16,
     output_line: u16,
+    mud_prompt_line: u16,
+    mud_prompt: Line,
     prompt_line: u16,
     status_area: StatusArea,
     cursor_prompt_pos: u16,
@@ -176,7 +178,8 @@ impl UserInterface for SplitScreen {
         if width > 0 && height > 0 {
             self.width = width;
             self.height = height;
-            self.output_line = height - self.status_area.height() - 1;
+            self.output_line = height - self.status_area.height() - 2;
+            self.mud_prompt_line = height - self.status_area.height() - 1;
             self.prompt_line = height;
             self.output_start_line = if settings.get(HIDE_TOPBAR)? { 1 } else { 2 };
 
@@ -205,31 +208,24 @@ impl UserInterface for SplitScreen {
 
     fn print_error(&mut self, output: &str) {
         let line = &format!("{}[!!] {}{}", Fg(color::Red), output, Fg(color::Reset));
-        self.print_line(line, true);
+        self.print_line(line);
     }
 
     fn print_info(&mut self, output: &str) {
         let line = &format!("[**] {}", output);
-        self.print_line(line, true);
+        self.print_line(line);
     }
 
     fn print_output(&mut self, line: &Line) {
         //debug!("UI: {:?}", line);
-        if line.flags.separate_receives {
-            if let Some(print_line) = line.print_line() {
-                self.history.remove_last_if_prefix(print_line);
-            }
-        }
         if let Some(print_line) = line.print_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {
-                self.print_line(print_line, !line.flags.separate_receives);
+                self.print_line(print_line);
             } else {
-                let mut new_line = !line.flags.separate_receives;
                 let mut count = 0;
                 let cur_line = self.history.len();
                 for l in wrap_line(print_line, self.width as usize) {
-                    self.print_line(l, new_line);
-                    new_line = true;
+                    self.print_line(l);
                     count += 1;
                 }
                 if self.scroll_data.scroll_lock && count > self.height {
@@ -242,18 +238,17 @@ impl UserInterface for SplitScreen {
     fn print_prompt(&mut self, prompt: &Line) {
         //debug!("UI: {:?}", prompt);
         if let Some(prompt_line) = prompt.print_line() {
-            if !prompt_line.is_empty() {
-                self.history.append(prompt_line);
-                if self.scroll_data.not_scrolled_or_split() {
-                    write!(
-                        self.screen,
-                        "{}\n{}{}",
-                        termion::cursor::Goto(1, self.output_line),
-                        prompt_line,
-                        self.goto_prompt(),
-                    )
-                    .unwrap();
-                }
+            self.mud_prompt = prompt.clone();
+            if self.scroll_data.not_scrolled_or_split() {
+                write!(
+                    self.screen,
+                    "{}{}{}{}",
+                    termion::cursor::Goto(1, self.mud_prompt_line),
+                    termion::clear::CurrentLine,
+                    prompt_line,
+                    self.goto_prompt(),
+                )
+                .unwrap();
             }
         }
     }
@@ -311,7 +306,7 @@ impl UserInterface for SplitScreen {
                 Fg(color::Reset),
             );
             for line in wrap_line(line, self.width as usize) {
-                self.print_line(line, true);
+                self.print_line(line);
             }
         }
     }
@@ -337,6 +332,7 @@ impl UserInterface for SplitScreen {
             self.status_area.set_scroll_marker(false);
             self.status_area.redraw_line(&mut self.screen, 0)?;
         }
+        self.print_prompt(&self.mud_prompt.clone());
 
         let output_range = self.output_range();
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
@@ -514,10 +510,11 @@ impl SplitScreen {
 
         let output_start_line = 2;
         let status_area_height = 1;
-        let output_line = height - status_area_height - 1;
+        let output_line = height - status_area_height - 2;
+        let mud_prompt_line = height - status_area_height - 1;
         let prompt_line = height;
 
-        let status_area = StatusArea::new(status_area_height, output_line + 1, width);
+        let status_area = StatusArea::new(status_area_height, mud_prompt_line + 1, width);
 
         Ok(Self {
             screen,
@@ -525,6 +522,8 @@ impl SplitScreen {
             height,
             output_start_line,
             output_line,
+            mud_prompt_line,
+            mud_prompt: Line::from(""),
             status_area,
             prompt_line,
             cursor_prompt_pos: 1,
@@ -537,19 +536,29 @@ impl SplitScreen {
         })
     }
 
-    fn print_line(&mut self, line: &str, new_line: bool) {
+    fn print_line(&mut self, line: &str) {
         self.history.append(line);
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
-                "{}{}{}{}",
+                "{}\r\n{}{}",
                 termion::cursor::Goto(1, self.output_line),
-                if new_line { "\r\n" } else { "" },
                 &line,
                 self.goto_prompt(),
             )
             .unwrap();
         }
+    }
+
+    fn clear_prompt(&mut self) {
+        write!(
+            self.screen,
+            "{}{}{}",
+            termion::cursor::Goto(1, self.mud_prompt_line),
+            termion::clear::CurrentLine,
+            self.goto_prompt(),
+        )
+        .unwrap();
     }
 
     fn redraw_top_bar(&mut self) -> Result<()> {
@@ -585,7 +594,7 @@ impl SplitScreen {
 
     fn redraw_status_area(&mut self) -> Result<()> {
         self.status_area.set_width(self.width);
-        self.status_area.update_pos(self.output_line + 1);
+        self.status_area.update_pos(self.mud_prompt_line + 1);
         self.status_area.redraw(&mut self.screen)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;
         Ok(())
@@ -622,6 +631,7 @@ impl SplitScreen {
         } else {
             self.status_area.set_scroll_marker(true);
             self.status_area.redraw_line(&mut self.screen, 0)?;
+            self.clear_prompt();
         }
         Ok(())
     }

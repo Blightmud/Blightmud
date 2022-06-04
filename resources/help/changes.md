@@ -5,6 +5,31 @@ Blightmud. It doesn't list all new features but will always list breaking
 changes where you might need to take action.
 
 ---
+# Changes in Blightmud v4.0
+Changes to prompt handling!
+
+Due to poor user experience when playing muds that don't send telnet `GA` or
+`EOR` the displaying of the prompt in split_view mode (not reader_mode) has
+been re-done. The last line in the output area (line above the status bar) will
+now contain what is perceived (by blightmud) as the muds prompt.
+
+For muds that send `GA` or `EOR` this is the only place where the muds
+promptline will be printed. If you don't like this it can easily be solved with
+a prompt trigger:
+
+```lua
+trigger.add("^.*$", {prompt=true, gag=true}, function (_, line)
+    print(line:raw())
+end)
+```
+
+For muds that don't send `GA` or `EOR` the prompt will still show up in regular
+output as well as on the "mud prompt line".
+
+For muds that don't send a prompt (or end their prompt with a newline) this new
+"mud prompt line" will be blank while you are playing.
+
+---
 # Changes in Blightmud v3.0
 The `blight` module in lua has now been separated into multiple modules. You
 will need to apply the following changes to your scripts.

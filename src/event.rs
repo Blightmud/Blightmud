@@ -199,6 +199,7 @@ impl EventHandler {
                     transmit_writer.take();
                     screen.set_host("", 0)?;
                     screen.clear_tags()?;
+                    screen.print_prompt(&Line::from(""));
                 }
                 Ok(())
             }

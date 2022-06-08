@@ -237,20 +237,8 @@ impl UserInterface for SplitScreen {
 
     fn print_prompt(&mut self, prompt: &Line) {
         //debug!("UI: {:?}", prompt);
-        if let Some(prompt_line) = prompt.print_line() {
-            self.mud_prompt = prompt.clone();
-            if self.scroll_data.not_scrolled_or_split() {
-                write!(
-                    self.screen,
-                    "{}{}{}{}",
-                    termion::cursor::Goto(1, self.mud_prompt_line),
-                    termion::clear::CurrentLine,
-                    prompt_line,
-                    self.goto_prompt(),
-                )
-                .unwrap();
-            }
-        }
+        self.mud_prompt = prompt.clone();
+        self.redraw_prompt();
     }
 
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
@@ -332,7 +320,7 @@ impl UserInterface for SplitScreen {
             self.status_area.set_scroll_marker(false);
             self.status_area.redraw_line(&mut self.screen, 0)?;
         }
-        self.print_prompt(&self.mud_prompt.clone());
+        self.redraw_prompt();
 
         let output_range = self.output_range();
         let output_start_index = self.history.inner.len() as i32 - output_range as i32;
@@ -559,6 +547,21 @@ impl SplitScreen {
             self.goto_prompt(),
         )
         .unwrap();
+    }
+
+    fn redraw_prompt(&mut self) {
+        let prompt_line = self.mud_prompt.print_line().unwrap_or("");
+        if self.scroll_data.not_scrolled_or_split() {
+            write!(
+                self.screen,
+                "{}{}{}{}",
+                termion::cursor::Goto(1, self.mud_prompt_line),
+                termion::clear::CurrentLine,
+                prompt_line,
+                self.goto_prompt(),
+            )
+            .unwrap();
+        }
     }
 
     fn redraw_top_bar(&mut self) -> Result<()> {

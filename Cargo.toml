@@ -30,7 +30,7 @@ flate2 = "1.0.24"
 mdcat = { version = "0.26.1", default-features = false }
 pulldown-cmark = "0.9.0"
 syntect = "4.6.0"
-serde = { version = "1.0.138", features = ['derive'] }
+serde = { version = "1.0.139", features = ['derive'] }
 ron = "0.7.1"
 anyhow = "1.0.58"
 lazy_static = "1.4.0"

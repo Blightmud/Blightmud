@@ -9,16 +9,11 @@ use libtelnet_rs::{
 use log::debug;
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(Default, Eq, PartialEq, Clone, Debug)]
 pub enum TelnetMode {
     TerminatedPrompt,
+    #[default]
     UnterminatedPrompt,
-}
-
-impl Default for TelnetMode {
-    fn default() -> Self {
-        TelnetMode::UnterminatedPrompt
-    }
 }
 
 pub struct TelnetHandler {

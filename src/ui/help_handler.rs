@@ -7,6 +7,7 @@ use anyhow::Result;
 use log::debug;
 use mdcat::{ResourceAccess, Settings as MDSettings, TerminalCapabilities, TerminalSize};
 use pulldown_cmark::{Options, Parser};
+use std::fmt::Write;
 use syntect::parsing::SyntaxSet;
 
 pub struct HelpHandler {
@@ -133,7 +134,7 @@ impl HelpHandler {
         if !matches.is_empty() {
             let mut output = "No such help file exists.\nThe following help files contain a match for your search:".to_string();
             for key in matches {
-                output.push_str(&format!("\n- {}", key));
+                write!(output, "\n- {}", key).unwrap();
             }
             Some(Line::from(output))
         } else {

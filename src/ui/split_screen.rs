@@ -189,7 +189,8 @@ impl UserInterface for SplitScreen {
                 ScrollRegion(self.output_start_line, self.output_line),
                 DisableOriginMode
             )
-            .unwrap(); // Set scroll region, non origin mode
+            .unwrap();
+            write!(self.screen, "\x1b=").unwrap();
             self.redraw_top_bar()?;
             self.reset_scroll()?;
             self.redraw_status_area()?;

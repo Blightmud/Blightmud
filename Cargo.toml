@@ -46,7 +46,7 @@ rodio = "0.15.0"
 notify = "4.0.17"
 
 [dev-dependencies]
-mockall = "0.11.1"
+mockall = "0.11.2"
 mockall_double = "0.3.0"
 
 [package.metadata.rpm]

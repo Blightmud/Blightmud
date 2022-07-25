@@ -39,7 +39,7 @@ getopts = "0.2.21"
 curl = "0.4.44"
 human-panic = "1.0.3"
 native-tls = "0.2.10"
-tts = { version = "0.22.5", optional = true }
+tts = { version = "0.23.0", optional = true }
 serde_json = "1.0.82"
 git2 = "0.14.2"
 rodio = "0.15.0"

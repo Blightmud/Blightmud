@@ -249,7 +249,7 @@ impl LuaScript {
     pub fn on_mud_input(&self, line: &mut Line) {
         if !line.flags.bypass_script {
             let mut lline = LuaLine::from(line.clone());
-            self.exec_lua(&mut || -> LuaResult<()> {
+            let res = self.exec_lua(&mut || -> LuaResult<()> {
                 let table: mlua::Table =
                     self.state.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
                 for pair in table.pairs::<mlua::Value, mlua::Function>() {
@@ -262,6 +262,9 @@ impl LuaScript {
                 }
                 Ok(())
             });
+            if res.is_none() {
+                line.flags.matched = true;
+            }
         }
     }
 

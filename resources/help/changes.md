@@ -6,7 +6,8 @@ changes where you might need to take action.
 
 ---
 # Changes in Blightmud v4.0
-Changes to prompt handling!
+
+## Changes to prompt handling
 
 Due to poor user experience when playing muds that don't send telnet `GA` or
 `EOR` the displaying of the prompt in split_view mode (not reader_mode) has
@@ -28,6 +29,14 @@ output as well as on the "mud prompt line".
 
 For muds that don't send a prompt (or end their prompt with a newline) this new
 "mud prompt line" will be blank while you are playing.
+
+## Changes to file monitoring
+
+Due to changes in a library we utilize file the monitoring event is now less
+informative. Essentially you will just get an event when a files is "touched".
+There will be no way to distinguish what happened to the file.
+
+See `/help fs`
 
 ---
 # Changes in Blightmud v3.0

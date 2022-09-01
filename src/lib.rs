@@ -4,7 +4,6 @@ use lazy_static::lazy_static;
 use libtelnet_rs::bytes::Bytes;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
-use notify::Watcher;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread};
@@ -517,8 +516,9 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             }
             Event::FSMonitor(path) => {
                 if let Err(err) = fs_monitor.watch(
-                    expand_tilde(&path).as_ref(),
-                    notify::RecursiveMode::Recursive,
+                    PathBuf::from(expand_tilde(&path).as_ref())
+                        .as_path()
+                        .as_ref(),
                 ) {
                     screen.print_error(&format!("Failed to monitor `{path}`: {err}"));
                 }

@@ -1,92 +1,52 @@
 use std::{
-    ops::{Deref, DerefMut},
-    path::PathBuf,
-    sync::mpsc::{channel, Receiver, Sender},
-    thread::{self, JoinHandle},
+    path::{Path, PathBuf},
+    sync::mpsc::Sender,
     time::Duration,
 };
 
-use log::{debug, error};
-use notify::{watcher, DebouncedEvent, RecommendedWatcher};
+use notify_debouncer_mini::{
+    new_debouncer,
+    notify::{self, RecommendedWatcher},
+    DebounceEventResult, Debouncer,
+};
 
 use crate::event::Event;
 use std::io::Result;
 
 pub struct FSMonitor {
-    watcher: RecommendedWatcher,
-    _thread: JoinHandle<()>,
-}
-
-impl Deref for FSMonitor {
-    type Target = RecommendedWatcher;
-
-    fn deref(&self) -> &Self::Target {
-        &self.watcher
-    }
-}
-
-impl DerefMut for FSMonitor {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.watcher
-    }
+    watcher: Debouncer<RecommendedWatcher>,
 }
 
 impl FSMonitor {
     pub fn new(main_writer: Sender<Event>) -> Result<Self> {
-        let (tx, rx) = channel();
-        let watcher = watcher(tx, Duration::from_secs(5)).unwrap();
-        let thread = spawn_monitor_thread(main_writer, rx)?;
-
-        Ok(Self {
-            watcher,
-            _thread: thread,
+        let watcher = new_debouncer(Duration::from_secs(5), None, move |res| {
+            main_writer
+                .send(Event::FSEvent(FSEvent::from(res)))
+                .unwrap();
         })
+        .unwrap();
+
+        Ok(Self { watcher })
+    }
+
+    pub fn watch(&mut self, p: &Path) -> notify::Result<()> {
+        self.watcher
+            .watcher()
+            .watch(p, notify::RecursiveMode::Recursive)
     }
 }
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum FSEvent {
-    Write(PathBuf),
-    Create(PathBuf),
-    Remove(PathBuf),
-    Rename(PathBuf, PathBuf),
-    Event(PathBuf),
+    Update(Vec<PathBuf>),
     Error(String, Option<PathBuf>),
-    Misc,
 }
 
-impl From<DebouncedEvent> for FSEvent {
-    fn from(e: DebouncedEvent) -> Self {
-        if let DebouncedEvent::Error(_, _) = e {
-            error!("[FSMON]: {:?}", e)
-        } else {
-            debug!("[FSMON]: {:?}", e)
-        }
-        match e {
-            DebouncedEvent::Create(path) => FSEvent::Create(path),
-            DebouncedEvent::Write(path) => FSEvent::Write(path),
-            DebouncedEvent::Remove(path) => FSEvent::Remove(path),
-            DebouncedEvent::Rename(from, to) => FSEvent::Rename(from, to),
-            DebouncedEvent::NoticeRemove(path) | DebouncedEvent::NoticeWrite(path) => {
-                FSEvent::Event(path)
-            }
-            DebouncedEvent::Error(err, path) => FSEvent::Error(format!("{:?}", err), path),
-            _ => FSEvent::Misc,
+impl From<DebounceEventResult> for FSEvent {
+    fn from(res: DebounceEventResult) -> Self {
+        match res {
+            Ok(events) => FSEvent::Update(events.iter().map(|e| e.path.to_owned()).collect()),
+            Err(errors) => FSEvent::Error(format!("{:?}", errors), None),
         }
     }
-}
-
-pub fn spawn_monitor_thread(
-    main_writer: Sender<Event>,
-    rx: Receiver<DebouncedEvent>,
-) -> Result<JoinHandle<()>> {
-    thread::Builder::new()
-        .name("fs-monitor-thread".to_string())
-        .spawn(move || {
-            while let Ok(event) = rx.recv() {
-                main_writer
-                    .send(Event::FSEvent(FSEvent::from(event)))
-                    .unwrap();
-            }
-        })
 }

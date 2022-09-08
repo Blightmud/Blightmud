@@ -122,6 +122,9 @@ fn create_default_lua_state(
         state
             .load(include_str!("../../resources/lua/plugins.lua"))
             .exec()?;
+        state
+            .load(include_str!("../../resources/lua/telnet_charset.lua"))
+            .exec()?;
 
         let lua_gmcp = state
             .load(include_str!("../../resources/lua/gmcp.lua"))

@@ -132,6 +132,34 @@ alias.add("^/set ([^\\s]+)\\s*(on|off)?$", function (matches)
 	end
 end)
 
+local function is_truth_string(option, value, usage_cb)
+    if value == "true" or value == "on" or value == option then
+        return true
+    elseif value == "false" or value == "off" or value == string.format("no-%s", option) then
+        return false
+    else
+        error(
+            string.format("Invalid value for `%s`: %s", option, value),
+            string.format("Valid values are %s/true/on/no-%s/false/off", option, option)
+            )
+        if usage_cb then
+            print("")
+            usage_cb()
+        end
+    end
+end
+
+local function print_connect_usage()
+    info(
+        "USAGE: /connect <host> <port> [<tls> <verify>]",
+        "USAGE: /connect <server>",
+        "EXAMPLE: /connect examplemud.org 4000",
+        "EXAMPLE: /connect example-tls-mud.org 4000 tls",
+        "EXAMPLE: /connect bad-cert-tls-mud.org 4000 tls no-verify",
+        "EXAMPLE: /connect stored-server-name"
+        )
+end
+
 -- Connection
 alias.add("^/connect.*$", function (m)
     local args = get_args(m[1])
@@ -146,18 +174,18 @@ alias.add("^/connect.*$", function (m)
     elseif #args == 3 then
         mud.connect(args[2], args[3])
     elseif #args == 4 then
-        mud.connect(args[2], args[3], args[4] == "true", true)
+        local tls = is_truth_string("tls", args[4], print_connect_usage)
+        if tls ~= nil then
+            mud.connect(args[2], args[3], tls, true)
+        end
     elseif #args >= 5 then
-        mud.connect(args[2], args[3], args[4] == "true", args[5] == "true")
+        local tls = is_truth_string("tls", args[4], print_connect_usage)
+        local verify = is_truth_string("verify", args[5], print_connect_usage)
+        if tls ~= nil and verify ~= nil then
+            mud.connect(args[2], args[3], tls, verify)
+        end
     else
-        info(
-            "USAGE: /connect <host> <port> [<tls> <verify>]",
-            "USAGE: /connect <server>",
-            "EXAMPLE: /connect examplemud.org 4000",
-            "EXAMPLE: /connect example-tls-mud.org 4000 true",
-            "EXAMPLE: /connect bad-cert-tls-mud.org 4000 true false",
-            "EXAMPLE: /connect stored-server-name"
-            )
+        print_connect_usage()
     end
 end)
 alias.add("^(:?/disconnect|/dc)$", function ()
@@ -211,6 +239,14 @@ alias.add("^(?:/list_servers|/ls)$", function ()
         info(cformat("<yellow>%-12s<reset> Host: %-25s Port: <blue>%4s<reset> %s %s", s.name, s.host, s.port, tls_str, verify_str))
     end
 end)
+
+local function print_add_server_usage()
+    info("USAGE: /add_server <name: String> <host: String> <port: Number> [<tls: String> <verify: String>]")
+    info("EXAMPLE: /add_server example no-ssl-mud.com 4000")
+    info("EXAMPLE: /add_server example ssl-mud.com 4400 tls")
+    info("EXAMPLE: /add_server example bad-cert-ssl-mud.com 4000 tls no-verify")
+end
+
 alias.add("^/add_server.*$", function (m)
     local args = get_args(m[1])
     if #args > 3 then
@@ -220,11 +256,17 @@ alias.add("^/add_server.*$", function (m)
         local tls = false
         local validate = false
         if args[5] then
-            tls = args[5]:lower() == "on" or args[5]:lower() == "true"
+            tls = is_truth_string("tls", args[5], print_add_server_usage)
+            if tls == nil then
+                return
+            end
             validate = true
         end
         if args[6] then
-            validate = args[6]:lower() == "on" or args[6]:lower() == "true"
+            validate = is_truth_string("verify", args[6], print_add_server_usage)
+            if validate == nil then
+                return
+            end
         end
         local result, err = pcall(servers.add, name, host, port, tls, validate)
         if result then
@@ -233,10 +275,7 @@ alias.add("^/add_server.*$", function (m)
             error(err)
         end
     else
-        info("USAGE: /add_server <name: String> <host: String> <port: Number> [<tls: String> <verify: String>]")
-        info("EXAMPLE: /add_server example no-ssl-mud.com 4000")
-        info("EXAMPLE: /add_server example ssl-mud.com 4400 true")
-        info("EXAMPLE: /add_server example bad-cert-ssl-mud.com 4000 true false")
+        print_add_server_usage()
     end
 end)
 alias.add("^/remove_server.*$", function (m)

@@ -46,7 +46,7 @@ rodio = "0.16.0"
 notify-debouncer-mini = "0.2.1"
 
 [dev-dependencies]
-mockall = "0.11.2"
+mockall = "0.11.3"
 mockall_double = "0.3.0"
 
 [package.metadata.rpm]

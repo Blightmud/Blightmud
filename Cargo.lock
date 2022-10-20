@@ -2612,9 +2612,9 @@ dependencies = [
 
 [[package]]
 name = "tts"
-version = "0.24.2"
+version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8e1d577852aaec44e4563a2ace7e89f635b4ef3224708da1214951c4db609fd"
+checksum = "810084d246c730f3cadc70fb74ceb4d1abf84d8bcdb7dc81e55ac808992da2c8"
 dependencies = [
  "cocoa-foundation",
  "core-foundation",

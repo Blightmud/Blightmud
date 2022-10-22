@@ -325,9 +325,7 @@ impl LuaScript {
             let core_table: mlua::Table =
                 self.state.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
             let table: mlua::Table = self.state.named_registry_value(TIMED_CALLBACK_TABLE)?;
-            if let Err(core_err) = core_table.set(id, mlua::Nil) {
-                return Err(core_err);
-            }
+            core_table.set(id, mlua::Nil)?;
             table.set(id, mlua::Nil)
         });
     }

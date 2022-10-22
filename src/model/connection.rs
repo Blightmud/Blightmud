@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
 
-#[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, Clone)]
 pub struct Connection {
     pub host: String,
     pub port: u16,

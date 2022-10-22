@@ -32,3 +32,4 @@ timer.add(1, 1, function ()
     script.reset()
 end)
 
+assert(core.time() > 0)

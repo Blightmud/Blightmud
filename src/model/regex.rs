@@ -4,7 +4,7 @@ use std::ops::DerefMut;
 
 use anyhow::Result;
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct RegexOptions {
     pub case_insensitive: bool,
     pub multi_line: bool,

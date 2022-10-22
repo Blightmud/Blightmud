@@ -82,3 +82,6 @@ Returns the stdout output of the executed command
 
 ***ExecResponse:stderr()***
 Returns the stderr output of the executed command
+
+***core.time() -> int***
+Returns the current local timestamp in millis from 1970-01-01

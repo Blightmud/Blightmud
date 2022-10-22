@@ -36,7 +36,7 @@ impl FSMonitor {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum FSEvent {
     Update(Vec<PathBuf>),
     Error(String, Option<PathBuf>),

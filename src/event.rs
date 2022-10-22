@@ -16,7 +16,7 @@ use std::{
     sync::mpsc::{channel, Receiver, Sender},
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum QuitMethod {
     CtrlC,
     Script,

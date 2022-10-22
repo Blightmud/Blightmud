@@ -84,5 +84,8 @@ impl UserData for Core {
                 }
             },
         );
+        methods.add_function("time", |_, ()| -> Result<i64, mlua::Error> {
+            Ok(chrono::Local::now().timestamp_millis())
+        });
     }
 }

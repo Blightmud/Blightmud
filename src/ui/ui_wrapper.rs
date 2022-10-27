@@ -12,11 +12,11 @@ use crate::{
 
 use super::{history::History, HeadlessScreen, ReaderScreen, SplitScreen, UserInterface};
 use anyhow::Result;
-use termion::{input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
+use termion::{input::MouseTerminal, raw::IntoRawMode, screen::IntoAlternateScreen};
 
 /// Creates the io::Write terminal handler we draw to.
 fn create_screen_writer(mouse_support: bool) -> Result<Box<dyn Write>> {
-    let screen = AlternateScreen::from(stdout().into_raw_mode()?);
+    let screen = stdout().into_alternate_screen()?.into_raw_mode()?;
     if mouse_support {
         Ok(Box::new(MouseTerminal::from(screen)))
     } else {

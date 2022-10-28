@@ -17,35 +17,36 @@ Once Blightmud and the server have agreed to use TTYPE the negotation stack
 that Blightmud will send is generated. You need to make your changes before
 this point.
 
-If Blightmud is in reader mode or TTS is enabled this will be appended to the
-MTTS value automatically. You can disabled this beahvior if you want using the
-function `ttype.auto_detect_reader_mode`.
+If Blightmud is in reader mode or TTS is enabled `MTTS_SCREEN_READER` will be
+added to the MTTS value automatically. This will not happen if
+`MTTS_SCREEN_READER` has been manually toggled through either
+`ttype.add_option(MTTS_SCREEN_READER)` or
+`ttype.rem_option(MTTS_SCREEN_READER)`.
 
 ## MTTS Options and the default:
 
 The following globals are defined for easier MTTS scripting:
 ```lua
-
 -- MTTS options:
-TTYPE_OPT_MTTS_ANSI =   0x001 -- Ansi support
-TTYPE_OPT_MTTS_VT100 =  0x002 -- VT100 support
-TTYPE_OPT_MTTS_UTF8 =   0x004 -- UTF-8 Support
-TTYPE_OPT_MTTS_256C =   0x008 -- 256 color support
-TTYPE_OPT_MTTS_MTRA =   0x010 -- Mouse tracking support
-TTYPE_OPT_MTTS_OSCC =   0x020 -- OSC color palette support (true color)
-TTYPE_OPT_MTTS_READ =   0x040 -- Client using screen reader
-TTYPE_OPT_MTTS_PROX =   0x080 -- This is a proxy connection
-TTYPE_OPT_MTTS_TRUC =   0x100 -- True color support
-TTYPE_OPT_MTTS_MNES =   0x200 -- Mud New Env Standard enabled
-TTYPE_OPT_MTTS_MSLP =   0x400 -- Mud Server Link Protocol enabled
+ttype.MTTS_ANSI           =   0x001 -- Ansi support
+ttype.MTTS_VT100          =   0x002 -- VT100 support
+ttype.MTTS_UTF8           =   0x004 -- UTF-8 Support
+ttype.MTTS_256_COLOR      =   0x008 -- 256 color support
+ttype.MTTS_MOUSE_TRACKING =   0x010 -- Mouse tracking support
+ttype.MTTS_OSC_COLOR      =   0x020 -- OSC color palette support (true color)
+ttype.MTTS_SCREEN_READER  =   0x040 -- Client using screen reader
+ttype.MTTS_PROXY          =   0x080 -- This is a proxy connection
+ttype.MTTS_TRUE_COLOR     =   0x100 -- True color support
+ttype.MTTS_MNES           =   0x200 -- Mud New Env Standard enabled
+ttype.MTTS_MSLP           =   0x400 -- Mud Server Link Protocol enabled
 
 -- Default MTTS value:
 local mtts = 0x0
-mtts = mtts | TTYPE_OPT_MTTS_VT100
-mtts = mtts | TTYPE_OPT_MTTS_ANSI
-mtts = mtts | TTYPE_OPT_MTTS_UTF8
-mtts = mtts | TTYPE_OPT_MTTS_256C
-mtts = mtts | TTYPE_OPT_MTTS_TRUC
+mtts = mtts | ttype.MTTS_VT100
+mtts = mtts | ttype.MTTS_ANSI
+mtts = mtts | ttype.MTTS_UTF8
+mtts = mtts | ttype.MTTS_256_COLOR
+mtts = mtts | ttype.MTTS_TRUE_COLOR
 ```
 
 ##
@@ -75,10 +76,3 @@ Add an MTTS option to the current MTTS value. See options above
 Remove an MTTS option from the current MTTS value. See options above
 
 - `opt` The option to remove. Eg. `TTYPE_OPT_MTTS_256C`
-
-##
-
-***ttype.auto_detect_reader_mode(val)***
-Toggle if TTYPE negotiation should autodetect reader mode or not (default true)
-
-- `val` The new value. True or false

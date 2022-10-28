@@ -182,6 +182,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         settings.set(READER_MODE, true).unwrap();
         settings.save();
     }
+    let reader_mode = settings.get(READER_MODE).unwrap_or(rt.reader_mode);
 
     let dimensions = termion::terminal_size().unwrap_or((100, 100));
     let session = SessionBuilder::new()
@@ -189,6 +190,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         .timer_writer(timer_writer)
         .screen_dimensions(dimensions)
         .tts_enabled(rt.use_tts)
+        .reader_mode(reader_mode)
         .headless(rt.headless_mode)
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .build();
@@ -242,7 +244,7 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
     };
 
     let mut screen: Box<dyn UserInterface> = if !rt.headless_mode {
-        Box::new(UiWrapper::new(&session, false)?)
+        Box::new(UiWrapper::new(&session)?)
     } else {
         Box::new(UiWrapper::headless(&session)?)
     };
@@ -359,12 +361,20 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     screen.print_error(&err.to_string())
                 }
             }
-            Event::TTSEnabled(enabled) => session.tts_ctrl.lock().unwrap().enabled(enabled),
+            Event::TTSEnabled(enabled) => {
+                if let Ok(mut lua) = session.lua_script.lock() {
+                    lua.set_tts_enabled(enabled);
+                }
+                session.tts_ctrl.lock().unwrap().enabled(enabled);
+            }
             Event::Speak(msg, interupt) => session.tts_ctrl.lock().unwrap().speak(&msg, interupt),
             Event::SpeakStop => session.tts_ctrl.lock().unwrap().flush(),
             Event::TTSEvent(event) => session.tts_ctrl.lock().unwrap().handle(event),
             Event::SettingChanged(name, value) => match name.as_str() {
                 READER_MODE => {
+                    if let Ok(mut lua) = session.lua_script.lock() {
+                        lua.set_reader_mode(value);
+                    }
                     screen = Box::new(UiWrapper::new_from(screen, &session, value)?);
                 }
                 HIDE_TOPBAR | SCROLL_SPLIT => {

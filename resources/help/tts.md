@@ -45,6 +45,11 @@ Toggle general TTS on or off. Where `enabled` is wither true or false.
 
 ##
 
+***tts.is_enabled() -> bool***
+Returns if general TTS is on or off.
+
+##
+
 ***tts.echo_keypresses(enabled)***
 Toggle if TTS should speak keypresses when typing or not
 

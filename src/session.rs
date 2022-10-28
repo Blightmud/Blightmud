@@ -6,7 +6,7 @@ use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 use crate::{
     event::QuitMethod,
     io::{LogWriter, Logger},
-    lua::LuaScript,
+    lua::{LuaScript, LuaScriptBuilder},
     net::MudConnection,
     net::BUFFER_SIZE,
     net::{OutputBuffer, TelnetMode},
@@ -159,6 +159,7 @@ pub struct SessionBuilder {
     timer_writer: Option<Sender<TimerEvent>>,
     screen_dimensions: Option<(u16, u16)>,
     tts_enabled: bool,
+    reader_mode: bool,
     save_history: bool,
     headless: bool,
 }
@@ -170,6 +171,7 @@ impl SessionBuilder {
             timer_writer: None,
             screen_dimensions: None,
             tts_enabled: false,
+            reader_mode: false,
             save_history: false,
             headless: false,
         }
@@ -205,15 +207,27 @@ impl SessionBuilder {
         self
     }
 
+    pub fn reader_mode(mut self, reader_mode: bool) -> Self {
+        self.reader_mode = reader_mode;
+        self
+    }
+
     pub fn build(self) -> Session {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
         let dimensions = self.screen_dimensions.unwrap();
         let tts_enabled = self.tts_enabled;
         let save_history = self.save_history;
+        let reader_mode = self.reader_mode;
         let headless = self.headless;
         let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled, headless)));
-        let lua_script = Arc::new(Mutex::new(LuaScript::new(main_writer.clone(), dimensions)));
+
+        let lua_builder = LuaScriptBuilder::new(main_writer.clone())
+            .dimensions(dimensions)
+            .tts_enabled(tts_enabled)
+            .reader_mode(reader_mode);
+
+        let lua_script = Arc::new(Mutex::new(lua_builder.build()));
         Session {
             connection: Arc::new(Mutex::new(MudConnection::new())),
             gmcp: Arc::new(AtomicBool::new(false)),

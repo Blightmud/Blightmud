@@ -32,6 +32,11 @@ width, height = blight.terminal_dimensions()
 
 ##
 
+***blight.is_reader_mode() -> bool***
+Returns true or false depending on if reader mode is enabled or not.
+
+##
+
 ***blight.version() -> name, version***
 Returns Blightmud name and version in string format
 

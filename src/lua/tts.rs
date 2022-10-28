@@ -1,14 +1,16 @@
-use mlua::{UserData, UserDataMethods};
+use mlua::{AnyUserData, UserData, UserDataMethods};
 
 use crate::{event::Event, tts::TTSEvent};
 
 use super::{backend::Backend, constants::BACKEND};
 
-pub struct Tts {}
+pub struct Tts {
+    pub enabled: bool,
+}
 
 impl Tts {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(enabled: bool) -> Self {
+        Self { enabled }
     }
 }
 
@@ -39,6 +41,11 @@ impl UserData for Tts {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend.writer.send(Event::TTSEnabled(enabled)).unwrap();
             Ok(())
+        });
+        methods.add_function("is_enabled", |ctx, ()| {
+            let tts_aud: AnyUserData = ctx.globals().get("tts")?;
+            let tts = tts_aud.borrow::<Tts>()?;
+            Ok(tts.enabled)
         });
         methods.add_function("set_rate", |ctx, rate: f64| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;

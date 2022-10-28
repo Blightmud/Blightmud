@@ -457,7 +457,7 @@ mod command_test {
     use std::sync::{Arc, Mutex};
 
     use super::CommandBuffer;
-    use crate::lua::LuaScript;
+    use crate::lua::LuaScriptBuilder;
     use crate::tts::TTSController;
     use crate::Event;
 
@@ -469,7 +469,9 @@ mod command_test {
         let (tx, rx): (Sender<Event>, Receiver<Event>) = channel();
         let buffer = CommandBuffer::new(
             Arc::new(Mutex::new(TTSController::new(false, true))),
-            Arc::new(Mutex::new(LuaScript::new(tx, (100, 100)))),
+            Arc::new(Mutex::new(
+                LuaScriptBuilder::new(tx).dimensions((100, 100)).build(),
+            )),
         );
         (buffer, rx)
     }

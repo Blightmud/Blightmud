@@ -30,9 +30,9 @@ pub struct UiWrapper {
 }
 
 impl UiWrapper {
-    pub fn new(session: &Session, force_reader_mode: bool) -> Result<Self> {
+    pub fn new(session: &Session) -> Result<Self> {
         let settings = Settings::try_load()?;
-        let reader_mode = settings.get(READER_MODE)? || force_reader_mode;
+        let reader_mode = settings.get(READER_MODE)?;
         let screen: Box<dyn UserInterface> = if reader_mode {
             Box::new(ReaderScreen::new(
                 create_screen_writer(false)?,

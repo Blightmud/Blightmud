@@ -18,17 +18,61 @@ use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, Value};
 use std::io::prelude::*;
 use std::{fs::File, sync::mpsc::Sender};
 
+pub struct LuaScriptBuilder {
+    writer: Sender<Event>,
+    dimensions: (u16, u16),
+    reader_mode: bool,
+    tts_enabled: bool,
+}
+
+impl LuaScriptBuilder {
+    pub fn new(writer: Sender<Event>) -> Self {
+        Self {
+            writer,
+            dimensions: (0, 0),
+            reader_mode: false,
+            tts_enabled: false,
+        }
+    }
+
+    pub fn reader_mode(mut self, reader_mode: bool) -> Self {
+        self.reader_mode = reader_mode;
+        self
+    }
+
+    pub fn tts_enabled(mut self, tts_enabled: bool) -> Self {
+        self.tts_enabled = tts_enabled;
+        self
+    }
+
+    pub fn dimensions(mut self, dimensions: (u16, u16)) -> Self {
+        self.dimensions = dimensions;
+        self
+    }
+
+    pub fn build(self) -> LuaScript {
+        let main_writer = self.writer.clone();
+        let reader_mode = self.reader_mode;
+        let tts_enabled = self.tts_enabled;
+        LuaScript {
+            state: create_default_lua_state(self, None),
+            writer: main_writer,
+            tts_enabled,
+            reader_mode,
+        }
+    }
+}
+
 pub struct LuaScript {
     state: Lua,
     writer: Sender<Event>,
+    tts_enabled: bool,
+    reader_mode: bool,
 }
 
-fn create_default_lua_state(
-    writer: Sender<Event>,
-    dimensions: (u16, u16),
-    store: Option<Store>,
-) -> Lua {
+fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> Lua {
     let state = unsafe { Lua::unsafe_new() };
+    let writer = builder.writer;
 
     let backend = Backend::new(writer.clone());
     let mut blight = Blight::new(writer.clone());
@@ -36,9 +80,9 @@ fn create_default_lua_state(
         Some(store) => store,
         None => Store::new(),
     };
-    let tts = Tts::new();
+    let tts = Tts::new(builder.tts_enabled);
 
-    blight.screen_dimensions = dimensions;
+    blight.screen_dimensions = builder.dimensions;
     blight.core_mode(true);
     let result: LuaResult<()> = (|| {
         let globals = state.globals();
@@ -164,13 +208,6 @@ fn create_default_lua_state(
 }
 
 impl LuaScript {
-    pub fn new(main_writer: Sender<Event>, dimensions: (u16, u16)) -> Self {
-        Self {
-            state: create_default_lua_state(main_writer.clone(), dimensions, None),
-            writer: main_writer,
-        }
-    }
-
     pub fn on_reset(&mut self) {
         self.exec_lua(&mut || -> LuaResult<()> {
             let table: mlua::Table = self.state.named_registry_value(SCRIPT_RESET_LISTENERS)?;
@@ -184,7 +221,13 @@ impl LuaScript {
 
     pub fn reset(&mut self, dimensions: (u16, u16)) -> Result<()> {
         let store = self.state.globals().get(Store::LUA_GLOBAL_NAME)?;
-        self.state = create_default_lua_state(self.writer.clone(), dimensions, store);
+        let builder = LuaScriptBuilder {
+            writer: self.writer.clone(),
+            dimensions,
+            tts_enabled: self.tts_enabled,
+            reader_mode: self.reader_mode,
+        };
+        self.state = create_default_lua_state(builder, store);
         Ok(())
     }
 
@@ -394,6 +437,28 @@ impl LuaScript {
         });
     }
 
+    pub fn set_reader_mode(&mut self, reader_mode: bool) {
+        self.reader_mode = reader_mode;
+        self.exec_lua(&mut || -> LuaResult<()> {
+            let blight_aud: AnyUserData = self.state.globals().get("blight")?;
+            let mut blight = blight_aud.borrow_mut::<Blight>()?;
+            blight.reader_mode = reader_mode;
+            Ok(())
+        });
+    }
+
+    pub fn set_tts_enabled(&mut self, tts_enabled: bool) {
+        {
+            self.tts_enabled = tts_enabled;
+            self.exec_lua(&mut || -> LuaResult<()> {
+                let tts_aud: AnyUserData = self.state.globals().get("tts")?;
+                let mut tts = tts_aud.borrow_mut::<Tts>()?;
+                tts.enabled = tts_enabled;
+                Ok(())
+            });
+        }
+    }
+
     pub fn proto_enabled(&mut self, proto: u8) {
         self.exec_lua(&mut || -> LuaResult<()> {
             let table: mlua::Table = self
@@ -481,6 +546,7 @@ impl LuaScript {
 #[cfg(test)]
 mod lua_script_tests {
     use super::LuaScript;
+    use super::LuaScriptBuilder;
     use super::CONNECTION_ID;
     use crate::event::QuitMethod;
     use crate::lua::constants::TIMED_CALLBACK_TABLE;
@@ -508,7 +574,7 @@ mod lua_script_tests {
 
     fn get_lua() -> (LuaScript, Receiver<Event>) {
         let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
-        let lua = LuaScript::new(writer, (80, 80));
+        let lua = LuaScriptBuilder::new(writer).dimensions((80, 80)).build();
         loop {
             if reader.try_recv().is_err() {
                 break;

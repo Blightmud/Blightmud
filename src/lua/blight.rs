@@ -14,6 +14,8 @@ pub struct Blight {
     ui_events: Vec<UiEvent>,
     pub screen_dimensions: (u16, u16),
     pub core_mode: bool,
+    pub reader_mode: bool,
+    pub tts_enabled: bool,
 }
 
 impl Blight {
@@ -24,6 +26,8 @@ impl Blight {
             ui_events: vec![],
             screen_dimensions: (0, 0),
             core_mode: false,
+            reader_mode: false,
+            tts_enabled: false,
         }
     }
 
@@ -95,6 +99,11 @@ impl UserData for Blight {
             let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             Ok(this.core_mode)
+        });
+        methods.add_function("is_reader_mode", |ctx, ()| {
+            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            Ok(this.reader_mode)
         });
         methods.add_function("status_height", |ctx, requested: Option<u16>| {
             let height: u16 = if let Some(height) = requested {

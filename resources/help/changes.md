@@ -5,6 +5,17 @@ Blightmud. It doesn't list all new features but will always list breaking
 changes where you might need to take action.
 
 ---
+# Changes in Blightmud v5.0
+
+## TTYPE changes
+
+- Modifiying the MTTS value should now work as intended
+- Unless manually altered Blightmud should atomatically toggle SCREEN_READER (`0x40`) in MTTS
+- Introduces functions `ttype.add_option` and `ttype.rem_option`
+- `ttype.set_mtts` now takes a numerical MTTS value instead of the entire payload in string form *(breaking)*
+
+See `/help ttype` for more info
+
 # Changes in Blightmud v4.0
 
 ## Changes to prompt handling

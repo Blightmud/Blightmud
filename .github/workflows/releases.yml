@@ -11,7 +11,7 @@ env:
 
 jobs:
   package_ubuntu_20_04:
-    name: Build linux packages
+    name: Build deb-20.04
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -33,8 +33,6 @@ jobs:
           artifacts: ${{ steps.deb_path.outputs.deb_path }}
           allowUpdates: true
           draft: true
-          artifactContentType: application/vnd.debian.binary-package
-          bodyFile: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload deb
         uses: actions/upload-artifact@v3
@@ -43,7 +41,7 @@ jobs:
           path: ${{ steps.deb_path.outputs.deb_path }}
 
   package_ubuntu_22_04:
-    name: Build linux packages
+    name: Build deb-22.04 & RPM
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
@@ -80,7 +78,6 @@ jobs:
           allowUpdates: true
           draft: true
           artifacts: ${{ steps.deb_path.outputs.deb_path }},${{ steps.rpm_path.outputs.rpm_path }}
-          artifactContentType: application/vnd.debian.binary-package
           bodyFile: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload deb

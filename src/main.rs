@@ -99,7 +99,6 @@ mod tests {
         let args: Vec<String> = vec![
             "blightmud",
             "--verbose",
-            "--tts",
             "--connect",
             "localhost:8080",
         ]
@@ -113,7 +112,6 @@ mod tests {
         };
         let rt = RuntimeConfig::from(matches);
         assert!(rt.verbose);
-        assert!(rt.use_tts);
         assert_eq!(rt.connect, Some("localhost:8080".to_string()));
     }
 }

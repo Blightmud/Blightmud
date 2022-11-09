@@ -150,7 +150,7 @@ impl From<Matches> for RuntimeConfig {
             headless_mode: false,
             verbose: matches.opt_present("verbose"),
             world,
-            use_tts: matches.opt_present("tts"),
+            use_tts: matches.opt_defined("tts") && matches.opt_present("tts"),
             tls: matches.opt_present("tls"),
             no_verify: matches.opt_present("no-verify"),
             connect,

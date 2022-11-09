@@ -76,7 +76,9 @@ function mod.previous_command()
         index = find_match_up()
     end
     if index > 0 then
-        tts.speak(commands[index], true)
+        if tts.is_enabled() then
+            tts.speak(commands[index], true)
+        end
         prompt.set(commands[index])
     else
         reset()
@@ -96,10 +98,14 @@ function mod.next_command()
             index = find_match_down()
         end
         if index then
-            tts.speak(commands[index], true)
+            if tts.is_enabled() then
+                tts.speak(commands[index], true)
+            end
             prompt.set(commands[index])
         else
-            tts.speak(orig_cmd, true)
+            if tts.is_enabled() then
+                tts.speak(orig_cmd, true)
+            end
             prompt.set(orig_cmd)
             reset()
         end

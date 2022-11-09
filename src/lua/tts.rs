@@ -1,4 +1,3 @@
-use log::debug;
 use mlua::{AnyUserData, MetaMethod, UserData, UserDataMethods};
 
 use crate::{event::Event, tts::TTSEvent};
@@ -135,7 +134,6 @@ impl UserData for Tts {
                 Ok(())
             });
         } else {
-            debug!("TTS not enabled");
             methods.add_function("is_enabled", |_, ()| Ok(false));
             methods.add_meta_function(MetaMethod::Index, |ctx, _: ()| {
                 let func: mlua::Function = ctx.load("function () end").eval()?;

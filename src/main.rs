@@ -96,15 +96,10 @@ mod tests {
 
     #[test]
     fn test_config_parse() {
-        let args: Vec<String> = vec![
-            "blightmud",
-            "--verbose",
-            "--connect",
-            "localhost:8080",
-        ]
-        .iter()
-        .map(|s| String::from(*s))
-        .collect();
+        let args: Vec<String> = vec!["blightmud", "--verbose", "--connect", "localhost:8080"]
+            .iter()
+            .map(|s| String::from(*s))
+            .collect();
         let opts = setup_options();
         let matches = match opts.parse(&args[1..]) {
             Ok(m) => m,

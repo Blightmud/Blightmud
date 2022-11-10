@@ -61,7 +61,7 @@ fn main() {
 
     let matches = opts.parse(&args[1..]);
     if let Err(f) = matches {
-        eprintln!("{}", f.to_string());
+        eprintln!("{}", f);
         return;
     }
     let matches = matches.unwrap();

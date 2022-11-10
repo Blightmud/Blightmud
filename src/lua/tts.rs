@@ -16,6 +16,7 @@ impl Tts {
 
 impl UserData for Tts {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+        methods.add_function("is_available", |_, _: ()| Ok(cfg!(feature = "tts")));
         if cfg!(feature = "tts") {
             methods.add_function("speak", |ctx, (msg, interupt): (String, Option<bool>)| {
                 let backend: Backend = ctx.named_registry_value(BACKEND)?;
@@ -134,7 +135,6 @@ impl UserData for Tts {
                 Ok(())
             });
         } else {
-            methods.add_function("is_enabled", |_, ()| Ok(false));
             methods.add_meta_function(MetaMethod::Index, |ctx, _: ()| {
                 let func: mlua::Function = ctx.load("function () end").eval()?;
                 let backend: Backend = ctx.named_registry_value(BACKEND)?;

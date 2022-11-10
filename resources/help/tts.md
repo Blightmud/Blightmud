@@ -25,6 +25,24 @@ blightmud restarts so you only need to configure this once.
 
 ## Functions
 
+***tts.is_available() -> bool***
+Returns true if TTS feature is available otherwise false.
+
+This function is the only function that will be available when Blightmud is
+compiled without TTS support in which case it will always return false.
+
+##
+
+***tts.is_enabled() -> bool***
+Returns if general TTS is on or off.
+
+##
+
+***tts.enable(enabled)***
+Toggle general TTS on or off. Where `enabled` is either true or false.
+
+##
+
 ***tts.speak(msg, interupt)***
 Will speak the provided `msg`. If interupt is true, this message will interupt
 possible messages that are waiting to be spoken.
@@ -37,16 +55,6 @@ at the moment but it won't clear subsequent messages in queue. This message
 will not be stored in the TTS history.
 
 These messages will be spoken even if TTS is disabled.
-
-##
-
-***tts.enable(enabled)***
-Toggle general TTS on or off. Where `enabled` is wither true or false.
-
-##
-
-***tts.is_enabled() -> bool***
-Returns if general TTS is on or off.
 
 ##
 

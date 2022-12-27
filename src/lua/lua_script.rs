@@ -186,6 +186,10 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
             .load(include_str!("../../resources/lua/ttype.lua"))
             .call::<_, mlua::Value>(())?;
         globals.set("ttype", lua_ttype)?;
+        let lua_mssp = state
+            .load(include_str!("../../resources/lua/mssp.lua"))
+            .call::<_, mlua::Value>(())?;
+        globals.set("mssp", lua_mssp)?;
 
         {
             let blight_aud: AnyUserData = globals.get("blight")?;

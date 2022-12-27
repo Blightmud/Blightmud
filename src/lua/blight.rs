@@ -149,6 +149,15 @@ impl UserData for Blight {
                 Ok(())
             },
         );
+        methods.add_function(
+            "on_dimensions_change",
+            |ctx, func: Function| -> mlua::Result<()> {
+                let table: Table =
+                    ctx.named_registry_value(BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE)?;
+                table.set(table.raw_len() + 1, func)?;
+                Ok(())
+            },
+        );
         methods.add_function("quit", |ctx, ()| {
             let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
@@ -193,8 +202,8 @@ mod test_blight {
 
     use super::Blight;
     use crate::lua::constants::{
-        BLIGHT_ON_QUIT_LISTENER_TABLE, COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE,
-        STATUS_AREA_HEIGHT,
+        BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE, BLIGHT_ON_QUIT_LISTENER_TABLE,
+        COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE, STATUS_AREA_HEIGHT,
     };
     use crate::{PROJECT_NAME, VERSION};
 
@@ -207,6 +216,11 @@ mod test_blight {
         lua.globals().set("blight", blight).unwrap();
         lua.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, lua.create_table().unwrap())
             .unwrap();
+        lua.set_named_registry_value(
+            BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE,
+            lua.create_table().unwrap(),
+        )
+        .unwrap();
         lua.set_named_registry_value(COMPLETION_CALLBACK_TABLE, lua.create_table().unwrap())
             .unwrap();
         lua.set_named_registry_value(COMMAND_BINDING_TABLE, lua.create_table().unwrap())

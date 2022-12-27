@@ -11,7 +11,7 @@ they should not be needed.
 
 ***core.enable_protocol(proto)***
 Makes Blightmud respond with `IAC DO PROTO` if the server asks for it.  Take
-not that this method is best called before a client actually connects to a mud.
+note that this method is best called before a client actually connects to a mud.
 All servers don't play as nice if the client isn't quick to respond to a `IAC
 WILL PROTO`.
 

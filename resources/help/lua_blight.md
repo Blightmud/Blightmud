@@ -32,6 +32,19 @@ width, height = blight.terminal_dimensions()
 
 ##
 
+***blight.on_dimensions_change(callback: function(width: int, height: int) -> nil)***
+Registers a callback function to be called when the terminal dimensions change.
+The callback function will receive the updated terminal width and height as
+arguments.
+
+```lua
+blight.on_dimensions_change(function (width, height)
+    print("Terminal is now ".. width .. "x".. height)
+end)
+```
+
+##
+
 ***blight.is_reader_mode() -> bool***
 Returns true or false depending on if reader mode is enabled or not.
 

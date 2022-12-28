@@ -91,6 +91,10 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         state.set_named_registry_value(MUD_OUTPUT_LISTENER_TABLE, state.create_table()?)?;
         state.set_named_registry_value(MUD_INPUT_LISTENER_TABLE, state.create_table()?)?;
         state.set_named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE, state.create_table()?)?;
+        state.set_named_registry_value(
+            BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE,
+            state.create_table()?,
+        )?;
         state.set_named_registry_value(TIMED_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(TIMED_CALLBACK_TABLE_CORE, state.create_table()?)?;
         state.set_named_registry_value(TIMED_NEXT_ID, 1)?;
@@ -168,6 +172,9 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
             .exec()?;
         state
             .load(include_str!("../../resources/lua/telnet_charset.lua"))
+            .exec()?;
+        state
+            .load(include_str!("../../resources/lua/naws.lua"))
             .exec()?;
 
         let lua_gmcp = state
@@ -435,8 +442,17 @@ impl LuaScript {
     pub fn set_dimensions(&mut self, dim: (u16, u16)) {
         self.exec_lua(&mut || -> LuaResult<()> {
             let blight_aud: AnyUserData = self.state.globals().get("blight")?;
-            let mut blight = blight_aud.borrow_mut::<Blight>()?;
-            blight.screen_dimensions = dim;
+            {
+                let mut blight = blight_aud.borrow_mut::<Blight>()?;
+                blight.screen_dimensions = dim;
+            }
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
+                let (_, cb) = pair?;
+                cb.call::<_, ()>(dim)?;
+            }
             Ok(())
         });
     }
@@ -737,6 +753,19 @@ mod lua_script_tests {
     #[test]
     fn test_dimensions() {
         let mut lua = get_lua().0;
+        lua.state
+            .load(
+                r#"
+        width = 0
+        height = 0
+        blight.on_dimensions_change(function (w, h)
+            width = w
+            height = h
+        end)
+        "#,
+            )
+            .exec()
+            .unwrap();
         let dim: (u16, u16) = lua
             .state
             .load("return blight.terminal_dimensions()")
@@ -750,6 +779,8 @@ mod lua_script_tests {
             .call(())
             .unwrap();
         assert_eq!(dim, (70, 70));
+        assert_eq!(lua.state.globals().get::<_, i16>("width").unwrap(), 70);
+        assert_eq!(lua.state.globals().get::<_, i16>("height").unwrap(), 70);
     }
 
     #[test]

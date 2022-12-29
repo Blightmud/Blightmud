@@ -51,11 +51,11 @@ fn test_gmcp_negotiation() -> std::io::Result<()> {
     connection.send(&[IAC, WILL, GMCP]);
     assert_eq!(connection.read(3), &[IAC, DO, GMCP]);
     let expected1 = format!(
-        "Core.Hello {{\"Version\":\"{}\",\"Client\":\"{}\"}}",
+        "Core.Hello {{\"version\":\"{}\",\"client\":\"{}\"}}",
         VERSION, PROJECT_NAME
     );
     let expected2 = format!(
-        "Core.Hello {{\"Client\":\"{}\",\"Version\":\"{}\"}}",
+        "Core.Hello {{\"client\":\"{}\",\"version\":\"{}\"}}",
         PROJECT_NAME, VERSION
     );
     let alt1 = vec![

@@ -36,8 +36,8 @@ local function GMCP()
             store.session_write("__gmcp_ready", "true")
             local program, version = blight.version()
             local hello_obj = {
-                Version=version,
-                Client=program,
+                version=version,
+                client=program,
             }
             core.subneg_send(201, string_to_bytes("Core.Hello " .. json.encode(hello_obj)))
             for _,cb in ipairs(self.ready_listeners) do

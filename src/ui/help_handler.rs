@@ -5,7 +5,8 @@ use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
 use anyhow::Result;
 use log::debug;
-use mdcat::{ResourceAccess, Settings as MDSettings, TerminalCapabilities, TerminalSize};
+use mdcat::terminal::{TerminalProgram, TerminalSize};
+use mdcat::{ResourceAccess, Settings as MDSettings};
 use pulldown_cmark::{Options, Parser};
 use std::fmt::Write;
 use syntect::parsing::SyntaxSet;
@@ -147,7 +148,7 @@ fn md_settings() -> MDSettings {
     let terminal_size = TerminalSize::detect().unwrap_or_default();
 
     MDSettings {
-        terminal_capabilities: TerminalCapabilities::ansi(),
+        terminal_capabilities: TerminalProgram::Ansi.capabilities(),
         terminal_size,
         resource_access: ResourceAccess::LocalOnly,
         syntax_set: SyntaxSet::load_defaults_newlines(),

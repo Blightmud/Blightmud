@@ -5,6 +5,7 @@
 /tags
 /.run/
 /.vscode
+/.idea
 *.bak
 /scripts/blightmud-pkg
 /scripts/homebrew-blightmud

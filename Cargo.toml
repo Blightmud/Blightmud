@@ -41,7 +41,7 @@ human-panic = "1.0.3"
 native-tls = "0.2.11"
 tts = { version = "0.25.0", optional = true }
 serde_json = "1.0.91"
-git2 = "0.16.0"
+git2 = "0.16.1"
 rodio = "0.16.0"
 notify-debouncer-mini = "0.2.1"
 

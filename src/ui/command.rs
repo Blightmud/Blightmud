@@ -46,7 +46,6 @@ impl CompletionStepData {
 }
 
 pub struct CommandBuffer {
-    strbuf: String,
     buffer: Vec<char>,
     cursor_pos: usize,
     completion_tree: CompletionTree,
@@ -61,7 +60,6 @@ impl CommandBuffer {
         completion.set_min_word_len(3);
 
         Self {
-            strbuf: String::new(),
             buffer: vec![],
             cursor_pos: 0,
             completion_tree: completion,
@@ -72,8 +70,7 @@ impl CommandBuffer {
     }
 
     pub fn get_buffer(&mut self) -> String {
-        self.strbuf = self.buffer.iter().collect();
-        self.strbuf.clone()
+        self.buffer.iter().collect::<String>()
     }
 
     pub fn get_pos(&self) -> usize {
@@ -195,8 +192,9 @@ impl CommandBuffer {
         if self.buffer.len() > 1 {
             if self.completion.is_empty() {
                 let mut completions = Completions::default();
-                completions.merge(self.script.lock().unwrap().tab_complete(&self.strbuf));
-                if let Some(mut options) = self.completion_tree.complete(&self.strbuf) {
+                let strbuf = self.get_buffer();
+                completions.merge(self.script.lock().unwrap().tab_complete(&strbuf));
+                if let Some(mut options) = self.completion_tree.complete(&strbuf) {
                     completions.add_all(&mut options);
                 }
 
@@ -210,7 +208,7 @@ impl CommandBuffer {
                     acc
                 });
 
-                self.completion.set_options(&self.strbuf, completions);
+                self.completion.set_options(&strbuf, completions);
             }
             if let Some(comp) = self.completion.next() {
                 self.tts_ctrl.lock().unwrap().speak(comp, true);

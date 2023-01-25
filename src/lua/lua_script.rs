@@ -109,6 +109,7 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         state.set_named_registry_value(FS_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(SCRIPT_RESET_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(PROMPT_CONTENT, String::new())?;
+        state.set_named_registry_value(PROMPT_INPUT_LISTENER_TABLE, state.create_table()?)?;
         state.set_named_registry_value(STATUS_AREA_HEIGHT, 1)?;
 
         globals.set("blight", blight)?;
@@ -280,6 +281,19 @@ impl LuaScript {
         self.exec_lua(&mut || -> LuaResult<()> {
             self.state
                 .set_named_registry_value(PROMPT_CONTENT, content.clone())?;
+            Ok(())
+        });
+    }
+
+    pub fn on_prompt_update(&self, content: &str) {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(PROMPT_INPUT_LISTENER_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
+                let (_, cb) = pair?;
+                cb.call::<_, ()>(content)?;
+            }
             Ok(())
         });
     }
@@ -1396,5 +1410,23 @@ mod lua_script_tests {
         assert_eq!(lua.tab_complete(&"rob".to_string()), result);
         let result = Completions::default();
         assert_eq!(lua.tab_complete(&"fail".to_string()), result);
+    }
+
+    #[test]
+    fn on_prompt_update() {
+        let (lua, _reader) = get_lua();
+        lua.state
+            .load(
+                r#"
+        buf = ""
+        prompt.add_prompt_listener(function (data) buf = data end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+
+        assert_eq!(lua.state.globals().get::<_, String>("buf").unwrap(), "");
+        lua.on_prompt_update(&"test".to_string());
+        assert_eq!(lua.state.globals().get::<_, String>("buf").unwrap(), "test");
     }
 }

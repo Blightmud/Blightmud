@@ -280,6 +280,9 @@ impl EventHandler {
                 Ok(())
             }
             Event::UserInputBuffer(input_buffer, pos) => {
+                if let Ok(script) = self.session.lua_script.lock() {
+                    script.on_prompt_update(&input_buffer);
+                }
                 let mut prompt_input = self.session.prompt_input.lock().unwrap();
                 *prompt_input = input_buffer;
                 screen.print_prompt_input(&prompt_input, pos);

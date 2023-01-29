@@ -9,9 +9,10 @@ use super::{
 };
 use crate::lua::fs::Fs;
 use crate::lua::prompt::Prompt;
+use crate::lua::prompt_mask::PromptMask;
 use crate::model::Completions;
 use crate::tools::util::expand_tilde;
-use crate::{event::Event, lua::servers::Servers, model::Line};
+use crate::{event::Event, lua::servers::Servers, model, model::Line};
 use anyhow::Result;
 use log::{debug, info};
 use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, Value};
@@ -128,6 +129,7 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         globals.set("socket", SocketLib {})?;
         globals.set("servers", Servers {})?;
         globals.set("prompt", Prompt {})?;
+        globals.set("prompt_mask", PromptMask {})?;
 
         let lua_json = state
             .load(include_str!("../../resources/lua/json.lua"))
@@ -283,6 +285,13 @@ impl LuaScript {
                 .set_named_registry_value(PROMPT_CONTENT, content.clone())?;
             Ok(())
         });
+    }
+
+    pub fn set_prompt_mask_content(&mut self, mask: &model::PromptMask) {
+        let updated_mask = mask.to_table(&self.state).unwrap();
+        self.state
+            .set_named_registry_value(PROMPT_MASK_CONTENT, updated_mask)
+            .unwrap();
     }
 
     pub fn on_prompt_update(&self, content: &str) {
@@ -585,9 +594,10 @@ mod lua_script_tests {
     use crate::event::QuitMethod;
     use crate::lua::constants::TIMED_CALLBACK_TABLE;
     use crate::model::Completions;
-    use crate::model::{Connection, Regex};
+    use crate::model::{Connection, PromptMask, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
     use libtelnet_rs::{bytes::Bytes, vbytes};
+    use mlua::Table;
     use std::{
         collections::BTreeMap,
         sync::mpsc::{channel, Receiver, Sender},
@@ -1428,5 +1438,22 @@ mod lua_script_tests {
         assert_eq!(lua.state.globals().get::<_, String>("buf").unwrap(), "");
         lua.on_prompt_update(&"test".to_string());
         assert_eq!(lua.state.globals().get::<_, String>("buf").unwrap(), "test");
+    }
+
+    #[test]
+    fn set_prompt_mask_content() {
+        let (mut lua, _reader) = get_lua();
+
+        let mut mask_map = BTreeMap::new();
+        mask_map.insert(10, "hi".to_string());
+        mask_map.insert(20, "bye".to_string());
+        let mask = PromptMask::from(mask_map);
+
+        lua.set_prompt_mask_content(&mask);
+        lua.state.load("mask = prompt_mask.get()").exec().unwrap();
+        let result = lua.state.globals().get::<_, Table>("mask").unwrap();
+
+        assert_eq!(result.get::<i32, String>(11).unwrap(), "hi");
+        assert_eq!(result.get::<i32, String>(21).unwrap(), "bye");
     }
 }

@@ -18,6 +18,7 @@ mod command;
 mod headless_screen;
 mod help_handler;
 mod history;
+mod printable_chars;
 mod reader_screen;
 mod scroll_data;
 mod split_screen;

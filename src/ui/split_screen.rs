@@ -4,7 +4,7 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{Settings, HIDE_TOPBAR};
-use crate::{model::Line, model::Regex, ui::ansi::*};
+use crate::{model::Line, model::Regex, ui::ansi::*, ui::printable_chars::PrintableCharsIterator};
 use anyhow::Result;
 use std::collections::HashSet;
 use std::io::Write;
@@ -251,16 +251,16 @@ impl UserInterface for SplitScreen {
         let mut input = input;
         let mut pos = pos;
         let width = self.width as usize;
-        while input.chars().count() >= width && pos >= width {
-            if let Some((i, _)) = input.char_indices().nth(width) {
+        while input.printable_chars().count() >= width && pos >= width {
+            if let Some((i, _)) = input.printable_char_indices().nth(width) {
                 input = input.split_at(i).1;
             } else {
                 input = "";
             }
             pos -= width;
         }
-        if input.chars().count() >= width {
-            if let Some((i, _)) = input.char_indices().nth(width) {
+        if input.printable_chars().count() >= width {
+            if let Some((i, _)) = input.printable_char_indices().nth(width) {
                 input = input.split_at(i).0;
             }
         }

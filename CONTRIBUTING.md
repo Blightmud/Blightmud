@@ -69,3 +69,35 @@ Before you commit please perform the following tasks:
 - Functions: `snake_case`
 - Modules: `snake_case`
 - Constants: `SCREAMING_SNAKE_CASE`
+
+### Debugging
+
+Because Blightmud is a rich terminal application it may not render well in your IDE's console, or run directly under `gdb` for traditional interactive debugging.
+
+For more flexible debugging, run `blightmud` with [`gdbserver`][gdbserver] and then connect to the running instance from a separate terminal using `gdb`, or from your IDE with proper configuration for remote debugging.
+
+[gdbserver]: https://man7.org/linux/man-pages/man1/gdbserver.1.html
+
+For example:
+```bash
+# Terminal A - Blightmud
+cargo build --features=tts && \
+  gdbserver 127.0.0.1:2159 \
+    ./target/debug/blightmud -V
+```
+
+```bash
+# Terminal B - Blightmud debug log
+tail -F ./.run/data/logs/log.txt
+```
+
+```bash
+# Terminal C - GDB
+gdb ./target/debug/blightmud
+target remote 127.0.0.1:2159
+continue
+```
+
+You're now free to return to Terminal A to use Blightmud, observing debug logs in Terminal B and using Terminal C to set breakpoints, debug, etc.
+
+Happy bug hunting!

@@ -24,6 +24,7 @@ mod script;
 mod servers;
 mod settings;
 mod socket;
+mod spellcheck;
 mod store;
 mod timer;
 mod tts;

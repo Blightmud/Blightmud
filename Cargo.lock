@@ -240,6 +240,8 @@ dependencies = [
  "getopts",
  "git2",
  "human-panic",
+ "hunspell-rs",
+ "hunspell-sys",
  "lazy_static",
  "libtelnet-rs",
  "log",
@@ -1180,6 +1182,27 @@ dependencies = [
  "termcolor",
  "toml",
  "uuid",
+]
+
+[[package]]
+name = "hunspell-rs"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c62ce29f9760b9fa35039ae56c1dd08b6fb8ce7fafc5f496083167ace157eb27"
+dependencies = [
+ "hunspell-sys",
+ "log",
+]
+
+[[package]]
+name = "hunspell-sys"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9228605394e47acb7e5c20da4f9d8d5175fd767230e51d3095623bc5e20b7dec"
+dependencies = [
+ "bindgen 0.61.0",
+ "cc",
+ "pkg-config",
 ]
 
 [[package]]

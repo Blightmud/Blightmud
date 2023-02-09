@@ -197,6 +197,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "alias" => "lua_aliases.md",
         "config" => "lua_settings.md",
         "script" => "script.md",
+        "spellcheck" => "spellcheck.md",
         "trigger" => "lua_trigger.md",
         "timers" => "lua_timers.md",
         "gmcp" => "lua_gmcp.md",

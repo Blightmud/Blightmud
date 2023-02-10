@@ -1,7 +1,9 @@
 # Prompt
 
 This module offers methods to interact with data that has
-been typed on the prompt line
+been typed on the prompt line.
+
+See also `/help prompt_mask`.
 
 ##
 

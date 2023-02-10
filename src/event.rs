@@ -2,7 +2,7 @@ use crate::io::FSEvent;
 use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
-    model::{Connection, Line},
+    model::{Connection, Line, PromptMask},
     net::{spawn_receive_thread, spawn_transmit_thread},
     session::Session,
     tts::TTSEvent,
@@ -78,6 +78,8 @@ pub enum Event {
     TimedEvent(u32),
     TimerTick(u128),
     SetPromptInput(String),
+    SetPromptMask(PromptMask),
+    ClearPromptMask,
     UserInputBuffer(String, usize),
     FSEvent(FSEvent),
     FSMonitor(String),
@@ -277,6 +279,26 @@ impl EventHandler {
                     });
                 }
                 screen.print_prompt(&prompt);
+                Ok(())
+            }
+            Event::SetPromptMask(mask) => {
+                if let Ok(mut command_buffer) = self.session.command_buffer.lock() {
+                    let mut lua_ctx = self.session.lua_script.lock().unwrap();
+                    let updated_mask_table = command_buffer.set_mask(mask);
+                    lua_ctx.set_prompt_mask_content(updated_mask_table);
+                    let mut prompt_input = self.session.prompt_input.lock().unwrap();
+                    *prompt_input = command_buffer.get_masked_buffer();
+                    screen.print_prompt_input(&prompt_input, command_buffer.get_pos());
+                }
+                Ok(())
+            }
+            Event::ClearPromptMask => {
+                if let Ok(mut command_buffer) = self.session.command_buffer.lock() {
+                    command_buffer.clear_mask();
+                    let mut prompt_input = self.session.prompt_input.lock().unwrap();
+                    *prompt_input = command_buffer.get_masked_buffer();
+                    screen.print_prompt_input(&prompt_input, command_buffer.get_pos());
+                }
                 Ok(())
             }
             Event::UserInputBuffer(input_buffer, pos) => {

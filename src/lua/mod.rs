@@ -18,6 +18,7 @@ mod lua_script;
 mod mud;
 mod plugin;
 mod prompt;
+mod prompt_mask;
 mod regex;
 mod script;
 mod servers;

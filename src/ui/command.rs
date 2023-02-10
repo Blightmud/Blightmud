@@ -1,5 +1,5 @@
 use crate::event::QuitMethod;
-use crate::model::{Completions, Line, Servers};
+use crate::model::{Completions, Line, PromptMask, Servers};
 use crate::{event::Event, tts::TTSController};
 use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
@@ -50,6 +50,7 @@ pub struct CommandBuffer {
     cursor_pos: usize,
     completion_tree: CompletionTree,
     completion: CompletionStepData,
+    prompt_mask: PromptMask,
     script: Arc<Mutex<LuaScript>>,
     tts_ctrl: Arc<Mutex<TTSController>>,
 }
@@ -64,6 +65,7 @@ impl CommandBuffer {
             cursor_pos: 0,
             completion_tree: completion,
             completion: CompletionStepData::default(),
+            prompt_mask: PromptMask::new(),
             script,
             tts_ctrl,
         }
@@ -71,6 +73,10 @@ impl CommandBuffer {
 
     pub fn get_buffer(&mut self) -> String {
         self.buffer.iter().collect::<String>()
+    }
+
+    pub fn get_masked_buffer(&self) -> String {
+        self.prompt_mask.mask_buffer(&self.buffer)
     }
 
     pub fn get_pos(&self) -> usize {
@@ -88,6 +94,7 @@ impl CommandBuffer {
         };
 
         self.buffer.clear();
+        self.clear_mask();
         self.cursor_pos = 0;
 
         cmd
@@ -134,6 +141,7 @@ impl CommandBuffer {
 
     fn delete_to_end(&mut self) {
         self.buffer.drain(self.cursor_pos..self.buffer.len());
+        self.clear_mask();
     }
 
     fn delete_from_start(&mut self) {
@@ -144,6 +152,7 @@ impl CommandBuffer {
     fn delete_right(&mut self) {
         if self.cursor_pos < self.buffer.len() {
             self.buffer.remove(self.cursor_pos);
+            self.clear_mask();
         }
     }
 
@@ -152,6 +161,7 @@ impl CommandBuffer {
         self.step_word_right();
         if origin != self.cursor_pos {
             self.buffer.drain(origin..self.cursor_pos);
+            self.clear_mask();
             self.cursor_pos = origin;
         }
     }
@@ -161,6 +171,7 @@ impl CommandBuffer {
         self.step_word_left();
         if origin != self.cursor_pos {
             self.buffer.drain(self.cursor_pos..origin);
+            self.clear_mask();
         }
     }
 
@@ -171,6 +182,7 @@ impl CommandBuffer {
             } else {
                 self.buffer.pop()
             };
+            self.clear_mask();
             self.step_left();
             removed
         } else {
@@ -184,6 +196,7 @@ impl CommandBuffer {
         } else {
             self.buffer.insert(self.cursor_pos, c);
         }
+        self.clear_mask();
         self.completion.clear();
         self.step_right();
     }
@@ -213,6 +226,7 @@ impl CommandBuffer {
             if let Some(comp) = self.completion.next() {
                 self.tts_ctrl.lock().unwrap().speak(comp, true);
                 self.buffer = comp.chars().collect();
+                self.clear_mask();
                 self.cursor_pos = self.buffer.len();
             }
         }
@@ -220,12 +234,26 @@ impl CommandBuffer {
 
     pub fn clear(&mut self) {
         self.buffer.clear();
+        self.clear_mask();
         self.cursor_pos = self.buffer.len();
     }
 
     pub fn set(&mut self, line: String) {
         self.buffer = line.chars().collect();
+        self.clear_mask();
         self.cursor_pos = self.buffer.len();
+    }
+
+    pub fn set_mask(&mut self, mask: PromptMask) -> &PromptMask {
+        self.prompt_mask += mask;
+        &self.prompt_mask
+    }
+
+    pub fn clear_mask(&mut self) {
+        self.prompt_mask.clear();
+        if let Ok(mut luascript) = self.script.lock() {
+            luascript.set_prompt_mask_content(&self.prompt_mask)
+        }
     }
 }
 
@@ -415,13 +443,13 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                                     &mut tts_ctrl,
                                     &mut script,
                                 );
+                                writer
+                                    .send(Event::UserInputBuffer(
+                                        buffer.get_buffer(),
+                                        buffer.get_pos(),
+                                    ))
+                                    .unwrap();
                             }
-                            writer
-                                .send(Event::UserInputBuffer(
-                                    buffer.get_buffer(),
-                                    buffer.get_pos(),
-                                ))
-                                .unwrap();
                         }
                     }
                     termion::event::Event::Mouse(event) => parse_mouse_event(event, &writer),

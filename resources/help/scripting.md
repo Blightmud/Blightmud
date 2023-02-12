@@ -37,6 +37,7 @@ by typing `/help <module>`.
 - `audio`       Functions to handle audio
 - `history`     Module that handles command history
 - `prompt`      Module for interacting with the prompt and it's content
+- `prompt_mask` Module for masking/decorating input prompt content.
 - `servers`     Server storage and handling
 - `fs`          Filesystem monitoring
 - `ttype`       TTYPE negotiation configuration

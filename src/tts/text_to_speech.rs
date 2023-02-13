@@ -154,7 +154,7 @@ impl TTSController {
             self.flush();
             let input = line.trim();
             let speak = if !input.is_empty() {
-                format!("input: {}", input)
+                format!("input: {input}")
             } else {
                 "input: blank".to_string()
             };
@@ -167,11 +167,11 @@ impl TTSController {
     }
 
     pub fn speak_info(&self, msg: &str) {
-        self.send(TTSEvent::Speak(format!("info: {}", msg), false));
+        self.send(TTSEvent::Speak(format!("info: {msg}"), false));
     }
 
     pub fn speak_error(&self, msg: &str) {
-        self.send(TTSEvent::Speak(format!("error: {}", msg), false));
+        self.send(TTSEvent::Speak(format!("error: {msg}"), false));
     }
 
     pub fn flush(&self) {

@@ -329,7 +329,7 @@ fn check_command_binds(
         ran = match cmd {
             Key::Ctrl(c) => script.check_bindings(&human_key("ctrl-", c)),
             Key::Alt(c) => script.check_bindings(&human_key("alt-", c)),
-            Key::F(n) => script.check_bindings(&format!("f{}", n)),
+            Key::F(n) => script.check_bindings(&format!("f{n}")),
             Key::PageUp => script.check_bindings("pageup") || script.check_bindings("page up"),
             Key::PageDown => {
                 script.check_bindings("pagedown") || script.check_bindings("page down")
@@ -365,7 +365,7 @@ fn check_escape_bindings(
     if let Ok(mut script) = script.lock() {
         if !script.check_bindings(&escape.to_lowercase()) {
             writer
-                .send(Event::Info(format!("Unknown command: {:?}", escape)))
+                .send(Event::Info(format!("Unknown command: {escape:?}")))
                 .unwrap();
         }
     }
@@ -479,7 +479,7 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                             }
                         } else {
                             writer
-                                .send(Event::Info(format!("Unknown command: {:?}", bytes)))
+                                .send(Event::Info(format!("Unknown command: {bytes:?}")))
                                 .unwrap();
                         }
                     }

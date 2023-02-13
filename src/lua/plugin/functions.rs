@@ -23,8 +23,7 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) 
             rbuilder.clone_local(CloneLocal::Auto);
             main_writer
                 .send(Event::Info(format!(
-                    "Downloading plugin: {} from {}",
-                    name, url
+                    "Downloading plugin: {name} from {url}"
                 )))
                 .unwrap();
             if let Err(err) = rbuilder.clone(&url, &dest) {
@@ -36,11 +35,11 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) 
                 }
             } else {
                 main_writer
-                    .send(Event::Info(format!("Downloaded plugin: {}", name)))
+                    .send(Event::Info(format!("Downloaded plugin: {name}")))
                     .unwrap();
                 if with_submodules {
                     main_writer
-                        .send(Event::Info(format!("Getting the submodules for {}.", name)))
+                        .send(Event::Info(format!("Getting the submodules for {name}.")))
                         .unwrap();
                     if let Ok(repo) = Repository::discover(&dest) {
                         match update_submodules(repo, true) {
@@ -49,8 +48,7 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) 
                                 .unwrap(),
                             Err(e) => main_writer
                                 .send(Event::Error(format!(
-                                    "problems updating the submodules for this plugin: {}",
-                                    e
+                                    "problems updating the submodules for this plugin: {e}"
                                 )))
                                 .unwrap(),
                         }
@@ -63,7 +61,7 @@ pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) 
             }
         } else {
             main_writer
-                .send(Event::Error(format!("Invalid plugin repository: {}", url)))
+                .send(Event::Error(format!("Invalid plugin repository: {url}")))
                 .unwrap();
         }
     });
@@ -116,7 +114,7 @@ pub fn update_plugin(main_writer: Sender<Event>, name: &str) {
                         ))
                         .unwrap(),
                     Err(e) => main_writer
-                        .send(Event::Error(format!("Error updating submodules; {}", e)))
+                        .send(Event::Error(format!("Error updating submodules; {e}")))
                         .unwrap(),
                 }
             } else {

@@ -35,9 +35,9 @@ pub fn register_panic_hook(headless: bool) {
         [URL]: https://github.com/blightmud/blightmud/issues"#
             .to_string()
             .lines()
-            .for_each(|line| print!("{}\r\n", line));
+            .for_each(|line| print!("{line}\r\n"));
 
-        print!("        [CRASH_LOG]: {}\r\n", file_path);
+        print!("        [CRASH_LOG]: {file_path}\r\n");
 
         r#"
         If available, please attach the created crash log to the issue.  Then we'll get around to
@@ -48,7 +48,7 @@ pub fn register_panic_hook(headless: bool) {
         "#
         .to_string()
         .lines()
-        .for_each(|line| print!("{}\r\n", line));
+        .for_each(|line| print!("{line}\r\n"));
 
         println!("\x1b[0m");
         std::process::exit(1);

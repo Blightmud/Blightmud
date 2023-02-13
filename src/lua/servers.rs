@@ -23,7 +23,7 @@ impl UserData for Server {
                     "port" => Ok(this.connection.port.to_lua(ctx)?),
                     "tls" => Ok(this.connection.tls.to_lua(ctx)?),
                     "verify_cert" => Ok(this.connection.verify_cert.to_lua(ctx)?),
-                    _ => Err(mlua::Error::external(format!("Invalid index: {}", key))),
+                    _ => Err(mlua::Error::external(format!("Invalid index: {key}"))),
                 }
             },
         );
@@ -59,8 +59,7 @@ impl UserData for Servers {
                 #[allow(clippy::map_entry)]
                 if servers.contains_key(&name) {
                     Err(mlua::Error::external(format!(
-                        "Saved server already exists for {}",
-                        name
+                        "Saved server already exists for {name}"
                     )))
                 } else {
                     let connection = Connection {
@@ -82,8 +81,7 @@ impl UserData for Servers {
                 Ok(())
             } else {
                 Err(mlua::Error::external(format!(
-                    "Saved server does not exist: {}",
-                    name
+                    "Saved server does not exist: {name}"
                 )))
             }
         });
@@ -97,14 +95,12 @@ impl UserData for Servers {
                     })
                 } else {
                     Err(mlua::Error::external(format!(
-                        "Failed to read server: {}",
-                        name
+                        "Failed to read server: {name}"
                     )))
                 }
             } else {
                 Err(mlua::Error::external(format!(
-                    "Saved server does not exist: {}",
-                    name
+                    "Saved server does not exist: {name}"
                 )))
             }
         });

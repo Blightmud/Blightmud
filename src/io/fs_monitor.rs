@@ -46,7 +46,7 @@ impl From<DebounceEventResult> for FSEvent {
     fn from(res: DebounceEventResult) -> Self {
         match res {
             Ok(events) => FSEvent::Update(events.iter().map(|e| e.path.to_owned()).collect()),
-            Err(errors) => FSEvent::Error(format!("{:?}", errors), None),
+            Err(errors) => FSEvent::Error(format!("{errors:#?}"), None),
         }
     }
 }

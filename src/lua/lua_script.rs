@@ -417,7 +417,7 @@ impl LuaScript {
         self.exec_lua(&mut || -> LuaResult<()> {
             let package: mlua::Table = self.state.globals().get("package")?;
             let ppath = package.get::<&str, String>("path")?;
-            package.set("path", format!("{0}/?.lua;{1}", dir, ppath))?;
+            package.set("path", format!("{dir}/?.lua;{ppath}"))?;
             let result = self.state.load(&content).set_name(dir)?.exec();
             package.set("path", ppath)?;
             result

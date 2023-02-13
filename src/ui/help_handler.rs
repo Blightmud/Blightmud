@@ -43,7 +43,7 @@ impl HelpHandler {
     }
 
     fn read_from_file(&self, file: &str) -> Cow<str> {
-        Cow::from(fs::read_to_string(file).unwrap_or_else(|_| panic!("Can't find {}", file)))
+        Cow::from(fs::read_to_string(file).unwrap_or_else(|_| panic!("Can't find {file}")))
     }
 
     /// Load helpfiles from disk in debug mode, from memory otherwise.
@@ -73,7 +73,7 @@ impl HelpHandler {
         let env = mdcat::Environment::for_local_directory(&base_dir).unwrap();
         if mdcat::push_tty(&md_settings(), &env, &mut md_bytes, parser).is_ok() {
             if let Ok(md_string) = String::from_utf8(md_bytes) {
-                Some(Line::from(format!("\n\n{}", md_string)))
+                Some(Line::from(format!("\n\n{md_string}")))
             } else {
                 None
             }
@@ -135,7 +135,7 @@ impl HelpHandler {
         if !matches.is_empty() {
             let mut output = "No such help file exists.\nThe following help files contain a match for your search:".to_string();
             for key in matches {
-                write!(output, "\n- {}", key).unwrap();
+                write!(output, "\n- {key}").unwrap();
             }
             Some(Line::from(output))
         } else {

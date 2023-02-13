@@ -49,7 +49,7 @@ impl Session {
                 Err(err) => {
                     debug!("Failed to connect: {}", err);
                     self.main_writer
-                        .send(Event::Error(format!("{}", err)))
+                        .send(Event::Error(format!("{err}")))
                         .unwrap();
                     false
                 }
@@ -125,7 +125,7 @@ impl Session {
     pub fn start_logging(&self, host: &str) {
         if let Ok(mut logger) = self.logger.lock() {
             self.main_writer
-                .send(Event::Info(format!("Started logging for: {}", host)))
+                .send(Event::Info(format!("Started logging for: {host}")))
                 .unwrap();
             logger.start_logging(host).ok();
         }

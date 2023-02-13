@@ -74,11 +74,11 @@ impl StatusArea {
             String::new()
         };
 
-        if let Some(Some(custom_info)) = self.status_lines.get(line_no as usize) {
+        if let Some(Some(custom_info)) = self.status_lines.get(line_no) {
             info = if info.is_empty() {
                 custom_info.to_string()
             } else {
-                format!("{}━ {} ", info, custom_info)
+                format!("{info}━ {custom_info} ")
             };
         }
 
@@ -139,7 +139,7 @@ impl StatusArea {
             termion::clear::CurrentLine,
         )?;
 
-        write!(screen, "{}", info)?; // Print separator
+        write!(screen, "{info}")?; // Print separator
         Ok(())
     }
 
@@ -212,7 +212,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn print_info(&mut self, output: &str) {
-        let line = &format!("[**] {}", output);
+        let line = &format!("[**] {output}");
         self.print_line(line);
     }
 
@@ -309,7 +309,7 @@ impl UserInterface for SplitScreen {
         let reset_scroll = self.scroll_data.active;
         self.scroll_data.reset(&self.history)?;
         if reset_split {
-            write!(self.screen, "{}", ResetScrollRegion)?;
+            write!(self.screen, "{ResetScrollRegion}")?;
             write!(
                 self.screen,
                 "{}{}",
@@ -419,7 +419,7 @@ impl UserInterface for SplitScreen {
         };
         if let Some(line) = self.history.find_backward(pattern, pos) {
             self.scroll_data.hilite = Some(pattern.clone());
-            self.scroll_to(0.max(line) as usize)?;
+            self.scroll_to(0.max(line))?;
         }
         Ok(())
     }
@@ -440,7 +440,7 @@ impl UserInterface for SplitScreen {
 
     fn set_host(&mut self, host: &str, port: u16) -> Result<()> {
         self.connection = if !host.is_empty() {
-            Some(format!("{}:{}", host, port))
+            Some(format!("{host}:{port}"))
         } else {
             None
         };
@@ -574,18 +574,18 @@ impl SplitScreen {
                 Fg(color::Green),
             )?;
             let host = if let Some(connection) = &self.connection {
-                format!("═ {} ", connection)
+                format!("═ {connection} ")
             } else {
                 "".to_string()
             };
             let mut tags = self
                 .tags
                 .iter()
-                .map(|s| format!("[{}]", s))
+                .map(|s| format!("[{s}]"))
                 .collect::<Vec<String>>();
             tags.sort();
             let tags = tags.join("");
-            let mut output = format!("{}{}", host, tags);
+            let mut output = format!("{host}{tags}");
             if !output.is_empty() {
                 output.push(' ');
             }
@@ -615,7 +615,7 @@ impl SplitScreen {
         if self.scroll_range() < self.output_range() {
             self.scroll_data.split = true;
             let scroll_range = self.scroll_range();
-            write!(self.screen, "{}", ResetScrollRegion)?;
+            write!(self.screen, "{ResetScrollRegion}")?;
             write!(
                 self.screen,
                 "{}{}",

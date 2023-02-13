@@ -1,4 +1,5 @@
 use mlua::{Result as LuaResult, String as LuaString, Table, UserData};
+use std::ops::Not;
 
 use super::{
     backend::Backend,
@@ -21,21 +22,20 @@ impl UserData for PromptMask {
                     return Ok(false);
                 }
                 let prompt_mask = model::PromptMask::from(mask);
-                for (offset, _) in prompt_mask.iter() {
-                    let offset = *offset as usize;
-                    if offset as usize > prompt_data.len() + 1 {
-                        return Ok(false);
-                    }
-                    if !prompt_data.is_char_boundary(offset as usize) {
-                        return Ok(false);
-                    }
+                let valid = prompt_mask
+                    .iter()
+                    .map(|(offset, _)| *offset as usize)
+                    .any(|offset| {
+                        offset > prompt_data.len() + 1 || !prompt_data.is_char_boundary(offset)
+                    })
+                    .not();
+                if valid {
+                    ctx.named_registry_value::<_, Backend>(BACKEND)?
+                        .writer
+                        .send(Event::SetPromptMask(prompt_mask))
+                        .unwrap();
                 }
-                let backend: Backend = ctx.named_registry_value(BACKEND)?;
-                backend
-                    .writer
-                    .send(Event::SetPromptMask(prompt_mask))
-                    .unwrap();
-                Ok(true)
+                Ok(valid)
             },
         );
         methods.add_function("clear", |ctx, ()| -> LuaResult<()> {
@@ -76,11 +76,9 @@ mod test_prompt_mask {
     fn test_set_mask_valid() {
         let prompt_state = "hi hello bye";
         let (lua, reader) = get_lua_state(prompt_state);
-        let mut expected_map = BTreeMap::new();
         // Note: we expect the loaded mask's indexes to have been converted to 0-indexing.
-        expected_map.insert(3, "*".to_string());
-        expected_map.insert(5, "*".to_string());
-        let expected_mask = model::PromptMask::from(expected_map);
+        let expected_mask =
+            model::PromptMask::from(BTreeMap::from([(3, "*".to_string()), (5, "*".to_string())]));
         let test_script = format!(
             r#"
     local good_mask = {{ 
@@ -157,11 +155,10 @@ mod test_prompt_mask {
     #[test]
     fn test_get_mask() {
         let (lua, _reader) = get_lua_state("just some test content");
-
-        let mut mask_map = BTreeMap::new();
-        mask_map.insert(10, "hi".to_string());
-        mask_map.insert(20, "bye".to_string());
-        let mask = model::PromptMask::from(mask_map);
+        let mask = model::PromptMask::from(BTreeMap::from([
+            (10, "hi".to_string()),
+            (20, "bye".to_string()),
+        ]));
 
         lua.set_named_registry_value(PROMPT_MASK_CONTENT, mask.to_table(&lua).unwrap())
             .unwrap();

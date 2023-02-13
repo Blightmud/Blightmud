@@ -1443,11 +1443,10 @@ mod lua_script_tests {
     #[test]
     fn set_prompt_mask_content() {
         let (mut lua, _reader) = get_lua();
-
-        let mut mask_map = BTreeMap::new();
-        mask_map.insert(10, "hi".to_string());
-        mask_map.insert(20, "bye".to_string());
-        let mask = PromptMask::from(mask_map);
+        let mask = PromptMask::from(BTreeMap::from([
+            (10, "hi".to_string()),
+            (20, "bye".to_string()),
+        ]));
 
         lua.set_prompt_mask_content(&mask);
         lua.state.load("mask = prompt_mask.get()").exec().unwrap();

@@ -79,6 +79,10 @@ impl CommandBuffer {
         self.prompt_mask.mask_buffer(&self.buffer)
     }
 
+    pub fn get_mask(&self) -> &PromptMask {
+        &self.prompt_mask
+    }
+
     pub fn get_pos(&self) -> usize {
         self.cursor_pos
     }
@@ -251,9 +255,6 @@ impl CommandBuffer {
 
     pub fn clear_mask(&mut self) {
         self.prompt_mask.clear();
-        if let Ok(mut luascript) = self.script.lock() {
-            luascript.set_prompt_mask_content(&self.prompt_mask)
-        }
     }
 }
 
@@ -435,7 +436,10 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                 match e.unwrap() {
                     termion::event::Event::Key(key) => {
                         if let Ok(mut buffer) = buffer.lock() {
-                            if !check_command_binds(key, &mut buffer, &script, &writer) {
+                            let orig_pos = buffer.get_pos();
+                            let orig_len = buffer.buffer.len();
+                            let bind_ran = check_command_binds(key, &mut buffer, &script, &writer);
+                            if !bind_ran {
                                 parse_key_event(
                                     key,
                                     &mut buffer,
@@ -443,6 +447,16 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                                     &mut tts_ctrl,
                                     &mut script,
                                 );
+                            }
+                            if orig_len == buffer.buffer.len() && orig_pos != buffer.get_pos() {
+                                writer
+                                    .send(Event::UserInputCursor(buffer.get_pos()))
+                                    .unwrap();
+                            } else if !bind_ran || orig_len != buffer.buffer.len() {
+                                if let Ok(mut luascript) = script.lock() {
+                                    luascript.set_prompt_mask_content(&buffer.prompt_mask);
+                                    luascript.set_prompt_content(buffer.get_buffer());
+                                }
                                 writer
                                     .send(Event::UserInputBuffer(
                                         buffer.get_buffer(),

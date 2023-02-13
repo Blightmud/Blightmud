@@ -81,6 +81,7 @@ pub enum Event {
     SetPromptMask(PromptMask),
     ClearPromptMask,
     UserInputBuffer(String, usize),
+    UserInputCursor(usize),
     FSEvent(FSEvent),
     FSMonitor(String),
     LuaError(String),
@@ -295,6 +296,9 @@ impl EventHandler {
             Event::ClearPromptMask => {
                 if let Ok(mut command_buffer) = self.session.command_buffer.lock() {
                     command_buffer.clear_mask();
+                    if let Ok(mut luascript) = self.session.lua_script.lock() {
+                        luascript.set_prompt_mask_content(command_buffer.get_mask());
+                    }
                     let mut prompt_input = self.session.prompt_input.lock().unwrap();
                     *prompt_input = command_buffer.get_masked_buffer();
                     screen.print_prompt_input(&prompt_input, command_buffer.get_pos());
@@ -307,6 +311,11 @@ impl EventHandler {
                 }
                 let mut prompt_input = self.session.prompt_input.lock().unwrap();
                 *prompt_input = input_buffer;
+                screen.print_prompt_input(&prompt_input, pos);
+                Ok(())
+            }
+            Event::UserInputCursor(pos) => {
+                let prompt_input = self.session.prompt_input.lock().unwrap();
                 screen.print_prompt_input(&prompt_input, pos);
                 Ok(())
             }

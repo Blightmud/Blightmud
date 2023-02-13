@@ -31,12 +31,7 @@ impl PromptMask {
     }
 
     pub fn to_table<'a>(&'a self, ctx: &'a Lua) -> LuaResult<LuaTable> {
-        let table = ctx.create_table()?;
-        for (idx, mask) in self.iter() {
-            let adjusted_idx = *idx + 1;
-            table.set(adjusted_idx, (*mask).clone())?;
-        }
-        Ok(table)
+        ctx.create_table_from(self.iter().map(|(idx, mask)| (*idx + 1, (*mask).clone())))
     }
 }
 
@@ -62,14 +57,14 @@ impl From<BTreeMap<i32, String>> for PromptMask {
 
 impl From<LuaTable<'_>> for PromptMask {
     fn from(mask_table: LuaTable) -> Self {
-        let mut mask = BTreeMap::new();
-        for pair in mask_table.pairs::<LuaInt, LuaString>() {
-            let (offset, marker) = pair.unwrap();
-            // Lua is 1-indexed, we handle that here as part of the conversion from LuaTable.
-            // so that the Rust code can use natural 0-indexing.
-            let adjusted_offset = (offset as i32) - 1;
-            mask.insert(adjusted_offset as i32, marker.to_str().unwrap().to_string());
-        }
+        let mask = mask_table
+            .pairs::<LuaInt, LuaString>()
+            .collect::<Result<Vec<(LuaInt, LuaString)>, _>>()
+            .unwrap()
+            .iter()
+            .map(|(idx, mask)| ((*idx as i32) - 1, mask.to_str().unwrap().to_string()))
+            .collect::<BTreeMap<i32, String>>();
+
         PromptMask { mask }
     }
 }
@@ -94,10 +89,8 @@ mod test_prompt_mask {
             )
             .eval()
             .unwrap();
-        let mut expected = BTreeMap::new();
         // We expect the 1-indexed Lua table indices to have been translated to 0-indexing.
-        expected.insert(0, "*".to_string());
-        expected.insert(4, "!".to_string());
+        let expected = BTreeMap::from([(0, "*".to_string()), (4, "!".to_string())]);
 
         let lua_mask = PromptMask::from(simple_mask);
         let expected_mask = PromptMask::from(expected);
@@ -106,25 +99,25 @@ mod test_prompt_mask {
 
     #[test]
     fn test_add_assign() {
-        let mut mask_map_a = BTreeMap::new();
-        mask_map_a.insert(10, "*".to_string());
-        mask_map_a.insert(15, "#".to_string());
-        mask_map_a.insert(20, "!".to_string());
-        let mut mask_a = PromptMask::from(mask_map_a);
+        let mut mask_a = PromptMask::from(BTreeMap::from([
+            (10, "*".to_string()),
+            (15, "#".to_string()),
+            (20, "!".to_string()),
+        ]));
 
-        let mut mask_map_b = BTreeMap::new();
-        mask_map_b.insert(1, "@".to_string());
-        mask_map_b.insert(15, "%".to_string());
-        mask_map_b.insert(25, "&".to_string());
-        let mask_b = PromptMask::from(mask_map_b);
+        let mask_b = PromptMask::from(BTreeMap::from([
+            (1, "@".to_string()),
+            (15, "%".to_string()),
+            (25, "&".to_string()),
+        ]));
 
-        let mut expected_map = BTreeMap::new();
-        expected_map.insert(1, "@".to_string());
-        expected_map.insert(10, "*".to_string());
-        expected_map.insert(15, "%".to_string()); // NB: overwritten by map_b.
-        expected_map.insert(20, "!".to_string());
-        expected_map.insert(25, "&".to_string());
-        let expected = PromptMask::from(expected_map);
+        let expected = PromptMask::from(BTreeMap::from([
+            (1, "@".to_string()),
+            (10, "*".to_string()),
+            (15, "%".to_string()), // NB: overwritten by map_b.
+            (20, "!".to_string()),
+            (25, "&".to_string()),
+        ]));
 
         mask_a += mask_b;
         assert_eq!(mask_a, expected)
@@ -136,10 +129,10 @@ mod test_prompt_mask {
             't', 'h', 'i', 's', ' ', 'i', 's', ' ', 'i', 'm', 'p', 'o', 'r', 't', 'a', 'n', 't',
             ',', ' ', 'o', 'k',
         ];
-        let mut mask_map = BTreeMap::new();
-        mask_map.insert(8, "*".to_string());
-        mask_map.insert(17, "*".to_string());
-        let mask = PromptMask::from(mask_map);
+        let mask = PromptMask::from(BTreeMap::from([
+            (8, "*".to_string()),
+            (17, "*".to_string()),
+        ]));
 
         let res = mask.mask_buffer(&buf);
         assert_eq!(res, "this is *important*, ok")

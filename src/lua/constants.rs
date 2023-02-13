@@ -15,6 +15,7 @@ pub const BACKEND: &str = "__blight_backend_wrapper";
 pub const CONNECTION_ID: &str = "__blight_connection_id";
 pub const COMPLETION_CALLBACK_TABLE: &str = "__completion_callback_table";
 pub const PROMPT_CONTENT: &str = "__prompt_content";
+pub const PROMPT_CURSOR_INDEX: &str = "__prompt_cursor_index";
 pub const PROMPT_MASK_CONTENT: &str = "__prompt_mask_content";
 pub const PROMPT_INPUT_LISTENER_TABLE: &str = "__prompt_listeners";
 pub const FS_LISTENERS: &str = "__fs_listeners";

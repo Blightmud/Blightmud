@@ -248,6 +248,10 @@ impl CommandBuffer {
         self.cursor_pos = self.buffer.len();
     }
 
+    pub fn set_pos(&mut self, pos: usize) {
+        self.cursor_pos = pos.min(self.buffer.len());
+    }
+
     pub fn set_mask(&mut self, mask: PromptMask) -> &PromptMask {
         self.prompt_mask += mask;
         &self.prompt_mask
@@ -280,7 +284,7 @@ fn parse_key_event(
             line.flags.source = Some("user".to_string());
             writer.send(Event::ServerInput(line)).unwrap();
             if let Ok(mut script) = script.lock() {
-                script.set_prompt_content(String::new());
+                script.set_prompt_content(String::new(), 0);
             }
         }
         Key::Char('\t') => buffer.tab_complete(),
@@ -288,7 +292,7 @@ fn parse_key_event(
             tts_ctrl.lock().unwrap().key_press(c);
             buffer.push_key(c);
             if let Ok(mut script) = script.lock() {
-                script.set_prompt_content(buffer.get_buffer());
+                script.set_prompt_content(buffer.get_buffer(), buffer.get_pos());
             }
         }
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
@@ -310,7 +314,7 @@ fn parse_key_event(
                 }
             }
             if let Ok(mut script) = script.lock() {
-                script.set_prompt_content(buffer.get_buffer());
+                script.set_prompt_content(buffer.get_buffer(), buffer.get_pos());
             }
         }
         Key::Delete => buffer.delete_right(),
@@ -455,7 +459,8 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                             } else if !bind_ran || orig_len != buffer.buffer.len() {
                                 if let Ok(mut luascript) = script.lock() {
                                     luascript.set_prompt_mask_content(&buffer.prompt_mask);
-                                    luascript.set_prompt_content(buffer.get_buffer());
+                                    luascript
+                                        .set_prompt_content(buffer.get_buffer(), buffer.get_pos());
                                 }
                                 writer
                                     .send(Event::UserInputBuffer(
@@ -686,5 +691,23 @@ mod command_test {
         assert_eq!(buffer.completion.options, vec!["fender🎸".to_string()]);
         assert_eq!(buffer.buffer, vec!['f', 'e', 'n', 'd', 'e', 'r', '🎸']);
         assert_eq!(buffer.cursor_pos, 7);
+    }
+
+    #[test]
+    fn test_pos_cursor() {
+        let mut buffer = get_command().0;
+        let input = "Gibson Les Paul";
+        push_string(&mut buffer, input);
+        assert_eq!(buffer.get_pos(), input.len());
+        buffer.set_pos(1000);
+        assert_eq!(buffer.get_pos(), input.len());
+        buffer.set_pos(0);
+        assert_eq!(buffer.get_pos(), 0);
+        buffer.set_pos(2);
+        assert_eq!(buffer.get_pos(), 2);
+        buffer.clear();
+        assert_eq!(buffer.get_pos(), 0);
+        push_string(&mut buffer, input);
+        assert_eq!(buffer.get_pos(), input.len());
     }
 }

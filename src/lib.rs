@@ -332,6 +332,18 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                         .unwrap();
                 }
             }
+            Event::SetPromptCursorPos(pos) => {
+                if let Ok(mut buffer) = session.command_buffer.lock() {
+                    buffer.set_pos(pos);
+                    session
+                        .main_writer
+                        .send(Event::UserInputBuffer(
+                            buffer.get_buffer(),
+                            buffer.get_pos(),
+                        ))
+                        .unwrap();
+                }
+            }
             Event::ServerSend(_)
             | Event::ServerInput(_)
             | Event::Connect(_)

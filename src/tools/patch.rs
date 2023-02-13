@@ -135,8 +135,8 @@ pub fn migrate_v2_settings_and_servers(main_writer: Sender<Event>) {
         } else {
             TTSSettings::relative_path()
                 .parent()
-                .map(|dir| fs::create_dir_all(&dir));
-            fs::rename(&*V2_TTS_SETTINGS_PATH, &TTSSettings::relative_path()).unwrap();
+                .map(fs::create_dir_all);
+            fs::rename(&*V2_TTS_SETTINGS_PATH, TTSSettings::relative_path()).unwrap();
             send_info!(
                 "Migrated tts_settings.ron from {:?} to {:?}",
                 *V2_TTS_SETTINGS_PATH,

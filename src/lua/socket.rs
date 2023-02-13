@@ -24,10 +24,7 @@ impl UserData for SocketLib {
                 } else {
                     backend
                         .writer
-                        .send(Event::Error(format!(
-                            "Unable to connect to {}:{}",
-                            host, port
-                        )))
+                        .send(Event::Error(format!("Unable to connect to {host}:{port}")))
                         .unwrap();
                     Ok(None)
                 }

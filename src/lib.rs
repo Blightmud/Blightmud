@@ -94,8 +94,7 @@ lazy_static! {
 }
 
 fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()> {
-    let mut signals =
-        signal_hook::iterator::Signals::new(&[signal_hook::consts::SIGWINCH]).unwrap();
+    let mut signals = signal_hook::iterator::Signals::new([signal_hook::consts::SIGWINCH]).unwrap();
     let main_thread_writer = session.main_writer;
     thread::Builder::new()
         .name("signal-thread".to_string())
@@ -169,7 +168,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
     };
 
     if let Err(e) = start_logging(log_level) {
-        panic!("[!!] Logging failed to start: {:?}", e);
+        panic!("[!!] Logging failed to start: {e:?}");
     }
 
     info!("Starting application");
@@ -454,9 +453,9 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 info!("Loading script: {}", path);
                 let mut lua = session.lua_script.lock().unwrap();
                 if let Err(err) = lua.load_script(&path) {
-                    screen.print_error(&format!("Failed to load file: {}", err));
+                    screen.print_error(&format!("Failed to load file: {err}"));
                 } else {
-                    screen.print_info(&format!("Loaded script: {}", path));
+                    screen.print_info(&format!("Loaded script: {path}"));
                     lua.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });
@@ -465,7 +464,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::EvalScript(script) => {
                 let mut lua = session.lua_script.lock().unwrap();
                 if let Err(err) = lua.eval(&script) {
-                    screen.print_error(&format!("Script eval failed: {}", err));
+                    screen.print_error(&format!("Script eval failed: {err}"));
                 } else {
                     screen.print_info("Evaluated script");
                     lua.get_output_lines().iter().for_each(|l| {

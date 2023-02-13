@@ -4,10 +4,7 @@ use blightmud::{register_panic_hook, RuntimeConfig, PROJECT_NAME, VERSION};
 use getopts::Options;
 
 fn print_help(program: &str, opts: Options) {
-    let brief = format!(
-        "USAGE: {} [options]\n\n{} {}",
-        program, PROJECT_NAME, VERSION
-    );
+    let brief = format!("USAGE: {program} [options]\n\n{PROJECT_NAME} {VERSION}");
     print!("{}", opts.usage(&brief));
 }
 
@@ -61,7 +58,7 @@ fn main() {
 
     let matches = opts.parse(&args[1..]);
     if let Err(f) = matches {
-        eprintln!("{}", f);
+        eprintln!("{f}");
         return;
     }
     let matches = matches.unwrap();
@@ -77,7 +74,7 @@ fn main() {
     let rt = RuntimeConfig::from(matches);
 
     if let Some(connect) = &rt.connect {
-        if !connect.contains(&":") {
+        if !connect.contains(':') {
             print_help(program, opts);
             return;
         }
@@ -85,7 +82,7 @@ fn main() {
 
     register_panic_hook(rt.headless_mode);
     if let Err(error) = blightmud::start(rt) {
-        panic!("Panic: {}", error);
+        panic!("Panic: {error}");
     }
 }
 

@@ -56,14 +56,12 @@ fn run(writer: Sender<Event>, current: &str, fetcher: &dyn FetchVersionInformati
             if diff_versions(current, &new) {
                 writer
                     .send(Event::Info(format!(
-                        "There is a newer version of Blightmud available. (current: {}, new: {})",
-                        current, new
+                        "There is a newer version of Blightmud available. (current: {current}, new: {new})"
                     )))
                     .unwrap();
                 writer
                     .send(Event::Info(format!(
-                        "Visit {} to upgrade to latest version",
-                        url
+                        "Visit {url} to upgrade to latest version"
                     )))
                     .unwrap();
             }
@@ -76,7 +74,7 @@ pub fn check_latest_version(writer: Sender<Event>) {
         .name("check-version-thread".to_string())
         .spawn(move || {
             let fetcher = Fetcher::new();
-            let version = format!("v{}", VERSION);
+            let version = format!("v{VERSION}");
             run(writer, &version, &fetcher);
         })
         .ok();

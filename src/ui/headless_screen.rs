@@ -12,26 +12,26 @@ impl UserInterface for HeadlessScreen {
     }
 
     fn print_error(&mut self, output: &str) {
-        println!("[!!] {}", output);
+        println!("[!!] {output}");
     }
 
     fn print_info(&mut self, output: &str) {
-        println!("[**] {}", output);
+        println!("[**] {output}");
     }
 
     fn print_output(&mut self, line: &crate::model::Line) {
-        println!("[<<] {}", line);
+        println!("[<<] {line}");
     }
 
     fn print_prompt(&mut self, prompt: &crate::model::Line) {
-        println!("[%%] {}", prompt);
+        println!("[%%] {prompt}");
     }
 
     fn print_prompt_input(&mut self, _input: &str, _pos: usize) {}
 
     fn print_send(&mut self, send: &crate::model::Line) {
         if let Some(print_line) = send.print_line() {
-            println!("[>>] {}", print_line);
+            println!("[>>] {print_line}");
         }
     }
 

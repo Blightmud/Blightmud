@@ -84,10 +84,7 @@ pub fn spawn_connect_thread(
             if !session.connect(&host, port, tls, verify_cert) {
                 session
                     .main_writer
-                    .send(Event::Error(format!(
-                        "Failed to connect to {}:{}",
-                        host, port
-                    )))
+                    .send(Event::Error(format!("Failed to connect to {host}:{port}")))
                     .unwrap();
             }
         })
@@ -139,7 +136,7 @@ pub fn spawn_transmit_thread(
             while let Ok(Some(data)) = transmit_read.recv() {
                 if let Err(info) = connection.write_all(&data) {
                     session.disconnect();
-                    let error = format!("Failed to write to socket: {}", info).to_string();
+                    let error = format!("Failed to write to socket: {info}").to_string();
                     session.send_event(Event::Error(error));
                     session.send_event(Event::Disconnect);
                 }

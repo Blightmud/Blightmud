@@ -233,7 +233,7 @@ impl EventHandler {
 
     fn log_str(&self, prefix: &str, line: &str) -> Result {
         if let Ok(mut logger) = self.session.logger.lock() {
-            logger.log_str(&format!("{}{}", prefix, line))?;
+            logger.log_str(&format!("{prefix}{line}"))?;
         }
         Ok(())
     }

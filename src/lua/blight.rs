@@ -84,7 +84,7 @@ impl UserData for Blight {
             let event: UiEvent = UiEvent::from(cmd.as_str());
             if let UiEvent::Unknown(cmd) = event {
                 this.main_writer
-                    .send(Event::Error(format!("Invalid ui command: {}", cmd)))
+                    .send(Event::Error(format!("Invalid ui command: {cmd}")))
                     .unwrap();
             } else {
                 this.ui_events.push(event);

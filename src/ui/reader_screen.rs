@@ -174,11 +174,11 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_error(&mut self, output: &str) {
-        self.print_line(&Line::from(format!("ERROR: {}", output)));
+        self.print_line(&Line::from(format!("ERROR: {output}")));
     }
 
     fn print_info(&mut self, output: &str) {
-        self.print_line(&Line::from(format!("INFO: {}", output)));
+        self.print_line(&Line::from(format!("INFO: {output}")));
     }
 
     fn print_output(&mut self, line: &Line) {
@@ -362,7 +362,7 @@ impl UserInterface for ReaderScreen {
         };
         if let Some(line) = self.history.find_backward(pattern, pos) {
             self.scroll_data.hilite = Some(pattern.clone());
-            self.scroll_to(0.max(line) as usize)?;
+            self.scroll_to(0.max(line))?;
         }
         Ok(())
     }

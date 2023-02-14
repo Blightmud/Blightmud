@@ -25,9 +25,15 @@ impl UserData for Prompt {
             ctx.named_registry_value(PROMPT_CONTENT)
         });
         methods.add_function("get_cursor_pos", |ctx, ()| -> mlua::Result<usize> {
-            ctx.named_registry_value(PROMPT_CURSOR_INDEX)
+            let result = ctx.named_registry_value(PROMPT_CURSOR_INDEX);
+            if let Ok(pos) = result {
+                Ok(pos + 1)
+            } else {
+                result
+            }
         });
         methods.add_function("set_cursor_pos", |ctx, pos: usize| {
+            let pos = if pos > 0 { pos - 1 } else { pos };
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend.writer.send(Event::SetPromptCursorPos(pos)).unwrap();
             Ok(())

@@ -335,12 +335,12 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::SetPromptCursorPos(pos) => {
                 if let Ok(mut buffer) = session.command_buffer.lock() {
                     buffer.set_pos(pos);
+                    if let Ok(mut script) = session.lua_script.lock() {
+                        script.set_prompt_content(buffer.get_buffer(), buffer.get_pos());
+                    }
                     session
                         .main_writer
-                        .send(Event::UserInputBuffer(
-                            buffer.get_buffer(),
-                            buffer.get_pos(),
-                        ))
+                        .send(Event::UserInputCursor(buffer.get_pos()))
                         .unwrap();
                 }
             }

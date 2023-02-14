@@ -78,6 +78,7 @@ pub enum Event {
     TimedEvent(u32),
     TimerTick(u128),
     SetPromptInput(String),
+    SetPromptCursorPos(usize),
     SetPromptMask(PromptMask),
     ClearPromptMask,
     UserInputBuffer(String, usize),

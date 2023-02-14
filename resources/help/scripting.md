@@ -39,6 +39,7 @@ by typing `/help <module>`.
 - `prompt`      Module for interacting with the prompt and it's content
 - `prompt_mask` Module for masking/decorating input prompt content.
 - `servers`     Server storage and handling
+- `spellcheck`  Functions for low-level spellcheck operations.
 - `fs`          Filesystem monitoring
 - `ttype`       TTYPE negotiation configuration
 - `plugin`      Plugin handling

@@ -23,6 +23,9 @@ impl PromptMask {
         let mut offset = 0;
         for (idx, mask) in self.iter() {
             let adjusted_idx = offset + *idx as usize;
+            if adjusted_idx > masked_buf.len() {
+                return masked_buf.iter().collect();
+            }
             masked_buf.splice(adjusted_idx..adjusted_idx, mask.chars());
             offset += mask.len();
         }
@@ -135,6 +138,13 @@ mod test_prompt_mask {
         ]));
 
         let res = mask.mask_buffer(&buf);
-        assert_eq!(res, "this is *important*, ok")
+        assert_eq!(res, "this is *important*, ok");
+
+        let invalid_mask = PromptMask::from(BTreeMap::from([
+            (8, "*".to_string()),
+            (800, "!".to_string()),
+        ]));
+        let res = invalid_mask.mask_buffer(&buf);
+        assert_eq!(res, "this is *important, ok");
     }
 }

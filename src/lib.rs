@@ -315,6 +315,8 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     | Event::UserInputBuffer(..)
                     | Event::TimedEvent(..)
                     | Event::TimerTick(..)
+                    | Event::SetPromptMask(..)
+                    | Event::ClearPromptMask
             );
         }
 

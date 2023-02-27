@@ -26,10 +26,14 @@ me to the word **blight** and here we are.
 
 - Completely terminal based (mac and linux)
 - Telnet:
-  - TLS connections
-  - GMCP support
-  - MSDP support
-  - MCCP2 support (compress2)
+  - TLS
+  - GMCP
+  - MSDP
+  - MCCP2 (compress2)
+  - NAWS
+  - TTYPE
+  - TELNET CHARSET
+  - MSSP
 - Lua scripting:
   - Output and sending
   - Aliases

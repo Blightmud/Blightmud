@@ -43,7 +43,7 @@ native-tls = "0.2.11"
 tts = { version = "0.25.0", optional = true }
 serde_json = "1.0.93"
 git2 = "0.16.1"
-rodio = "0.17.0"
+rodio = "0.17.1"
 notify-debouncer-mini = "0.2.1"
 hunspell-rs = "0.4.0"
 hunspell-sys = { version = "0.3.0", features = ['bundled'] }

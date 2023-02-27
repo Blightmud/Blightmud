@@ -44,6 +44,7 @@ me to the word **blight** and here we are.
   - Mouse scrolling
   - Plugins
   - Sockets (TCP connecting and sending only)
+  - Spellchecking
 - Low resource and fast
 - In client help and manuals
 - Native Text-To-Speech functionality (optional compile)

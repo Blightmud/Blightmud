@@ -625,7 +625,7 @@ impl SplitScreen {
             write!(
                 self.screen,
                 "{}{}{:━<4$}{}",
-                cursor::Goto(1, scroll_range + 2),
+                cursor::Goto(1, scroll_range + self.output_start_line),
                 color::Fg(color::Green),
                 "━ (scroll) ",
                 color::Fg(color::Reset),

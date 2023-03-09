@@ -107,6 +107,7 @@ impl UserData for Blight {
         });
         methods.add_function("status_height", |ctx, requested: Option<u16>| {
             let height: u16 = if let Some(height) = requested {
+                let height = height.clamp(0, 5);
                 let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
                 let this = this_aux.borrow::<Blight>()?;
                 this.main_writer

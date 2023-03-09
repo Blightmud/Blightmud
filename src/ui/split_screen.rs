@@ -14,6 +14,9 @@ use termion::cursor;
 use super::UserInterface;
 
 const SCROLL_LIVE_BUFFER_SIZE: u16 = 10;
+const PROMPT_HEIGHT: u16 = 1;
+const STATUS_HEIGHT_MIN: u16 = 0;
+const STATUS_HEIGHT_MAX: u16 = 5;
 
 struct StatusArea {
     start_line: u16,
@@ -24,11 +27,11 @@ struct StatusArea {
 
 impl StatusArea {
     fn new(height: u16, start_line: u16, width: u16) -> Self {
-        let height = height.clamp(1, 5);
+        let height = Self::clamp_height(height);
         Self {
             start_line,
             width,
-            status_lines: vec![None; height as usize],
+            status_lines: vec![None; height],
             scroll_marker: false,
         }
     }
@@ -37,9 +40,17 @@ impl StatusArea {
         self.scroll_marker = value;
     }
 
+    fn clamp_height(height: u16) -> usize {
+        height.clamp(STATUS_HEIGHT_MIN, STATUS_HEIGHT_MAX) as usize
+    }
+
+    fn clamp_index(&self, index: usize) -> usize {
+        index.clamp(0, self.status_lines.len() - 1)
+    }
+
     fn set_height(&mut self, height: u16, start_line: u16) {
         self.clear();
-        self.status_lines.resize(height.clamp(1, 5) as usize, None);
+        self.status_lines.resize(Self::clamp_height(height), None);
         self.update_pos(start_line);
     }
 
@@ -52,7 +63,7 @@ impl StatusArea {
     }
 
     fn set_status_line(&mut self, index: usize, line: String) {
-        let index = index.clamp(0, self.status_lines.len() - 1);
+        let index = self.clamp_index(index);
         if !line.trim().is_empty() {
             self.status_lines[index] = Some(line);
         } else {
@@ -65,7 +76,7 @@ impl StatusArea {
     }
 
     fn redraw_line(&mut self, screen: &mut impl Write, line_no: usize) -> Result<()> {
-        let line_no = line_no.clamp(0, self.status_lines.len() - 1);
+        let line_no = self.clamp_index(line_no);
         let index = self.start_line as usize + line_no;
 
         let mut info = if self.scroll_marker && line_no == 0 {
@@ -458,9 +469,9 @@ impl UserInterface for SplitScreen {
     }
 
     fn set_status_area_height(&mut self, height: u16) -> Result<()> {
-        let height = height.clamp(1, 5);
+        let height = StatusArea::clamp_height(height) as u16;
         self.status_area
-            .set_height(height, self.height - height - 1);
+            .set_height(height, self.height - height - PROMPT_HEIGHT);
         self.setup()?;
         let input_str = self.prompt_input.as_str().to_owned();
         self.print_prompt_input(&input_str, self.prompt_input_pos);

@@ -68,8 +68,8 @@ me to the word **blight** and here we are.
 - Run `cargo run` to run
 
 Dependencies include, openssl, alsa-libs and pkg-config
-- Ubuntu    `apt install pkg-config libopenssl-dev libasound2-dev`
-- Arch      `pacman -S pkgconf alsa-lib openssl`
+- Ubuntu    `apt install pkg-config libopenssl-dev libasound2-dev libclang-dev`
+- Arch      `pacman -S pkgconf alsa-lib openssl clang`
 
 ### Compile with text-to-speech
 

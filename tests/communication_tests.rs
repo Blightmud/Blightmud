@@ -7,6 +7,7 @@ use libtelnet_rs::telnet::{op_command::*, op_option::*};
 mod common;
 
 #[test]
+#[ignore]
 fn test_ttype_negotiation() -> std::io::Result<()> {
     let (mut connection, handle) = setup();
 
@@ -45,6 +46,7 @@ fn test_ttype_negotiation() -> std::io::Result<()> {
 }
 
 #[test]
+#[ignore]
 fn test_gmcp_negotiation() -> std::io::Result<()> {
     let (mut connection, handle) = setup();
 

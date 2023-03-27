@@ -49,7 +49,7 @@ hunspell-rs = "0.4.0"
 hunspell-sys = { version = "0.3.0", features = ['bundled'] }
 
 [dev-dependencies]
-mockall = "0.11.3"
+mockall = "0.11.4"
 mockall_double = "0.3.0"
 
 [package.metadata.rpm]

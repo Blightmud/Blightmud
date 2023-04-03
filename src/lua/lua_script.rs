@@ -19,6 +19,7 @@ use anyhow::Result;
 use log::{debug, info};
 use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, Value};
 use std::io::prelude::*;
+use std::path::Path;
 use std::{fs::File, sync::mpsc::Sender};
 
 pub struct LuaScriptBuilder {
@@ -71,6 +72,34 @@ pub struct LuaScript {
     writer: Sender<Event>,
     tts_enabled: bool,
     reader_mode: bool,
+}
+
+/// load the provided filenames in the lua resource directory as named chunks that get called,
+/// with the resulting value stored in the globals under the file name with the .lua suffix
+/// removed.
+macro_rules! lua_global_resources {
+    ($state: ident, $globals: ident, $($path: expr),+ $(,)?) => {{
+        $(
+            let name = Path::new($path).file_name().unwrap().to_string_lossy();
+            let name = name.strip_suffix(".lua");
+            let value = $state
+                .load(include_str!(concat!("../../resources/lua/", $path)))
+                .set_name(concat!("../../resources/lua/", $path))?
+                .call::<_, mlua::Value>(())?;
+            $globals.set(name, value)?;
+        )+
+    }};
+}
+
+/// load the provided filenames in the lua resource directory as named chunks that get executed.
+macro_rules! lua_resources {
+    ($state: ident, $($path: expr),+ $(,)?) => {{
+        $(
+            $state.load(include_str!(concat!("../../resources/lua/", $path)))
+                .set_name($path)?
+                .exec()?;
+        )+
+    }};
 }
 
 fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> Lua {
@@ -135,75 +164,32 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         globals.set("prompt_mask", PromptMask {})?;
         globals.set(spellcheck::LUA_GLOBAL_NAME, Spellchecker::new())?;
 
-        let lua_json = state
-            .load(include_str!("../../resources/lua/json.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("json", lua_json)?;
+        lua_global_resources!(
+            state,
+            globals,
+            "json.lua",
+            "trigger.lua",
+            "alias.lua",
+            "search.lua",
+            "history.lua",
+            "gmcp.lua",
+            "msdp.lua",
+            "tasks.lua",
+            "ttype.lua",
+            "mssp.lua"
+        );
 
-        let lua_triggers = state
-            .load(include_str!("../../resources/lua/trigger.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("trigger", lua_triggers)?;
-
-        let lua_aliases = state
-            .load(include_str!("../../resources/lua/alias.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("alias", lua_aliases)?;
-
-        let lua_search = state
-            .load(include_str!("../../resources/lua/search.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("search", lua_search)?;
-        let history = state
-            .load(include_str!("../../resources/lua/history.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("history", history)?;
-
-        state
-            .load(include_str!("../../resources/lua/defaults.lua"))
-            .exec()?;
-        state
-            .load(include_str!("../../resources/lua/functions.lua"))
-            .exec()?;
-        state
-            .load(include_str!("../../resources/lua/bindings.lua"))
-            .exec()?;
-        state
-            .load(include_str!("../../resources/lua/lua_command.lua"))
-            .exec()?;
-        state
-            .load(include_str!("../../resources/lua/macros.lua"))
-            .exec()?;
-        state
-            .load(include_str!("../../resources/lua/plugins.lua"))
-            .exec()?;
-        state
-            .load(include_str!("../../resources/lua/telnet_charset.lua"))
-            .exec()?;
-        state
-            .load(include_str!("../../resources/lua/naws.lua"))
-            .exec()?;
-
-        let lua_gmcp = state
-            .load(include_str!("../../resources/lua/gmcp.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("gmcp", lua_gmcp)?;
-        let lua_msdp = state
-            .load(include_str!("../../resources/lua/msdp.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("msdp", lua_msdp)?;
-        let lua_tasks = state
-            .load(include_str!("../../resources/lua/tasks.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("tasks", lua_tasks)?;
-        let lua_ttype = state
-            .load(include_str!("../../resources/lua/ttype.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("ttype", lua_ttype)?;
-        let lua_mssp = state
-            .load(include_str!("../../resources/lua/mssp.lua"))
-            .call::<_, mlua::Value>(())?;
-        globals.set("mssp", lua_mssp)?;
+        lua_resources!(
+            state,
+            "defaults.lua",
+            "functions.lua",
+            "bindings.lua",
+            "lua_command.lua",
+            "macros.lua",
+            "plugins.lua",
+            "telnet_charset.lua",
+            "naws.lua",
+        );
 
         {
             let blight_aud: AnyUserData = globals.get("blight")?;
@@ -211,9 +197,7 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
             blight.core_mode(false);
         }
 
-        state
-            .load(include_str!("../../resources/lua/on_state_created.lua"))
-            .exec()?;
+        lua_resources!(state, "../../resources/lua/on_state_created.lua");
 
         Ok(())
     })();
@@ -424,7 +408,7 @@ impl LuaScript {
             let package: mlua::Table = self.state.globals().get("package")?;
             let ppath = package.get::<&str, String>("path")?;
             package.set("path", format!("{dir}/?.lua;{ppath}"))?;
-            let result = self.state.load(&content).set_name(dir)?.exec();
+            let result = self.state.load(&content).set_name(path)?.exec();
             package.set("path", ppath)?;
             result
         });

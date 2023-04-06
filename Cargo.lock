@@ -3454,9 +3454,9 @@ checksum = "0609f771ad9c6155384897e1df4d948e692667cc0588548b68eb44d052b27633"
 
 [[package]]
 name = "tts"
-version = "0.25.3"
+version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b29439ee34cce1b03d94c3714757ea7a0fd022501464fa8ace6cf01eb93e01a"
+checksum = "982758ab9ff0387c6bc253c677b0a8e73a30eb84c16c8900385173f0083d22d5"
 dependencies = [
  "cocoa-foundation",
  "core-foundation",

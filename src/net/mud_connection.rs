@@ -1,7 +1,6 @@
 use anyhow::Result;
 use lazy_static::lazy_static;
 use log::debug;
-use native_tls::{TlsConnector, TlsStream};
 use std::{
     io::Read,
     io::Write,
@@ -11,6 +10,7 @@ use std::{
 };
 
 use crate::net::open_tcp_stream;
+use crate::net::tls::{CertificateValidation, TlsStream};
 
 use super::RwStream;
 
@@ -18,11 +18,11 @@ use super::RwStream;
 pub struct MudConnection {
     pub id: u16,
     stream: Option<RwStream<TcpStream>>,
-    tls_stream: Option<RwStream<TlsStream<TcpStream>>>,
+    tls_stream: Option<TlsStream>,
     pub host: String,
     pub port: u16,
     pub tls: bool,
-    pub verify_cert: bool,
+    pub tls_validation: CertificateValidation,
 }
 
 lazy_static! {
@@ -42,7 +42,7 @@ impl MudConnection {
             host: "0.0.0.0".to_string(),
             port: 4000,
             tls: false,
-            verify_cert: false,
+            tls_validation: CertificateValidation::DangerousDisabled,
         }
     }
 
@@ -62,23 +62,26 @@ impl MudConnection {
         }
     }
 
-    pub fn connect(&mut self, host: &str, port: u16, tls: bool, verify_cert: bool) -> Result<()> {
+    pub fn connect(
+        &mut self,
+        host: &str,
+        port: u16,
+        tls: bool,
+        tls_validation: CertificateValidation,
+    ) -> Result<()> {
         self.host = host.to_string();
         self.port = port;
         self.tls = tls;
-        self.verify_cert = verify_cert;
+        self.tls_validation = tls_validation;
 
         debug!(
             "Connecting to {}:{} tls: {} verify: {}",
-            host, port, tls, verify_cert
+            host, port, tls, tls_validation
         );
 
         let stream = open_tcp_stream(&self.host, self.port)?;
         if tls {
-            let connector = TlsConnector::builder()
-                .danger_accept_invalid_certs(!verify_cert)
-                .build()?;
-            self.tls_stream = Some(RwStream::new(connector.connect(host, stream)?));
+            self.tls_stream = Some(TlsStream::tls_init(stream, host, tls_validation)?);
         } else {
             self.stream = Some(RwStream::new(stream));
         }
@@ -94,8 +97,8 @@ impl MudConnection {
             self.stream = None;
         } else if let Some(stream) = &self.tls_stream {
             debug!("Disconnecting from {}:{}", self.host, self.port);
-            stream.inner_mut().shutdown()?;
-            stream.inner_mut().get_mut().shutdown(Shutdown::Both)?;
+            stream.inner_mut().conn.send_close_notify();
+            stream.inner().sock.shutdown(Shutdown::Both)?;
             debug!("Disconnected from {}:{}", self.host, self.port);
             self.tls_stream = None;
         }

@@ -16,6 +16,7 @@ use crate::{
     Event,
 };
 
+use crate::net::CertificateValidation;
 #[cfg(test)]
 use mockall::automock;
 
@@ -37,11 +38,17 @@ pub struct Session {
 
 #[cfg_attr(test, automock)]
 impl Session {
-    pub fn connect(&mut self, host: &str, port: u16, tls: bool, verify_cert: bool) -> bool {
+    pub fn connect(
+        &mut self,
+        host: &str,
+        port: u16,
+        tls: bool,
+        tls_validation: CertificateValidation,
+    ) -> bool {
         let mut connected = false;
         let mut conn_id = 0u16;
         if let Ok(mut connection) = self.connection.lock() {
-            connected = match connection.connect(host, port, tls, verify_cert) {
+            connected = match connection.connect(host, port, tls, tls_validation) {
                 Ok(_) => {
                     conn_id = connection.id;
                     true
@@ -119,7 +126,10 @@ impl Session {
 
     pub fn verify_cert(&self) -> bool {
         let connection = self.connection.lock().unwrap();
-        connection.verify_cert
+        match connection.tls_validation {
+            CertificateValidation::Enabled => true,
+            CertificateValidation::DangerousDisabled => false,
+        }
     }
 
     pub fn start_logging(&self, host: &str) {

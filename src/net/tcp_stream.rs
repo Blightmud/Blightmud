@@ -81,7 +81,7 @@ pub fn spawn_connect_thread(
                 tls,
                 verify_cert,
             } = connection;
-            if !session.connect(&host, port, tls, verify_cert) {
+            if !session.connect(&host, port, tls, verify_cert.into()) {
                 session
                     .main_writer
                     .send(Event::Error(format!("Failed to connect to {host}:{port}")))

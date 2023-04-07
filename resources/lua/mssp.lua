@@ -80,7 +80,6 @@ end)
 core.subneg_recv(function (proto, recv)
     if proto == MSSP_PROTO then
         mssp_values = decode(recv)
-        Info("Received data (" .. #mssp_values .. ")")
         store.session_write(MSSP_CACHE_KEY, json.encode(mssp_values))
     end
 end)

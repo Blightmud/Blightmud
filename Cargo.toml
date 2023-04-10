@@ -37,7 +37,6 @@ anyhow = "1.0.70"
 lazy_static = "1.4.0"
 rs-complete = "1.3.1"
 getopts = "0.2.21"
-curl = "0.4.44"
 human-panic = "1.1.1"
 tts = { version = "0.25.5", optional = true }
 serde_json = "1.0.95"
@@ -46,8 +45,9 @@ rodio = "0.17.0"
 notify-debouncer-mini = "0.2.1"
 hunspell-rs = "0.4.0"
 hunspell-sys = { version = "0.3.0", features = ['bundled'] }
-rustls = { version = "0.21.0", features = ['dangerous_configuration']}
+rustls = { version = "0.21.0", features = ['dangerous_configuration'] }
 webpki-roots = { version = "0.23.0" }
+reqwest = { version = "0.11.16", default-features = false, features = ['rustls-tls', 'json'] }
 
 [dev-dependencies]
 mockall = "0.11.4"

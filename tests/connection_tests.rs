@@ -4,7 +4,6 @@ use common::{join_blightmud, Server};
 mod common;
 
 #[test]
-#[ignore]
 fn test_connect() {
     let mut server = Server::bind(0);
 
@@ -25,7 +24,6 @@ fn test_connect() {
 }
 
 #[test]
-#[ignore]
 fn test_connect_world() {
     let mut server = Server::bind(0);
 
@@ -53,7 +51,6 @@ fn test_connect_world() {
 }
 
 #[test]
-#[ignore]
 fn test_reconnect_world() {
     let server = Server::bind(0);
 
@@ -66,7 +63,6 @@ fn test_reconnect_world() {
 }
 
 #[test]
-#[ignore]
 fn test_is_connected() {
     let server = Server::bind(0);
 

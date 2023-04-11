@@ -23,7 +23,8 @@ jobs:
         run: cargo install cargo-deb || true
       - name: Install cargo-rpm
         run: cargo install cargo-rpm || true
-      - name: Package DEB run: cargo deb
+      - name: Package DEB
+        run: cargo deb
       - name: Set .deb path
         id: deb_path
         run: |

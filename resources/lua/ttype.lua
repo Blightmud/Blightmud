@@ -35,7 +35,7 @@ local reader_mode = false
 local function init()
     index = 1
     if auto_reader_mode then
-        if tts.is_enabled() or blight.is_reader_mode() then
+        if (tts.is_available() and tts.is_enabled()) or blight.is_reader_mode() then
             mtts = mtts | mod.MTTS_SCREEN_READER
         else
             mtts = mtts & ~mod.MTTS_SCREEN_READER

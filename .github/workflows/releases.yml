@@ -12,7 +12,7 @@ env:
 jobs:
   package_ubuntu_22_04:
     name: Build deb-22.04 & RPM
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
@@ -61,7 +61,7 @@ jobs:
           name: blightmud-rpm
           path: ${{ steps.rpm_path.outputs.rpm_path }}
 
-  build_macos:
+  build_macos_latest:
     name: Build for macOS
     runs-on: macos-latest
     steps:
@@ -92,3 +92,35 @@ jobs:
         with:
           name: blightmud-macos
           path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
+
+  build_macos_11:
+    name: Build for macOS
+    runs-on: macos-11
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build release
+        run: cargo build --release --locked
+      - name: Get current version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+      - name: Package Binary
+        run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos-11.zip blightmud
+      - name: Create/Update release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          draft: true
+          omitBody: true
+          artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-11.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: blightmud-macos-11
+          path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-11.zip

@@ -1,11 +1,10 @@
-name: Dependabot auto-merge
+name: Dependabot PR automation
 on:
   pull_request:
     branches:
       - dev
 
 permissions:
-  contents: write
   pull-requests: write
 
 jobs:
@@ -20,12 +19,6 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
       - name: Add a dependency label
         run: gh pr edit "$PR_URL" --add-label "dependencies"
-        env:
-          PR_URL: ${{github.event.pull_request.html_url}}
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      - name: Enable auto-merge for Dependabot PRs
-        if: ${{ steps.metadata.outputs.update-type == 'version-update:semver-patch' }}
-        run: gh pr merge --auto --merge "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}

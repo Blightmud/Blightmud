@@ -6,7 +6,6 @@ on:
       - 'v*'
 
 env:
-  CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
 
 jobs:
@@ -28,13 +27,13 @@ jobs:
       - name: Set .deb path
         id: deb_path
         run: |
-          ls -1 target/debian/*.deb | awk '{print "::set-output name=deb_path::"$1}'
+          ls -1 target/debian/*.deb | awk '{print "deb_path="$1}' >> $GITHUB_OUTPUT
       - name: Package RPM
         run: cargo rpm build
       - name: Set .rpm path
         id: rpm_path
         run: |
-          ls -1 target/release/rpmbuild/RPMS/x86_64/*.rpm | awk '{print "::set-output name=rpm_path::"$1}'
+          ls -1 target/release/rpmbuild/RPMS/x86_64/*.rpm | awk '{print "rpm_path="$1}' >> $GITHUB_OUTPUT
       - name: Generate changelog
         id: changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.1.1
@@ -76,7 +75,7 @@ jobs:
         run: cargo build --release --locked
       - name: Get current version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+        run: echo VERSION=${GITHUB_REF#refs/tags/} >> $GITHUB_OUTPUT
       - name: Package Binary
         run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip blightmud
       - name: Create/Update release
@@ -108,7 +107,7 @@ jobs:
         run: cargo build --release --locked
       - name: Get current version
         id: get_version
-        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+        run: echo VERSION=${GITHUB_REF#refs/tags/} >> $GITHUB_OUTPUT
       - name: Package Binary
         run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos-11.zip blightmud
       - name: Create/Update release

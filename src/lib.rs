@@ -6,7 +6,7 @@ use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::{env, fs, thread};
+use std::{env, fs, thread, time};
 pub use tools::register_panic_hook;
 use ui::HelpHandler;
 
@@ -22,7 +22,7 @@ mod tools;
 mod tts;
 mod ui;
 
-use crate::event::{Event, QuitMethod};
+use crate::event::{spawn_quit_confirm_timeout_thread, Event, QuitMethod};
 use crate::io::{FSMonitor, SaveData};
 use crate::model::{Servers, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
@@ -308,18 +308,6 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
     let mut quit_pending = false;
     let mut quit_error: Option<String> = None;
     while let Ok(event) = main_thread_read.recv() {
-        if quit_pending {
-            quit_pending = matches!(
-                event,
-                Event::Quit(_)
-                    | Event::UserInputBuffer(..)
-                    | Event::TimedEvent(..)
-                    | Event::TimerTick(..)
-                    | Event::SetPromptMask(..)
-                    | Event::ClearPromptMask
-            );
-        }
-
         match event {
             Event::SetPromptInput(line) => {
                 if let Ok(mut buffer) = session.command_buffer.lock() {
@@ -573,12 +561,20 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     screen.print_info("Confirm quit with ctrl-c");
                     screen.flush();
                     quit_pending = true;
+                    spawn_quit_confirm_timeout_thread(
+                        session.main_writer.clone(),
+                        time::Duration::from_secs(5),
+                    )?;
                     continue;
                 } else if let QuitMethod::Error(error) = method {
                     quit_error = Some(error);
                 }
                 session.try_disconnect();
                 break;
+            }
+            Event::QuitConfirmTimeout => {
+                info!("ctrl-c quit confirmation timed out");
+                quit_pending = false;
             }
         };
         screen.flush();

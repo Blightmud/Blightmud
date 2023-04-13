@@ -11,9 +11,11 @@ use crate::{
 };
 use libtelnet_rs::{bytes::Bytes, events::TelnetEvents};
 use log::debug;
+use std::thread::JoinHandle;
 use std::{
     error::Error,
     sync::mpsc::{channel, Receiver, Sender},
+    thread, time,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -52,6 +54,7 @@ pub enum Event {
     ProtoSubnegRecv(u8, Bytes),
     ProtoSubnegSend(u8, Bytes),
     Quit(QuitMethod),
+    QuitConfirmTimeout,
     Reconnect,
     Redraw,
     RemoveTimer(u32),
@@ -376,6 +379,18 @@ impl EventHandler {
     }
 }
 
+pub(crate) fn spawn_quit_confirm_timeout_thread(
+    writer: Sender<Event>,
+    timeout: time::Duration,
+) -> std::io::Result<JoinHandle<()>> {
+    thread::Builder::new()
+        .name("quit-confirm-timeout-thread".to_string())
+        .spawn(move || {
+            thread::sleep(timeout);
+            writer.send(Event::QuitConfirmTimeout).unwrap();
+        })
+}
+
 #[cfg(test)]
 mod event_test {
 
@@ -534,5 +549,22 @@ mod event_test {
         assert!(handler
             .handle_output_events(Event::Error("error message".to_string()), &mut screen)
             .is_ok());
+    }
+
+    #[test]
+    fn test_spawn_quit_confirm_timeout_thread() {
+        let (session, reader, _) = build_session();
+
+        let handle = spawn_quit_confirm_timeout_thread(
+            session.main_writer.clone(),
+            time::Duration::from_millis(500),
+        )
+        .expect("unexpected err spawning quit confirm thread");
+
+        handle
+            .join()
+            .expect("failed to join on quit confirm thread");
+        let event = reader.recv().expect("failed to recv event");
+        assert_eq!(event, Event::QuitConfirmTimeout);
     }
 }

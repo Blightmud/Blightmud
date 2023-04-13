@@ -5,7 +5,7 @@ mod common;
 
 #[test]
 fn timer_test() {
-    let (mut connection, handle) = setup();
+    let (mut connection, handle) = setup(Some("tests/timer_test.lua".to_string()));
 
     assert_eq!(connection.read(2), &[IAC, NOP]);
     assert_eq!(connection.read(2), &[IAC, NOP]);

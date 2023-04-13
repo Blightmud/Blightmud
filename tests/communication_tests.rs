@@ -8,7 +8,7 @@ mod common;
 
 #[test]
 fn test_ttype_negotiation() -> std::io::Result<()> {
-    let (mut connection, handle) = setup();
+    let (mut connection, handle) = setup(None);
 
     connection.send(&[IAC, WILL, TTYPE]);
     assert_eq!(connection.read(3), &[IAC, DO, TTYPE]);
@@ -46,7 +46,7 @@ fn test_ttype_negotiation() -> std::io::Result<()> {
 
 #[test]
 fn test_gmcp_negotiation() -> std::io::Result<()> {
-    let (mut connection, handle) = setup();
+    let (mut connection, handle) = setup(None);
 
     connection.send(&[IAC, WILL, GMCP]);
     assert_eq!(connection.read(3), &[IAC, DO, GMCP]);

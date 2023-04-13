@@ -21,12 +21,12 @@ pub fn join_blightmud(handle: JoinHandle<Result<()>>) {
 }
 
 #[allow(dead_code)]
-pub fn setup() -> (Connection, JoinHandle<Result<()>>) {
+pub fn setup(script_file: Option<String>) -> (Connection, JoinHandle<Result<()>>) {
     let mut server = Server::bind(0);
 
     let mut rt = RuntimeConfig::default();
     rt.headless_mode = true;
-    rt.script = Some("tests/timer_test.lua".to_string());
+    rt.script = script_file;
     rt.eval = Some(include_str!("quit_on_disconnect.lua").to_string());
     rt.integration_test = true;
     println!("Test server running at: {}", server.local_addr);

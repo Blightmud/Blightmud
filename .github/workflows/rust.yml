@@ -10,7 +10,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: 0
 
 jobs:
   tests:
@@ -29,24 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Cache
-        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions/cache@v2
         with:
           path: |
-            ~/.cargo/git
-            ~/.cargo/registry
-            ~/.cargo/bin
+            ~/.cargo
             ./target
-          key: ${{ matrix.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache
-        if: ${{ matrix.os != 'ubuntu-latest' }}
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/git
-            ~/.cargo/registry
-            ~/.cargo/bin
-          key: ${{ matrix.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.os }}-${{ matrix.toolchain }}-cargo-${{ hashFiles('Cargo.*') }}
       - name: Updating repository
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get update

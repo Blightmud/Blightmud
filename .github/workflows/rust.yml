@@ -19,12 +19,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-11, macos-latest, ubuntu-latest]
+        os: [macos-11, macos-latest, macos-13, ubuntu-latest]
         toolchain: [stable, beta, nightly]
         include:
           - os: macos-latest
           - os: macos-11
           - os: ubuntu-latest
+          - os: macos-13
     steps:
       - uses: actions/checkout@v2
       - name: Cache

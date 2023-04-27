@@ -10,8 +10,8 @@ use super::{
 use crate::lua::fs::Fs;
 use crate::lua::prompt::Prompt;
 use crate::lua::prompt_mask::PromptMask;
-use crate::lua::spellcheck;
-use crate::lua::spellcheck::Spellchecker;
+#[cfg(feature = "spellcheck")]
+use crate::lua::spellcheck::{self, Spellchecker};
 use crate::model::Completions;
 use crate::tools::util::expand_tilde;
 use crate::{event::Event, lua::servers::Servers, model, model::Line};
@@ -162,6 +162,7 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         globals.set("servers", Servers {})?;
         globals.set("prompt", Prompt {})?;
         globals.set("prompt_mask", PromptMask {})?;
+        #[cfg(feature = "spellcheck")]
         globals.set(spellcheck::LUA_GLOBAL_NAME, Spellchecker::new())?;
 
         lua_global_resources!(

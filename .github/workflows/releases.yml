@@ -13,7 +13,7 @@ jobs:
     name: Build deb & rpm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Install deps
@@ -36,7 +36,7 @@ jobs:
           ls -1 target/release/rpmbuild/RPMS/x86_64/*.rpm | awk '{print "rpm_path="$1}' >> $GITHUB_OUTPUT
       - name: Generate changelog
         id: changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.1.1
+        uses: heinrichreimer/github-changelog-generator-action@v2.3
         with:
           onlyLastTag: true
           filterByMilestone: true
@@ -64,13 +64,9 @@ jobs:
     name: Build for macOS-latest
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
       - name: Build release
         run: cargo build --release --locked
       - name: Get current version
@@ -96,13 +92,9 @@ jobs:
     name: Build for macOS-11
     runs-on: macos-11
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
       - name: Build release
         run: cargo build --release --locked
       - name: Get current version

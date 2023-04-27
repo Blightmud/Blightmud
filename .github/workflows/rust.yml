@@ -4,7 +4,6 @@ on:
   pull_request:
   push:
     branches:
-      - master
       - dev
       - "*_impl"
 
@@ -27,9 +26,9 @@ jobs:
           - os: ubuntu-latest
           - os: macos-13
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo
@@ -42,19 +41,10 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get install libasound2-dev libspeechd-dev
       - name: Setup toolchain
-        if: ${{ matrix.toolchain != 'nightly' }}
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy, rustfmt
-          override: true
-      - name: Setup toolchain
-        if: ${{ matrix.toolchain == 'nightly' }}
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          profile: minimal
-          override: true
       - name: Test
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo test --locked

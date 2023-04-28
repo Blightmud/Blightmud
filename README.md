@@ -84,6 +84,15 @@ commands that might fit your system:
 - Ubuntu    `apt install libclang-dev libspeechd-dev speech-dispatcher speech-dispatcher-espeak espeak`
 - Arch      `pacman -S speech-dispatcher espeak`
 
+### Compile without spellchecking
+
+Some users may encounter issues building the spellcheck feature on MacOS ARM64 (M1/M2). To
+build Blightmud without the spellcheck feature, use `--no-default-features`. E.g.:
+
+- Install rust
+- Run `cargo build --no-default-features` or `cargo build --no-default-features --features text-to-speech`
+- Run `cargo run --no-default-features` or `cargo run --no-default-features --features text-to-speech` to run
+
 ## Installation
 
 - **Ubuntu/Debian**      : Deb packages can be found on the releases page

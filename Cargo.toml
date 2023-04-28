@@ -13,7 +13,9 @@ doctest = false
 crate-type = ["rlib"]
 
 [features]
+default = ["spellcheck"]
 text-to-speech = ["tts"]
+spellcheck = ["hunspell-rs", "hunspell-sys"]
 
 [dependencies]
 libtelnet-rs = "2.0.0"
@@ -43,8 +45,8 @@ serde_json = "1.0.96"
 git2 = "0.17.1"
 rodio = "0.17.0"
 notify-debouncer-mini = "0.2.1"
-hunspell-rs = "0.4.0"
-hunspell-sys = { version = "0.3.0", features = ['bundled'] }
+hunspell-rs = { version = "0.4.0", optional = true }
+hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }
 rustls = { version = "0.21.0", features = ['dangerous_configuration'] }
 webpki-roots = { version = "0.23.0" }
 reqwest = { version = "0.11.16", default-features = false, features = ['rustls-tls', 'json'] }

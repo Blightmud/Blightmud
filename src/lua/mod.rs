@@ -24,6 +24,7 @@ mod script;
 mod servers;
 mod settings;
 mod socket;
+#[cfg(feature = "spellcheck")]
 mod spellcheck;
 mod store;
 mod timer;

@@ -5,6 +5,7 @@ use libtelnet_rs::bytes::Bytes;
 use libtelnet_rs::events::TelnetEvents;
 use log::{error, info};
 use std::path::PathBuf;
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::{env, fs, thread, time};
 pub use tools::register_panic_hook;
@@ -24,7 +25,7 @@ mod ui;
 
 use crate::event::{spawn_quit_confirm_timeout_thread, Event, QuitMethod};
 use crate::io::{FSMonitor, SaveData};
-use crate::model::{Servers, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
+use crate::model::{Servers, ECHO_INPUT, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
@@ -192,6 +193,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         .reader_mode(reader_mode)
         .headless(rt.headless_mode)
         .save_history(settings.get(SAVE_HISTORY).unwrap())
+        .echo_input(settings.get(ECHO_INPUT).unwrap())
         .build();
 
     if let Err(error) = run(main_thread_read, session, rt) {
@@ -384,6 +386,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 HIDE_TOPBAR | SCROLL_SPLIT => {
                     screen.setup()?;
                 }
+                ECHO_INPUT => session.echo_input.store(value, Ordering::Relaxed),
                 _ => {}
             },
             Event::StartLogging(world, force) => {

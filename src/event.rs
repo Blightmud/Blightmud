@@ -11,6 +11,7 @@ use crate::{
 };
 use libtelnet_rs::{bytes::Bytes, events::TelnetEvents};
 use log::debug;
+use std::sync::atomic::Ordering;
 use std::thread::JoinHandle;
 use std::{
     error::Error,
@@ -147,7 +148,9 @@ impl EventHandler {
                     let mut output_buffer = self.session.output_buffer.lock().unwrap();
                     output_buffer.input_sent();
                     script.on_mud_input(&mut line);
-                    screen.print_send(&line);
+                    if self.session.echo_input.load(Ordering::Relaxed) {
+                        screen.print_send(&line);
+                    }
                     if let Ok(mut logger) = self.session.logger.lock() {
                         logger.log_line("> ", &line)?;
                     }
@@ -566,5 +569,43 @@ mod event_test {
             .expect("failed to join on quit confirm thread");
         let event = reader.recv().expect("failed to recv event");
         assert_eq!(event, Event::QuitConfirmTimeout);
+    }
+
+    #[test]
+    fn test_no_echo() {
+        let (mut session, _reader, _) = build_session();
+
+        // We expect log lines to be generated twice: both with and without
+        // the echo_input setting enabled.
+        let mut logger = MockLogWriter::new();
+        logger.expect_log_line().times(2).returning(|_, _| Ok(()));
+        session.logger = Arc::new(Mutex::new(logger));
+
+        let input_line = Line::from("Input line");
+        let mut screen = MockUserInterface::new();
+        // We only expect print_send() to be called on the UI only **one** time,
+        // when the echo_input setting is enabled.
+        screen
+            .expect_print_send()
+            .with(eq(input_line.clone()))
+            .times(1)
+            .return_const(());
+
+        let mut handler = EventHandler::from(&session);
+        let mut screen: Box<dyn UserInterface> = Box::new(screen);
+        let mut send_event = || {
+            assert!(handler
+                .handle_server_events(
+                    Event::ServerInput(input_line.clone()),
+                    &mut screen,
+                    &mut None
+                )
+                .is_ok());
+        };
+
+        session.echo_input.store(true, Ordering::Relaxed);
+        send_event();
+        session.echo_input.store(false, Ordering::Relaxed);
+        send_event();
     }
 }

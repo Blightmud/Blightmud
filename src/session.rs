@@ -34,6 +34,7 @@ pub struct Session {
     pub logger: Arc<Mutex<dyn LogWriter + Send>>,
     pub tts_ctrl: Arc<Mutex<TTSController>>,
     pub command_buffer: Arc<Mutex<CommandBuffer>>,
+    pub echo_input: Arc<AtomicBool>,
 }
 
 #[cfg_attr(test, automock)]
@@ -172,6 +173,7 @@ pub struct SessionBuilder {
     reader_mode: bool,
     save_history: bool,
     headless: bool,
+    echo_input: bool,
 }
 
 impl SessionBuilder {
@@ -184,6 +186,7 @@ impl SessionBuilder {
             reader_mode: false,
             save_history: false,
             headless: false,
+            echo_input: true,
         }
     }
 
@@ -222,6 +225,11 @@ impl SessionBuilder {
         self
     }
 
+    pub fn echo_input(mut self, echo_input: bool) -> Self {
+        self.echo_input = echo_input;
+        self
+    }
+
     pub fn build(self) -> Session {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
@@ -231,6 +239,7 @@ impl SessionBuilder {
         let reader_mode = self.reader_mode;
         let headless = self.headless;
         let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled, headless)));
+        let echo_input = self.echo_input;
 
         let lua_builder = LuaScriptBuilder::new(main_writer.clone())
             .dimensions(dimensions)
@@ -256,6 +265,7 @@ impl SessionBuilder {
             logger: Arc::new(Mutex::new(Logger::default())),
             tts_ctrl: tts_ctrl.clone(),
             command_buffer: Arc::new(Mutex::new(CommandBuffer::new(tts_ctrl, lua_script))),
+            echo_input: Arc::new(AtomicBool::new(echo_input)),
         }
     }
 }

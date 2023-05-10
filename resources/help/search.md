@@ -28,11 +28,15 @@ call.
 Searches upwards from current position for the previous occurence of an input
 string. Eg. `> your input`.
 
+**Note:** Requires `/set echo_input on`.
+
 ##
 
 ***search.find_next_input()***
 Searches downwards from current position for the next occurence of an input
 string. Eg. `> your input`.
+
+**Note:** Requires `/set echo_input on`.
 
 ##
 
@@ -45,4 +49,4 @@ Blightmud will do it's best to attempt to hilite matches. However this can
 disrupt mud color coding while searching or be disrupted by mud color encoding.
 
 Stepping through output lines can in some cases match mud output if your mud
-outputs similar lines.
+outputs similar lines. Requires `/set echo_input on`.

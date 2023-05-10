@@ -20,12 +20,25 @@ function mod.find_down()
     end
 end
 
+local function echo_input_enabled()
+    if settings.get("echo_input") then
+        return true
+    end
+
+    blight.output(C_RED .. "[!!] You must enable echo_input with '/set echo_input on' to find by input." .. C_RESET)
+    return false
+end
+
 function mod.find_last_input()
-    blight.find_backward(input_pattern)
+    if echo_input_enabled() then
+        blight.find_backward(input_pattern)
+    end
 end
 
 function mod.find_next_input()
-    blight.find_forward(input_pattern)
+    if echo_input_enabled() then
+        blight.find_forward(input_pattern)
+    end
 end
 
 return mod

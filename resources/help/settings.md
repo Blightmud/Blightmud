@@ -24,6 +24,7 @@ Available settings are:
 - `tts_enabled`         Enable tts (only if compiled with TTS)
 - `reader_mode`         Switches to a screen reader friendly TUI. (Does not support `status area`.)
 - `hide_topbar`         Toggles the topbar
+- `echo_input`          Toggles whether user input is echoed on-screen with a `> ` prefix.
 
 ##
 

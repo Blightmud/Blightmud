@@ -23,7 +23,7 @@ by typing `/help <module>`.
 - `trigger`     Functions triggered in response to incoming text.
 - `timers`      Functions that execute on a timed delay.
 - `regex`       Regular expressions.
-- `config`      Functions for interacting with Blightmud settings
+- `settings`    Functions for interacting with Blightmud settings
 - `gmcp`        Functions for interacting with the Generic MUD Communication Protocol.
 - `msdp`        Functions for interacting with the Mud Server Data Protocol
 - `status_area` Functions for controlling and printing to the status bar

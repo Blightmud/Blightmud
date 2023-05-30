@@ -5,6 +5,7 @@ use std::{sync::mpsc::Sender, thread};
 
 #[cfg(test)]
 use mockall::automock;
+
 use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::header;
 use serde::Deserialize;

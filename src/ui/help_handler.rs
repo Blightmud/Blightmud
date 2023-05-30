@@ -5,9 +5,9 @@ use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
 use anyhow::Result;
 use log::debug;
-use mdcat::terminal::{TerminalProgram, TerminalSize};
-use mdcat::{ResourceAccess, Settings as MDSettings};
 use pulldown_cmark::{Options, Parser};
+use pulldown_cmark_mdcat::terminal::{TerminalProgram, TerminalSize};
+use pulldown_cmark_mdcat::{ResourceUrlHandler, Settings as MDSettings, Theme};
 use std::fmt::Write;
 use syntect::parsing::SyntaxSet;
 
@@ -70,8 +70,17 @@ impl HelpHandler {
         let base_dir = Path::new("/");
 
         let mut md_bytes = vec![];
-        let env = mdcat::Environment::for_local_directory(&base_dir).unwrap();
-        if mdcat::push_tty(&md_settings(), &env, &mut md_bytes, parser).is_ok() {
+        let env = pulldown_cmark_mdcat::Environment::for_local_directory(&base_dir).unwrap();
+        let resource_handler = NoopResourceUrlHandler {};
+        if pulldown_cmark_mdcat::push_tty(
+            &md_settings(&SyntaxSet::load_defaults_newlines()),
+            &env,
+            &resource_handler,
+            &mut md_bytes,
+            parser,
+        )
+        .is_ok()
+        {
             if let Ok(md_string) = String::from_utf8(md_bytes) {
                 Some(Line::from(format!("\n\n{md_string}")))
             } else {
@@ -144,14 +153,31 @@ impl HelpHandler {
     }
 }
 
-fn md_settings() -> MDSettings {
+fn md_settings(syntax_set: &SyntaxSet) -> MDSettings {
     let terminal_size = TerminalSize::detect().unwrap_or_default();
 
     MDSettings {
         terminal_capabilities: TerminalProgram::Ansi.capabilities(),
         terminal_size,
-        resource_access: ResourceAccess::LocalOnly,
-        syntax_set: SyntaxSet::load_defaults_newlines(),
+        theme: Theme::default(),
+        syntax_set,
+    }
+}
+
+struct NoopResourceUrlHandler;
+
+impl std::fmt::Debug for NoopResourceUrlHandler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NoopResourceUrlHandler").finish()
+    }
+}
+
+impl ResourceUrlHandler for NoopResourceUrlHandler {
+    fn read_resource(
+        &self,
+        _: &reqwest::Url,
+    ) -> std::io::Result<pulldown_cmark_mdcat::resources::MimeData> {
+        Err(std::io::Error::from(std::io::ErrorKind::Unsupported))
     }
 }
 

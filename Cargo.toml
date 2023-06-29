@@ -54,7 +54,7 @@ reqwest = { version = "0.11.18", default-features = false, features = ['blocking
 [dev-dependencies]
 mockall = "0.11.4"
 mockall_double = "0.3.0"
-rustls-pemfile = "1.0.2"
+rustls-pemfile = "1.0.3"
 env_logger = "0.10.0"
 
 [package.metadata.rpm]

@@ -229,7 +229,7 @@ dependencies = [
  "timer",
  "tts",
  "vte 0.11.1",
- "webpki-roots 0.25.0",
+ "webpki-roots 0.25.1",
 ]
 
 [[package]]
@@ -3116,9 +3116,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-roots"
-version = "0.25.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a4ac452058d835c2b7ff6d74f0ad9f40e172bb1ce661b1444f397eeb1d19e6d"
+checksum = "c9c6eda1c830a36f361e7721c87fd79ea84293b54f8c48c959f85ec636f0f196"
 
 [[package]]
 name = "which"

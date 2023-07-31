@@ -23,6 +23,11 @@ fn test_lua_script() {
 }
 
 #[test]
+fn regex_smoke_tests() {
+    test_script("tests/regex_smoke_tests.lua");
+}
+
+#[test]
 fn test_mud() -> Result<()> {
     let mut server = common::Server::bind(0);
     let mut rt = RuntimeConfig::default();

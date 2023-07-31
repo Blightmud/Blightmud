@@ -32,7 +32,7 @@ Sets specified setting.
 
 Settings are toggled from the command line as follows:
 
-- `/set <setting>`           Shows a settings and its current value
+- `/set <setting>`           Shows a setting and its current value
 - `/set <setting> on/off`    Toggles a setting on or off
 - `/settings`                Show current value of all settings
 

@@ -1,6 +1,6 @@
 # Settings
 
-There are an increasing number of settings that can be controlled in blightmud.
+There are a number of settings that can be controlled in blightmud.
 Settings are stored in `$CONFIGDIR/settings.ron` and can be either edited by
 hand or toggled using `/set`. Changing some settings require a restart.
 

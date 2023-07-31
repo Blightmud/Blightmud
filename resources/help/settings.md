@@ -4,7 +4,7 @@ There are a number of settings that can be controlled in blightmud.
 Settings are stored in `$CONFIGDIR/settings.ron` and can be either edited by
 hand or toggled using `/set`. Changing some settings require a restart.
 
-The following functions are available in the settings module for use withing
+The following functions are available in the settings module for use within
 your lua scripts.
 
 ##

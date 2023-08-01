@@ -32,7 +32,7 @@ timer = "0.2.0"
 flate2 = "1.0.26"
 pulldown-cmark-mdcat = { version = "2.0.3", default-features = false }
 pulldown-cmark = "0.9.3"
-syntect = "5.0.0"
+syntect = "5.1.0"
 serde = { version = "1.0.180", features = ['derive'] }
 ron = "0.8.0"
 anyhow = "1.0.72"

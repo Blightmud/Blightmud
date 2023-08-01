@@ -38,6 +38,7 @@ pub fn register_panic_hook(headless: bool) {
             .for_each(|line| print!("{line}\r\n"));
 
         print!("        [CRASH_LOG]: {file_path}\r\n");
+        print!("        [ERROR]: {panic_info}\r\n");
 
         r#"
         If available, please attach the created crash log to the issue.  Then we'll get around to

@@ -35,16 +35,13 @@ impl PartialEq for Line {
 fn get_content_from(line: &str) -> (String, String, bool) {
     let mut clean_utf8 = true;
     let content = line.trim_end().to_string();
-    let clean_content = if let Ok(bytes) = strip_ansi(&content) {
-        if let Ok(clean) = String::from_utf8(bytes.clone()) {
-            clean
-        } else {
-            error!("[Line]: Unparsable &str : {:?}", line);
-            clean_utf8 = false;
-            String::from_utf8_lossy(&bytes).to_mut().clone()
-        }
+    let bytes = strip_ansi(&content);
+    let clean_content = if let Ok(clean) = String::from_utf8(bytes.clone()) {
+        clean
     } else {
-        "".to_string()
+        error!("[Line]: Unparsable &str : {:?}", line);
+        clean_utf8 = false;
+        String::from_utf8_lossy(&bytes).to_mut().clone()
     };
     let clean_content = clean_content.replace('\r', "");
     (content, clean_content, clean_utf8)

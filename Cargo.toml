@@ -20,7 +20,7 @@ spellcheck = ["hunspell-rs", "hunspell-sys"]
 [dependencies]
 libtelnet-rs = "2.0.0"
 termion = "2.0.1"
-log = "0.4.19"
+log = "0.4.20"
 simple-logging = "2.0.2"
 chrono = "0.4.26"
 signal-hook = "0.3.17"

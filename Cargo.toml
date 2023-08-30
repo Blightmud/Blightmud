@@ -22,7 +22,7 @@ libtelnet-rs = "2.0.0"
 termion = "2.0.1"
 log = "0.4.20"
 simple-logging = "2.0.2"
-chrono = "0.4.26"
+chrono = "0.4.27"
 signal-hook = "0.3.17"
 mlua =  { version = "0.8.9", features = ["lua54", "send", "vendored"] }
 regex = "1.9.4"

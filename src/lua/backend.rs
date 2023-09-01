@@ -1,10 +1,10 @@
 use std::sync::mpsc::Sender;
 
-use mlua::UserData;
+use mlua::{FromLua, UserData};
 
 use crate::event::Event;
 
-#[derive(Clone)]
+#[derive(Clone, FromLua)]
 pub struct Backend {
     pub writer: Sender<Event>,
 }

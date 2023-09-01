@@ -3,11 +3,11 @@ use crate::event::{Event, QuitMethod};
 use crate::{model::Line, PROJECT_NAME, VERSION};
 use log::debug;
 use mlua::{
-    AnyUserData, Function, Result as LuaResult, Table, UserData, UserDataMethods, Variadic,
+    AnyUserData, FromLua, Function, Result as LuaResult, Table, UserData, UserDataMethods, Variadic,
 };
 use std::sync::mpsc::Sender;
 
-#[derive(Clone)]
+#[derive(Clone, FromLua)]
 pub struct Blight {
     main_writer: Sender<Event>,
     output_lines: Vec<Line>,

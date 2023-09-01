@@ -1,8 +1,8 @@
-use mlua::{UserData, UserDataMethods};
+use mlua::{FromLua, UserData, UserDataMethods};
 
 use crate::model::Line as mLine;
 
-#[derive(Clone)]
+#[derive(Clone, FromLua)]
 pub struct Line {
     pub inner: mLine,
     pub replacement: Option<String>,

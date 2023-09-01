@@ -30,7 +30,7 @@ impl UserData for PromptMask {
                     })
                     .not();
                 if valid {
-                    ctx.named_registry_value::<_, Backend>(BACKEND)?
+                    ctx.named_registry_value::<Backend>(BACKEND)?
                         .writer
                         .send(Event::SetPromptMask(prompt_mask))
                         .unwrap();

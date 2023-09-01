@@ -19,7 +19,7 @@ pub struct FSMonitor {
 
 impl FSMonitor {
     pub fn new(main_writer: Sender<Event>) -> Result<Self> {
-        let watcher = new_debouncer(Duration::from_secs(5), None, move |res| {
+        let watcher = new_debouncer(Duration::from_secs(5), move |res: DebounceEventResult| {
             main_writer
                 .send(Event::FSEvent(FSEvent::from(res)))
                 .unwrap();

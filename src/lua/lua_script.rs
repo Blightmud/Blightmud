@@ -84,7 +84,7 @@ macro_rules! lua_global_resources {
             let name = name.strip_suffix(".lua");
             let value = $state
                 .load(include_str!(concat!("../../resources/lua/", $path)))
-                .set_name(concat!("../../resources/lua/", $path))?
+                .set_name(concat!("../../resources/lua/", $path))
                 .call::<_, mlua::Value>(())?;
             $globals.set(name, value)?;
         )+
@@ -96,7 +96,7 @@ macro_rules! lua_resources {
     ($state: ident, $($path: expr),+ $(,)?) => {{
         $(
             $state.load(include_str!(concat!("../../resources/lua/", $path)))
-                .set_name($path)?
+                .set_name($path)
                 .exec()?;
         )+
     }};
@@ -409,7 +409,7 @@ impl LuaScript {
             let package: mlua::Table = self.state.globals().get("package")?;
             let ppath = package.get::<&str, String>("path")?;
             package.set("path", format!("{dir}/?.lua;{ppath}"))?;
-            let result = self.state.load(&content).set_name(path)?.exec();
+            let result = self.state.load(&content).set_name(path).exec();
             package.set("path", ppath)?;
             result
         });
@@ -1017,7 +1017,7 @@ mod lua_script_tests {
         );
         assert_eq!(
             lua.state
-                .named_registry_value::<_, u32>(CONNECTION_ID)
+                .named_registry_value::<u32>(CONNECTION_ID)
                 .unwrap(),
             12
         );
@@ -1034,7 +1034,7 @@ mod lua_script_tests {
         );
         assert_eq!(
             lua.state
-                .named_registry_value::<_, u32>(CONNECTION_ID)
+                .named_registry_value::<u32>(CONNECTION_ID)
                 .unwrap(),
             13
         );
@@ -1303,14 +1303,14 @@ mod lua_script_tests {
         let id = lua.state.globals().get::<_, u32>("id").unwrap();
         assert!(lua
             .state
-            .named_registry_value::<_, mlua::Table>(TIMED_CALLBACK_TABLE)
+            .named_registry_value::<mlua::Table>(TIMED_CALLBACK_TABLE)
             .unwrap()
             .contains_key(id)
             .unwrap());
         lua.remove_timed_function(id);
         assert!(!lua
             .state
-            .named_registry_value::<_, mlua::Table>(TIMED_CALLBACK_TABLE)
+            .named_registry_value::<mlua::Table>(TIMED_CALLBACK_TABLE)
             .unwrap()
             .contains_key(id)
             .unwrap());

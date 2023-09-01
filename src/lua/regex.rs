@@ -1,5 +1,5 @@
 use crate::model::{Regex as Re, RegexOptions};
-use mlua::{Table, UserData, UserDataMethods};
+use mlua::{FromLua, Table, UserData, UserDataMethods};
 use std::fmt::{Display, Formatter};
 
 fn parse_regex_options(opts: &Option<Table>) -> RegexOptions {
@@ -37,7 +37,7 @@ impl UserData for RegexLib {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, FromLua)]
 pub struct Regex {
     pub regex: Re,
 }

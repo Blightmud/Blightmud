@@ -1,6 +1,6 @@
 use crate::io::SaveData;
 use log::debug;
-use mlua::{AnyUserData, Result, UserData, UserDataMethods};
+use mlua::{AnyUserData, FromLua, Result, UserData, UserDataMethods};
 use std::{collections::HashMap, path::PathBuf};
 
 impl SaveData for HashMap<String, String> {
@@ -9,7 +9,7 @@ impl SaveData for HashMap<String, String> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, FromLua)]
 pub struct Store {
     pub memory_storage: HashMap<String, String>,
 }

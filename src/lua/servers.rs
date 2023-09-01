@@ -1,8 +1,6 @@
 use crate::io::SaveData;
 use crate::model::{Connection, Servers as MServers};
-use mlua::{UserData, UserDataMethods};
-
-use mlua::prelude::ToLua;
+use mlua::{IntoLua, UserData, UserDataMethods};
 
 #[cfg(test)]
 use mockall::automock;
@@ -18,11 +16,11 @@ impl UserData for Server {
             mlua::MetaMethod::Index,
             |ctx, this, key: String| -> mlua::Result<mlua::Value> {
                 match key.as_str() {
-                    "name" => Ok(this.name.clone().to_lua(ctx)?),
-                    "host" => Ok(this.connection.host.clone().to_lua(ctx)?),
-                    "port" => Ok(this.connection.port.to_lua(ctx)?),
-                    "tls" => Ok(this.connection.tls.to_lua(ctx)?),
-                    "verify_cert" => Ok(this.connection.verify_cert.to_lua(ctx)?),
+                    "name" => Ok(this.name.clone().into_lua(ctx)?),
+                    "host" => Ok(this.connection.host.clone().into_lua(ctx)?),
+                    "port" => Ok(this.connection.port.into_lua(ctx)?),
+                    "tls" => Ok(this.connection.tls.into_lua(ctx)?),
+                    "verify_cert" => Ok(this.connection.verify_cert.into_lua(ctx)?),
                     _ => Err(mlua::Error::external(format!("Invalid index: {key}"))),
                 }
             },

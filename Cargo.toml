@@ -57,6 +57,11 @@ mockall_double = "0.3.0"
 rustls-pemfile = "1.0.3"
 env_logger = "0.10.0"
 
+[profile.dev.package.hunspell-sys]
+# fixes debug profile build errs from warnings of the form:
+#   warning _FORTIFY_SOURCE requires compiling with optimization (-O)
+opt-level = 3
+
 [package.metadata.rpm]
 package = "blightmud"
 

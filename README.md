@@ -1,4 +1,4 @@
-![Rust](https://github.com/Blightmud/Blightmud/workflows/Rust/badge.svg)
+![Rust](https://github.com/Blightmud/Blightmud/workflows/Test%20&%20Build/badge.svg)
 ![GitHub commits since latest release (by SemVer)](https://img.shields.io/github/commits-since/blightmud/blightmud/latest?sort=semver)
 ![GitHub issues by-label](https://img.shields.io/github/issues-raw/blightmud/blightmud/bug)
 [![dependency status](https://deps.rs/repo/github/blightmud/blightmud/status.svg)](https://deps.rs/repo/github/blightmud/blightmud)

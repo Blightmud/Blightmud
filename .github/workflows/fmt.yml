@@ -38,3 +38,27 @@ jobs:
         run: cargo check --locked
       - name: Clippy (all features)
         run: cargo clippy --locked
+  validate-nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            ~/.cargo/bin
+          key: ubuntu-latest-check-lint-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Updating repository
+        run: sudo apt-get update
+      - name: Installing dependencies
+        run: sudo apt-get install libasound2-dev libspeechd-dev
+      - name: Setup nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - name: Check (all features)
+        run: cargo check --locked
+      - name: Clippy (all features)
+        run: cargo clippy --locked

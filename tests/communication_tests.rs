@@ -2,7 +2,7 @@ use std::env;
 
 use blightmud::{PROJECT_NAME, VERSION};
 use common::{join_blightmud, setup};
-use libtelnet_rs::telnet::{op_command::*, op_option::*};
+use libmudtelnet::telnet::{op_command::*, op_option::*};
 
 mod common;
 

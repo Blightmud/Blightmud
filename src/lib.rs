@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
 use audio::Player;
 use lazy_static::lazy_static;
-use libtelnet_rs::bytes::Bytes;
-use libtelnet_rs::events::TelnetEvents;
+use libmudtelnet::bytes::Bytes;
+use libmudtelnet::events::TelnetEvents;
 use log::{error, info};
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;

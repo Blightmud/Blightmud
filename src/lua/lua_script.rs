@@ -587,7 +587,7 @@ mod lua_script_tests {
     use crate::model::Completions;
     use crate::model::{Connection, PromptMask, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
-    use libtelnet_rs::{bytes::Bytes, vbytes};
+    use libmudtelnet::bytes::Bytes;
     use mlua::Table;
     use std::{
         collections::BTreeMap,
@@ -823,7 +823,7 @@ mod lua_script_tests {
             reader.recv(),
             Ok(Event::ProtoSubnegSend(
                 201,
-                vbytes!(&[255, 250, 86, 255, 240])
+                Bytes::copy_from_slice(&[255, 250, 86, 255, 240])
             ))
         );
     }

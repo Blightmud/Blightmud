@@ -1,4 +1,4 @@
-use libtelnet_rs::bytes::Bytes;
+use libmudtelnet::bytes::Bytes;
 use mlua::{Function, Table, UserData, UserDataMethods};
 
 use crate::{
@@ -138,7 +138,7 @@ impl UserData for Mud {
 mod test_mud {
     use std::sync::mpsc::{channel, Receiver, Sender};
 
-    use libtelnet_rs::{bytes::Bytes, vbytes};
+    use libmudtelnet::bytes::Bytes;
     use mlua::Lua;
 
     use crate::{
@@ -262,7 +262,7 @@ mod test_mud {
     fn test_send_bytes() {
         assert_event(
             "mud.send_bytes({ 0xff, 0xf1 })",
-            Event::ServerSend(vbytes!(&[0xff, 0xf1])),
+            Event::ServerSend(Bytes::copy_from_slice(&[0xff, 0xf1])),
         );
     }
 

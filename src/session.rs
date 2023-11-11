@@ -1,5 +1,5 @@
 use anyhow::Result;
-use libtelnet_rs::{
+use libmudtelnet::{
     compatibility::CompatibilityTable, telnet::op_command as cmd, telnet::op_option as opt, Parser,
 };
 use log::debug;

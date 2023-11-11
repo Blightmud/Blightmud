@@ -139,6 +139,7 @@ pub struct RuntimeConfig {
     pub script: Option<String>,
     pub eval: Option<String>,
     pub integration_test: bool,
+    pub no_update_check: bool,
 }
 
 impl From<Matches> for RuntimeConfig {
@@ -157,6 +158,7 @@ impl From<Matches> for RuntimeConfig {
             script: None,
             eval: None,
             integration_test: false,
+            no_update_check: matches.opt_present("no-update-check"),
         }
     }
 }
@@ -284,7 +286,12 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
             .send(Event::LoadScript(script.to_str().unwrap().to_string()))?;
     }
 
-    check_latest_version(session.main_writer.clone());
+    if !rt.no_update_check {
+        check_latest_version(session.main_writer.clone());
+    } else {
+        info!("Skipping update check");
+    }
+
     if cfg!(not(debug_assertions)) {
         migrate_v2_settings_and_servers(session.main_writer.clone());
     }

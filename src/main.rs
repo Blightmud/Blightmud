@@ -46,6 +46,11 @@ fn setup_options() -> Options {
     opts.optflag("v", "version", "Print version information");
     opts.optflag("V", "verbose", "Enable verbose logging");
     opts.optflag("r", "reader-mode", "Force screen reader friendly mode");
+    opts.optflag(
+        "c",
+        "no-update-check",
+        "Skip checking for new Blightmud versions at startup",
+    );
     //opts.optflag("H", "headless-mode", "Runs Blightmud without a TUI");
 
     opts
@@ -93,10 +98,16 @@ mod tests {
 
     #[test]
     fn test_config_parse() {
-        let args: Vec<String> = vec!["blightmud", "--verbose", "--connect", "localhost:8080"]
-            .iter()
-            .map(|s| String::from(*s))
-            .collect();
+        let args: Vec<String> = vec![
+            "blightmud",
+            "--no-update-check",
+            "--verbose",
+            "--connect",
+            "localhost:8080",
+        ]
+        .iter()
+        .map(|s| String::from(*s))
+        .collect();
         let opts = setup_options();
         let matches = match opts.parse(&args[1..]) {
             Ok(m) => m,
@@ -104,6 +115,7 @@ mod tests {
         };
         let rt = RuntimeConfig::from(matches);
         assert!(rt.verbose);
+        assert!(rt.no_update_check);
         assert_eq!(rt.connect, Some("localhost:8080".to_string()));
     }
 }

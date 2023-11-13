@@ -71,7 +71,7 @@ fn run(writer: Sender<Event>, current: impl AsRef<str>, fetcher: &dyn FetchVersi
         if let Ordering::Greater = latest.version.as_str().cmp(current) {
             // Write information about how to update.
             let (new, url) = (latest.version, latest.url);
-            for msg in vec![
+            for msg in [
                 format!(
                     "There is a newer version of Blightmud available. (current: {current}, new: {new})",
                 ),

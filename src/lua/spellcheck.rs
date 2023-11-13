@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use hunspell_rs::{CheckResult, Hunspell};
 use mlua::prelude::LuaError;
 use mlua::{AnyUserData, Result as LuaResult, String as LuaString, Table, UserData};
-use std::sync::Arc;
+use std::rc::Rc;
 
 pub const LUA_GLOBAL_NAME: &str = "spellcheck";
 
@@ -79,7 +79,7 @@ impl UserData for Spellchecker {
 }
 
 #[derive(Clone)]
-struct HunspellSafe(Arc<Hunspell>);
+struct HunspellSafe(Rc<Hunspell>);
 
 unsafe impl Send for HunspellSafe {}
 
@@ -92,7 +92,7 @@ impl std::ops::Deref for HunspellSafe {
 
 impl From<Hunspell> for HunspellSafe {
     fn from(hunspell: Hunspell) -> Self {
-        Self(Arc::new(hunspell))
+        Self(Rc::new(hunspell))
     }
 }
 

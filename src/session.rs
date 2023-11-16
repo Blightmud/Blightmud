@@ -1,5 +1,7 @@
 use anyhow::Result;
-use libtelnet_rs::{compatibility::CompatibilityTable, telnet::op_option as opt, Parser};
+use libtelnet_rs::{
+    compatibility::CompatibilityTable, telnet::op_command as cmd, telnet::op_option as opt, Parser,
+};
 use log::debug;
 use std::sync::{atomic::AtomicBool, mpsc::Sender, Arc, Mutex};
 
@@ -275,6 +277,7 @@ fn build_compatibility_table() -> CompatibilityTable {
     telnet_compat.support(opt::MCCP2);
     telnet_compat.support(opt::EOR);
     telnet_compat.support(opt::ECHO);
+    telnet_compat.support(cmd::GA);
     telnet_compat
 }
 

@@ -361,6 +361,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::Error(_)
             | Event::Info(_)
             | Event::AddTag(_)
+            | Event::RemoveTag(_)
             | Event::ClearTags
             | Event::UserInputBuffer(_, _)
             | Event::UserInputCursor(_)
@@ -425,6 +426,14 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                             session.main_writer.send(Event::ServerSend(data)).unwrap();
                         }
                     }
+                }
+            }
+            Event::ProtoDisabled(proto) => {
+                if let Ok(mut lua) = session.lua_script.lock() {
+                    lua.proto_disabled(proto);
+                    lua.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
                 }
             }
             Event::ProtoEnabled(proto) => {

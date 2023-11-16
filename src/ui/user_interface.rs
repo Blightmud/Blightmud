@@ -50,6 +50,7 @@ pub trait UserInterface {
     fn find_down(&mut self, pattern: &Regex) -> Result<()>;
     fn set_host(&mut self, host: &str, port: u16) -> Result<()>;
     fn add_tag(&mut self, proto: &str) -> Result<()>;
+    fn remove_tag(&mut self, proto: &str) -> Result<()>;
     fn clear_tags(&mut self) -> Result<()>;
     fn set_status_area_height(&mut self, height: u16) -> Result<()>;
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;

@@ -155,6 +155,10 @@ impl UserInterface for UiWrapper {
         self.screen.add_tag(proto)
     }
 
+    fn remove_tag(&mut self, proto: &str) -> Result<()> {
+        self.screen.remove_tag(proto)
+    }
+
     fn clear_tags(&mut self) -> Result<()> {
         self.screen.clear_tags()
     }

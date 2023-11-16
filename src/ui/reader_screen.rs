@@ -389,6 +389,10 @@ impl UserInterface for ReaderScreen {
         Ok(())
     }
 
+    fn remove_tag(&mut self, _: &str) -> Result<()> {
+        Ok(())
+    }
+
     fn clear_tags(&mut self) -> Result<()> {
         Ok(())
     }

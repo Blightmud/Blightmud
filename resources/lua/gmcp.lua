@@ -46,6 +46,13 @@ local function GMCP()
         end
     end
 
+    local _on_disable = function (proto)
+        if proto == OPT then
+            mud.remove_tag("GMCP");
+            self.gmcp_ready = false
+        end
+    end
+
     -- Convert a table of integer byte values to a UTF-8 encoded string, supporting
     -- multi-byte characters.
     local function _utf8_from(t)
@@ -124,6 +131,7 @@ local function GMCP()
         echo = echo,
         _subneg_recv = _subneg_recv,
         _on_enable = _on_enable,
+        _on_disable = _on_disable,
         _reset = _reset,
     }
 end
@@ -134,6 +142,9 @@ local gmcp = GMCP()
 core.enable_protocol(OPT)
 core.on_protocol_enabled(function (proto)
     gmcp._on_enable(proto)
+end)
+core.on_protocol_disabled(function (proto)
+    gmcp._on_disable(proto)
 end)
 core.subneg_recv(function (proto, data)
     gmcp._subneg_recv(proto, data)

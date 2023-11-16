@@ -21,6 +21,8 @@ pub struct TelnetHandler {
     main_writer: Sender<Event>,
     output_buffer: Arc<Mutex<OutputBuffer>>,
     mode: TelnetMode,
+    will_ga: bool,
+    will_eor: bool,
 }
 
 impl TelnetHandler {
@@ -30,11 +32,33 @@ impl TelnetHandler {
             main_writer: session.main_writer,
             output_buffer: session.output_buffer,
             mode: TelnetMode::UnterminatedPrompt,
+            will_ga: false,
+            will_eor: false,
         }
     }
-}
 
-impl TelnetHandler {
+    fn determine_telnet_mode(&mut self) {
+        self.mode = if self.will_ga || self.will_eor {
+            TelnetMode::TerminatedPrompt
+        } else {
+            TelnetMode::UnterminatedPrompt
+        };
+
+        if let Ok(mut buffer) = self.output_buffer.lock() {
+            buffer.telnet_mode(&self.mode);
+        }
+    }
+
+    pub fn toggle_ga(&mut self, will: bool) {
+        self.will_ga = will;
+        self.determine_telnet_mode();
+    }
+
+    pub fn toggle_eor(&mut self, will: bool) {
+        self.will_eor = will;
+        self.determine_telnet_mode();
+    }
+
     pub fn parse(&mut self, data: &[u8]) -> Option<Vec<u8>> {
         let mut result = None;
         let events = if let Ok(mut parser) = self.parser.lock() {
@@ -78,18 +102,40 @@ impl TelnetHandler {
                 }
                 TelnetEvents::Negotiation(neg) => {
                     debug!("Telnet negotiation: {} -> {}", neg.command, neg.option);
-                    if let Ok(mut parser) = self.parser.lock() {
-                        if neg.command == cmd::WILL || neg.command == cmd::DO {
+                    if neg.command == cmd::WILL || neg.command == cmd::DO {
+                        if let Ok(mut parser) = self.parser.lock() {
                             parser._will(neg.option);
-                            self.main_writer
-                                .send(Event::ProtoEnabled(neg.option))
-                                .unwrap();
-                            if neg.option == opt::EOR {
-                                self.main_writer
-                                    .send(Event::AddTag("EOR".to_string()))
-                                    .unwrap();
-                            }
                         }
+                        if neg.option == opt::EOR {
+                            self.toggle_eor(true);
+                            self.main_writer
+                                .send(Event::AddTag("EOR".to_string()))
+                                .unwrap();
+                        } else if neg.option == cmd::GA {
+                            self.toggle_ga(true);
+                            self.main_writer
+                                .send(Event::AddTag("GA".to_string()))
+                                .unwrap();
+                        }
+                        self.main_writer
+                            .send(Event::ProtoEnabled(neg.option))
+                            .unwrap();
+                    }
+                    if neg.command == cmd::WONT {
+                        if neg.option == opt::EOR {
+                            self.toggle_eor(false);
+                            self.main_writer
+                                .send(Event::RemoveTag("EOR".to_string()))
+                                .unwrap();
+                        } else if neg.option == cmd::GA {
+                            self.toggle_ga(false);
+                            self.main_writer
+                                .send(Event::RemoveTag("GA".to_string()))
+                                .unwrap();
+                        }
+                        self.main_writer
+                            .send(Event::ProtoDisabled(neg.option))
+                            .unwrap();
                     }
                 }
                 TelnetEvents::DecompressImmediate(buffer) => {
@@ -143,5 +189,48 @@ impl TelnetHandler {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::Session;
+    use crate::SessionBuilder;
+    use crate::{event::Event, timer::TimerEvent};
+    use std::sync::mpsc::{channel, Receiver, Sender};
+
+    fn build_session() -> (Session, Receiver<Event>, Receiver<TimerEvent>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let (timer_writer, timer_reader): (Sender<TimerEvent>, Receiver<TimerEvent>) = channel();
+        let session = SessionBuilder::new()
+            .main_writer(writer)
+            .timer_writer(timer_writer)
+            .screen_dimensions((80, 80))
+            .build();
+
+        loop {
+            if reader.try_recv().is_err() {
+                break;
+            }
+        }
+
+        (session, reader, timer_reader)
+    }
+
+    #[test]
+    fn test_toggle_terminated_prompt() {
+        let (session, _reader, _timer_reader) = build_session();
+        let mut th = TelnetHandler::new(session);
+
+        assert_eq!(th.mode, TelnetMode::UnterminatedPrompt);
+        th.toggle_ga(true);
+        assert_eq!(th.mode, TelnetMode::TerminatedPrompt);
+        th.toggle_eor(true);
+        assert_eq!(th.mode, TelnetMode::TerminatedPrompt);
+        th.toggle_ga(false);
+        assert_eq!(th.mode, TelnetMode::TerminatedPrompt);
+        th.toggle_eor(false);
+        assert_eq!(th.mode, TelnetMode::UnterminatedPrompt);
     }
 }

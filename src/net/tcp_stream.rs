@@ -1,6 +1,6 @@
 use crate::{event::Event, model::Connection, net::TelnetHandler, session::Session};
 use flate2::read::ZlibDecoder;
-use libtelnet_rs::bytes::Bytes;
+use libmudtelnet::bytes::Bytes;
 use log::{debug, error};
 use std::{
     io::{Chain, Cursor, Read, Write},

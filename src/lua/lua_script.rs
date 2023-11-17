@@ -587,7 +587,7 @@ mod lua_script_tests {
     use crate::model::Completions;
     use crate::model::{Connection, PromptMask, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
-    use libtelnet_rs::{bytes::Bytes, vbytes};
+    use libmudtelnet::bytes::Bytes;
     use mlua::Table;
     use std::{
         collections::BTreeMap,
@@ -823,7 +823,7 @@ mod lua_script_tests {
             reader.recv(),
             Ok(Event::ProtoSubnegSend(
                 201,
-                vbytes!(&[255, 250, 86, 255, 240])
+                Bytes::copy_from_slice(&[255, 250, 86, 255, 240])
             ))
         );
     }
@@ -1445,5 +1445,45 @@ mod lua_script_tests {
 
         assert_eq!(result.get::<i32, String>(11).unwrap(), "hi");
         assert_eq!(result.get::<i32, String>(21).unwrap(), "bye");
+    }
+
+    #[test]
+    fn test_gmcp_utf8() {
+        let (lua, _reader) = get_lua();
+
+        // Load the GMCP resource script, to get a handle on the 'gmcp' Table.
+        let gmcp_script = include_str!("../../resources/lua/gmcp.lua");
+        let gmcp_module = lua.state.load(gmcp_script).call::<_, Table>(()).unwrap();
+
+        // Within the GMCP table, get the subnegotiation received handler.
+        let handler: mlua::Function = gmcp_module.get("_subneg_recv").unwrap();
+
+        // Put the 'gmcp' table in global scope for our script to use.
+        lua.state.globals().set("gmcp", gmcp_module).unwrap();
+
+        // Set up a GCMP receive handler that captures the data received into a global.
+        lua.state
+            .load(
+                r#"
+        recv_data = ""
+        gmcp.receive('Test', function(data)
+            recv_data = data
+        end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+
+        // Invoke the gmcp module's subnegotiation received handler with a message
+        // matching the 'Test' GMCP package, containing a multi-byte character as
+        // the payload.
+        let gmcp_payload = "👋";
+        let gmcp_data = format!("Test {gmcp_payload}").as_bytes().to_vec();
+        handler.call::<_, mlua::Value>((201, gmcp_data)).unwrap();
+
+        // We should find the expected data was received by our 'Test' GMCP package
+        // handler (after trimming leading whitespace from splitting off the GMCP package).
+        let recv_data: String = lua.state.globals().get("recv_data").unwrap();
+        assert_eq!(recv_data.trim_start(), gmcp_payload);
     }
 }

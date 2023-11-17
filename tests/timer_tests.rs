@@ -1,5 +1,5 @@
 use common::setup;
-use libtelnet_rs::telnet::op_command::*;
+use libmudtelnet::telnet::op_command::*;
 
 mod common;
 

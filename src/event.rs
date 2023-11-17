@@ -9,7 +9,7 @@ use crate::{
     ui::UserInterface,
     TelnetData,
 };
-use libtelnet_rs::{bytes::Bytes, events::TelnetEvents};
+use libmudtelnet::{bytes::Bytes, events::TelnetEvents};
 use log::debug;
 use std::sync::atomic::Ordering;
 use std::thread::JoinHandle;

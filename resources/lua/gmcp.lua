@@ -46,9 +46,20 @@ local function GMCP()
         end
     end
 
+    -- Convert a table of integer byte values to a UTF-8 encoded string, supporting
+    -- multi-byte characters.
+    local function _utf8_from(t)
+        local bytearr = {}
+        for _, v in ipairs(t) do
+            local utf8byte = v < 0 and (0xFF + v + 1) or v
+            table.insert(bytearr, string.char(utf8byte))
+        end
+        return table.concat(bytearr)
+    end
+
     local _subneg_recv = function (proto, data)
         if proto == OPT then
-            local msg = utf8.char(unpack(data))
+            local msg = _utf8_from(data)
             local mod, json_data = parse_gmcp(msg)
             self.recv_cache[mod] = json_data
             store.session_write("__gmcp_recv_cache", json.encode(self.recv_cache))

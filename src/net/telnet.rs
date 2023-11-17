@@ -1,7 +1,7 @@
 use crate::event::Event;
 use crate::net::OutputBuffer;
 use crate::session::Session;
-use libtelnet_rs::{
+use libmudtelnet::{
     events::TelnetEvents,
     telnet::{op_command as cmd, op_option as opt},
     Parser,

@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use libtelnet_rs::bytes::Bytes;
+use libmudtelnet::bytes::Bytes;
 use log::debug;
 use mlua::{AnyUserData, Table, UserData, UserDataMethods};
 

@@ -18,7 +18,7 @@ text-to-speech = ["tts"]
 spellcheck = ["hunspell-rs", "hunspell-sys"]
 
 [dependencies]
-libtelnet-rs = "2.0.0"
+libmudtelnet = "2.0.1"
 termion = "2.0.3"
 log = "0.4.20"
 simple-logging = "2.0.2"

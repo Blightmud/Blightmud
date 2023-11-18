@@ -7,7 +7,9 @@ use mlua::{AnyUserData, Table, UserData, UserDataMethods};
 use crate::{event::Event, io::exec};
 
 use super::{
-    constants::{PROTO_ENABLED_LISTENERS_TABLE, PROTO_SUBNEG_LISTENERS_TABLE},
+    constants::{
+        PROTO_DISABLED_LISTENERS_TABLE, PROTO_ENABLED_LISTENERS_TABLE, PROTO_SUBNEG_LISTENERS_TABLE,
+    },
     exec_response::ExecResponse,
 };
 
@@ -51,6 +53,14 @@ impl UserData for Core {
             let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
             ctx.set_named_registry_value(PROTO_ENABLED_LISTENERS_TABLE, table)?;
+            Ok(())
+        });
+        methods.add_function_mut("on_protocol_disabled", |ctx, cb: mlua::Function| {
+            let table: Table = ctx.named_registry_value(PROTO_DISABLED_LISTENERS_TABLE)?;
+            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let mut this = this_aux.borrow_mut::<Core>()?;
+            table.set(this.next_index(), cb)?;
+            ctx.set_named_registry_value(PROTO_DISABLED_LISTENERS_TABLE, table)?;
             Ok(())
         });
         methods.add_function_mut("subneg_recv", |ctx, cb: mlua::Function| {

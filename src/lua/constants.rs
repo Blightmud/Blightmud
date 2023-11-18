@@ -24,4 +24,5 @@ pub const STATUS_AREA_HEIGHT: &str = "__status_area_height";
 
 // Core tables
 pub const PROTO_ENABLED_LISTENERS_TABLE: &str = "__protocol_enabled_listeners";
+pub const PROTO_DISABLED_LISTENERS_TABLE: &str = "__protocol_disabled_listeners";
 pub const PROTO_SUBNEG_LISTENERS_TABLE: &str = "__protocol_subneg_listeners";

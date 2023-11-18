@@ -126,6 +126,11 @@ impl UserData for Mud {
             backend.writer.send(Event::AddTag(tag)).unwrap();
             Ok(())
         });
+        methods.add_function("remove_tag", |ctx, tag: String| {
+            let backend: Backend = ctx.named_registry_value(BACKEND)?;
+            backend.writer.send(Event::RemoveTag(tag)).unwrap();
+            Ok(())
+        });
         methods.add_function("clear_tags", |ctx, ()| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend.writer.send(Event::ClearTags).unwrap();

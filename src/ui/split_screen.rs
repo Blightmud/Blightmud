@@ -463,6 +463,11 @@ impl UserInterface for SplitScreen {
         self.redraw_top_bar()
     }
 
+    fn remove_tag(&mut self, tag: &str) -> Result<()> {
+        self.tags.remove(tag);
+        self.redraw_top_bar()
+    }
+
     fn clear_tags(&mut self) -> Result<()> {
         self.tags.clear();
         self.redraw_top_bar()

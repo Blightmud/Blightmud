@@ -79,6 +79,10 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
+    fn remove_tag(&mut self, _proto: &str) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn clear_tags(&mut self) -> anyhow::Result<()> {
         Ok(())
     }

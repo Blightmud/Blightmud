@@ -251,6 +251,12 @@ function msdp()
         end
     end
 
+    local _on_disable = function ()
+        mud.remove_tag("MSDP")
+        self.enabled = false
+        store.session_write("__msdp_enabled", tostring(false))
+    end
+
     local _subneg_recv = function (data)
         local recv = decode(data)
         store_content(recv)
@@ -271,6 +277,7 @@ function msdp()
 
     return {
         _on_enable = _on_enable,
+        _on_disable = _on_disable,
         _subneg_recv = _subneg_recv,
         _reset = _reset,
         get = get,
@@ -289,6 +296,11 @@ core.enable_protocol(MSDP)
 core.on_protocol_enabled(function (proto) 
     if proto == MSDP then
         msdp._on_enable()
+    end
+end)
+core.on_protocol_disabled(function (proto) 
+    if proto == MSDP then
+        msdp._on_disable()
     end
 end)
 core.subneg_recv(function (proto, data)

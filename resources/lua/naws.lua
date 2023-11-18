@@ -35,6 +35,13 @@ core.on_protocol_enabled(function (proto)
     end
 end)
 
+core.on_protocol_disabled(function (proto)
+    if proto == NAWS_PROTOCOL then
+        mud.remove_tag("NAWS")
+        naws_enabled = false
+    end
+end)
+
 -- When dimensions change, send an updated NAWS message when enabled.
 blight.on_dimensions_change(function (width, height)
     if naws_enabled then

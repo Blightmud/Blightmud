@@ -51,6 +51,7 @@ pub enum Event {
     PlayMusic(String, SourceOptions),
     PlaySFX(String, SourceOptions),
     Prompt(Line),
+    ProtoDisabled(u8),
     ProtoEnabled(u8),
     ProtoSubnegRecv(u8, Bytes),
     ProtoSubnegSend(u8, Bytes),
@@ -58,6 +59,7 @@ pub enum Event {
     QuitConfirmTimeout,
     Reconnect,
     Redraw,
+    RemoveTag(String),
     RemoveTimer(u32),
     ResetScript,
     ScrollBottom,
@@ -339,6 +341,7 @@ impl EventHandler {
                 Ok(())
             }
             Event::AddTag(tag) => screen.add_tag(&tag),
+            Event::RemoveTag(tag) => screen.remove_tag(&tag),
             _ => Err(BadEventRoutingError.into()),
         }
     }

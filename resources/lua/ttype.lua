@@ -87,6 +87,13 @@ core.on_protocol_enabled(function (proto)
     end
 end)
 
+core.on_protocol_disabled(function (proto)
+    if proto == 24 then
+        mud.remove_tag("TTYPE")
+        init()
+    end
+end)
+
 function mod.set_term(new_term)
     term = new_term
     Info(string.format("Set TERM: %s", term))

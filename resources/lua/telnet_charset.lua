@@ -72,3 +72,9 @@ core.on_protocol_enabled(function (proto)
         mud.add_tag("TELCHR")
     end
 end)
+
+core.on_protocol_disabled(function (proto)
+    if proto == PROTOCOL then
+        mud.remove_tag("TELCHR")
+    end
+end)

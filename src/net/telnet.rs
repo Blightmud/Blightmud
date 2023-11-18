@@ -37,7 +37,7 @@ impl TelnetHandler {
         }
     }
 
-    fn determine_telnet_mode(&mut self) {
+    fn update_telnet_mode(&mut self) {
         self.mode = if self.will_ga || self.will_eor {
             TelnetMode::TerminatedPrompt
         } else {
@@ -51,12 +51,12 @@ impl TelnetHandler {
 
     pub fn toggle_ga(&mut self, will: bool) {
         self.will_ga = will;
-        self.determine_telnet_mode();
+        self.update_telnet_mode();
     }
 
     pub fn toggle_eor(&mut self, will: bool) {
         self.will_eor = will;
-        self.determine_telnet_mode();
+        self.update_telnet_mode();
     }
 
     pub fn parse(&mut self, data: &[u8]) -> Option<Vec<u8>> {

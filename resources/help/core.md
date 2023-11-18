@@ -35,6 +35,23 @@ end)
 
 ##
 
+***core.on_protocol_disabled(callback)***
+A callback to receive updates when protocols are disabled. This will trigger
+for all protocols so make sure the one you are interested in is the one
+supplied.
+
+- `callback`  A callback function that takes a u8 as an argument
+
+```lua
+core.on_protocol_disabled(function (proto)
+    if proto == 201 then -- Check for GMCP
+        -- Do your stuff
+    end
+end)
+```
+
+##
+
 ***core.subneg_send(proto, data)***
 Send a subnegotation to the mud. This will send an `IAC SB proto data IAC SE`
 to the mud.

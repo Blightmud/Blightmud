@@ -299,10 +299,6 @@ fn parse_key_event(
         Key::Ctrl('c') => {
             writer.send(Event::Quit(QuitMethod::CtrlC)).unwrap();
         }
-        Key::PageUp => writer.send(Event::ScrollUp).unwrap(),
-        Key::PageDown => writer.send(Event::ScrollDown).unwrap(),
-        Key::Home => writer.send(Event::ScrollTop).unwrap(),
-        Key::End => writer.send(Event::ScrollBottom).unwrap(),
 
         // Input navigation
         Key::Left => buffer.step_left(),

@@ -18,12 +18,15 @@ use crate::model::{self, KEEPALIVE_ENABLED};
 /// configured. This is important for Telnet connections since the protocol itself has no
 /// application layer keepalive.
 pub fn open_tcp_stream(host: &str, port: u16) -> Result<TcpStream> {
-    let sock = Socket::from(opportunistic_connect(prepare_addresses(host, port)?)?);
-
-    if model::Settings::try_load()?
+    let keepalive = model::Settings::try_load()?
         .get(KEEPALIVE_ENABLED)
-        .unwrap_or(true)
-    {
+        .unwrap_or(true);
+    stream_with_options(host, port, keepalive)
+}
+
+fn stream_with_options(host: &str, port: u16, keepalive: bool) -> Result<TcpStream> {
+    let sock = Socket::from(opportunistic_connect(prepare_addresses(host, port)?)?);
+    if keepalive {
         debug!("enabling TCP keepalive");
         // Values are loosely based on Mudlet's settings, but tuned to be a little more aggressive.
         // E.g. a shorter wait before sending keepalives, a shorter wait between keepalives, and
@@ -40,7 +43,6 @@ pub fn open_tcp_stream(host: &str, port: u16) -> Result<TcpStream> {
                 .with_retries(5),
         )?;
     }
-
     Ok(sock.into())
 }
 
@@ -93,10 +95,7 @@ mod tests {
 
     use socket2::Socket;
 
-    use crate::io::SaveData;
-    use crate::model;
-    use crate::model::KEEPALIVE_ENABLED;
-    use crate::net::open_tcp_stream;
+    use crate::net::util::stream_with_options;
 
     #[test]
     fn test_keepalive_disable() {
@@ -113,24 +112,19 @@ mod tests {
             }
         });
 
-        // Keepalive should default to on.
-        let mut settings = model::Settings::default();
-        assert!(settings.get(KEEPALIVE_ENABLED).unwrap());
-        let stream = open_tcp_stream(addr.ip().to_string().as_str(), addr.port()).unwrap();
+        // Creating a stream with keepalive=true should result in a socket configured
+        // with keepalive enabled.
+        let stream =
+            stream_with_options(addr.ip().to_string().as_str(), addr.port(), true).unwrap();
         let sock = Socket::from(stream);
-
-        // The socket should have keepalive enabled since the default settings were used.
         assert!(sock.keepalive().unwrap());
         drop(sock);
 
-        // Disable keepalive in settings.
-        settings.set(KEEPALIVE_ENABLED, false).unwrap();
-        assert!(!settings.get(KEEPALIVE_ENABLED).unwrap());
-        settings.save();
-        let stream = open_tcp_stream(addr.ip().to_string().as_str(), addr.port()).unwrap();
+        // And creating a stream with keepalive=false should result in a socket configured
+        // without keepalive enabled.
+        let stream =
+            stream_with_options(addr.ip().to_string().as_str(), addr.port(), false).unwrap();
         let sock = Socket::from(stream);
-
-        // Now the socket should not have keepalive enabled.
         assert!(!sock.keepalive().unwrap());
 
         // Shut down the server.

@@ -83,6 +83,12 @@ bind("ctrl-u", "delete_from_start")
 bind("ctrl-k", "delete_to_end")
 bind("ctrl-u", "delete_from_start")
 
+-- Scrolling
+bind("home", "scroll_top")
+bind("end", "scroll_bottom")
+bind("pageup", "scroll_up")
+bind("pagedown", "scroll_down")
+
 -- ctrl + up/down
 blight.bind("\x1b[1;5a", function () search.find_up() end)
 blight.bind("\x1b[1;5b", function () search.find_down() end)

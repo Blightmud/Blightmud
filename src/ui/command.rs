@@ -498,6 +498,9 @@ mod command_test {
     use std::sync::mpsc::{channel, Receiver, Sender};
     use std::sync::{Arc, Mutex};
 
+    use termion::event::Key;
+
+    use super::check_command_binds;
     use super::CommandBuffer;
     use crate::lua::LuaScriptBuilder;
     use crate::tts::TTSController;
@@ -706,5 +709,101 @@ mod command_test {
         assert_eq!(buffer.get_pos(), 0);
         push_string(&mut buffer, input);
         assert_eq!(buffer.get_pos(), input.len());
+    }
+
+    #[test]
+    fn test_lua_key_binds() {
+        let tts = Arc::new(Mutex::new(TTSController::new(false, false)));
+
+        let (tx, _rx): (Sender<Event>, Receiver<Event>) = channel();
+        let script = Arc::new(Mutex::new(
+            LuaScriptBuilder::new(tx.clone())
+                .dimensions((100, 100))
+                .build(),
+        ));
+        let mut buffer = CommandBuffer::new(tts, script.clone());
+
+        assert!(check_command_binds(
+            Key::Alt('b'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Alt('f'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Alt('d'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Alt('\u{7f}'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('a'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('b'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('e'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('f'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('d'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('h'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('k'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+        assert!(check_command_binds(
+            Key::Ctrl('u'),
+            &mut buffer,
+            &script,
+            &tx
+        ));
+
+        assert!(check_command_binds(Key::Home, &mut buffer, &script, &tx));
+        assert!(check_command_binds(Key::End, &mut buffer, &script, &tx));
+        assert!(check_command_binds(Key::PageUp, &mut buffer, &script, &tx));
+        assert!(check_command_binds(
+            Key::PageDown,
+            &mut buffer,
+            &script,
+            &tx
+        ));
     }
 }

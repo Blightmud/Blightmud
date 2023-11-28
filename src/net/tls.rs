@@ -72,12 +72,17 @@ impl TlsStream {
             .with_root_certificates(roots)
             .with_no_client_auth();
 
+        // Enable support for SSLKEYLOGFILE. Setting this env var to a file path will
+        // cause Rustls to write a Wireshark compatible session key log to the file. The
+        // key log file can be shared with developers to enable debugging w/ pcaps that would
+        // otherwise be encrypted opaque data.
+        config.key_log = Arc::new(rustls::KeyLogFile::new());
+
         if let CertificateValidation::DangerousDisabled = validation {
             config
                 .dangerous()
                 .set_certificate_verifier(Arc::new(danger::NoCertificateVerification {}));
         };
-
         let server_name = host.try_into()?;
         let conn = ClientConnection::new(Arc::new(config), server_name)?;
         Ok(RwStream::new(StreamOwned::new(conn, stream)))

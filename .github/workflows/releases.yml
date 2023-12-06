@@ -36,7 +36,7 @@ jobs:
           ls -1 target/release/rpmbuild/RPMS/x86_64/*.rpm | awk '{print "rpm_path="$1}' >> $GITHUB_OUTPUT
       - name: Generate changelog
         id: changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.3
+        uses: heinrichreimer/github-changelog-generator-action@v2.4
         with:
           onlyLastTag: true
           filterByMilestone: true

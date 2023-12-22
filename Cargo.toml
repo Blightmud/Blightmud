@@ -53,7 +53,7 @@ reqwest = { version = "0.11.23", default-features = false, features = ['blocking
 socket2 = "0.5.5"
 
 [dev-dependencies]
-mockall = "0.12.0"
+mockall = "0.12.1"
 mockall_double = "0.3.1"
 rustls-pemfile = "1.0.4"
 env_logger = "0.10.1"

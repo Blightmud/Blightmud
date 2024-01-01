@@ -48,11 +48,17 @@ impl MudReceiver {
                     data = vec![];
                 }
             }
-        } else if let Ok(bytes_read) = self.connection.read(&mut data) {
-            debug!("Read {} bytes from stream", bytes_read);
-            data = data[..bytes_read].to_vec();
         } else {
-            data = vec![];
+            match self.connection.read(&mut data) {
+                Ok(bytes_read) => {
+                    debug!("Read {bytes_read} bytes from stream");
+                    data = data[..bytes_read].to_vec();
+                }
+                Err(err) => {
+                    error!("Error: {err}");
+                    data = vec![];
+                }
+            }
         }
         debug!("Bytes: {:?}", data);
         data

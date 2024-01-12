@@ -16,7 +16,7 @@ use termion::{input::MouseTerminal, raw::IntoRawMode, screen::IntoAlternateScree
 
 /// Creates the io::Write terminal handler we draw to.
 fn create_screen_writer(mouse_support: bool) -> Result<Box<dyn Write>> {
-    let screen = stdout().into_alternate_screen()?.into_raw_mode()?;
+    let screen = stdout().into_raw_mode()?.into_alternate_screen()?;
     if mouse_support {
         Ok(Box::new(MouseTerminal::from(screen)))
     } else {

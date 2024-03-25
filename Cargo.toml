@@ -47,15 +47,15 @@ rodio = "0.17.3"
 notify-debouncer-mini = "0.4.1"
 hunspell-rs = { version = "0.4.0", optional = true }
 hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }
-rustls = { version = "0.21.10", features = ['dangerous_configuration'] }
-webpki-roots = { version = "0.25.3" }
+rustls = "0.22"
+webpki-roots = "0.26"
 reqwest = { version = "0.12.2", default-features = false, features = ['blocking', 'rustls-tls', 'json'] }
 socket2 = "0.5.6"
 
 [dev-dependencies]
 mockall = "0.12.1"
 mockall_double = "0.3.1"
-rustls-pemfile = "1.0.4"
+rustls-pemfile = "2.0"
 env_logger = "0.10.2"
 
 [profile.dev.package.hunspell-sys]

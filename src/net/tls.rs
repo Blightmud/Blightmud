@@ -1,6 +1,7 @@
 use crate::net::RwStream;
 use anyhow::Result;
-use rustls::{ClientConfig, ClientConnection, OwnedTrustAnchor, RootCertStore, StreamOwned};
+use rustls::pki_types::ServerName;
+use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 use std::fmt::{Display, Formatter};
 use std::net::TcpStream;
 use std::sync::Arc;
@@ -68,7 +69,6 @@ impl TlsStream {
         roots: RootCertStore,
     ) -> Result<TlsStream> {
         let mut config = ClientConfig::builder()
-            .with_safe_defaults()
             .with_root_certificates(roots)
             .with_no_client_auth();
 
@@ -81,45 +81,80 @@ impl TlsStream {
         if let CertificateValidation::DangerousDisabled = validation {
             config
                 .dangerous()
-                .set_certificate_verifier(Arc::new(danger::NoCertificateVerification {}));
+                .set_certificate_verifier(Arc::new(danger::NoCertificateVerification::new()));
         };
-        let server_name = host.try_into()?;
+        let server_name = ServerName::try_from(host)?.to_owned();
         let conn = ClientConnection::new(Arc::new(config), server_name)?;
         Ok(RwStream::new(StreamOwned::new(conn, stream)))
     }
 
     fn default_root_certs() -> RootCertStore {
-        let mut root_store = RootCertStore::empty();
-        root_store.add_trust_anchors(webpki_roots::TLS_SERVER_ROOTS.iter().map(|ta| {
-            OwnedTrustAnchor::from_subject_spki_name_constraints(
-                ta.subject,
-                ta.spki,
-                ta.name_constraints,
-            )
-        }));
-        root_store
+        RootCertStore {
+            roots: webpki_roots::TLS_SERVER_ROOTS.iter().cloned().collect(),
+        }
     }
 }
 
 /// here be dragons.
 mod danger {
-    use rustls::{client, Certificate, ServerName};
+    use rustls::client::danger::HandshakeSignatureValid;
+    use rustls::crypto::{verify_tls12_signature, verify_tls13_signature};
+    use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+    use rustls::{client, DigitallySignedStruct, Error, SignatureScheme};
 
-    /// NoCertificateVerification is a **DANGEROUS** [client::ServerCertVerifier] that
+    /// NoCertificateVerification is a **DANGEROUS** [client::danger::ServerCertVerifier] that
     /// performs **no** certificate validation.
-    pub struct NoCertificateVerification {}
+    #[derive(Debug)]
+    pub struct NoCertificateVerification(rustls::crypto::CryptoProvider);
 
-    impl client::ServerCertVerifier for NoCertificateVerification {
+    impl NoCertificateVerification {
+        pub(super) fn new() -> Self {
+            Self(rustls::crypto::ring::default_provider())
+        }
+    }
+
+    impl client::danger::ServerCertVerifier for NoCertificateVerification {
         fn verify_server_cert(
             &self,
-            _end_entity: &Certificate,
-            _intermediates: &[Certificate],
+            _end_entity: &CertificateDer<'_>,
+            _intermediates: &[CertificateDer<'_>],
             _server_name: &ServerName,
-            _scts: &mut dyn Iterator<Item = &[u8]>,
             _ocsp: &[u8],
-            _now: std::time::SystemTime,
-        ) -> Result<client::ServerCertVerified, rustls::Error> {
-            Ok(client::ServerCertVerified::assertion())
+            _now: UnixTime,
+        ) -> Result<client::danger::ServerCertVerified, Error> {
+            Ok(client::danger::ServerCertVerified::assertion())
+        }
+
+        fn verify_tls12_signature(
+            &self,
+            message: &[u8],
+            cert: &CertificateDer<'_>,
+            dss: &DigitallySignedStruct,
+        ) -> Result<HandshakeSignatureValid, Error> {
+            verify_tls12_signature(
+                message,
+                cert,
+                dss,
+                &self.0.signature_verification_algorithms,
+            )
+        }
+
+        fn verify_tls13_signature(
+            &self,
+            message: &[u8],
+            cert: &CertificateDer<'_>,
+            dss: &DigitallySignedStruct,
+        ) -> Result<HandshakeSignatureValid, Error> {
+            verify_tls13_signature(
+                message,
+                cert,
+                dss,
+                &self.0.signature_verification_algorithms,
+            )
+        }
+
+        fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+            self.0.signature_verification_algorithms.supported_schemes()
         }
     }
 }
@@ -129,9 +164,10 @@ mod test_tls {
     use crate::net::tls::TlsStream;
     use crate::net::CertificateValidation;
     use log::debug;
+    use rustls::pki_types::{CertificateDer, PrivateKeyDer};
     use rustls::{
-        Certificate, CertificateError, Error::InvalidCertificate, PrivateKey, RootCertStore,
-        ServerConfig, ServerConnection, StreamOwned,
+        CertificateError, Error::InvalidCertificate, RootCertStore, ServerConfig, ServerConnection,
+        StreamOwned,
     };
     use std::io::{BufReader, Read};
     use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
@@ -144,35 +180,25 @@ mod test_tls {
     const TEST_SERVER_KEY: &str = "tests/certs/localhost/key.pem";
     const TEST_CA_CERTS: &str = "tests/certs/minica.pem";
 
-    fn load_certs(filename: &str) -> Vec<Certificate> {
+    fn load_certs(filename: &str) -> Vec<CertificateDer<'_>> {
         let certfile = fs::File::open(filename).expect("cannot open certificate file");
         let mut reader = BufReader::new(certfile);
         rustls_pemfile::certs(&mut reader)
-            .unwrap()
-            .iter()
-            .map(|v| Certificate(v.clone()))
+            .map(|der| der.unwrap())
             .collect()
     }
 
-    fn load_private_key(filename: &str) -> PrivateKey {
+    fn load_private_key(filename: &str) -> PrivateKeyDer<'_> {
         let keyfile = fs::File::open(filename).expect("cannot open private key file");
         let mut reader = BufReader::new(keyfile);
-
-        loop {
-            match rustls_pemfile::read_one(&mut reader).expect("cannot parse private key .pem file")
-            {
-                Some(rustls_pemfile::Item::RSAKey(key)) => return PrivateKey(key),
-                None => break,
-                _ => {}
-            }
-        }
-
-        panic!("no keys found in {:?}", filename);
+        rustls_pemfile::private_key(&mut reader)
+            .expect("cannot parse private key .pem file")
+            .expect("no private keys found in file")
     }
 
     fn test_ca_roots() -> RootCertStore {
         let mut root_store = RootCertStore::empty();
-        load_certs(TEST_CA_CERTS).iter().for_each(|c| {
+        load_certs(TEST_CA_CERTS).into_iter().for_each(|c| {
             root_store.add(c).unwrap();
         });
         root_store
@@ -183,7 +209,6 @@ mod test_tls {
         let priv_key = load_private_key(TEST_SERVER_KEY);
         let config = Arc::new(
             ServerConfig::builder()
-                .with_safe_defaults()
                 .with_no_client_auth()
                 .with_single_cert(cert_chain, priv_key)
                 .unwrap(),

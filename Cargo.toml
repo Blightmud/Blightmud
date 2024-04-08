@@ -55,7 +55,7 @@ socket2 = "0.5.6"
 [dev-dependencies]
 mockall = "0.12.1"
 mockall_double = "0.3.1"
-rustls-pemfile = "2.0"
+rustls-pemfile = "2.1"
 env_logger = "0.10.2"
 
 [profile.dev.package.hunspell-sys]

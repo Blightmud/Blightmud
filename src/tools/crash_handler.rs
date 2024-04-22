@@ -1,15 +1,10 @@
 use std::{env, panic};
 
-use crate::VERSION;
+use human_panic::metadata;
 
 pub fn register_panic_hook(headless: bool) {
     panic::set_hook(Box::new(move |panic_info| {
-        let meta = human_panic::Metadata {
-            version: VERSION.into(),
-            name: env!("CARGO_PKG_NAME").into(),
-            authors: env!("CARGO_PKG_AUTHORS").replace(':', ", ").into(),
-            homepage: env!("CARGO_PKG_HOMEPAGE").into(),
-        };
+        let meta = metadata!();
 
         let file_path = if let Some(path_buf) = human_panic::handle_dump(&meta, panic_info) {
             path_buf.to_string_lossy().into_owned()

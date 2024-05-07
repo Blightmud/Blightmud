@@ -19,7 +19,7 @@ spellcheck = ["hunspell-rs", "hunspell-sys"]
 
 [dependencies]
 libmudtelnet = "2.0.1"
-termion = "3"
+termion = "4"
 log = "0.4.21"
 simple-logging = "2.0.2"
 chrono = "0.4.38"

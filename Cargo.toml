@@ -35,7 +35,7 @@ pulldown-cmark = "0.9.6"
 syntect = "5.2.0"
 serde = { version = "1.0.199", features = ['derive'] }
 ron = "0.8.1"
-anyhow = "1.0.82"
+anyhow = "1.0.83"
 lazy_static = "1.4.0"
 rs-complete = "1.3.1"
 getopts = "0.2.21"

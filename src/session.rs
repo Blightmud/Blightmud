@@ -25,13 +25,11 @@ use mockall::automock;
 #[derive(Clone)]
 pub struct Session {
     pub connection: Arc<Mutex<MudConnection>>,
-    pub gmcp: Arc<AtomicBool>,
     pub main_writer: Sender<Event>,
     pub timer_writer: Sender<TimerEvent>,
     pub telnet_parser: Arc<Mutex<Parser>>,
     pub output_buffer: Arc<Mutex<OutputBuffer>>,
     pub prompt_input: Arc<Mutex<String>>,
-    pub save_history: Arc<AtomicBool>,
     pub lua_script: Arc<Mutex<LuaScript>>,
     pub logger: Arc<Mutex<dyn LogWriter + Send>>,
     pub tts_ctrl: Arc<Mutex<TTSController>>,
@@ -237,7 +235,6 @@ impl SessionBuilder {
         let timer_writer = self.timer_writer.unwrap();
         let dimensions = self.screen_dimensions.unwrap();
         let tts_enabled = self.tts_enabled;
-        let save_history = self.save_history;
         let reader_mode = self.reader_mode;
         let headless = self.headless;
         let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled, headless)));
@@ -251,7 +248,6 @@ impl SessionBuilder {
         let lua_script = Arc::new(Mutex::new(lua_builder.build()));
         Session {
             connection: Arc::new(Mutex::new(MudConnection::new())),
-            gmcp: Arc::new(AtomicBool::new(false)),
             main_writer,
             timer_writer,
             telnet_parser: Arc::new(Mutex::new(Parser::with_support_and_capacity(
@@ -262,7 +258,6 @@ impl SessionBuilder {
                 &TelnetMode::UnterminatedPrompt,
             ))),
             prompt_input: Arc::new(Mutex::new(String::new())),
-            save_history: Arc::new(AtomicBool::new(save_history)),
             lua_script: lua_script.clone(),
             logger: Arc::new(Mutex::new(Logger::default())),
             tts_ctrl: tts_ctrl.clone(),

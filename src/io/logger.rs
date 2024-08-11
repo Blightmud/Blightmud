@@ -21,6 +21,7 @@ pub trait LogWriter {
 
     fn stop_logging(&mut self) -> Result<()>;
 
+    #[cfg(test)]
     fn is_logging(&self) -> bool;
 }
 
@@ -73,6 +74,7 @@ impl LogWriter for Logger {
         Ok(())
     }
 
+    #[cfg(test)]
     fn is_logging(&self) -> bool {
         self.file.is_some()
     }

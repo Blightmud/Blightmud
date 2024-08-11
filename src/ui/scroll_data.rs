@@ -14,7 +14,6 @@ pub struct ScrollData {
     pub hilite: Option<Regex>,
     pub allow_split: bool,
     pub allow_scroll_lock: bool,
-    pub scroll_step: usize,
 }
 
 impl ScrollData {
@@ -28,7 +27,6 @@ impl ScrollData {
             hilite: None,
             allow_split: settings.get(SCROLL_SPLIT).unwrap_or(true),
             allow_scroll_lock: settings.get(SCROLL_LOCK).unwrap_or(true),
-            scroll_step: 5,
         }
     }
 

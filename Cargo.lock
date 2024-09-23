@@ -1811,9 +1811,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark-mdcat"
-version = "2.3.1"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "867269a18996ae6e03443ee1d705564a4dc63b37f53f6af6c72db62a8e53d9e9"
+checksum = "cbbcec808d7664b27ac0d7925f33960c92496871d9821e026e624a323e88640d"
 dependencies = [
  "anstyle",
  "base64 0.22.1",

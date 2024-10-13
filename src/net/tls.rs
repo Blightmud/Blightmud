@@ -97,7 +97,10 @@ impl TlsStream {
 
 /// here be dragons.
 mod danger {
+    use std::sync::Arc;
+
     use rustls::client::danger::HandshakeSignatureValid;
+    use rustls::crypto::CryptoProvider;
     use rustls::crypto::{verify_tls12_signature, verify_tls13_signature};
     use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
     use rustls::{client, DigitallySignedStruct, Error, SignatureScheme};
@@ -105,11 +108,15 @@ mod danger {
     /// NoCertificateVerification is a **DANGEROUS** [client::danger::ServerCertVerifier] that
     /// performs **no** certificate validation.
     #[derive(Debug)]
-    pub struct NoCertificateVerification(rustls::crypto::CryptoProvider);
+    pub struct NoCertificateVerification(Arc<CryptoProvider>);
 
     impl NoCertificateVerification {
         pub(super) fn new() -> Self {
-            Self(rustls::crypto::ring::default_provider())
+            Self(
+                CryptoProvider::get_default()
+                    .expect("no unambiguous process wide crypto provider set")
+                    .clone(),
+            )
         }
     }
 
@@ -171,7 +178,7 @@ mod test_tls {
     };
     use std::io::{BufReader, Read};
     use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
-    use std::sync::{Arc, Once};
+    use std::sync::Arc;
     use std::thread::JoinHandle;
     use std::{fs, thread, time};
 
@@ -179,16 +186,6 @@ mod test_tls {
     const TEST_SERVER_CERTS: &str = "tests/certs/localhost/cert.pem";
     const TEST_SERVER_KEY: &str = "tests/certs/localhost/key.pem";
     const TEST_CA_CERTS: &str = "tests/certs/minica.pem";
-
-    static START: Once = Once::new();
-
-    fn config_provider() {
-        START.call_once(|| {
-            rustls::crypto::aws_lc_rs::default_provider()
-                .install_default()
-                .expect("Default provider install failed");
-        });
-    }
 
     fn load_certs(filename: &str) -> Vec<CertificateDer<'_>> {
         let certfile = fs::File::open(filename).expect("cannot open certificate file");
@@ -217,8 +214,6 @@ mod test_tls {
     fn test_server(addr: SocketAddr) -> (SocketAddr, JoinHandle<()>) {
         let cert_chain = load_certs(TEST_SERVER_CERTS);
         let priv_key = load_private_key(TEST_SERVER_KEY);
-
-        config_provider();
 
         let config = Arc::new(
             ServerConfig::builder()

@@ -1,4 +1,5 @@
 pub const ON_CONNECTION_CALLBACK_TABLE: &str = "__connection_callback_table";
+pub const ON_CONNECTION_FAILED_CALLBACK_TABLE: &str = "__connection_failed_callback_table";
 pub const ON_DISCONNECT_CALLBACK_TABLE: &str = "__disconnect_callback_table";
 pub const IS_CONNECTED: &str = "__is_connected_bool";
 pub const TIMED_CALLBACK_TABLE: &str = "__timed_callback_table";

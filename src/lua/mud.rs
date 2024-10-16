@@ -10,7 +10,8 @@ use super::{
     backend::Backend,
     constants::{
         BACKEND, IS_CONNECTED, MUD_INPUT_LISTENER_TABLE, MUD_OUTPUT_LISTENER_TABLE,
-        ON_CONNECTION_CALLBACK_TABLE, ON_DISCONNECT_CALLBACK_TABLE,
+        ON_CONNECTION_CALLBACK_TABLE, ON_CONNECTION_FAILED_CALLBACK_TABLE,
+        ON_DISCONNECT_CALLBACK_TABLE,
     },
 };
 
@@ -109,6 +110,12 @@ impl UserData for Mud {
         });
         methods.add_function("on_connect", |ctx, callback: mlua::Function| {
             let table: mlua::Table = ctx.named_registry_value(ON_CONNECTION_CALLBACK_TABLE)?;
+            table.raw_set(table.raw_len() + 1, callback)?;
+            Ok(())
+        });
+        methods.add_function("on_connect_failed", |ctx, callback: mlua::Function| {
+            let table: mlua::Table =
+                ctx.named_registry_value(ON_CONNECTION_FAILED_CALLBACK_TABLE)?;
             table.raw_set(table.raw_len() + 1, callback)?;
             Ok(())
         });

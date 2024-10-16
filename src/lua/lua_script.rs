@@ -170,6 +170,8 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         state.set_named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
+        state
+            .set_named_registry_value(ON_CONNECTION_FAILED_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(COMPLETION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(FS_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(SCRIPT_RESET_LISTENERS, state.create_table()?)?;
@@ -480,6 +482,20 @@ impl LuaScript {
             let table: mlua::Table = self
                 .state
                 .named_registry_value(ON_DISCONNECT_CALLBACK_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
+                let (_, cb) = pair.unwrap();
+                cb.call::<()>(())?;
+            }
+            Ok(())
+        });
+    }
+
+    pub fn on_connection_failed(&mut self) {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            self.state.set_named_registry_value(IS_CONNECTED, false)?;
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(ON_CONNECTION_FAILED_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
                 cb.call::<()>(())?;

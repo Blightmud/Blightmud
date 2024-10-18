@@ -347,6 +347,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::ServerInput(_)
             | Event::Connect(_)
             | Event::Connected(_)
+            | Event::ConnectionFailed
             | Event::Reconnect
             | Event::Disconnect => {
                 event_handler.handle_server_events(

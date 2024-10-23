@@ -68,6 +68,8 @@ impl Session {
                 .send(Event::StartLogging(host.to_string(), false))
                 .unwrap();
             self.main_writer.send(Event::Connected(conn_id)).unwrap();
+        } else {
+            self.main_writer.send(Event::ConnectionFailed).unwrap();
         }
         connected
     }

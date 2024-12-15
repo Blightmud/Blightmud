@@ -22,7 +22,7 @@ libmudtelnet = "2.0.1"
 termion = "4"
 log = "0.4.22"
 simple-logging = "2.0.2"
-chrono = "0.4.38"
+chrono = "0.4.39"
 signal-hook = "0.3.17"
 mlua =  { version = "0.9.9", features = ["lua54", "send", "vendored", "macros"] }
 regex = "1.11.1"

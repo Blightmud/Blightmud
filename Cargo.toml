@@ -56,7 +56,7 @@ socket2 = "0.5.8"
 mockall = "0.13.1"
 mockall_double = "0.3.1"
 rustls-pemfile = "2.2"
-env_logger = "0.11.5"
+env_logger = "0.11.6"
 
 [profile.dev.package.hunspell-sys]
 # fixes debug profile build errs from warnings of the form:

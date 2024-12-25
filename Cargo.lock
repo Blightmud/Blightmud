@@ -1820,9 +1820,9 @@ checksum = "007d8adb5ddab6f8e3f491ac63566a7d5002cc7ed73901f72057943fa71ae1ae"
 
 [[package]]
 name = "pulldown-cmark-mdcat"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0b0b01b7eb165185be71feef8e53a453f2e3399334e47df4dec447ce4d68ea4"
+checksum = "d8d0fe825f5b4894119a19b4780fb00bd8f362aff8aca73be028ac50338a1e6f"
 dependencies = [
  "anstyle",
  "base64 0.22.1",
@@ -1833,7 +1833,6 @@ dependencies = [
  "syntect",
  "terminal_size",
  "textwrap",
- "thiserror",
  "tracing",
  "url",
 ]

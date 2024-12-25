@@ -30,7 +30,7 @@ strip-ansi-escapes = "0.2.0"
 vte = "0.13.0"
 timer = "0.2.0"
 flate2 = "1.0.35"
-pulldown-cmark-mdcat = { version = "2.7.0", default-features = false }
+pulldown-cmark-mdcat = { version = "2.7.1", default-features = false }
 pulldown-cmark = "0.12.2"
 syntect = "5.2.0"
 serde = { version = "1.0.216", features = ['derive'] }

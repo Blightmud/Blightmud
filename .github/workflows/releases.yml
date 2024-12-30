@@ -115,31 +115,3 @@ jobs:
         with:
           name: blightmud-macos-13
           path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip
-
-  build_macos_12:
-    name: Build for macOS-12
-    runs-on: macos-12
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Build release
-        run: cargo build --release --locked
-      - name: Get current version
-        id: get_version
-        run: echo VERSION=${GITHUB_REF#refs/tags/} >> $GITHUB_OUTPUT
-      - name: Package Binary
-        run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos-12.zip blightmud
-      - name: Create/Update release
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          draft: true
-          omitBody: true
-          artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-12.zip
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: blightmud-macos-12
-          path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-12.zip

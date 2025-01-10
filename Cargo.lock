@@ -285,7 +285,7 @@ dependencies = [
  "termion",
  "timer",
  "tts",
- "vte 0.13.0",
+ "vte 0.14.0",
  "webpki-roots",
 ]
 
@@ -2782,18 +2782,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5022b5fbf9407086c180e9557be968742d839e68346af7792b8592489732197"
 dependencies = [
  "utf8parse",
- "vte_generate_state_changes",
+ "vte_generate_state_changes 0.1.2",
 ]
 
 [[package]]
 name = "vte"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40eb22ae96f050e0c0d6f7ce43feeae26c348fc4dea56928ca81537cfaa6188b"
+checksum = "5507b53f7756f79bdb968d038a8f8db570d88028aee3c3cdc20427a8fb3482f4"
 dependencies = [
  "arrayvec",
- "utf8parse",
- "vte_generate_state_changes",
+ "memchr",
+ "vte_generate_state_changes 0.2.0",
 ]
 
 [[package]]
@@ -2801,6 +2801,16 @@ name = "vte_generate_state_changes"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e369bee1b05d510a7b4ed645f5faa90619e05437111783ea5848f28d97d3c2e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "vte_generate_state_changes"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e658bbb246cd98d720db0b7553764f7e841e25d9ac0c9ecfbc09452dc95a8cce"
 dependencies = [
  "proc-macro2",
  "quote",

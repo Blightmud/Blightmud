@@ -27,7 +27,7 @@ signal-hook = "0.3.17"
 mlua =  { version = "0.9.9", features = ["lua54", "send", "vendored", "macros"] }
 regex = "1.11.1"
 strip-ansi-escapes = "0.2.0"
-vte = "0.13.0"
+vte = "0.14.1"
 timer = "0.2.0"
 flate2 = "1.0.35"
 pulldown-cmark-mdcat = { version = "2.7.1", default-features = false }

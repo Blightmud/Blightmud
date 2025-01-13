@@ -44,7 +44,7 @@ tts = { version = "0.26.3", optional = true }
 serde_json = "1.0.135"
 git2 = "0.20.0"
 rodio = "0.20.1"
-notify-debouncer-mini = "0.5.0"
+notify-debouncer-mini = "0.6.0"
 hunspell-rs = { version = "0.4.0", optional = true }
 hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }
 rustls = { version = "0.23", default-features = false, features = ['ring', 'tls12', 'std'] }

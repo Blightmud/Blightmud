@@ -26,7 +26,7 @@ chrono = "0.4.39"
 signal-hook = "0.3.17"
 mlua =  { version = "0.9.9", features = ["lua54", "send", "vendored", "macros"] }
 regex = "1.11.1"
-strip-ansi-escapes = "0.2.0"
+strip-ansi-escapes = "0.2.1"
 vte = "0.13.0"
 timer = "0.2.0"
 flate2 = "1.0.35"

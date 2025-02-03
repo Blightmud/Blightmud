@@ -285,7 +285,7 @@ dependencies = [
  "termion",
  "timer",
  "tts",
- "vte 0.13.0",
+ "vte 0.15.0",
  "webpki-roots",
 ]
 
@@ -2775,13 +2775,12 @@ dependencies = [
 
 [[package]]
 name = "vte"
-version = "0.13.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40eb22ae96f050e0c0d6f7ce43feeae26c348fc4dea56928ca81537cfaa6188b"
+checksum = "a5924018406ce0063cd67f8e008104968b74b563ee1b85dde3ed1f7cb87d3dbd"
 dependencies = [
  "arrayvec",
- "utf8parse",
- "vte_generate_state_changes",
+ "memchr",
 ]
 
 [[package]]

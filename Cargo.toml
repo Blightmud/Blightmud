@@ -29,7 +29,7 @@ regex = "1.11.1"
 strip-ansi-escapes = "0.2.1"
 vte = "0.13.0"
 timer = "0.2.0"
-flate2 = "1.0.35"
+flate2 = "1.1.0"
 pulldown-cmark-mdcat = { version = "2.7.1", default-features = false }
 pulldown-cmark = "0.12.2"
 syntect = "5.2.0"

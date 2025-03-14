@@ -266,7 +266,7 @@ dependencies = [
  "mockall",
  "mockall_double",
  "notify-debouncer-mini",
- "pulldown-cmark",
+ "pulldown-cmark 0.13.0",
  "pulldown-cmark-mdcat",
  "regex",
  "reqwest",
@@ -1144,7 +1144,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -1775,6 +1775,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f86ba2052aebccc42cbbb3ed234b8b13ce76f75c3551a303cb2bcffcff12bb14"
 dependencies = [
  "bitflags 2.7.0",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e8bbe1a966bd2f362681a44f6edce3c2310ac21e4d5067a6e7ec396297a6ea0"
+dependencies = [
+ "bitflags 2.7.0",
  "getopts",
  "memchr",
  "pulldown-cmark-escape",
@@ -1797,7 +1808,7 @@ dependencies = [
  "base64 0.22.1",
  "gethostname",
  "mime",
- "pulldown-cmark",
+ "pulldown-cmark 0.12.2",
  "rustix",
  "syntect",
  "terminal_size",

@@ -31,7 +31,7 @@ impl From<mFsEvent> for FSEvent {
 }
 
 impl UserData for FSEvent {
-    fn add_fields<'lua, F: UserDataFields<'lua, Self>>(fields: &mut F) {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         fields.add_field_method_get("paths", |_, this| Ok(this.paths.clone()));
     }
 }

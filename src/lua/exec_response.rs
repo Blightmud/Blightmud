@@ -9,7 +9,7 @@ pub struct ExecResponse {
 }
 
 impl UserData for ExecResponse {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method(
             "code",
             |_, this, _: ()| -> Result<Option<i32>, mlua::Error> { Ok(this.code) },

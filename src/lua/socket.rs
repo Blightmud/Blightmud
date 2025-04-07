@@ -14,7 +14,7 @@ use crate::{
 pub struct SocketLib;
 
 impl UserData for SocketLib {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_function(
             "connect",
             |ctx, (host, port): (String, u16)| -> mlua::Result<Option<Socket>> {
@@ -38,7 +38,7 @@ pub struct Socket {
 }
 
 impl UserData for Socket {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_method_mut("send", |_, this, data: String| {
             let _ = this.connection.write(data.as_bytes());
             Ok(())

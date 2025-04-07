@@ -16,7 +16,7 @@ fn parse_audio_options(opts: &Option<Table>) -> SourceOptions {
 pub struct Audio {}
 
 impl UserData for Audio {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_function(
             "play_music",
             |ctx, (path, opts): (String, Option<Table>)| {

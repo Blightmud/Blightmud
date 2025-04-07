@@ -25,7 +25,7 @@ impl Store {
 }
 
 impl UserData for Store {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function("session_write", |ctx, (key, val): (String, String)| {
             let store_aud: AnyUserData = ctx.globals().get(Store::LUA_GLOBAL_NAME)?;
             let mut store = store_aud.borrow_mut::<Store>()?;

@@ -10,7 +10,7 @@ use super::{
 pub struct Fs {}
 
 impl UserData for Fs {
-    fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function("monitor", |ctx, (path, cb): (String, Function)| {
             let table: Table = ctx.named_registry_value(FS_LISTENERS)?;
             table.set(table.raw_len() + 1, cb)?;

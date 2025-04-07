@@ -19,7 +19,7 @@ impl Handler {
 }
 
 impl UserData for Handler {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_function("add", |ctx, (url, with_submodules): (String, bool)| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             let writer = backend.writer;
@@ -102,7 +102,7 @@ mod test_plugin {
         let lua = get_lua_state();
         assert!(lua
             .load("return plugin.dir()")
-            .call::<_, String>(())
+            .call::<String>(())
             .unwrap()
             .ends_with(".run/test/data/plugins"));
     }
@@ -112,7 +112,7 @@ mod test_plugin {
         let lua = get_lua_state();
         assert!(lua
             .load("return plugin.dir(\"awesome\")")
-            .call::<_, String>(())
+            .call::<String>(())
             .unwrap()
             .ends_with(".run/test/data/plugins/awesome"));
     }

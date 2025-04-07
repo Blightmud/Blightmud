@@ -59,7 +59,7 @@ impl<'a> Iterator for PrintableChars<'a> {
         let mut next = self.iter.next();
 
         while let Some(c) = next {
-            self.parser.advance(&mut self.performer, c as u8);
+            self.parser.advance(&mut self.performer, &[c as u8]);
             if let Some(pc) = self.performer.c.take() {
                 return Some(pc);
             } else {
@@ -96,7 +96,7 @@ impl<'a> Iterator for PrintableCharIndices<'a> {
         let mut next = self.iter.next();
 
         while let Some((offset, c)) = next {
-            self.parser.advance(&mut self.performer, c as u8);
+            self.parser.advance(&mut self.performer, &[c as u8]);
             if let Some(c) = self.performer.c.take() {
                 return Some((offset, c));
             } else {

@@ -33,7 +33,7 @@ impl PromptMask {
         masked_buf.iter().collect()
     }
 
-    pub fn to_table<'a>(&'a self, ctx: &'a Lua) -> LuaResult<LuaTable> {
+    pub fn to_table<'a>(&'a self, ctx: &'a Lua) -> LuaResult<LuaTable<'a>> {
         ctx.create_table_from(self.iter().map(|(idx, mask)| (*idx + 1, (*mask).clone())))
     }
 }

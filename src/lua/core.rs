@@ -34,22 +34,22 @@ impl Core {
 }
 
 impl UserData for Core {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function("enable_protocol", |ctx, proto: u8| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("core")?;
             let this = this_aux.borrow_mut::<Core>()?;
             this.main_writer.send(Event::EnableProto(proto)).unwrap();
             Ok(())
         });
         methods.add_function("disable_protocol", |ctx, proto: u8| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("core")?;
             let this = this_aux.borrow_mut::<Core>()?;
             this.main_writer.send(Event::DisableProto(proto)).unwrap();
             Ok(())
         });
         methods.add_function_mut("on_protocol_enabled", |ctx, cb: mlua::Function| {
             let table: Table = ctx.named_registry_value(PROTO_ENABLED_LISTENERS_TABLE)?;
-            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("core")?;
             let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
             ctx.set_named_registry_value(PROTO_ENABLED_LISTENERS_TABLE, table)?;
@@ -57,7 +57,7 @@ impl UserData for Core {
         });
         methods.add_function_mut("on_protocol_disabled", |ctx, cb: mlua::Function| {
             let table: Table = ctx.named_registry_value(PROTO_DISABLED_LISTENERS_TABLE)?;
-            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("core")?;
             let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
             ctx.set_named_registry_value(PROTO_DISABLED_LISTENERS_TABLE, table)?;
@@ -65,14 +65,14 @@ impl UserData for Core {
         });
         methods.add_function_mut("subneg_recv", |ctx, cb: mlua::Function| {
             let table: Table = ctx.named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE)?;
-            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("core")?;
             let mut this = this_aux.borrow_mut::<Core>()?;
             table.set(this.next_index(), cb)?;
             ctx.set_named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE, table)?;
             Ok(())
         });
         methods.add_function_mut("subneg_send", |ctx, (proto, bytes): (u8, Table)| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("core")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("core")?;
             let this = this_aux.borrow_mut::<Core>()?;
             let data = bytes
                 .pairs::<i32, u8>()

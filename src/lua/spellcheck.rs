@@ -42,33 +42,33 @@ impl Spellchecker {
 }
 
 impl UserData for Spellchecker {
-    fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function(
             "init",
             |ctx, (aff_path, dict_path): (LuaString, LuaString)| -> LuaResult<()> {
-                let this_aux = ctx.globals().get::<_, AnyUserData>(LUA_GLOBAL_NAME)?;
+                let this_aux = ctx.globals().get::<AnyUserData>(LUA_GLOBAL_NAME)?;
                 let mut this = this_aux
                     .borrow_mut::<Spellchecker>()
                     .map_err(LuaError::external)?;
-                this.init(aff_path.to_str()?, dict_path.to_str()?);
+                this.init(&aff_path.to_str()?, &dict_path.to_str()?);
                 Ok(())
             },
         );
         methods.add_function("check", |ctx, word: LuaString| -> LuaResult<bool> {
-            let this_aux = ctx.globals().get::<_, AnyUserData>(LUA_GLOBAL_NAME)?;
+            let this_aux = ctx.globals().get::<AnyUserData>(LUA_GLOBAL_NAME)?;
             let this = this_aux
                 .borrow::<Spellchecker>()
                 .map_err(LuaError::external)?;
-            let found = this.check(word.to_str()?).map_err(LuaError::external)?;
+            let found = this.check(&word.to_str()?).map_err(LuaError::external)?;
             Ok(found)
         });
         methods.add_function("suggest", |ctx, word: LuaString| -> LuaResult<Table> {
-            let this_aux = ctx.globals().get::<_, AnyUserData>(LUA_GLOBAL_NAME)?;
+            let this_aux = ctx.globals().get::<AnyUserData>(LUA_GLOBAL_NAME)?;
             let this = this_aux
                 .borrow::<Spellchecker>()
                 .map_err(LuaError::external)?;
             let res_table = ctx.create_table()?;
-            this.suggest(word.to_str()?)
+            this.suggest(&word.to_str()?)
                 .map_err(LuaError::external)?
                 .iter()
                 .enumerate()
@@ -158,6 +158,6 @@ mod tests {
 
         lua.load(suggest_script).exec().unwrap();
         let suggest_res: Table = lua.globals().get("suggest_res").unwrap();
-        assert_eq!(suggest_res.get::<i32, String>(0).unwrap(), "program");
+        assert_eq!(suggest_res.get::<String>(0).unwrap(), "program");
     }
 }

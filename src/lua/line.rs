@@ -18,7 +18,7 @@ impl From<mLine> for Line {
 }
 
 impl UserData for Line {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("line", |_, this, _: ()| -> mlua::Result<String> {
             Ok(this.inner.clean_line().to_string())
         });

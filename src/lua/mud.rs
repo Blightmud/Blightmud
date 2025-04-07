@@ -23,7 +23,7 @@ impl Mud {
 }
 
 impl UserData for Mud {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_function(
             "add_output_listener",
             |ctx, func: Function| -> mlua::Result<()> {

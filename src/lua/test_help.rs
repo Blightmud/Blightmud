@@ -29,7 +29,7 @@ macro_rules! test_lua {
         #[allow(unused_macros)]
         macro_rules! run_lua {
             ($lua_code:literal) => {
-                state.load($lua_code).call::<_,()>(()).unwrap();
+                state.load($lua_code).call::<()>(()).unwrap();
             };
         }
 
@@ -37,7 +37,7 @@ macro_rules! test_lua {
         macro_rules! assert_lua {
             ($return_type:ty, $lua_code:literal, $expect:expr) => {
                 assert_eq!(
-                    state.load(concat!("return ", $lua_code)).call::<_, $return_type>(()).unwrap(),
+                    state.load(concat!("return ", $lua_code)).call::<$return_type>(()).unwrap(),
                     $expect
                 );
             };

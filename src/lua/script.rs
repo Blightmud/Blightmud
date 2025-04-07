@@ -11,7 +11,7 @@ use super::{
 pub struct Script {}
 
 impl UserData for Script {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_function("load", |ctx, path: String| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend.writer.send(Event::LoadScript(path)).unwrap();

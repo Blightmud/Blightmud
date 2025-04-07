@@ -49,15 +49,15 @@ impl Blight {
 }
 
 impl UserData for Blight {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function("output", |ctx, strings: Variadic<String>| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let mut this = this_aux.borrow_mut::<Blight>()?;
             this.output_lines.push(Line::from(strings.join(" ")));
             Ok(())
         });
         methods.add_function("terminal_dimensions", |ctx, _: ()| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             Ok(this.screen_dimensions)
         });
@@ -79,7 +79,7 @@ impl UserData for Blight {
             Ok(())
         });
         methods.add_function("ui", |ctx, cmd: String| -> mlua::Result<()> {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let mut this = this_aux.borrow_mut::<Blight>()?;
             let event: UiEvent = UiEvent::from(cmd.as_str());
             if let UiEvent::Unknown(cmd) = event {
@@ -96,19 +96,19 @@ impl UserData for Blight {
             Ok(())
         });
         methods.add_function("is_core_mode", |ctx, ()| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             Ok(this.core_mode)
         });
         methods.add_function("is_reader_mode", |ctx, ()| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             Ok(this.reader_mode)
         });
         methods.add_function("status_height", |ctx, requested: Option<u16>| {
             let height: u16 = if let Some(height) = requested {
                 let height = height.clamp(0, 5);
-                let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
                 let this = this_aux.borrow::<Blight>()?;
                 this.main_writer
                     .send(Event::StatusAreaHeight(height))
@@ -121,7 +121,7 @@ impl UserData for Blight {
             Ok(height)
         });
         methods.add_function("status_line", |ctx, (index, line): (usize, String)| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             this.main_writer
                 .send(Event::StatusLine(index, line))
@@ -160,7 +160,7 @@ impl UserData for Blight {
             },
         );
         methods.add_function("quit", |ctx, ()| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             this.main_writer
                 .send(Event::Quit(QuitMethod::Script))
@@ -168,7 +168,7 @@ impl UserData for Blight {
             Ok(())
         });
         methods.add_function("show_help", |ctx, (name, lock_scroll): (String, bool)| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             this.main_writer
                 .send(Event::ShowHelp(name, lock_scroll))
@@ -176,7 +176,7 @@ impl UserData for Blight {
             Ok(())
         });
         methods.add_function("find_backward", |ctx, re: Regex| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             this.main_writer
                 .send(Event::FindBackward(re.regex))
@@ -184,7 +184,7 @@ impl UserData for Blight {
             Ok(())
         });
         methods.add_function("find_forward", |ctx, re: Regex| {
-            let this_aux = ctx.globals().get::<_, AnyUserData>("blight")?;
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
             this.main_writer.send(Event::FindForward(re.regex)).unwrap();
             Ok(())
@@ -236,7 +236,7 @@ mod test_blight {
         let (lua, _reader) = get_lua_state();
         assert!(lua
             .load("return blight.config_dir()")
-            .call::<_, String>(())
+            .call::<String>(())
             .unwrap()
             .ends_with(".run/test/config"));
     }
@@ -246,7 +246,7 @@ mod test_blight {
         let (lua, _reader) = get_lua_state();
         assert!(lua
             .load("return blight.data_dir()")
-            .call::<_, String>(())
+            .call::<String>(())
             .unwrap()
             .ends_with(".run/test/data"));
     }
@@ -256,7 +256,7 @@ mod test_blight {
         let (lua, _reader) = get_lua_state();
         assert_eq!(
             lua.load("return blight.version()")
-                .call::<_, (String, String)>(())
+                .call::<(String, String)>(())
                 .unwrap(),
             (PROJECT_NAME.to_string(), VERSION.to_string())
         );
@@ -299,9 +299,9 @@ mod test_blight {
             .unwrap();
         for pair in table.pairs::<mlua::Value, mlua::Function>() {
             let (_, cb) = pair.unwrap();
-            cb.call::<_, ()>(()).unwrap();
+            cb.call::<()>(()).unwrap();
         }
-        let blight_aux = lua.globals().get::<_, AnyUserData>("blight").unwrap();
+        let blight_aux = lua.globals().get::<AnyUserData>("blight").unwrap();
         let mut blight = blight_aux.borrow_mut::<Blight>().unwrap();
         let lines = blight.get_output_lines();
         let mut it = lines.iter();
@@ -385,9 +385,9 @@ mod test_blight {
             .exec()
             .unwrap();
         let bindings: mlua::Table = lua.named_registry_value(COMMAND_BINDING_TABLE).unwrap();
-        assert!(bindings.get::<_, mlua::Function>("f1").is_ok());
+        assert!(bindings.get::<mlua::Function>("f1").is_ok());
         lua.load("blight.unbind(\"f1\")").exec().unwrap();
-        assert!(bindings.get::<_, mlua::Function>("f1").is_err());
+        assert!(bindings.get::<mlua::Function>("f1").is_err());
     }
 
     #[test]
@@ -397,8 +397,8 @@ mod test_blight {
             .exec()
             .unwrap();
         let bindings: mlua::Table = lua.named_registry_value(COMMAND_BINDING_TABLE).unwrap();
-        assert!(bindings.get::<_, mlua::Function>("alt-H").is_ok());
-        assert!(bindings.get::<_, mlua::Function>("alt-h").is_err());
+        assert!(bindings.get::<mlua::Function>("alt-H").is_ok());
+        assert!(bindings.get::<mlua::Function>("alt-h").is_err());
     }
 
     #[test]
@@ -406,27 +406,27 @@ mod test_blight {
         let (lua, _reader) = get_lua_state();
         let height = lua
             .load("return blight.status_height()")
-            .call::<_, u16>(())
+            .call::<u16>(())
             .unwrap();
         assert_eq!(height, 1);
         let height = lua
             .load("return blight.status_height(3)")
-            .call::<_, u16>(())
+            .call::<u16>(())
             .unwrap();
         assert_eq!(height, 3);
         let height = lua
             .load("return blight.status_height()")
-            .call::<_, u16>(())
+            .call::<u16>(())
             .unwrap();
         assert_eq!(height, 3);
         let height = lua
             .load("return blight.status_height(1)")
-            .call::<_, u16>(())
+            .call::<u16>(())
             .unwrap();
         assert_eq!(height, 1);
         let height = lua
             .load("return blight.status_height()")
-            .call::<_, u16>(())
+            .call::<u16>(())
             .unwrap();
         assert_eq!(height, 1);
     }

@@ -12,7 +12,7 @@ impl Log {
 }
 
 impl UserData for Log {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function("start", |ctx, name: String| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend

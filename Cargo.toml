@@ -50,7 +50,7 @@ hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }
 rustls = { version = "0.23", default-features = false, features = ['ring', 'tls12', 'std'] }
 webpki-roots = "0.26"
 reqwest = { version = "0.12.15", default-features = false, features = ['blocking', '__rustls-ring', 'json'] }
-socket2 = "0.5.9"
+socket2 = "0.5.10"
 
 [dev-dependencies]
 mockall = "0.13.1"

@@ -5,7 +5,6 @@ use rodio::{source::Source, Sink};
 
 pub struct Player {
     _stream: Option<rodio::OutputStream>,
-    handle: Option<rodio::OutputStreamHandle>,
     music: Option<Sink>,
     sfx: Option<Sink>,
 }
@@ -30,17 +29,14 @@ impl Player {
         let mut music = None;
         let mut sfx = None;
         let mut stream = None;
-        let mut handle = None;
-        if let Ok((ostream, ohandle)) = rodio::OutputStream::try_default() {
-            music = rodio::Sink::try_new(&ohandle).ok();
-            sfx = rodio::Sink::try_new(&ohandle).ok();
+        if let Ok(ostream) = rodio::OutputStreamBuilder::open_default_stream() {
+            music = Some(rodio::Sink::connect_new(ostream.mixer()));
+            sfx = Some(rodio::Sink::connect_new(ostream.mixer()));
             stream = Some(ostream);
-            handle = Some(ohandle);
         }
 
         Self {
             _stream: stream,
-            handle,
             music,
             sfx,
         }
@@ -49,7 +45,6 @@ impl Player {
     pub fn disabled() -> Self {
         Self {
             _stream: None,
-            handle: None,
             music: None,
             sfx: None,
         }
@@ -57,8 +52,8 @@ impl Player {
 
     pub fn play_music(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.music.is_none() {
-            if let Some(handle) = &self.handle {
-                self.music = rodio::Sink::try_new(handle).ok();
+            if let Some(ostream) = &self._stream {
+                self.music = Some(rodio::Sink::connect_new(ostream.mixer()));
             }
         }
         if let Some(music) = &self.music {
@@ -82,8 +77,8 @@ impl Player {
 
     pub fn play_sfx(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.sfx.is_none() {
-            if let Some(handle) = &self.handle {
-                self.sfx = rodio::Sink::try_new(handle).ok();
+            if let Some(ostream) = &self._stream {
+                self.sfx = Some(rodio::Sink::connect_new(ostream.mixer()));
             }
         }
         if let Some(sfx) = &self.sfx {

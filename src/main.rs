@@ -34,6 +34,12 @@ fn setup_options() -> Options {
         "no-verify",
         "Don't verify the cert for the TLS connection",
     );
+    opts.optopt(
+        "s",
+        "script",
+        "Launch using provided script instead of defaults",
+        "PATH",
+    );
     if cfg!(feature = "tts") {
         opts.optflag(
             "T",

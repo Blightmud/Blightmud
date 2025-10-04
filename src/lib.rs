@@ -146,6 +146,7 @@ impl From<Matches> for RuntimeConfig {
     fn from(matches: Matches) -> Self {
         let world = matches.opt_get::<String>("world").ok().unwrap();
         let connect = matches.opt_get::<String>("connect").ok().unwrap();
+        let script = matches.opt_get::<String>("script").ok().unwrap();
         Self {
             reader_mode: matches.opt_present("reader-mode"),
             headless_mode: false,
@@ -155,7 +156,7 @@ impl From<Matches> for RuntimeConfig {
             tls: matches.opt_present("tls"),
             no_verify: matches.opt_present("no-verify"),
             connect,
-            script: None,
+            script,
             eval: None,
             integration_test: false,
             no_update_check: matches.opt_present("no-update-check"),
@@ -259,7 +260,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
     let _ = spawn_input_thread(session.clone());
     let _ = register_terminal_resize_listener(session.clone());
 
-    let lua_scripts = if !rt.integration_test {
+    // Load default scripts unless one has been provided
+    let lua_scripts = if rt.script.is_none() {
         fs::read_dir(CONFIG_DIR.as_path())?
             .filter_map(|entry| match entry {
                 Ok(file) => {

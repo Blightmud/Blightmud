@@ -17,7 +17,7 @@ pub fn get_plugin_dir() -> PathBuf {
 pub fn add_plugin(main_writer: Sender<Event>, url: &str, with_submodules: bool) {
     let url = url.to_string();
     std::thread::spawn(move || {
-        if let Some(name) = url.split('/').last() {
+        if let Some(name) = url.split('/').next_back() {
             let dest = get_plugin_dir().join(name);
             let mut rbuilder = RepoBuilder::new();
             rbuilder.clone_local(CloneLocal::Auto);

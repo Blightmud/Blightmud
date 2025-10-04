@@ -15,7 +15,7 @@ pub struct Blight {
     pub screen_dimensions: (u16, u16),
     pub core_mode: bool,
     pub reader_mode: bool,
-    pub tts_enabled: bool,
+    pub _tts_enabled: bool,
 }
 
 impl Blight {
@@ -27,7 +27,7 @@ impl Blight {
             screen_dimensions: (0, 0),
             core_mode: false,
             reader_mode: false,
-            tts_enabled: false,
+            _tts_enabled: false,
         }
     }
 

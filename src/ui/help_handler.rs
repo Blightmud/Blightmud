@@ -103,22 +103,10 @@ impl HelpHandler {
         } else if self.files.contains_key(file) {
             let data_dir = crate::DATA_DIR.clone();
             let log_path = data_dir.join("logs");
-            let datadir = if let Some(str_path) = data_dir.to_str() {
-                str_path
-            } else {
-                "$USER_DATA_DIR"
-            };
-            let logdir = if let Some(str_path) = log_path.to_str() {
-                str_path
-            } else {
-                "$USER_DATA_DIR/logs"
-            };
+            let datadir = data_dir.to_str().unwrap_or("$USER_DATA_DIR");
+            let logdir = log_path.to_str().unwrap_or("$USER_DATA_DIR/logs");
             let config_path = crate::CONFIG_DIR.to_path_buf();
-            let config_dir = if let Some(str_path) = config_path.to_str() {
-                str_path
-            } else {
-                "$USER_CONFIG_DIR"
-            };
+            let config_dir = config_path.to_str().unwrap_or("$USER_CONFIG_DIR");
 
             let file_content = self
                 .file_content(file)

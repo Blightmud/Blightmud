@@ -34,7 +34,7 @@ impl Completions {
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<String> {
+    pub fn iter(&'_ self) -> std::slice::Iter<'_, String> {
         self.inner.iter()
     }
 }

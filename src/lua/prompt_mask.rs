@@ -18,14 +18,14 @@ impl UserData for PromptMask {
             |ctx, (data, mask): (LuaString, Table)| -> LuaResult<bool> {
                 let prompt_data: String = ctx.named_registry_value(PROMPT_CONTENT).unwrap();
                 let mask_data = data.to_str().unwrap();
-                if prompt_data != mask_data.to_owned() {
+                if *prompt_data != *mask_data {
                     return Ok(false);
                 }
                 let prompt_mask = model::PromptMask::from(mask);
                 let valid = prompt_mask
-                    .iter()
-                    .map(|(offset, _)| *offset as usize)
+                    .keys()
                     .any(|offset| {
+                        let offset = *offset as usize;
                         offset > prompt_data.len() + 1 || !prompt_data.is_char_boundary(offset)
                     })
                     .not();

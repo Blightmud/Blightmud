@@ -44,7 +44,7 @@ impl MudReceiver {
                     }
                 }
                 Err(err) => {
-                    error!("Error: {}", err.to_string());
+                    error!("Error: {}", err);
                     data = vec![];
                 }
             }

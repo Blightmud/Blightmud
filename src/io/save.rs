@@ -56,7 +56,7 @@ pub trait SaveData: DeserializeOwned + Serialize + Default {
         };
 
         if let Err(err) = write_data() {
-            error!("Write data error: {}", err.to_string());
+            error!("Write data error: {}", err);
         }
     }
 }

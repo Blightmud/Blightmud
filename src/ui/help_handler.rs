@@ -42,12 +42,12 @@ impl HelpHandler {
         Ok(())
     }
 
-    fn read_from_file(&self, file: &str) -> Cow<str> {
+    fn read_from_file(&'_ self, file: &str) -> Cow<'_, str> {
         Cow::from(fs::read_to_string(file).unwrap_or_else(|_| panic!("Can't find {file}")))
     }
 
     /// Load helpfiles from disk in debug mode, from memory otherwise.
-    fn file_content(&self, file: &str) -> Cow<str> {
+    fn file_content(&'_ self, file: &str) -> Cow<'_, str> {
         if cfg!(debug_assertions) {
             self.read_from_file(self.files[file])
         } else {
@@ -153,7 +153,7 @@ impl HelpHandler {
     }
 }
 
-fn md_settings(syntax_set: &SyntaxSet) -> MDSettings {
+fn md_settings(syntax_set: &'_ SyntaxSet) -> MDSettings<'_> {
     let terminal_size = TerminalSize::detect().unwrap_or_default();
 
     MDSettings {

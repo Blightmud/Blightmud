@@ -1,7 +1,7 @@
 use std::{borrow::Cow, env};
 
 /// "~/blightmud" => "/home/yourname/blightmud"
-pub fn expand_tilde(path: &str) -> Cow<str> {
+pub fn expand_tilde(path: &'_ str) -> Cow<'_, str> {
     if let Some(sub_path) = path.strip_prefix('~') {
         Cow::from(env::var("HOME").expect("$HOME must be set") + sub_path)
     } else {

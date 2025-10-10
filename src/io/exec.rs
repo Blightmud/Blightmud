@@ -10,6 +10,16 @@ pub fn exec(cmd: &str) -> Result<Output> {
     }
 }
 
+pub fn exec_args(cmd: &[String]) -> Result<Output> {
+    match cmd {
+        [exe, args @ ..] => match Command::new(exe).args(args).output() {
+            Ok(output) => Ok(output),
+            Err(err) => bail!(err),
+        },
+        _ => bail!("argument table must contain executable as first element"),
+    }
+}
+
 #[cfg(test)]
 mod test_exec {
 
@@ -18,5 +28,11 @@ mod test_exec {
     #[test]
     fn test() {
         assert_eq!(b"test\n".to_vec(), exec("echo 'test'").unwrap().stdout);
+        assert_eq!(
+            b"test\n".to_vec(),
+            exec_args(&["echo".to_string(), "test".to_string()])
+                .unwrap()
+                .stdout
+        );
     }
 }

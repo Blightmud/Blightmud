@@ -2,9 +2,10 @@ use std::sync::mpsc::Sender;
 
 use libmudtelnet::bytes::Bytes;
 use log::debug;
-use mlua::{AnyUserData, Table, UserData, UserDataMethods};
+use mlua::{AnyUserData, Table, UserData, UserDataMethods, Value};
 
-use crate::{event::Event, io::exec};
+use crate::event::Event;
+use crate::io::{exec, exec_args};
 
 use super::{
     constants::{
@@ -87,10 +88,22 @@ impl UserData for Core {
         });
         methods.add_function(
             "exec",
-            |_, cmd: String| -> Result<ExecResponse, mlua::Error> {
-                match exec(&cmd) {
-                    Ok(output) => Ok(ExecResponse::from(output)),
-                    Err(err) => Err(mlua::Error::RuntimeError(err.to_string())),
+            |_, cmd: Value| -> Result<ExecResponse, mlua::Error> {
+                match cmd {
+                    Value::String(shell) => match exec(&shell.to_str()?) {
+                        Ok(output) => Ok(ExecResponse::from(output)),
+                        Err(err) => Err(mlua::Error::RuntimeError(err.to_string())),
+                    },
+                    Value::Table(strings) => {
+                        let args: Vec<_> = strings.sequence_values::<String>().flatten().collect();
+                        match exec_args(&args[..]) {
+                            Ok(output) => Ok(ExecResponse::from(output)),
+                            Err(err) => Err(mlua::Error::RuntimeError(err.to_string())),
+                        }
+                    }
+                    _ => Err(mlua::Error::RuntimeError(String::from(
+                        "argument #1 must be either a string or a table",
+                    ))),
                 }
             },
         );

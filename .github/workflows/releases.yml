@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  package_ubuntu_22_04:
+  package_ubuntu_latest:
     name: Build deb & rpm
     runs-on: ubuntu-latest
     steps:
@@ -34,13 +34,6 @@ jobs:
         id: rpm_path
         run: |
           ls -1 target/release/rpmbuild/RPMS/x86_64/*.rpm | awk '{print "rpm_path="$1}' >> $GITHUB_OUTPUT
-      - name: Generate changelog
-        id: changelog
-        uses: heinrichreimer/github-changelog-generator-action@v2.4
-        with:
-          onlyLastTag: true
-          filterByMilestone: true
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Create/Update release
         uses: ncipollo/release-action@v1
         with:

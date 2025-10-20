@@ -17,15 +17,15 @@ fi
 
 echo -n "Downloading Mac releases... "
 curl -L https://github.com/Blightmud/Blightmud/releases/download/v${VERSION}/blightmud-v${VERSION}-macos.zip --output blightmud-mac.zip > /dev/null 2>&1
-curl -L https://github.com/Blightmud/Blightmud/releases/download/v${VERSION}/blightmud-v${VERSION}-macos-11.zip --output blightmud-mac-11.zip > /dev/null 2>&1
+curl -L https://github.com/Blightmud/Blightmud/releases/download/v${VERSION}/blightmud-v${VERSION}-macos-13.zip --output blightmud-mac-13.zip > /dev/null 2>&1
 echo "Done"
 echo -n "Getting sha256 sum... "
 SHA256_LATEST=$(sha256sum blightmud-mac.zip | cut --delimiter=" " -f1)
-SHA256_11=$(sha256sum blightmud-mac-11.zip | cut --delimiter=" " -f1)
+SHA256_13=$(sha256sum blightmud-mac-13.zip | cut --delimiter=" " -f1)
 echo "Done"
 echo -n "Deleting files... "
 rm blightmud-mac.zip
-rm blightmud-mac-11.zip
+rm blightmud-mac-13.zip
 echo "Done"
 
 cd homebrew-blightmud
@@ -37,7 +37,7 @@ sed -i -e"s/  version \".*\"/  version \"${VERSION}\"/" Formula/blightmud.rb
 sed -i -e"s/  sha256 \".*\"/  sha256 \"${SHA256_LATEST}\"/" Formula/blightmud.rb
 echo "Done"
 echo "MacOS (latest) sha256: ${SHA256_LATEST}"
-echo "MacOS (11) sha256: ${SHA256_11}"
+echo "MacOS (13) sha256: ${SHA256_13}"
 
 echo -n "Pushing changes... "
 git commit -a -m"Version ${VERSION}" > /dev/null 2>&1

@@ -40,7 +40,6 @@ jobs:
           allowUpdates: true
           draft: true
           artifacts: ${{ steps.deb_path.outputs.deb_path }},${{ steps.rpm_path.outputs.rpm_path }}
-          bodyFile: CHANGELOG.md
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload deb
         uses: actions/upload-artifact@v4

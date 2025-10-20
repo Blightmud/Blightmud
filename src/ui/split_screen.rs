@@ -659,6 +659,12 @@ impl SplitScreen {
         let output_range = self.scroll_range();
         for i in 0..output_range {
             let index = self.scroll_data.pos + i as usize;
+            if index >= self.history.inner.len() {
+                // History has been trimmed during scrolling
+                // TODO: It should be possible to lock history during render perhaps?
+                // The lock would prevent the drain function until scrolls is done.
+                break;
+            }
             let line_no = self.output_start_line + i;
             let mut line = self.history.inner[index].clone();
             if let Some(pattern) = &self.scroll_data.hilite {

@@ -90,14 +90,17 @@ impl TlsStream {
 
     fn default_root_certs() -> RootCertStore {
         RootCertStore {
-            roots: webpki_roots::TLS_SERVER_ROOTS.iter().cloned().collect(),
+            roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
         }
     }
 }
 
 /// here be dragons.
 mod danger {
+    use std::sync::Arc;
+
     use rustls::client::danger::HandshakeSignatureValid;
+    use rustls::crypto::CryptoProvider;
     use rustls::crypto::{verify_tls12_signature, verify_tls13_signature};
     use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
     use rustls::{client, DigitallySignedStruct, Error, SignatureScheme};
@@ -105,11 +108,15 @@ mod danger {
     /// NoCertificateVerification is a **DANGEROUS** [client::danger::ServerCertVerifier] that
     /// performs **no** certificate validation.
     #[derive(Debug)]
-    pub struct NoCertificateVerification(rustls::crypto::CryptoProvider);
+    pub struct NoCertificateVerification(Arc<CryptoProvider>);
 
     impl NoCertificateVerification {
         pub(super) fn new() -> Self {
-            Self(rustls::crypto::ring::default_provider())
+            Self(
+                CryptoProvider::get_default()
+                    .expect("no unambiguous process wide crypto provider set")
+                    .clone(),
+            )
         }
     }
 
@@ -207,6 +214,7 @@ mod test_tls {
     fn test_server(addr: SocketAddr) -> (SocketAddr, JoinHandle<()>) {
         let cert_chain = load_certs(TEST_SERVER_CERTS);
         let priv_key = load_private_key(TEST_SERVER_KEY);
+
         let config = Arc::new(
             ServerConfig::builder()
                 .with_no_client_auth()

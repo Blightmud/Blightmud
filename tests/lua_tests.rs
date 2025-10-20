@@ -23,6 +23,11 @@ fn test_lua_script() {
 }
 
 #[test]
+fn test_exec() {
+    test_script("tests/exec_tests.lua");
+}
+
+#[test]
 fn regex_smoke_tests() {
     test_script("tests/regex_smoke_tests.lua");
 }

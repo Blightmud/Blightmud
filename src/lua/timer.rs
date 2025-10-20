@@ -36,7 +36,7 @@ fn user_mode_only(lua: &Lua) -> Result<(), mlua::Error> {
 }
 
 impl UserData for Timer {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function(
             "add",
             |lua, (duration, count, callback): (f32, u32, mlua::Function)| {

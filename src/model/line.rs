@@ -181,7 +181,7 @@ impl Line {
         self.clean_content.clear();
     }
 
-    pub fn lines(&self) -> std::str::Lines {
+    pub fn lines(&'_ self) -> std::str::Lines<'_> {
         self.content.lines()
     }
 

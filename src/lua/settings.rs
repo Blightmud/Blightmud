@@ -13,8 +13,8 @@ impl Settings {
 }
 
 impl UserData for Settings {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_function("list", |ctx, _: ()| -> Result<Table<'lua>> {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_function("list", |ctx, _: ()| -> Result<Table> {
             let settings = model::Settings::try_load().map_err(Error::external)?;
             let result = ctx.create_table()?;
             model::SETTINGS.iter().try_for_each(|key| {

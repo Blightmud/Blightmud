@@ -11,7 +11,7 @@ pub struct Server {
 }
 
 impl UserData for Server {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_meta_method(
             mlua::MetaMethod::Index,
             |ctx, this, key: String| -> mlua::Result<mlua::Value> {
@@ -46,7 +46,7 @@ impl ServerLoader {
 }
 
 impl UserData for Servers {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_function(
             "add",
             |_,

@@ -23,7 +23,7 @@ fn parse_regex_options(opts: &Option<Table>) -> RegexOptions {
 pub struct RegexLib;
 
 impl UserData for RegexLib {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_function(
             "new",
             |_, (pattern, opts): (String, Option<Table>)| -> mlua::Result<Regex> {
@@ -49,7 +49,7 @@ impl Display for Regex {
 }
 
 impl UserData for Regex {
-    fn add_methods<'lua, T: UserDataMethods<'lua, Self>>(methods: &mut T) {
+    fn add_methods<T: UserDataMethods<Self>>(methods: &mut T) {
         methods.add_method(
             "test",
             |_, this, src: String| -> mlua::Result<mlua::Value> {
@@ -134,7 +134,7 @@ mod test_regexp {
             return re:test("test")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             true
         );
@@ -146,7 +146,7 @@ mod test_regexp {
             return re:test("not a test")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             false
         );
@@ -163,7 +163,7 @@ mod test_regexp {
             return re:match("test")
             "#,
                 )
-                .call::<_, Option<Vec<String>>>(())
+                .call::<Option<Vec<String>>>(())
                 .unwrap(),
             Some(vec!["test".to_string(), "test".to_string()])
         );
@@ -190,7 +190,7 @@ mod test_regexp {
             return re:match_all("homer: 42, bart: 10, lisa: 8")
             "#,
                 )
-                .call::<_, Option<Vec<Vec<String>>>>(())
+                .call::<Option<Vec<Vec<String>>>>(())
                 .unwrap(),
             Some(vec![
                 vec![
@@ -215,7 +215,7 @@ mod test_regexp {
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$m/$d/$y")
             "#,
                 )
-                .call::<_, String>(())
+                .call::<String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 07/05/2014".to_string()
         );
@@ -227,7 +227,7 @@ mod test_regexp {
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$m/$d/$y", 1)
             "#,
                 )
-                .call::<_, String>(())
+                .call::<String>(())
                 .unwrap(),
             "03/14/2012, 2013-01-01 and 2014-07-05".to_string()
         );
@@ -239,7 +239,7 @@ mod test_regexp {
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$m/$d/$y", 2)
             "#,
                 )
-                .call::<_, String>(())
+                .call::<String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 2014-07-05".to_string()
         );
@@ -251,7 +251,7 @@ mod test_regexp {
             return re:replace("2012-03-14, 2013-01-01 and 2014-07-05", "$2/$3/$1")
             "#,
                 )
-                .call::<_, String>(())
+                .call::<String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 07/05/2014".to_string()
         );
@@ -268,7 +268,7 @@ mod test_regexp {
             return re:test("TEST")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             true
         );
@@ -280,7 +280,7 @@ mod test_regexp {
             return re:test("TEST")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             false
         );
@@ -292,7 +292,7 @@ mod test_regexp {
             return re:test("test\ntest")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             true
         );
@@ -304,7 +304,7 @@ mod test_regexp {
             return re:test("test\ntest")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             false
         );
@@ -316,7 +316,7 @@ mod test_regexp {
             return re:test("start of text \n text end")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             true
         );
@@ -328,7 +328,7 @@ mod test_regexp {
             return re:test("start of text \n text end")
             "#,
                 )
-                .call::<_, bool>(())
+                .call::<bool>(())
                 .unwrap(),
             false
         );
@@ -340,7 +340,7 @@ mod test_regexp {
             return re:match("lot of aaaaaas")
             "#,
                 )
-                .call::<_, Option<Vec<String>>>(())
+                .call::<Option<Vec<String>>>(())
                 .unwrap(),
             Some(vec!["a".to_string(), "a".to_string()])
         );
@@ -352,7 +352,7 @@ mod test_regexp {
             return re:match("lot of aaaaaas")
             "#,
                 )
-                .call::<_, Option<Vec<String>>>(())
+                .call::<Option<Vec<String>>>(())
                 .unwrap(),
             Some(vec!["aaaaaa".to_string(), "aaaaaa".to_string()])
         );
@@ -364,7 +364,7 @@ mod test_regexp {
             return re:match("test")
             "#,
                 )
-                .call::<_, Option<Vec<String>>>(())
+                .call::<Option<Vec<String>>>(())
                 .unwrap(),
             Some(vec!["test".to_string(), "test".to_string()])
         );
@@ -376,7 +376,7 @@ mod test_regexp {
             return re:match("test")
             "#,
                 )
-                .call::<_, Option<Vec<String>>>(())
+                .call::<Option<Vec<String>>>(())
                 .unwrap(),
             None
         );

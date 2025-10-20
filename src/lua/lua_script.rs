@@ -85,7 +85,7 @@ macro_rules! lua_global_resources {
             let value = $state
                 .load(include_str!(concat!("../../resources/lua/", $path)))
                 .set_name(concat!("../../resources/lua/", $path))
-                .call::<_, mlua::Value>(())?;
+                .call::<mlua::Value>(())?;
             $globals.set(name, value)?;
         )+
     }};
@@ -217,7 +217,7 @@ impl LuaScript {
             let table: mlua::Table = self.state.named_registry_value(SCRIPT_RESET_LISTENERS)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair?;
-                cb.call::<_, ()>(())?;
+                cb.call::<()>(())?;
             }
             Ok(())
         });
@@ -242,7 +242,7 @@ impl LuaScript {
                 let (_, cb) = pair?;
                 let fs_event = FSEvent::from(event.clone());
                 debug!("FSEVENT(lua): {:?}", fs_event);
-                cb.call::<_, ()>(fs_event)?;
+                cb.call::<()>(fs_event)?;
             }
             Ok(())
         });
@@ -293,7 +293,7 @@ impl LuaScript {
                 .named_registry_value(PROMPT_INPUT_LISTENER_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair?;
-                cb.call::<_, ()>(content)?;
+                cb.call::<()>(content)?;
             }
             Ok(())
         });
@@ -307,7 +307,7 @@ impl LuaScript {
                     self.state.named_registry_value(MUD_OUTPUT_LISTENER_TABLE)?;
                 for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
-                    lline = cb.call::<_, LuaLine>(lline.clone())?;
+                    lline = cb.call::<LuaLine>(lline.clone())?;
                 }
                 line.replace_with(&lline.inner);
                 if let Some(replacement) = &lline.replacement {
@@ -326,7 +326,7 @@ impl LuaScript {
                     self.state.named_registry_value(MUD_INPUT_LISTENER_TABLE)?;
                 for pair in table.pairs::<mlua::Value, mlua::Function>() {
                     let (_, cb) = pair?;
-                    lline = cb.call::<_, LuaLine>(lline.clone())?;
+                    lline = cb.call::<LuaLine>(lline.clone())?;
                 }
                 line.replace_with(&lline.inner);
                 if let Some(replacement) = &lline.replacement {
@@ -347,7 +347,7 @@ impl LuaScript {
                 .named_registry_value(BLIGHT_ON_QUIT_LISTENER_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair?;
-                cb.call::<_, ()>(())?;
+                cb.call::<()>(())?;
             }
             Ok(())
         });
@@ -358,12 +358,12 @@ impl LuaScript {
             let core_table: mlua::Table =
                 self.state.named_registry_value(TIMED_CALLBACK_TABLE_CORE)?;
             match core_table.get(id)? {
-                mlua::Value::Function(func) => func.call::<_, ()>(()),
+                mlua::Value::Function(func) => func.call::<()>(()),
                 _ => {
                     let table: mlua::Table =
                         self.state.named_registry_value(TIMED_CALLBACK_TABLE)?;
                     match table.get(id)? {
-                        mlua::Value::Function(func) => func.call::<_, ()>(()),
+                        mlua::Value::Function(func) => func.call::<()>(()),
                         _ => Ok(()),
                     }
                 }
@@ -382,7 +382,7 @@ impl LuaScript {
                 .pairs::<mlua::Integer, mlua::Function>()
                 .chain(tick_table.pairs::<mlua::Integer, mlua::Function>());
             for pair in pairs.flatten() {
-                pair.1.call::<_, ()>(millis)?;
+                pair.1.call::<()>(millis)?;
             }
 
             Ok(())
@@ -408,7 +408,7 @@ impl LuaScript {
         file.read_to_string(&mut content)?;
         self.exec_lua(&mut || -> LuaResult<()> {
             let package: mlua::Table = self.state.globals().get("package")?;
-            let ppath = package.get::<&str, String>("path")?;
+            let ppath = package.get::<String>("path")?;
             package.set("path", format!("{dir}/?.lua;{ppath}"))?;
             let result = self.state.load(&content).set_name(path).exec();
             package.set("path", ppath)?;
@@ -434,7 +434,7 @@ impl LuaScript {
                 .named_registry_value(ON_CONNECTION_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
-                cb.call::<_, ()>((host, port))?;
+                cb.call::<()>((host, port))?;
             }
             Ok(())
         });
@@ -448,7 +448,7 @@ impl LuaScript {
                 .named_registry_value(ON_DISCONNECT_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
-                cb.call::<_, ()>(())?;
+                cb.call::<()>(())?;
             }
             Ok(())
         });
@@ -466,7 +466,7 @@ impl LuaScript {
                 .named_registry_value(BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair?;
-                cb.call::<_, ()>(dim)?;
+                cb.call::<()>(dim)?;
             }
             Ok(())
         });
@@ -501,7 +501,7 @@ impl LuaScript {
                 .named_registry_value(PROTO_DISABLED_LISTENERS_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
-                cb.call::<_, ()>(proto)?;
+                cb.call::<()>(proto)?;
             }
             Ok(())
         });
@@ -514,7 +514,7 @@ impl LuaScript {
                 .named_registry_value(PROTO_ENABLED_LISTENERS_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
-                cb.call::<_, ()>(proto)?;
+                cb.call::<()>(proto)?;
             }
             Ok(())
         });
@@ -527,7 +527,7 @@ impl LuaScript {
                 .named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
-                cb.call::<_, ()>((proto, bytes.to_vec()))?;
+                cb.call::<()>((proto, bytes.to_vec()))?;
             }
             Ok(())
         });
@@ -540,7 +540,7 @@ impl LuaScript {
                 self.state.named_registry_value(COMPLETION_CALLBACK_TABLE)?;
             for cb in cb_table.sequence_values::<mlua::Function>() {
                 let cb = cb?;
-                let result = cb.call::<_, mlua::MultiValue>(input.to_string())?;
+                let result = cb.call::<mlua::MultiValue>(input.to_string())?;
                 if !result.is_empty() {
                     let mut it = result.into_iter();
                     if let Some(Value::Table(table)) = it.next() {
@@ -565,9 +565,9 @@ impl LuaScript {
         let mut response = false;
         self.exec_lua(&mut || -> LuaResult<()> {
             let bind_table: mlua::Table = self.state.named_registry_value(COMMAND_BINDING_TABLE)?;
-            if let Ok(callback) = bind_table.get::<_, mlua::Function>(cmd) {
+            if let Ok(callback) = bind_table.get::<mlua::Function>(cmd) {
                 response = true;
-                callback.call::<_, ()>(())
+                callback.call::<()>(())
             } else {
                 Ok(())
             }
@@ -808,8 +808,8 @@ mod lua_script_tests {
             .call(())
             .unwrap();
         assert_eq!(dim, (70, 70));
-        assert_eq!(lua.state.globals().get::<_, i16>("width").unwrap(), 70);
-        assert_eq!(lua.state.globals().get::<_, i16>("height").unwrap(), 70);
+        assert_eq!(lua.state.globals().get::<i16>("width").unwrap(), 70);
+        assert_eq!(lua.state.globals().get::<i16>("height").unwrap(), 70);
     }
 
     #[test]
@@ -848,7 +848,7 @@ mod lua_script_tests {
         let (name, version): (String, String) = lua
             .state
             .load("return blight.version()")
-            .call::<(), (String, String)>(())
+            .call::<(String, String)>(())
             .unwrap();
         assert_eq!(version, VERSION);
         assert_eq!(name, PROJECT_NAME);
@@ -1111,8 +1111,8 @@ mod lua_script_tests {
         assert!(aliases.contains_key(&id));
 
         let alias: &mlua::Table = aliases.get(&id).unwrap();
-        assert_eq!(alias.get::<_, bool>("enabled").unwrap(), true);
-        assert_eq!(alias.get::<_, LReg>("regex").unwrap().to_string(), "test");
+        assert_eq!(alias.get::<bool>("enabled").unwrap(), true);
+        assert_eq!(alias.get::<LReg>("regex").unwrap().to_string(), "test");
 
         lua.state.load(r#"alias.clear()"#).exec().unwrap();
         let ids: BTreeMap<u32, mlua::Table> = lua
@@ -1142,11 +1142,11 @@ mod lua_script_tests {
         assert!(triggers.contains_key(&id));
 
         let trigger: &mlua::Table = triggers.get(&id).unwrap();
-        assert_eq!(trigger.get::<_, LReg>("regex").unwrap().to_string(), "test");
-        assert_eq!(trigger.get::<_, bool>("enabled").unwrap(), true);
-        assert_eq!(trigger.get::<_, bool>("gag").unwrap(), false);
-        assert_eq!(trigger.get::<_, bool>("raw").unwrap(), false);
-        assert_eq!(trigger.get::<_, bool>("prompt").unwrap(), false);
+        assert_eq!(trigger.get::<LReg>("regex").unwrap().to_string(), "test");
+        assert_eq!(trigger.get::<bool>("enabled").unwrap(), true);
+        assert_eq!(trigger.get::<bool>("gag").unwrap(), false);
+        assert_eq!(trigger.get::<bool>("raw").unwrap(), false);
+        assert_eq!(trigger.get::<bool>("prompt").unwrap(), false);
 
         lua.state.load(r#"trigger.clear()"#).exec().unwrap();
         let ids: BTreeMap<u32, mlua::Table> = lua
@@ -1253,17 +1253,17 @@ mod lua_script_tests {
             .unwrap();
         lua.tick(100);
         assert_eq!(
-            lua.state.globals().get::<_, u128>("total_millis").unwrap(),
+            lua.state.globals().get::<u128>("total_millis").unwrap(),
             100
         );
         lua.tick(100);
         assert_eq!(
-            lua.state.globals().get::<_, u128>("total_millis").unwrap(),
+            lua.state.globals().get::<u128>("total_millis").unwrap(),
             200
         );
         lua.tick(100);
         assert_eq!(
-            lua.state.globals().get::<_, u128>("total_millis").unwrap(),
+            lua.state.globals().get::<u128>("total_millis").unwrap(),
             300
         );
     }
@@ -1280,9 +1280,9 @@ mod lua_script_tests {
             )
             .exec()
             .unwrap();
-        assert!(!lua.state.globals().get::<_, bool>("quit").unwrap());
+        assert!(!lua.state.globals().get::<bool>("quit").unwrap());
         lua.on_quit();
-        assert!(lua.state.globals().get::<_, bool>("quit").unwrap());
+        assert!(lua.state.globals().get::<bool>("quit").unwrap());
     }
 
     #[test]
@@ -1297,10 +1297,10 @@ mod lua_script_tests {
             )
             .exec()
             .unwrap();
-        assert!(!lua.state.globals().get::<_, bool>("run").unwrap());
-        let id = lua.state.globals().get::<_, u32>("id").unwrap();
+        assert!(!lua.state.globals().get::<bool>("run").unwrap());
+        let id = lua.state.globals().get::<u32>("id").unwrap();
         lua.run_timed_function(id);
-        assert!(lua.state.globals().get::<_, bool>("run").unwrap());
+        assert!(lua.state.globals().get::<bool>("run").unwrap());
     }
 
     #[test]
@@ -1314,7 +1314,7 @@ mod lua_script_tests {
             )
             .exec()
             .unwrap();
-        let id = lua.state.globals().get::<_, u32>("id").unwrap();
+        let id = lua.state.globals().get::<u32>("id").unwrap();
         assert!(lua
             .state
             .named_registry_value::<mlua::Table>(TIMED_CALLBACK_TABLE)
@@ -1343,7 +1343,7 @@ mod lua_script_tests {
             .exec()
             .unwrap();
         lua.proto_enabled(201);
-        assert_eq!(lua.state.globals().get::<_, u32>("subneg").unwrap(), 201);
+        assert_eq!(lua.state.globals().get::<u32>("subneg").unwrap(), 201);
     }
 
     #[test]
@@ -1359,7 +1359,7 @@ mod lua_script_tests {
             .exec()
             .unwrap();
         lua.proto_subneg(201, &[]);
-        assert_eq!(lua.state.globals().get::<_, u32>("subneg").unwrap(), 201);
+        assert_eq!(lua.state.globals().get::<u32>("subneg").unwrap(), 201);
     }
 
     #[test]
@@ -1440,9 +1440,9 @@ mod lua_script_tests {
             .exec()
             .unwrap();
 
-        assert_eq!(lua.state.globals().get::<_, String>("buf").unwrap(), "");
+        assert_eq!(lua.state.globals().get::<String>("buf").unwrap(), "");
         lua.on_prompt_update(&"test".to_string());
-        assert_eq!(lua.state.globals().get::<_, String>("buf").unwrap(), "test");
+        assert_eq!(lua.state.globals().get::<String>("buf").unwrap(), "test");
     }
 
     #[test]
@@ -1455,10 +1455,10 @@ mod lua_script_tests {
 
         lua.set_prompt_mask_content(&mask);
         lua.state.load("mask = prompt_mask.get()").exec().unwrap();
-        let result = lua.state.globals().get::<_, Table>("mask").unwrap();
+        let result = lua.state.globals().get::<Table>("mask").unwrap();
 
-        assert_eq!(result.get::<i32, String>(11).unwrap(), "hi");
-        assert_eq!(result.get::<i32, String>(21).unwrap(), "bye");
+        assert_eq!(result.get::<String>(11).unwrap(), "hi");
+        assert_eq!(result.get::<String>(21).unwrap(), "bye");
     }
 
     #[test]
@@ -1467,7 +1467,7 @@ mod lua_script_tests {
 
         // Load the GMCP resource script, to get a handle on the 'gmcp' Table.
         let gmcp_script = include_str!("../../resources/lua/gmcp.lua");
-        let gmcp_module = lua.state.load(gmcp_script).call::<_, Table>(()).unwrap();
+        let gmcp_module = lua.state.load(gmcp_script).call::<Table>(()).unwrap();
 
         // Within the GMCP table, get the subnegotiation received handler.
         let handler: mlua::Function = gmcp_module.get("_subneg_recv").unwrap();
@@ -1493,7 +1493,7 @@ mod lua_script_tests {
         // the payload.
         let gmcp_payload = "👋";
         let gmcp_data = format!("Test {gmcp_payload}").as_bytes().to_vec();
-        handler.call::<_, mlua::Value>((201, gmcp_data)).unwrap();
+        handler.call::<mlua::Value>((201, gmcp_data)).unwrap();
 
         // We should find the expected data was received by our 'Test' GMCP package
         // handler (after trimming leading whitespace from splitting off the GMCP package).

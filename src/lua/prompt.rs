@@ -11,7 +11,7 @@ use super::{
 pub struct Prompt {}
 
 impl UserData for Prompt {
-    fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function("set", |ctx, line: String| {
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
             backend

@@ -58,7 +58,7 @@ impl From<BTreeMap<i32, String>> for PromptMask {
     }
 }
 
-impl From<LuaTable<'_>> for PromptMask {
+impl From<LuaTable> for PromptMask {
     fn from(mask_table: LuaTable) -> Self {
         let mask = mask_table
             .pairs::<LuaInt, LuaString>()

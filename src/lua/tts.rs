@@ -15,7 +15,7 @@ impl Tts {
 }
 
 impl UserData for Tts {
-    fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function("is_available", |_, _: ()| Ok(cfg!(feature = "tts")));
         if cfg!(feature = "tts") {
             methods.add_function("speak", |ctx, (msg, interupt): (String, Option<bool>)| {

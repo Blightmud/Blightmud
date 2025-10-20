@@ -13,7 +13,7 @@ jobs:
     name: Build deb & rpm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Install deps
@@ -64,7 +64,7 @@ jobs:
     name: Build for macOS-latest
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Build release
@@ -88,11 +88,11 @@ jobs:
           name: blightmud-macos
           path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
 
-  build_macos_11:
-    name: Build for macOS-11
-    runs-on: macos-11
+  build_macos_13:
+    name: Build for macOS-13
+    runs-on: macos-13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Build release
@@ -101,17 +101,17 @@ jobs:
         id: get_version
         run: echo VERSION=${GITHUB_REF#refs/tags/} >> $GITHUB_OUTPUT
       - name: Package Binary
-        run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos-11.zip blightmud
+        run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip blightmud
       - name: Create/Update release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           draft: true
           omitBody: true
-          artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-11.zip
+          artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: blightmud-macos-11
-          path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-11.zip
+          name: blightmud-macos-13
+          path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip

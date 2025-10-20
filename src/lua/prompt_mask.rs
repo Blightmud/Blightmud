@@ -12,20 +12,20 @@ use crate::model;
 pub struct PromptMask {}
 
 impl UserData for PromptMask {
-    fn add_methods<'lua, M: mlua::UserDataMethods<'lua, Self>>(methods: &mut M) {
+    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
         methods.add_function(
             "set",
             |ctx, (data, mask): (LuaString, Table)| -> LuaResult<bool> {
                 let prompt_data: String = ctx.named_registry_value(PROMPT_CONTENT).unwrap();
                 let mask_data = data.to_str().unwrap();
-                if prompt_data != mask_data {
+                if *prompt_data != *mask_data {
                     return Ok(false);
                 }
                 let prompt_mask = model::PromptMask::from(mask);
                 let valid = prompt_mask
-                    .iter()
-                    .map(|(offset, _)| *offset as usize)
+                    .keys()
                     .any(|offset| {
+                        let offset = *offset as usize;
                         offset > prompt_data.len() + 1 || !prompt_data.is_char_boundary(offset)
                     })
                     .not();
@@ -163,9 +163,9 @@ mod test_prompt_mask {
         lua.set_named_registry_value(PROMPT_MASK_CONTENT, mask.to_table(&lua).unwrap())
             .unwrap();
         lua.load("mask = prompt_mask.get()").exec().unwrap();
-        let result = lua.globals().get::<_, Table>("mask").unwrap();
+        let result = lua.globals().get::<Table>("mask").unwrap();
 
-        assert_eq!(result.get::<i32, String>(11).unwrap(), "hi");
-        assert_eq!(result.get::<i32, String>(21).unwrap(), "bye");
+        assert_eq!(result.get::<String>(11).unwrap(), "hi");
+        assert_eq!(result.get::<String>(21).unwrap(), "bye");
     }
 }

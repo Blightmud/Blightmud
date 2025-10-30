@@ -42,12 +42,12 @@ jobs:
           artifacts: ${{ steps.deb_path.outputs.deb_path }},${{ steps.rpm_path.outputs.rpm_path }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: blightmud-deb-22.04
           path: ${{ steps.deb_path.outputs.deb_path }}
       - name: Upload rpm
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: blightmud-rpm
           path: ${{ steps.rpm_path.outputs.rpm_path }}
@@ -75,7 +75,7 @@ jobs:
           artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: blightmud-macos
           path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
@@ -103,7 +103,7 @@ jobs:
           artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: blightmud-macos-13
           path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip

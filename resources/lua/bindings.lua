@@ -3,9 +3,9 @@ local function bind(cmd, event)
 end
 
 bind("alt-b", "step_word_left")
-bind("\x1b[1;5D", "step_word_left") -- Ctrl + left
+bind("ctrl-left", "step_word_left") -- Ctrl + left
 bind("alt-f", "step_word_right")
-bind("\x1b[1;5C", "step_word_right") -- Ctrl + right
+bind("ctrl-right", "step_word_right") -- Ctrl + right
 bind("alt-backspace", "delete_word_left")
 bind("alt-d", "delete_word_right")
 bind("ctrl-a", "step_to_start")
@@ -24,8 +24,8 @@ bind("pageup", "scroll_up")
 bind("pagedown", "scroll_down")
 
 -- ctrl + up/down
-blight.bind("\x1b[1;5a", function () search.find_up() end)
-blight.bind("\x1b[1;5b", function () search.find_down() end)
+blight.bind("ctrl-up", function () search.find_up() end)
+blight.bind("ctrl-down", function () search.find_down() end)
 
 -- ctrl + pgup/pgdn
 blight.bind("\x1b[5;5~", function () search.find_last_input() end)

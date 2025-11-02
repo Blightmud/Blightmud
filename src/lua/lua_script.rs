@@ -563,6 +563,7 @@ impl LuaScript {
 
     pub fn check_bindings(&mut self, cmd: &str) -> bool {
         let mut response = false;
+        debug!("Checking binding: {cmd}");
         self.exec_lua(&mut || -> LuaResult<()> {
             let bind_table: mlua::Table = self.state.named_registry_value(COMMAND_BINDING_TABLE)?;
             if let Ok(callback) = bind_table.get::<mlua::Function>(cmd) {

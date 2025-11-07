@@ -16,7 +16,7 @@ use crate::model::Completions;
 use crate::tools::util::expand_tilde;
 use crate::{event::Event, lua::servers::Servers, model, model::Line};
 use anyhow::Result;
-use log::{debug, info};
+use log::debug;
 use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, Value};
 use std::io::prelude::*;
 use std::path::Path;
@@ -399,22 +399,34 @@ impl LuaScript {
         });
     }
 
-    pub fn load_script(&mut self, path: &str) -> Result<()> {
-        info!("Loading: {}", path);
-        let file_path = expand_tilde(path);
-        let mut file = File::open(file_path.as_ref())?;
-        let dir = file_path.rsplit_once('/').unwrap_or(("", "")).0;
+    pub fn load(&mut self, path: &str) -> Result<()> {
+        let mut file = File::open(path)?;
         let mut content = String::new();
         file.read_to_string(&mut content)?;
-        self.exec_lua(&mut || -> LuaResult<()> {
-            let package: mlua::Table = self.state.globals().get("package")?;
-            let ppath = package.get::<String>("path")?;
-            package.set("path", format!("{dir}/?.lua;{ppath}"))?;
-            let result = self.state.load(&content).set_name(path).exec();
-            package.set("path", ppath)?;
-            result
-        });
+        self.exec_lua(&mut || -> LuaResult<()> { self.state.load(&content).set_name(path).exec() });
         Ok(())
+    }
+
+    pub fn load_script(&mut self, path: &str) -> Result<()> {
+        let expanded_path = expand_tilde(path);
+        let dir = expanded_path.rsplit_once('/').unwrap_or(("", "")).0;
+        let globals: mlua::Table = self.state.globals();
+        let package = globals.get::<mlua::Table>("package")?;
+        let ppath = package.get::<String>("path")?;
+        package.set("path", format!("{dir}/?.lua;{ppath}"))?;
+        let result = self.load(expanded_path.as_ref());
+        package.set("path", ppath)?;
+        result
+    }
+
+    pub fn load_plugin(&mut self, name: &str, entrypoint_path: &str) -> Result<()> {
+        let globals: mlua::Table = self.state.globals();
+        let global_require = globals.get::<mlua::Function>("require")?;
+        let make_require = globals.get::<mlua::Function>("make_plugin_require")?;
+        globals.set("require", make_require.call::<mlua::Function>(name)?)?;
+        let result = self.load(entrypoint_path);
+        globals.set("require", global_require)?;
+        result
     }
 
     pub fn eval(&mut self, script: &str) -> Result<()> {

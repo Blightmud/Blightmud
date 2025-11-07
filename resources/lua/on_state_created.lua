@@ -1,3 +1,8 @@
+-- allows require("<plugin name>/<module path>")
+package.path = plugin.dir() .. "/?.lua;" ..
+               plugin.dir() ..  "/?/init.lua;" ..
+               package.path
+
 local function auto_load_plugins()
     local plugins = plugin.enabled()
     for _,p in ipairs(plugins) do

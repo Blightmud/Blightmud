@@ -28,3 +28,13 @@ function cformat(msg, ...)
 
   return msg:format(...)
 end
+
+local global_require = require
+function make_plugin_require(plugin_name)
+    return function(mod_name)
+        if not mod_name:match("^/") then
+            mod_name = plugin_name .. "/" .. mod_name
+        end
+        return global_require(mod_name)
+    end
+end

@@ -102,3 +102,6 @@ Returns the stderr output of the executed command
 
 ***core.time() -> int***
 Returns the current local timestamp in millis from 1970-01-01
+
+***core.command_line() -> table***
+Returns a list of the command line arguments Blightmud was started with. The first entry is the path that was used to invoke Blightmud itself.

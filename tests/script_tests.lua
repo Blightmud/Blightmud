@@ -33,3 +33,4 @@ timer.add(1, 1, function ()
 end)
 
 assert(core.time() > 0)
+assert(#core.command_line() > 0)

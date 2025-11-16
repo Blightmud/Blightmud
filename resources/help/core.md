@@ -83,10 +83,12 @@ Execute a command on the OS
 - Returns a Response object containg stdout, stderr and status of the executed
   command. Described below.
 
+`shellcommand` can be a string, in which case it's passed to `sh`:
 ```lua
 local response = core.exec("curl ipinfo.io/ip")
 blight.output("The ip is: " .. response:stdout())
 ```
+Or `shellcommand` can be a sequential table, in which case the first entry is the executable to execute, and the rest are passed as arguments. `$PATH` lookup is performed on the executable.
 
 ***core.ExecResponse***
 The object returned from the exec

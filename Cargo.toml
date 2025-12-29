@@ -23,7 +23,7 @@ termion = "4"
 log = "0.4.28"
 simple-logging = "2.0.2"
 chrono = "0.4.42"
-signal-hook = "0.3.17"
+signal-hook = "0.4.1"
 mlua =  { version = "0.11.4", features = ["lua54", "send", "vendored", "macros"] }
 regex = "1.12.2"
 strip-ansi-escapes = "0.2.1"

@@ -48,7 +48,7 @@
             inherit system;
             overlays = [ (import inputs.rust-overlay) ];
           };
-          packages.default = self'.packages.blightmud-tts;
+          packages.default = self'.packages.blightmud;
           devShells.default = self'.devShells.nightly;
 
           # Blightmud w/ text to speech enabled.

@@ -233,6 +233,7 @@ version = "5.4.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "encoding_rs",
  "env_logger",
  "flate2",
  "getopts",

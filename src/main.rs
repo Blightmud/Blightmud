@@ -57,12 +57,7 @@ fn setup_options() -> Options {
         "no-update-check",
         "Skip checking for new Blightmud versions at startup",
     );
-    opts.optopt(
-        "",
-        "codec",
-        "Specify the codec to use for the MUD",
-        "UTF8",
-    );
+    opts.optopt("", "codec", "Specify the codec to use for the MUD", "UTF8");
     //opts.optflag("H", "headless-mode", "Runs Blightmud without a TUI");
 
     opts
@@ -129,5 +124,51 @@ mod tests {
         assert!(rt.verbose);
         assert!(rt.no_update_check);
         assert_eq!(rt.connect, Some("localhost:8080".to_string()));
+        assert_eq!(rt.codec, None);
+    }
+
+    #[test]
+    fn test_config_parse_codec() {
+        let args: Vec<String> = vec![
+            "blightmud",
+            "--no-update-check",
+            "--verbose",
+            "--connect",
+            "localhost:8080",
+            "--codec",
+            "gbk",
+        ]
+        .iter()
+        .map(|s| String::from(*s))
+        .collect();
+        let opts = setup_options();
+        let matches = match opts.parse(&args[1..]) {
+            Ok(m) => m,
+            Err(f) => panic!("{}", f.to_string()),
+        };
+        let rt = RuntimeConfig::from(matches);
+
+        assert_eq!(rt.codec, Some(encoding_rs::GBK));
+
+        let args: Vec<String> = vec![
+            "blightmud",
+            "--no-update-check",
+            "--verbose",
+            "--connect",
+            "localhost:8080",
+            "--codec",
+            "unknown_codec",
+        ]
+        .iter()
+        .map(|s| String::from(*s))
+        .collect();
+        let opts = setup_options();
+        let matches = match opts.parse(&args[1..]) {
+            Ok(m) => m,
+            Err(f) => panic!("{}", f.to_string()),
+        };
+        let rt = RuntimeConfig::from(matches);
+
+        assert_eq!(rt.codec, None);
     }
 }

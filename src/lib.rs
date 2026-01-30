@@ -151,7 +151,7 @@ impl From<Matches> for RuntimeConfig {
         let codec = matches.opt_get::<String>("codec").ok().unwrap();
 
         let codec = if let Some(codec) = codec {
-            encoding_rs::Encoding::for_label(&codec.as_bytes())
+            encoding_rs::Encoding::for_label(codec.as_bytes())
         } else {
             None
         };

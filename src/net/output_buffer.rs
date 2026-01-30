@@ -17,7 +17,7 @@ impl OutputBuffer {
             buffer: Vec::with_capacity(BUFFER_SIZE),
             telnet_mode: telnet_mode.clone(),
             new_data: false,
-            codec
+            codec,
         }
     }
 

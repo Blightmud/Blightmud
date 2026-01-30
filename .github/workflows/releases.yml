@@ -13,7 +13,7 @@ jobs:
     name: Build deb & rpm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Install deps
@@ -56,7 +56,7 @@ jobs:
     name: Build for macOS-latest
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Build release
@@ -84,7 +84,7 @@ jobs:
     name: Build for macOS-13
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Build release

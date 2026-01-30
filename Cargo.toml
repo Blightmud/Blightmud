@@ -52,6 +52,8 @@ webpki-roots = "1.0"
 reqwest = { version = "0.12.24", default-features = false, features = ['blocking', '__rustls-ring', 'json'] }
 socket2 = { version = "0.6.0", features = ['all'] }
 
+encoding_rs = "0.8"
+
 [dev-dependencies]
 mockall = "0.13.1"
 mockall_double = "0.3.1"

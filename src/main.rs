@@ -57,6 +57,12 @@ fn setup_options() -> Options {
         "no-update-check",
         "Skip checking for new Blightmud versions at startup",
     );
+    opts.optopt(
+        "",
+        "codec",
+        "Specify the codec to use for the MUD",
+        "UTF8",
+    );
     //opts.optflag("H", "headless-mode", "Runs Blightmud without a TUI");
 
     opts

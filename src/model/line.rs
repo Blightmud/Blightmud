@@ -32,6 +32,18 @@ impl PartialEq for Line {
     }
 }
 
+impl Line {
+    pub fn from_codec(raw: &[u8], codec: Option<&'static encoding_rs::Encoding>) -> Self {
+        if let Some(codec) = codec {
+            let (line, _real_encoding, _is_sucess) = codec.decode(raw);
+
+            line.as_bytes().into()
+        } else {
+            raw.into()
+        }
+    }
+}
+
 fn get_content_from(line: &str) -> (String, String, bool) {
     let mut clean_utf8 = true;
     let content = line.trim_end().to_string();

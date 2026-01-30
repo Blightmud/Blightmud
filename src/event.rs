@@ -46,6 +46,7 @@ pub enum Event {
     Info(String),
     LoadScript(String),
     EvalScript(String),
+    LoadPlugin(String, String),
     MudOutput(Line),
     Output(Line),
     PlayMusic(String, SourceOptions),

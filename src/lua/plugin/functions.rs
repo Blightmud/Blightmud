@@ -132,7 +132,7 @@ pub fn load_plugin(name: &str, writer: &Sender<Event>) -> Result<()> {
         bail!("Plugin '{}' doesn't contain a 'main.lua' file", name);
     } else if let Some(path_name) = path.to_str() {
         writer
-            .send(Event::LoadScript(path_name.to_string()))
+            .send(Event::LoadPlugin(name.to_string(), path_name.to_string()))
             .unwrap();
     } else {
         bail!("Invalid plugin path to main.lua");

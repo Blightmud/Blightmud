@@ -484,6 +484,18 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     });
                 }
             }
+            Event::LoadPlugin(name, entrypoint_path) => {
+                info!("Loading plugin: {}", name);
+                let mut lua = session.lua_script.lock().unwrap();
+                if let Err(err) = lua.load_plugin(&name, &entrypoint_path) {
+                    screen.print_error(&format!("Failed to load plugin: {err}"));
+                } else {
+                    screen.print_info(&format!("Loaded plugin: {name}"));
+                    lua.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
+                }
+            }
             Event::EvalScript(script) => {
                 let mut lua = session.lua_script.lock().unwrap();
                 if let Err(err) = lua.eval(&script) {

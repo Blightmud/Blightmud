@@ -8,14 +8,16 @@ pub struct OutputBuffer {
     buffer: Vec<u8>,
     telnet_mode: TelnetMode,
     new_data: bool,
+    codec: Option<&'static encoding_rs::Encoding>,
 }
 
 impl OutputBuffer {
-    pub fn new(telnet_mode: &TelnetMode) -> Self {
+    pub fn new(telnet_mode: &TelnetMode, codec: Option<&'static encoding_rs::Encoding>) -> Self {
         Self {
             buffer: Vec::with_capacity(BUFFER_SIZE),
             telnet_mode: telnet_mode.clone(),
             new_data: false,
+            codec,
         }
     }
 
@@ -25,7 +27,7 @@ impl OutputBuffer {
 
     pub fn buffer_to_prompt(&mut self, consume_buffer: bool) -> Line {
         let mut prompt = if !self.buffer.is_empty() {
-            Line::from(&self.buffer)
+            Line::from_codec(&self.buffer, self.codec)
         } else {
             Line::from("")
         };
@@ -60,7 +62,7 @@ impl OutputBuffer {
                     lines.push(Line::from("".to_string()));
                     cut_len
                 } else {
-                    let mut line = Line::from(&self.buffer[last_cut..i]);
+                    let mut line = Line::from_codec(&self.buffer[last_cut..i], self.codec);
                     if self.telnet_mode == TelnetMode::UnterminatedPrompt
                         && last_cut == 0
                         && existing_buffer_len > 0
@@ -115,7 +117,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_prompt_capture() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::default());
+        let mut buffer = OutputBuffer::new(&TelnetMode::default(), None);
         assert!(buffer.is_empty());
         let lines = buffer.receive(b"Some misc output\r\nfollowed by some more output\r\nprompt");
         assert_eq!(lines.len(), 2);
@@ -126,7 +128,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_line_capture() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::default());
+        let mut buffer = OutputBuffer::new(&TelnetMode::default(), None);
         let lines = buffer.receive(b"Some misc output\r\nfollowed by some more output\r\nprompt");
         let mut iter = lines.iter();
         assert_eq!(iter.next(), Some(&Line::from("Some misc output")));
@@ -139,7 +141,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_rn_line_parsing() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::default());
+        let mut buffer = OutputBuffer::new(&TelnetMode::default(), None);
         let lines = buffer.receive(b"word1\r\nword2\r\nword3\r\nprompt");
         let mut iter = lines.iter();
         assert_eq!(iter.next(), Some(&Line::from("word1")));
@@ -151,7 +153,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_nr_line_parsing() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::default());
+        let mut buffer = OutputBuffer::new(&TelnetMode::default(), None);
         let lines = buffer.receive(b"word1\n\rword2\n\rword3\n\rprompt");
         let mut iter = lines.iter();
         assert_eq!(iter.next(), Some(&Line::from("word1")));
@@ -163,7 +165,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_n_line_parsing() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::default());
+        let mut buffer = OutputBuffer::new(&TelnetMode::default(), None);
         let lines = buffer.receive(b"word1\nword2\nword3\nprompt");
         let mut iter = lines.iter();
         assert_eq!(iter.next(), Some(&Line::from("word1")));
@@ -175,7 +177,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_carriage_return_removal() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::default());
+        let mut buffer = OutputBuffer::new(&TelnetMode::default(), None);
         let lines = buffer.receive(b"word1\n\r\r\rword2\r\r\r\nword3\nprompt\r");
         let mut iter = lines.iter();
         assert_eq!(iter.next(), Some(&Line::from("word1")));
@@ -187,7 +189,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_clean_line_match() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::default());
+        let mut buffer = OutputBuffer::new(&TelnetMode::default(), None);
         let lines = buffer.receive(b"\n\r   \rword1\n\r\r\rprompt\r");
         let mut iter = lines.iter();
         let _ = iter.next();
@@ -199,7 +201,7 @@ mod output_buffer_tests {
 
     #[test]
     fn test_separate_receives() {
-        let mut buffer = OutputBuffer::new(&TelnetMode::UnterminatedPrompt);
+        let mut buffer = OutputBuffer::new(&TelnetMode::UnterminatedPrompt, None);
         let first_lines = buffer.receive(b"line 1\nline 2\r\nline 3\n\rMaybe a prompt...");
         assert_eq!(
             buffer.buffer_to_prompt(false),

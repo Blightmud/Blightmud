@@ -140,6 +140,7 @@ pub struct RuntimeConfig {
     pub eval: Option<String>,
     pub integration_test: bool,
     pub no_update_check: bool,
+    pub codec: Option<&'static encoding_rs::Encoding>,
 }
 
 impl From<Matches> for RuntimeConfig {
@@ -147,6 +148,14 @@ impl From<Matches> for RuntimeConfig {
         let world = matches.opt_get::<String>("world").ok().unwrap();
         let connect = matches.opt_get::<String>("connect").ok().unwrap();
         let script = matches.opt_get::<String>("script").ok().unwrap();
+        let codec = matches.opt_get::<String>("codec").ok().unwrap();
+
+        let codec = if let Some(codec) = codec {
+            encoding_rs::Encoding::for_label(codec.as_bytes())
+        } else {
+            None
+        };
+
         Self {
             reader_mode: matches.opt_present("reader-mode"),
             headless_mode: false,
@@ -160,6 +169,7 @@ impl From<Matches> for RuntimeConfig {
             eval: None,
             integration_test: false,
             no_update_check: matches.opt_present("no-update-check"),
+            codec,
         }
     }
 }
@@ -197,6 +207,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         .headless(rt.headless_mode)
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .echo_input(settings.get(ECHO_INPUT).unwrap())
+        .codec(rt.codec)
         .build();
 
     if let Err(error) = run(main_thread_read, session, rt) {

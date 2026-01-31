@@ -1,4 +1,5 @@
 use anyhow::Result;
+use encoding_rs::Encoding;
 use libmudtelnet::{
     compatibility::CompatibilityTable, telnet::op_command as cmd, telnet::op_option as opt, Parser,
 };
@@ -35,6 +36,7 @@ pub struct Session {
     pub tts_ctrl: Arc<Mutex<TTSController>>,
     pub command_buffer: Arc<Mutex<CommandBuffer>>,
     pub echo_input: Arc<AtomicBool>,
+    pub _codec: Option<&'static encoding_rs::Encoding>,
 }
 
 #[cfg_attr(test, automock)]
@@ -174,6 +176,7 @@ pub struct SessionBuilder {
     save_history: bool,
     headless: bool,
     echo_input: bool,
+    codec: Option<&'static encoding_rs::Encoding>,
 }
 
 impl SessionBuilder {
@@ -187,6 +190,7 @@ impl SessionBuilder {
             save_history: false,
             headless: false,
             echo_input: true,
+            codec: None,
         }
     }
 
@@ -230,6 +234,11 @@ impl SessionBuilder {
         self
     }
 
+    pub fn codec(mut self, codec: Option<&'static Encoding>) -> Self {
+        self.codec = codec;
+        self
+    }
+
     pub fn build(self) -> Session {
         let main_writer = self.main_writer.unwrap();
         let timer_writer = self.timer_writer.unwrap();
@@ -256,6 +265,7 @@ impl SessionBuilder {
             ))),
             output_buffer: Arc::new(Mutex::new(OutputBuffer::new(
                 &TelnetMode::UnterminatedPrompt,
+                self.codec,
             ))),
             prompt_input: Arc::new(Mutex::new(String::new())),
             lua_script: lua_script.clone(),
@@ -263,6 +273,7 @@ impl SessionBuilder {
             tts_ctrl: tts_ctrl.clone(),
             command_buffer: Arc::new(Mutex::new(CommandBuffer::new(tts_ctrl, lua_script))),
             echo_input: Arc::new(AtomicBool::new(echo_input)),
+            _codec: self.codec,
         }
     }
 }

@@ -158,6 +158,11 @@ impl Session {
         }
     }
 
+    #[cfg(test)]
+    pub fn send_event(&mut self, event: Event) {
+        self.main_writer.send(event).unwrap();
+    }
+
     pub fn close(&mut self) -> Result<()> {
         self.try_disconnect();
         self.main_writer.send(Event::Quit(QuitMethod::System))?;

@@ -17,10 +17,42 @@ use crate::tools::util::expand_tilde;
 use crate::{event::Event, lua::servers::Servers, model, model::Line};
 use anyhow::Result;
 use log::{debug, info};
-use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, Value};
+use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, UserData, UserDataMethods, Value};
 use std::io::prelude::*;
 use std::path::Path;
 use std::{fs::File, sync::mpsc::Sender};
+
+/// Connection information passed to mud.on_connect callbacks.
+/// Provides access to all connection metadata.
+#[derive(Clone)]
+pub struct ConnectionInfo {
+    pub host: String,
+    pub port: u16,
+    pub tls: bool,
+    pub verify_cert: bool,
+    pub name: Option<String>,
+    pub id: u16,
+}
+
+impl UserData for ConnectionInfo {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_method("host", |_, this, ()| Ok(this.host.clone()));
+        methods.add_method("port", |_, this, ()| Ok(this.port));
+        methods.add_method("tls", |_, this, ()| Ok(this.tls));
+        methods.add_method("verify_cert", |_, this, ()| Ok(this.verify_cert));
+        methods.add_method("name", |_, this, ()| Ok(this.name.clone()));
+        methods.add_method("id", |_, this, ()| Ok(this.id));
+    }
+
+    fn add_fields<F: mlua::UserDataFields<Self>>(fields: &mut F) {
+        fields.add_field_method_get("host", |_, this| Ok(this.host.clone()));
+        fields.add_field_method_get("port", |_, this| Ok(this.port));
+        fields.add_field_method_get("tls", |_, this| Ok(this.tls));
+        fields.add_field_method_get("verify_cert", |_, this| Ok(this.verify_cert));
+        fields.add_field_method_get("name", |_, this| Ok(this.name.clone()));
+        fields.add_field_method_get("id", |_, this| Ok(this.id));
+    }
+}
 
 pub struct LuaScriptBuilder {
     writer: Sender<Event>,
@@ -425,16 +457,18 @@ impl LuaScript {
         Ok(())
     }
 
-    pub fn on_connect(&mut self, host: &str, port: u16, id: u16) {
+    pub fn on_connect(&mut self, info: ConnectionInfo) {
         self.exec_lua(&mut || -> LuaResult<()> {
             self.state.set_named_registry_value(IS_CONNECTED, true)?;
-            self.state.set_named_registry_value(CONNECTION_ID, id)?;
+            self.state
+                .set_named_registry_value(CONNECTION_ID, info.id)?;
             let table: mlua::Table = self
                 .state
                 .named_registry_value(ON_CONNECTION_CALLBACK_TABLE)?;
             for pair in table.pairs::<mlua::Value, mlua::Function>() {
                 let (_, cb) = pair.unwrap();
-                cb.call::<()>((host, port))?;
+                // Pass (host, port, info) for backward compatibility
+                cb.call::<()>((info.host.clone(), info.port, info.clone()))?;
             }
             Ok(())
         });
@@ -594,6 +628,7 @@ impl LuaScript {
 
 #[cfg(test)]
 mod lua_script_tests {
+    use super::ConnectionInfo;
     use super::LuaScript;
     use super::LuaScriptBuilder;
     use super::CONNECTION_ID;
@@ -1021,7 +1056,14 @@ mod lua_script_tests {
         let (mut lua, _reader) = get_lua();
         lua.state.load(lua_code).exec().unwrap();
 
-        lua.on_connect("test", 21, 12);
+        lua.on_connect(ConnectionInfo {
+            host: "test".to_string(),
+            port: 21,
+            tls: false,
+            verify_cert: false,
+            name: None,
+            id: 12,
+        });
         assert_eq!(
             lua.get_output_lines(),
             [
@@ -1038,7 +1080,14 @@ mod lua_script_tests {
         );
         lua.reset((100, 100)).unwrap();
         lua.state.load(lua_code).exec().unwrap();
-        lua.on_connect("server", 1000, 13);
+        lua.on_connect(ConnectionInfo {
+            host: "server".to_string(),
+            port: 1000,
+            tls: false,
+            verify_cert: false,
+            name: None,
+            id: 13,
+        });
         assert_eq!(
             lua.get_output_lines(),
             [
@@ -1052,6 +1101,43 @@ mod lua_script_tests {
                 .named_registry_value::<u32>(CONNECTION_ID)
                 .unwrap(),
             13
+        );
+    }
+
+    #[test]
+    fn test_on_connect_with_info() {
+        let lua_code = r#"
+        mud.on_connect(function (host, port, info)
+            blight.output(host .. ":" .. port)
+            if info.name then
+                blight.output("name:" .. info.name)
+            end
+            if info.tls then
+                blight.output("tls:true")
+            end
+            blight.output("id:" .. info.id)
+        end)
+        "#;
+
+        let (mut lua, _reader) = get_lua();
+        lua.state.load(lua_code).exec().unwrap();
+
+        lua.on_connect(ConnectionInfo {
+            host: "test.example.com".to_string(),
+            port: 4000,
+            tls: true,
+            verify_cert: true,
+            name: Some("myserver".to_string()),
+            id: 42,
+        });
+        assert_eq!(
+            lua.get_output_lines(),
+            [
+                Line::from("test.example.com:4000"),
+                Line::from("name:myserver"),
+                Line::from("tls:true"),
+                Line::from("id:42"),
+            ]
         );
     }
 

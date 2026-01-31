@@ -1,4 +1,5 @@
 use crate::io::FSEvent;
+use crate::lua::ConnectionInfo;
 use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
@@ -181,10 +182,21 @@ impl EventHandler {
                 transmit_writer.replace(writer);
                 let host = self.session.host();
                 let port = self.session.port();
+                let tls = self.session.tls();
+                let verify_cert = self.session.verify_cert();
+                let name = self.session.name();
                 debug!("Connected to {}:{}", host, port);
                 screen.set_host(&host, port)?;
                 if let Ok(mut script) = self.session.lua_script.lock() {
-                    script.on_connect(&host, port, id);
+                    let info = ConnectionInfo {
+                        host: host.clone(),
+                        port,
+                        tls,
+                        verify_cert,
+                        name,
+                        id,
+                    };
+                    script.on_connect(info);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });

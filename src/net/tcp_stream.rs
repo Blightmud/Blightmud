@@ -86,7 +86,12 @@ pub fn spawn_connect_thread(
                 port,
                 tls,
                 verify_cert,
+                name,
             } = connection;
+            // Set the name on the connection before connecting
+            if let Ok(mut conn) = session.connection.lock() {
+                conn.name = name;
+            }
             if !session.connect(&host, port, tls, verify_cert.into()) {
                 session
                     .main_writer

@@ -23,6 +23,7 @@ pub struct MudConnection {
     pub port: u16,
     pub tls: bool,
     pub tls_validation: CertificateValidation,
+    pub name: Option<String>,
 }
 
 lazy_static! {
@@ -43,6 +44,7 @@ impl MudConnection {
             port: 4000,
             tls: false,
             tls_validation: CertificateValidation::DangerousDisabled,
+            name: None,
         }
     }
 

@@ -1,4 +1,4 @@
-pub use self::lua_script::{LuaScript, LuaScriptBuilder};
+pub use self::lua_script::{ConnectionInfo, LuaScript, LuaScriptBuilder};
 pub use self::ui_event::UiEvent;
 
 #[cfg(test)]

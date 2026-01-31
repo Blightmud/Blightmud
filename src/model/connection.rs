@@ -14,6 +14,8 @@ pub struct Connection {
     pub tls: bool,
     #[serde(default)]
     pub verify_cert: bool,
+    #[serde(skip)] // Don't persist - derived from server key
+    pub name: Option<String>,
 }
 
 impl Connection {
@@ -23,6 +25,23 @@ impl Connection {
             port,
             tls,
             verify_cert,
+            name: None,
+        }
+    }
+
+    pub fn with_name(
+        host: &str,
+        port: u16,
+        tls: bool,
+        verify_cert: bool,
+        name: Option<String>,
+    ) -> Self {
+        Self {
+            host: host.to_owned(),
+            port,
+            tls,
+            verify_cert,
+            name,
         }
     }
 }

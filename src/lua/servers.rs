@@ -65,6 +65,7 @@ impl UserData for Servers {
                         port,
                         tls,
                         verify_cert: verify.unwrap_or(false),
+                        name: None,
                     };
                     servers.insert(name, connection);
                     servers.save();

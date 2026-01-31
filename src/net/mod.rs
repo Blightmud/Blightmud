@@ -9,12 +9,12 @@ pub use self::{
 };
 
 mod check_version;
-pub(crate) mod event_loop;
+mod event_loop;
 mod mud_connection;
 mod output_buffer;
 #[cfg(test)]
 mod rw_stream;
 mod tcp_stream;
 mod telnet;
-pub(crate) mod tls;
+mod tls;
 mod util;

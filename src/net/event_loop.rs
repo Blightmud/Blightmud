@@ -8,8 +8,11 @@ use log::{debug, error};
 use mio::net::TcpStream as MioTcpStream;
 use mio::{Events, Interest, Poll, Token, Waker};
 use rustls::ClientConnection;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::io::{self, ErrorKind, Read, Write};
 use std::net::TcpStream;
+use std::rc::Rc;
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -38,18 +41,60 @@ impl ConnectionState {
     }
 }
 
+/// A buffer that implements Read, allowing bytes to be pushed and read.
+/// Returns WouldBlock when empty instead of EOF, so the ZlibDecoder
+/// knows to wait for more data rather than treating it as end of stream.
+struct StreamBuffer {
+    inner: Rc<RefCell<VecDeque<u8>>>,
+}
+
+impl StreamBuffer {
+    fn new() -> Self {
+        Self {
+            inner: Rc::new(RefCell::new(VecDeque::new())),
+        }
+    }
+
+    fn push(&self, data: &[u8]) {
+        self.inner.borrow_mut().extend(data);
+    }
+}
+
+impl Clone for StreamBuffer {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Rc::clone(&self.inner),
+        }
+    }
+}
+
+impl Read for StreamBuffer {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let mut inner = self.inner.borrow_mut();
+        if inner.is_empty() {
+            return Err(io::Error::new(ErrorKind::WouldBlock, "no data available"));
+        }
+
+        let len = buf.len().min(inner.len());
+        for (i, byte) in inner.drain(..len).enumerate() {
+            buf[i] = byte;
+        }
+        Ok(len)
+    }
+}
+
 /// Zlib decompression state for MCCP2
 struct ZlibState {
-    /// Buffered compressed data waiting to be decompressed
-    compressed_buffer: Vec<u8>,
-    /// The zlib decoder
-    decoder: Option<ZlibDecoder<std::io::Cursor<Vec<u8>>>>,
+    /// The stream buffer for feeding compressed data to the decoder
+    buffer: StreamBuffer,
+    /// The zlib decoder - created once and persists for the connection
+    decoder: Option<ZlibDecoder<StreamBuffer>>,
 }
 
 impl ZlibState {
     fn new() -> Self {
         Self {
-            compressed_buffer: Vec::new(),
+            buffer: StreamBuffer::new(),
             decoder: None,
         }
     }
@@ -59,8 +104,10 @@ impl ZlibState {
             "Starting zlib decompression with {} initial bytes",
             initial_data.len()
         );
-        self.compressed_buffer = initial_data;
-        self.decoder = Some(ZlibDecoder::new(std::io::Cursor::new(Vec::new())));
+        // Push initial data to the buffer
+        self.buffer.push(&initial_data);
+        // Create decoder once with a clone of the buffer (shares the same underlying VecDeque)
+        self.decoder = Some(ZlibDecoder::new(self.buffer.clone()));
     }
 
     fn is_active(&self) -> bool {
@@ -69,44 +116,20 @@ impl ZlibState {
 
     fn decompress(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
         if let Some(decoder) = &mut self.decoder {
-            // Append new data to compressed buffer
-            self.compressed_buffer.extend_from_slice(data);
-
-            // Create new decoder with accumulated data
-            let cursor = std::io::Cursor::new(std::mem::take(&mut self.compressed_buffer));
-            let mut new_decoder = ZlibDecoder::new(cursor);
+            // Push new compressed data to the shared buffer
+            self.buffer.push(data);
 
             // Read all available decompressed data
             let mut output = Vec::new();
             let mut buf = [0u8; READ_BUFFER_SIZE];
             loop {
-                match new_decoder.read(&mut buf) {
+                match decoder.read(&mut buf) {
                     Ok(0) => break,
                     Ok(n) => output.extend_from_slice(&buf[..n]),
                     Err(e) if e.kind() == ErrorKind::WouldBlock => break,
-                    Err(e) => {
-                        // Save remaining compressed data
-                        let inner = new_decoder.into_inner();
-                        let pos = inner.position() as usize;
-                        let remaining = inner.into_inner();
-                        if pos < remaining.len() {
-                            self.compressed_buffer = remaining[pos..].to_vec();
-                        }
-                        return Err(e);
-                    }
+                    Err(e) => return Err(e),
                 }
             }
-
-            // Save remaining compressed data for next call
-            let inner = new_decoder.into_inner();
-            let pos = inner.position() as usize;
-            let remaining = inner.into_inner();
-            if pos < remaining.len() {
-                self.compressed_buffer = remaining[pos..].to_vec();
-            }
-
-            // Update decoder for stats
-            *decoder = ZlibDecoder::new(std::io::Cursor::new(Vec::new()));
 
             Ok(output)
         } else {

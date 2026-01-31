@@ -13,7 +13,13 @@
         let
           cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
 
-          runtimeDeps = with pkgs; [ alsa-lib openssl speechd ];
+          runtimeDeps = with pkgs;
+            [ openssl ]
+            ++ lib.optionals stdenv.isLinux [ alsa-lib ];
+          featureDeps = {
+            text-to-speech = with pkgs; [ speechd ];
+          };
+          allFeatureDeps = runtimeDeps ++ lib.concatLists (lib.attrValues featureDeps);
           buildDeps = with pkgs; [ pkg-config rustPlatform.bindgenHook ];
           devDeps = with pkgs; [ gdb asciinema ];
 
@@ -23,7 +29,9 @@
             cargoLock.lockFile = ./Cargo.lock;
             buildFeatures = features;
             nativeBuildInputs = buildDeps;
-            buildInputs = runtimeDeps;
+            buildInputs =
+              runtimeDeps
+              ++ lib.concatMap (f: featureDeps.${f} or []) features;
             doCheck = false; # Some tests require networking
           };
 
@@ -32,7 +40,7 @@
               shellHook = ''
                 export RUST_SRC_PATH=${pkgs.rustPlatform.rustLibSrc}
               '';
-              buildInputs = runtimeDeps;
+              buildInputs = allFeatureDeps;
               nativeBuildInputs = buildDeps ++ devDeps ++ [ rustc ];
             };
         in {
@@ -40,15 +48,15 @@
             inherit system;
             overlays = [ (import inputs.rust-overlay) ];
           };
-          packages.default = self'.packages.blightmud-tts;
+          packages.default = self'.packages.blightmud;
           devShells.default = self'.devShells.nightly;
 
           # Blightmud w/ text to speech enabled.
           packages.blightmud-tts =
-            pkgs.rustPlatform.buildRustPackage (withFeatures "tts");
+            pkgs.rustPlatform.buildRustPackage (withFeatures ["text-to-speech"]);
           # Blightmud w/o text to speech enabled.
           packages.blightmud =
-            pkgs.rustPlatform.buildRustPackage (withFeatures "");
+            pkgs.rustPlatform.buildRustPackage (withFeatures []);
 
           # Nightly Rust dev env
           devShells.nightly = (mkDevShell (pkgs.rust-bin.selectLatestNightlyWith

@@ -160,8 +160,8 @@ mod test_tls {
     use log::debug;
     use rustls::pki_types::{CertificateDer, PrivateKeyDer};
     use rustls::{
-        CertificateError, ClientConnection, Error::InvalidCertificate, RootCertStore,
-        ServerConfig, ServerConnection, StreamOwned,
+        CertificateError, ClientConnection, Error::InvalidCertificate, RootCertStore, ServerConfig,
+        ServerConnection, StreamOwned,
     };
     #[allow(unused_imports)]
     use std::io::{BufReader, Read, Write};

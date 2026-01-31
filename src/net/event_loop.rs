@@ -55,7 +55,10 @@ impl ZlibState {
     }
 
     fn start_decompression(&mut self, initial_data: Vec<u8>) {
-        debug!("Starting zlib decompression with {} initial bytes", initial_data.len());
+        debug!(
+            "Starting zlib decompression with {} initial bytes",
+            initial_data.len()
+        );
         self.compressed_buffer = initial_data;
         self.decoder = Some(ZlibDecoder::new(std::io::Cursor::new(Vec::new())));
     }
@@ -145,11 +148,8 @@ impl NetworkEventLoop {
         let mut mio_stream = MioTcpStream::from_std(stream);
 
         // Register for readable events initially
-        poll.registry().register(
-            &mut mio_stream,
-            TCP_TOKEN,
-            Interest::READABLE,
-        )?;
+        poll.registry()
+            .register(&mut mio_stream, TCP_TOKEN, Interest::READABLE)?;
 
         let main_writer = session.main_writer.clone();
         let output_buffer = session.output_buffer.clone();
@@ -273,7 +273,9 @@ impl NetworkEventLoop {
         }
 
         debug!("Network event loop shutting down");
-        let _ = self.main_writer.send(Event::Info("Connection closed".to_string()));
+        let _ = self
+            .main_writer
+            .send(Event::Info("Connection closed".to_string()));
         let _ = self.main_writer.send(Event::Disconnect);
     }
 
@@ -321,11 +323,9 @@ impl NetworkEventLoop {
             }
         }
 
-        self.poll.registry().reregister(
-            self.connection.stream_mut(),
-            TCP_TOKEN,
-            interest,
-        )
+        self.poll
+            .registry()
+            .reregister(self.connection.stream_mut(), TCP_TOKEN, interest)
     }
 
     /// Perform non-blocking read

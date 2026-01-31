@@ -58,17 +58,20 @@ pub fn spawn_network_thread(
                     Ok(conn) => conn,
                     Err(e) => {
                         error!("Failed to create TLS connection: {}", e);
-                        let _ = session.main_writer.send(Event::Error(format!(
-                            "TLS initialization failed: {}",
-                            e
-                        )));
+                        let _ = session
+                            .main_writer
+                            .send(Event::Error(format!("TLS initialization failed: {}", e)));
                         let _ = session.main_writer.send(Event::Disconnect);
                         return;
                     }
                 };
 
-                match NetworkEventLoop::new_tls(stream, tls_conn, transmit_receiver, session.clone())
-                {
+                match NetworkEventLoop::new_tls(
+                    stream,
+                    tls_conn,
+                    transmit_receiver,
+                    session.clone(),
+                ) {
                     Ok(el) => el,
                     Err(e) => {
                         error!("Failed to create TLS event loop: {}", e);

@@ -2,28 +2,30 @@ use anyhow::Result;
 use lazy_static::lazy_static;
 use log::debug;
 use std::{
-    io::Read,
-    io::Write,
     net::Shutdown,
     net::TcpStream,
-    sync::{atomic::AtomicU16, atomic::Ordering, Arc, Mutex},
+    sync::{atomic::AtomicU16, atomic::Ordering},
 };
 
 use crate::net::open_tcp_stream;
-use crate::net::tls::{CertificateValidation, TlsStream};
+use crate::net::tls::CertificateValidation;
 
-use super::RwStream;
-
-#[derive(Clone)]
+/// MudConnection manages the TCP connection to a MUD server.
+///
+/// With the new mio-based event loop architecture, this struct primarily
+/// stores connection metadata and provides connection/disconnection logic.
+/// The actual I/O is handled by the NetworkEventLoop.
 pub struct MudConnection {
     pub id: u16,
-    stream: Option<RwStream<TcpStream>>,
-    tls_stream: Option<TlsStream>,
+    /// The raw TCP stream, stored here until taken by the event loop
+    stream: Option<TcpStream>,
     pub host: String,
     pub port: u16,
     pub tls: bool,
     pub tls_validation: CertificateValidation,
     pub name: Option<String>,
+    /// Flag indicating whether the stream has been taken by the event loop
+    stream_taken: bool,
 }
 
 lazy_static! {
@@ -39,31 +41,19 @@ impl MudConnection {
         Self {
             id: connection_id(),
             stream: None,
-            tls_stream: None,
             host: "0.0.0.0".to_string(),
             port: 4000,
             tls: false,
             tls_validation: CertificateValidation::DangerousDisabled,
             name: None,
+            stream_taken: false,
         }
     }
 
-    fn get_input_stream(&self) -> Option<&Arc<Mutex<dyn Read + Send>>> {
-        if let Some(stream) = &self.tls_stream {
-            Some(&stream.input_stream)
-        } else {
-            self.stream.as_ref().map(|stream| &stream.input_stream)
-        }
-    }
-
-    fn get_output_stream(&self) -> Option<&Arc<Mutex<dyn Write + Send>>> {
-        if let Some(stream) = &self.tls_stream {
-            Some(&stream.output_stream)
-        } else {
-            self.stream.as_ref().map(|stream| &stream.output_stream)
-        }
-    }
-
+    /// Connect to the MUD server.
+    ///
+    /// This establishes the TCP connection but does not start the event loop.
+    /// Call `take_stream()` to get the stream for use with the event loop.
     pub fn connect(
         &mut self,
         host: &str,
@@ -75,6 +65,7 @@ impl MudConnection {
         self.port = port;
         self.tls = tls;
         self.tls_validation = tls_validation;
+        self.stream_taken = false;
 
         debug!(
             "Connecting to {}:{} tls: {} verify: {}",
@@ -82,76 +73,45 @@ impl MudConnection {
         );
 
         let stream = open_tcp_stream(&self.host, self.port)?;
-        if tls {
-            self.tls_stream = Some(TlsStream::tls_init(stream, host, tls_validation)?);
-        } else {
-            self.stream = Some(RwStream::new(stream));
-        }
+        self.stream = Some(stream);
         self.id = connection_id();
         Ok(())
     }
 
-    pub fn disconnect(&mut self) -> Result<()> {
-        if let Some(stream) = &self.stream {
-            debug!("Disconnecting from {}:{}", self.host, self.port);
-            stream.inner().shutdown(Shutdown::Both)?;
-            debug!("Disconnected from {}:{}", self.host, self.port);
-            self.stream = None;
-        } else if let Some(stream) = &self.tls_stream {
-            debug!("Disconnecting from {}:{}", self.host, self.port);
-            stream.inner_mut().conn.send_close_notify();
-            stream.inner().sock.shutdown(Shutdown::Both)?;
-            debug!("Disconnected from {}:{}", self.host, self.port);
-            self.tls_stream = None;
+    /// Take the TCP stream for use with the event loop.
+    ///
+    /// This can only be called once after `connect()`. The stream is moved
+    /// to the event loop which handles all I/O.
+    pub fn take_stream(&mut self) -> Option<TcpStream> {
+        if self.stream_taken {
+            return None;
         }
+        self.stream_taken = true;
+        self.stream.take()
+    }
+
+    /// Disconnect from the MUD server.
+    ///
+    /// If the stream has been taken by the event loop, this just clears
+    /// the connection state. The event loop handles the actual disconnection.
+    pub fn disconnect(&mut self) -> Result<()> {
+        debug!("Disconnecting from {}:{}", self.host, self.port);
+
+        // If we still have the stream (not taken by event loop), shut it down
+        if let Some(stream) = self.stream.take() {
+            let _ = stream.shutdown(Shutdown::Both);
+        }
+
+        self.stream_taken = false;
+        debug!("Disconnected from {}:{}", self.host, self.port);
         Ok(())
     }
 
+    /// Check if connected.
+    ///
+    /// Returns true if we have an active connection (either stream is present
+    /// or has been taken by the event loop).
     pub fn connected(&self) -> bool {
-        self.stream.is_some() || self.tls_stream.is_some()
-    }
-}
-
-impl Read for MudConnection {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let mut result = Ok(0);
-        if let Some(stream) = &mut self.get_input_stream() {
-            if let Ok(mut stream) = stream.lock() {
-                result = stream.read(buf);
-            }
-        }
-        result
-    }
-}
-
-impl Write for MudConnection {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut result = Ok(0);
-        if let Some(stream) = &mut self.get_output_stream() {
-            if let Ok(mut stream) = stream.lock() {
-                result = stream.write(buf);
-            }
-        }
-        result
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        let mut result = Ok(());
-        if let Some(stream) = &mut self.get_output_stream() {
-            if let Ok(mut stream) = stream.lock() {
-                result = stream.flush();
-            }
-        }
-        result
-    }
-
-    fn write_all(&mut self, buf: &[u8]) -> std::io::Result<()> {
-        let mut result = Ok(());
-        if let Some(stream) = &mut self.get_output_stream() {
-            if let Ok(mut stream) = stream.lock() {
-                result = stream.write_all(buf);
-            }
-        }
-        result
+        self.stream.is_some() || self.stream_taken
     }
 }

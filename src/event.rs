@@ -4,7 +4,7 @@ use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
     model::{Connection, Line, PromptMask},
-    net::{spawn_receive_thread, spawn_transmit_thread},
+    net::spawn_network_thread,
     session::Session,
     tts::TTSEvent,
     ui::UserInterface,
@@ -177,14 +177,39 @@ impl EventHandler {
             }
             Event::Connected(id) => {
                 let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
-                spawn_receive_thread(self.session.clone());
-                spawn_transmit_thread(self.session.clone(), reader);
-                transmit_writer.replace(writer);
-                let host = self.session.host();
-                let port = self.session.port();
-                let tls = self.session.tls();
-                let verify_cert = self.session.verify_cert();
-                let name = self.session.name();
+
+                // Get connection info and take the stream for the event loop
+                let (stream, host, port, tls, tls_validation, name) = {
+                    let mut conn = self.session.connection.lock().unwrap();
+                    let stream = conn.take_stream();
+                    (
+                        stream,
+                        conn.host.clone(),
+                        conn.port,
+                        conn.tls,
+                        conn.tls_validation,
+                        conn.name.clone(),
+                    )
+                };
+
+                let verify_cert = tls_validation == crate::net::CertificateValidation::Enabled;
+
+                if let Some(stream) = stream {
+                    // Spawn the single network event loop thread
+                    spawn_network_thread(
+                        self.session.clone(),
+                        stream,
+                        tls,
+                        &host,
+                        tls_validation,
+                        reader,
+                    );
+                    transmit_writer.replace(writer);
+                } else {
+                    screen.print_error("Failed to get connection stream");
+                    return Ok(());
+                }
+
                 debug!("Connected to {}:{}", host, port);
                 screen.set_host(&host, port)?;
                 if let Ok(mut script) = self.session.lua_script.lock() {
@@ -212,7 +237,8 @@ impl EventHandler {
                         self.session.port()
                     ));
                     if let Some(transmit_writer) = &transmit_writer {
-                        transmit_writer.send(None)?;
+                        // Ignore error if channel is already closed (event loop already exited)
+                        let _ = transmit_writer.send(None);
                     }
                     if let Ok(mut script) = self.session.lua_script.lock() {
                         script.on_disconnect();

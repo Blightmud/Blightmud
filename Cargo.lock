@@ -244,6 +244,7 @@ dependencies = [
  "lazy_static",
  "libmudtelnet",
  "log",
+ "mio",
  "mlua",
  "mockall",
  "mockall_double",

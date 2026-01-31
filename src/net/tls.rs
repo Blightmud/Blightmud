@@ -41,8 +41,55 @@ impl From<bool> for CertificateValidation {
 
 /// TlsStream is an alias for a read/write stream over an owned TLS client connection stream
 /// using a TCP transport.
+#[allow(dead_code)]
 pub(super) type TlsStream = RwStream<StreamOwned<ClientConnection, TcpStream>>;
 
+/// Create a TLS ClientConnection for use with the event loop.
+///
+/// This creates a TLS client connection that can be used with non-blocking I/O
+/// in the event loop architecture.
+///
+/// ## DANGER
+/// If the `verify_cert` bool is set to false no certificate verification is performed and
+/// the connection is vulnerable to person-in-the-middle attacks and tampering.
+pub(super) fn create_tls_connection(
+    host: &str,
+    validation: CertificateValidation,
+) -> Result<ClientConnection> {
+    create_tls_connection_with_roots(host, validation, default_root_certs())
+}
+
+fn create_tls_connection_with_roots(
+    host: &str,
+    validation: CertificateValidation,
+    roots: RootCertStore,
+) -> Result<ClientConnection> {
+    let mut config = ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth();
+
+    // Enable support for SSLKEYLOGFILE. Setting this env var to a file path will
+    // cause Rustls to write a Wireshark compatible session key log to the file. The
+    // key log file can be shared with developers to enable debugging w/ pcaps that would
+    // otherwise be encrypted opaque data.
+    config.key_log = Arc::new(rustls::KeyLogFile::new());
+
+    if let CertificateValidation::DangerousDisabled = validation {
+        config
+            .dangerous()
+            .set_certificate_verifier(Arc::new(danger::NoCertificateVerification::new()));
+    };
+    let server_name = ServerName::try_from(host)?.to_owned();
+    Ok(ClientConnection::new(Arc::new(config), server_name)?)
+}
+
+fn default_root_certs() -> RootCertStore {
+    RootCertStore {
+        roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
+    }
+}
+
+#[allow(dead_code)]
 impl TlsStream {
     /// new constructs a [TlsStream] by attempting to establish a TLS session over the given
     /// [TcpStream] for the provided hostname. Certificate chains will be validated using
@@ -57,7 +104,7 @@ impl TlsStream {
         host: &str,
         validation: CertificateValidation,
     ) -> Result<TlsStream> {
-        Self::tls_init_with_roots(stream, host, validation, Self::default_root_certs())
+        Self::tls_init_with_roots(stream, host, validation, default_root_certs())
     }
 
     // tls_init, but also accepts a RootCertStore. Presently this is only used by tests to
@@ -68,30 +115,8 @@ impl TlsStream {
         validation: CertificateValidation,
         roots: RootCertStore,
     ) -> Result<TlsStream> {
-        let mut config = ClientConfig::builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
-
-        // Enable support for SSLKEYLOGFILE. Setting this env var to a file path will
-        // cause Rustls to write a Wireshark compatible session key log to the file. The
-        // key log file can be shared with developers to enable debugging w/ pcaps that would
-        // otherwise be encrypted opaque data.
-        config.key_log = Arc::new(rustls::KeyLogFile::new());
-
-        if let CertificateValidation::DangerousDisabled = validation {
-            config
-                .dangerous()
-                .set_certificate_verifier(Arc::new(danger::NoCertificateVerification::new()));
-        };
-        let server_name = ServerName::try_from(host)?.to_owned();
-        let conn = ClientConnection::new(Arc::new(config), server_name)?;
+        let conn = create_tls_connection_with_roots(host, validation, roots)?;
         Ok(RwStream::new(StreamOwned::new(conn, stream)))
-    }
-
-    fn default_root_certs() -> RootCertStore {
-        RootCertStore {
-            roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
-        }
     }
 }
 

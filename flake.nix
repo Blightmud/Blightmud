@@ -17,7 +17,7 @@
             [ openssl ]
             ++ lib.optionals stdenv.isLinux [ alsa-lib ];
           featureDeps = {
-            tts = with pkgs; [ speechd ];
+            text-to-speech = with pkgs; [ speechd ];
           };
           allFeatureDeps = runtimeDeps ++ lib.concatLists (lib.attrValues featureDeps);
           buildDeps = with pkgs; [ pkg-config rustPlatform.bindgenHook ];
@@ -53,7 +53,7 @@
 
           # Blightmud w/ text to speech enabled.
           packages.blightmud-tts =
-            pkgs.rustPlatform.buildRustPackage (withFeatures ["tts"]);
+            pkgs.rustPlatform.buildRustPackage (withFeatures ["text-to-speech"]);
           # Blightmud w/o text to speech enabled.
           packages.blightmud =
             pkgs.rustPlatform.buildRustPackage (withFeatures []);

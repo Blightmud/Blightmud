@@ -135,11 +135,6 @@ impl Session {
         }
     }
 
-    pub fn name(&self) -> Option<String> {
-        let connection = self.connection.lock().unwrap();
-        connection.name.clone()
-    }
-
     pub fn start_logging(&self, host: &str) {
         if let Ok(mut logger) = self.logger.lock() {
             self.main_writer

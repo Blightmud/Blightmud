@@ -108,9 +108,7 @@ fn spawn_listener_thread(tx: Sender<Connection>, listener: TcpListener) {
             if let Ok(stream) = stream {
                 // Set a read timeout to prevent tests from hanging indefinitely
                 // if expected data never arrives (especially important on Mac)
-                stream
-                    .set_read_timeout(Some(Duration::from_secs(5)))
-                    .ok();
+                stream.set_read_timeout(Some(Duration::from_secs(5))).ok();
                 tx.send(Connection {
                     stream: Some(stream),
                     buffer: Arc::new(Mutex::new(Vec::new())),

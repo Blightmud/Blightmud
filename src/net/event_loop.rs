@@ -1,5 +1,4 @@
 use crate::event::Event;
-use crate::net::output_buffer::OutputBuffer;
 use crate::net::telnet::TelnetHandler;
 use crate::session::Session;
 use flate2::read::ZlibDecoder;
@@ -14,7 +13,7 @@ use std::io::{self, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::rc::Rc;
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 const TCP_TOKEN: Token = Token(0);
@@ -143,15 +142,12 @@ impl ZlibState {
 /// in a single thread using mio for non-blocking I/O.
 pub struct NetworkEventLoop {
     poll: Poll,
-    #[allow(dead_code)]
-    waker: Arc<Waker>,
+    _waker: Arc<Waker>,
     connection: ConnectionState,
     write_buffer: Vec<u8>,
     transmit_receiver: Receiver<Option<Bytes>>,
     main_writer: Sender<Event>,
     telnet_handler: TelnetHandler,
-    #[allow(dead_code)]
-    output_buffer: Arc<Mutex<OutputBuffer>>,
     zlib_state: ZlibState,
     shutdown: bool,
 }
@@ -175,18 +171,16 @@ impl NetworkEventLoop {
             .register(&mut mio_stream, TCP_TOKEN, Interest::READABLE)?;
 
         let main_writer = session.main_writer.clone();
-        let output_buffer = session.output_buffer.clone();
         let telnet_handler = TelnetHandler::new(session);
 
         Ok(Self {
             poll,
-            waker,
+            _waker: waker,
             connection: ConnectionState::Plain(mio_stream),
             write_buffer: Vec::new(),
             transmit_receiver,
             main_writer,
             telnet_handler,
-            output_buffer,
             zlib_state: ZlibState::new(),
             shutdown: false,
         })
@@ -214,12 +208,11 @@ impl NetworkEventLoop {
         )?;
 
         let main_writer = session.main_writer.clone();
-        let output_buffer = session.output_buffer.clone();
         let telnet_handler = TelnetHandler::new(session);
 
         Ok(Self {
             poll,
-            waker,
+            _waker: waker,
             connection: ConnectionState::Tls {
                 stream: mio_stream,
                 tls,
@@ -228,7 +221,6 @@ impl NetworkEventLoop {
             transmit_receiver,
             main_writer,
             telnet_handler,
-            output_buffer,
             zlib_state: ZlibState::new(),
             shutdown: false,
         })

@@ -98,15 +98,16 @@ impl ZlibState {
         }
     }
 
-    fn start_decompression(&mut self, initial_data: Vec<u8>) {
+    fn start_decompression_with(&mut self, initial_data: Vec<u8>) -> io::Result<Vec<u8>> {
         debug!(
             "Starting zlib decompression with {} initial bytes",
             initial_data.len()
         );
-        // Push initial data to the buffer
-        self.buffer.push(&initial_data);
         // Create decoder once with a clone of the buffer (shares the same underlying VecDeque)
         self.decoder = Some(ZlibDecoder::new(self.buffer.clone()));
+
+        // Decompress the initial data and return it
+        self.decompress(&initial_data)
     }
 
     fn is_active(&self) -> bool {
@@ -492,8 +493,12 @@ impl NetworkEventLoop {
         // Parse through telnet handler
         // The telnet handler returns Some(remaining_bytes) when MCCP2 starts
         if let Some(remaining) = self.telnet_handler.parse(&data) {
-            // MCCP2 was enabled, start zlib decompression
-            self.zlib_state.start_decompression(remaining);
+            // Start zlib decompression and decompress the remaining data
+            if let Ok(decompressed) = self.zlib_state.start_decompression_with(remaining) {
+                if !decompressed.is_empty() {
+                    self.telnet_handler.parse(&decompressed);
+                }
+            }
         }
 
         Ok(())

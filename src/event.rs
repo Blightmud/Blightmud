@@ -142,7 +142,7 @@ impl EventHandler {
                 if let Some(transmit_writer) = &transmit_writer {
                     transmit_writer.send(Some(data))?;
                 } else {
-                    screen.print_error("No active session");
+                    screen.print_error("No active session. Use '/connect <host> <port>' to connect. '/help' for more commands.");
                 }
                 Ok(())
             }

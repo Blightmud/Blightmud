@@ -1,5 +1,6 @@
 pub use self::{
     check_version::check_latest_version,
+    event_loop::WakingSender,
     mud_connection::MudConnection,
     output_buffer::OutputBuffer,
     tcp_stream::{spawn_connect_thread, spawn_network_thread, BUFFER_SIZE},

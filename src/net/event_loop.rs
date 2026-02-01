@@ -12,9 +12,29 @@ use std::collections::VecDeque;
 use std::io::{self, ErrorKind, Read, Write};
 use std::net::TcpStream;
 use std::rc::Rc;
-use std::sync::mpsc::{Receiver, Sender, TryRecvError};
+use std::sync::mpsc::{Receiver, SendError, Sender, TryRecvError};
 use std::sync::Arc;
 use std::time::Duration;
+
+/// A sender that wakes the event loop when data is sent.
+/// This eliminates the worst-case 10ms delay for outgoing data.
+pub struct WakingSender {
+    sender: Sender<Option<Bytes>>,
+    waker: Arc<Waker>,
+}
+
+impl WakingSender {
+    pub fn new(sender: Sender<Option<Bytes>>, waker: Arc<Waker>) -> Self {
+        Self { sender, waker }
+    }
+
+    pub fn send(&self, data: Option<Bytes>) -> Result<(), SendError<Option<Bytes>>> {
+        let result = self.sender.send(data);
+        // Wake the poll so it processes the new data immediately
+        let _ = self.waker.wake();
+        result
+    }
+}
 
 const TCP_TOKEN: Token = Token(0);
 const WAKER_TOKEN: Token = Token(1);
@@ -53,10 +73,6 @@ impl StreamBuffer {
             inner: Rc::new(RefCell::new(VecDeque::new())),
         }
     }
-
-    fn push(&self, data: &[u8]) {
-        self.inner.borrow_mut().extend(data);
-    }
 }
 
 impl Clone for StreamBuffer {
@@ -64,6 +80,17 @@ impl Clone for StreamBuffer {
         Self {
             inner: Rc::clone(&self.inner),
         }
+    }
+}
+
+impl Write for StreamBuffer {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.inner.borrow_mut().extend(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(()) // No-op
     }
 }
 
@@ -116,8 +143,8 @@ impl ZlibState {
 
     fn decompress(&mut self, data: &[u8]) -> io::Result<Vec<u8>> {
         if let Some(decoder) = &mut self.decoder {
-            // Push new compressed data to the shared buffer
-            self.buffer.push(data);
+            // Write new compressed data to the shared buffer (infallible)
+            let _ = self.buffer.write(data);
 
             // Read all available decompressed data
             let mut output = Vec::new();
@@ -143,7 +170,6 @@ impl ZlibState {
 /// in a single thread using mio for non-blocking I/O.
 pub struct NetworkEventLoop {
     poll: Poll,
-    _waker: Arc<Waker>,
     connection: ConnectionState,
     write_buffer: Vec<u8>,
     transmit_receiver: Receiver<Option<Bytes>>,
@@ -154,12 +180,13 @@ pub struct NetworkEventLoop {
 }
 
 impl NetworkEventLoop {
-    /// Create a new event loop for a plain TCP connection
+    /// Create a new event loop for a plain TCP connection.
+    /// Returns the event loop and a waker that can be used to wake the poll.
     pub fn new_plain(
         stream: TcpStream,
         transmit_receiver: Receiver<Option<Bytes>>,
         session: Session,
-    ) -> io::Result<Self> {
+    ) -> io::Result<(Self, Arc<Waker>)> {
         let poll = Poll::new()?;
         let waker = Arc::new(Waker::new(poll.registry(), WAKER_TOKEN)?);
 
@@ -174,26 +201,29 @@ impl NetworkEventLoop {
         let main_writer = session.main_writer.clone();
         let telnet_handler = TelnetHandler::new(session);
 
-        Ok(Self {
-            poll,
-            _waker: waker,
-            connection: ConnectionState::Plain(mio_stream),
-            write_buffer: Vec::new(),
-            transmit_receiver,
-            main_writer,
-            telnet_handler,
-            zlib_state: ZlibState::new(),
-            shutdown: false,
-        })
+        Ok((
+            Self {
+                poll,
+                connection: ConnectionState::Plain(mio_stream),
+                write_buffer: Vec::new(),
+                transmit_receiver,
+                main_writer,
+                telnet_handler,
+                zlib_state: ZlibState::new(),
+                shutdown: false,
+            },
+            waker,
+        ))
     }
 
-    /// Create a new event loop for a TLS connection
+    /// Create a new event loop for a TLS connection.
+    /// Returns the event loop and a waker that can be used to wake the poll.
     pub fn new_tls(
         stream: TcpStream,
         tls: ClientConnection,
         transmit_receiver: Receiver<Option<Bytes>>,
         session: Session,
-    ) -> io::Result<Self> {
+    ) -> io::Result<(Self, Arc<Waker>)> {
         let poll = Poll::new()?;
         let waker = Arc::new(Waker::new(poll.registry(), WAKER_TOKEN)?);
 
@@ -211,20 +241,22 @@ impl NetworkEventLoop {
         let main_writer = session.main_writer.clone();
         let telnet_handler = TelnetHandler::new(session);
 
-        Ok(Self {
-            poll,
-            _waker: waker,
-            connection: ConnectionState::Tls {
-                stream: mio_stream,
-                tls,
+        Ok((
+            Self {
+                poll,
+                connection: ConnectionState::Tls {
+                    stream: mio_stream,
+                    tls,
+                },
+                write_buffer: Vec::new(),
+                transmit_receiver,
+                main_writer,
+                telnet_handler,
+                zlib_state: ZlibState::new(),
+                shutdown: false,
             },
-            write_buffer: Vec::new(),
-            transmit_receiver,
-            main_writer,
-            telnet_handler,
-            zlib_state: ZlibState::new(),
-            shutdown: false,
-        })
+            waker,
+        ))
     }
 
     /// Run the event loop until shutdown

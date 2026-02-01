@@ -4,11 +4,10 @@ use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
     model::{Connection, Line, PromptMask},
-    net::spawn_network_thread,
+    net::{spawn_network_thread, WakingSender},
     session::Session,
     tts::TTSEvent,
     ui::UserInterface,
-    TelnetData,
 };
 use libmudtelnet::{bytes::Bytes, events::TelnetEvents};
 use log::debug;
@@ -134,12 +133,12 @@ impl EventHandler {
         &mut self,
         event: Event,
         screen: &mut Box<dyn UserInterface>,
-        transmit_writer: &mut Option<Sender<TelnetData>>,
+        transmit_writer: &mut Option<WakingSender>,
     ) -> Result {
         match event {
             Event::ServerSend(data) => {
                 debug!("Sending: {:?}", data);
-                if let Some(transmit_writer) = &transmit_writer {
+                if let Some(transmit_writer) = transmit_writer {
                     transmit_writer.send(Some(data))?;
                 } else {
                     screen.print_error("No active session");
@@ -176,7 +175,11 @@ impl EventHandler {
                 Ok(())
             }
             Event::Connected(id) => {
-                let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
+                let (writer, reader): (Sender<Option<Bytes>>, Receiver<Option<Bytes>>) = channel();
+                let (waking_sender_tx, waking_sender_rx): (
+                    Sender<WakingSender>,
+                    Receiver<WakingSender>,
+                ) = channel();
 
                 // Get connection info and take the stream for the event loop
                 let (stream, host, port, tls, tls_validation, name) = {
@@ -202,9 +205,20 @@ impl EventHandler {
                         tls,
                         &host,
                         tls_validation,
+                        writer,
                         reader,
+                        waking_sender_tx,
                     );
-                    transmit_writer.replace(writer);
+                    // Wait for the WakingSender from the event loop thread
+                    match waking_sender_rx.recv() {
+                        Ok(waking_sender) => {
+                            transmit_writer.replace(waking_sender);
+                        }
+                        Err(_) => {
+                            screen.print_error("Failed to initialize network connection");
+                            return Ok(());
+                        }
+                    }
                 } else {
                     screen.print_error("Failed to get connection stream");
                     return Ok(());

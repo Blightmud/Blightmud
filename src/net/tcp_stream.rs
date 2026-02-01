@@ -1,9 +1,13 @@
 use crate::{event::Event, model::Connection, session::Session};
 use libmudtelnet::bytes::Bytes;
 use log::{debug, error};
-use std::{net::TcpStream, sync::mpsc::Receiver, thread};
+use std::{
+    net::TcpStream,
+    sync::mpsc::{Receiver, Sender},
+    thread,
+};
 
-use super::event_loop::NetworkEventLoop;
+use super::event_loop::{NetworkEventLoop, WakingSender};
 use super::tls::create_tls_connection;
 
 pub const BUFFER_SIZE: usize = 32 * 1024;
@@ -38,13 +42,19 @@ pub fn spawn_connect_thread(
 
 /// Spawn a single network thread using mio-based event loop.
 /// This replaces the separate receive and transmit threads to fix TLS race conditions.
+///
+/// Takes a sender for outgoing data and a channel to send back the WakingSender.
+/// The WakingSender wraps the original sender with a waker that immediately wakes
+/// the event loop when data is sent, eliminating the worst-case 10ms poll timeout delay.
 pub fn spawn_network_thread(
     session: Session,
     stream: TcpStream,
     tls: bool,
     host: &str,
     tls_validation: super::tls::CertificateValidation,
+    transmit_sender: Sender<Option<Bytes>>,
     transmit_receiver: Receiver<Option<Bytes>>,
+    waking_sender_tx: Sender<WakingSender>,
 ) -> thread::JoinHandle<()> {
     let host = host.to_string();
     thread::Builder::new()
@@ -72,7 +82,11 @@ pub fn spawn_network_thread(
                     transmit_receiver,
                     session.clone(),
                 ) {
-                    Ok(el) => el,
+                    Ok((el, waker)) => {
+                        // Send the WakingSender back to the main thread
+                        let _ = waking_sender_tx.send(WakingSender::new(transmit_sender, waker));
+                        el
+                    }
                     Err(e) => {
                         error!("Failed to create TLS event loop: {}", e);
                         let _ = session
@@ -84,7 +98,11 @@ pub fn spawn_network_thread(
                 }
             } else {
                 match NetworkEventLoop::new_plain(stream, transmit_receiver, session.clone()) {
-                    Ok(el) => el,
+                    Ok((el, waker)) => {
+                        // Send the WakingSender back to the main thread
+                        let _ = waking_sender_tx.send(WakingSender::new(transmit_sender, waker));
+                        el
+                    }
                     Err(e) => {
                         error!("Failed to create event loop: {}", e);
                         let _ = session

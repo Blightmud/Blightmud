@@ -36,13 +36,14 @@ aliases).
 
 ##
 
-***mud.connect(host, port[, tls, verify])***
+***mud.connect(host, port[, tls, verify, name])***
 Connect to a server
 
 - `host`   The host
 - `port`   The port
 - `tls`    Tls connection? true/false *(optional)*
 - `verify` Verify tls cert (default: true) *(optional)*
+- `name`   Server name for identification in callbacks *(optional)*
 
 ##
 
@@ -50,11 +51,34 @@ Connect to a server
 Registers a callback that is triggered when the client successfully connects to
 a server.
 
-- `callback`   A Lua function to be called upon connection. (host, port)
+- `callback`   A Lua function to be called upon connection. (host, port, info)
+
+The callback receives three arguments:
+- `host`   The hostname/IP connected to
+- `port`   The port number
+- `info`   A connection info object with additional metadata
+
+The `info` object has the following fields:
+- `info.host`        The hostname/IP connected to
+- `info.port`        The port number
+- `info.tls`         Boolean indicating if TLS is enabled
+- `info.verify_cert` Boolean indicating if certificate verification is enabled
+- `info.name`        Server name (if connecting via saved server, otherwise nil)
+- `info.id`          Connection ID
 
 ```lua
-blight.on_connect(function (host, port)
+mud.on_connect(function (host, port, info)
+    -- Basic usage (backward compatible)
     blight.output("Connected to:", host, port)
+
+    -- Access additional info
+    if info.name then
+        blight.output("Server name:", info.name)
+        -- Load per-server settings here
+    end
+    if info.tls then
+        blight.output("Connection is encrypted")
+    end
 end)
 ```
 

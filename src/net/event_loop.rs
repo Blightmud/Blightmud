@@ -295,7 +295,7 @@ impl NetworkEventLoop {
                         if event.is_readable() {
                             if let Err(e) = self.do_read() {
                                 if e.kind() != ErrorKind::WouldBlock {
-                                    debug!("Read error, closing connection: {}", e);
+                                    error!("Read error, closing connection: {}", e);
                                     self.shutdown = true;
                                     break;
                                 }

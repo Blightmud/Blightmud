@@ -191,6 +191,10 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_output(&mut self, line: &Line) {
+        // Handle screen clear request from server
+        if line.flags.screen_clear {
+            self.clear_output_area().ok();
+        }
         if line.flags.separate_receives {
             if let Some(print_line) = line.print_line() {
                 self.history.remove_last_if_prefix(print_line);
@@ -302,6 +306,25 @@ impl UserInterface for ReaderScreen {
                 )?;
             }
         }
+        Ok(())
+    }
+
+    fn clear_output_area(&mut self) -> Result<()> {
+        // Clear all lines in the output area
+        for line_no in 1..=self.output_line {
+            write!(
+                self.screen,
+                "{}{}",
+                cursor::Goto(1, line_no),
+                clear::CurrentLine,
+            )?;
+        }
+        // Clear the history buffer
+        self.history.clear();
+        // Reset scroll state
+        self.scroll_data.reset(&self.history)?;
+        // Reposition cursor
+        write!(self.screen, "{}", cursor::Goto(1, self.prompt_line))?;
         Ok(())
     }
 

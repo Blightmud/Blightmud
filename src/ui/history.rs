@@ -54,6 +54,10 @@ impl History {
         self.inner.is_empty()
     }
 
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
     pub fn find_forward(&self, pattern: &Regex, pos: usize) -> Option<usize> {
         self.inner[pos..]
             .iter()

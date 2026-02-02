@@ -41,6 +41,9 @@ pub trait UserInterface {
     fn print_send(&mut self, send: &Line);
     fn reset(&mut self) -> Result<()>;
     fn reset_scroll(&mut self) -> Result<()>;
+    /// Clears the output area (scroll region) without affecting the rest of the UI.
+    /// Called when the server sends screen-clearing escape sequences (ED sequences).
+    fn clear_output_area(&mut self) -> Result<()>;
     fn scroll_down(&mut self) -> Result<()>;
     fn scroll_lock(&mut self, lock: bool) -> Result<()>;
     fn scroll_to(&mut self, row: usize) -> Result<()>;

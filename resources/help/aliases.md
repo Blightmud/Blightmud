@@ -7,7 +7,9 @@ Aliases allow you to trigger a callback function when a certain command is typed
 ***alias.add(regex, callback) -> id***
 Creates an alias which when triggered runs the provided callback function.
 
-- `regex`    A regular expression to match as the command name.
+- `regex`    A string pattern or a Regex object (see `/help regex`) to match as
+             the command name. Using a Regex object allows for regex options like case
+             insensitivity.
 - `callback` Lua function to call when match is found. Parameters are a table
              of matches and the line that got matched (See `/help line`)
 - Returns an Alias object (see below)
@@ -66,7 +68,9 @@ Do not change the id of an Alias.
 Creates a new alias object. Note that this has no effect if it's not a part of
 an alias group.
 
-- `regex`       A regular expression as a string
+- `regex`       a string pattern or a regex object (see `/help regex`) to match
+                as the command name. using a regex object allows for regex options like case
+                insensitivity.
 - `callback`    The callback function for this alias
 - Returns a `AliasObject`
 
@@ -137,7 +141,7 @@ Adds an alias to the group.
 
 The second argument is optional if the first is an `Alias`.
 
-- `regex_or_alias`  An alias object or a regex string to create a new alias
+- `regex_or_alias`  An Alias object, a regex string, or a Regex object (see `/help regex`).
 - `callback`        A callback function (optional)
 
 ##

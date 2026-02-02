@@ -15,7 +15,11 @@ Trigger.__index = Trigger
 function Trigger.new(re, options, callback)
     local ret = setmetatable({}, Trigger)
 
-    ret.regex = regex.new(re)
+    if regex.is_regex(re) then
+        ret.regex = re
+    else
+        ret.regex = regex.new(re)
+    end
     ret.callback = callback
     ret.gag = options.gag or false
     ret.raw = options.raw or false

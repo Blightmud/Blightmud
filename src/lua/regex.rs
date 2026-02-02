@@ -34,6 +34,12 @@ impl UserData for RegexLib {
                 }
             },
         );
+        methods.add_function("is_regex", |_, value: mlua::Value| -> mlua::Result<bool> {
+            match value {
+                mlua::Value::UserData(ud) => Ok(ud.borrow::<Regex>().is_ok()),
+                _ => Ok(false),
+            }
+        });
     }
 }
 
@@ -254,6 +260,65 @@ mod test_regexp {
                 .call::<String>(())
                 .unwrap(),
             "03/14/2012, 01/01/2013 and 07/05/2014".to_string()
+        );
+    }
+
+    #[test]
+    fn test_is_regex() {
+        let state = get_lua();
+        // Test with a regex object - should return true
+        assert_eq!(
+            state
+                .load(
+                    r#"
+        local re = regex.new("^test$")
+        return regex.is_regex(re)
+        "#
+                )
+                .call::<bool>(())
+                .unwrap(),
+            true
+        );
+
+        // Test with a string - should return false
+        assert_eq!(
+            state
+                .load(r#"return regex.is_regex("not a regex")"#)
+                .call::<bool>(())
+                .unwrap(),
+            false
+        );
+
+        // Test with a table - should return false
+        assert_eq!(
+            state
+                .load(r#"return regex.is_regex({})"#)
+                .call::<bool>(())
+                .unwrap(),
+            false
+        );
+
+        // Test with nil - should return false
+        assert_eq!(
+            state
+                .load(r#"return regex.is_regex(nil)"#)
+                .call::<bool>(())
+                .unwrap(),
+            false
+        );
+
+        // Test with regex with options - should return true
+        assert_eq!(
+            state
+                .load(
+                    r#"
+        local re = regex.new("^test$", {case_insensitive = true})
+        return regex.is_regex(re)
+        "#
+                )
+                .call::<bool>(())
+                .unwrap(),
+            true
         );
     }
 

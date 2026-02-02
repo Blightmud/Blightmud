@@ -20,6 +20,20 @@ Creates a new regular expression.
 
 ##
 
+***regex.is_regex(value)***
+Tests whether a given value is a Regex object.
+
+- `value` Any Lua value to test
+- Returns `true` if `value` is a Regex object, `false` otherwise.
+
+```lua
+local re = regex.new("^test$")
+assert(regex.is_regex(re) == true)
+assert(regex.is_regex("not a regex") == false)
+```
+
+##
+
 ***regex:test(string)***
 Checks if a string matches the regular expression.
 Returns `true` or `false`.

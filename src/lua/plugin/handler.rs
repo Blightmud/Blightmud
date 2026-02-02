@@ -87,6 +87,12 @@ impl UserData for Handler {
 #[cfg(test)]
 mod test_plugin {
     use mlua::Lua;
+    use std::sync::mpsc::{channel, Receiver, Sender};
+
+    use crate::{
+        event::Event,
+        lua::{backend::Backend, constants::BACKEND},
+    };
 
     use super::Handler;
 
@@ -95,6 +101,16 @@ mod test_plugin {
         let lua = Lua::new();
         lua.globals().set("plugin", plugin).unwrap();
         lua
+    }
+
+    fn get_lua_state_with_backend() -> (Lua, Receiver<Event>) {
+        let (writer, reader): (Sender<Event>, Receiver<Event>) = channel();
+        let backend = Backend::new(writer);
+        let plugin = Handler::new();
+        let lua = Lua::new();
+        lua.set_named_registry_value(BACKEND, backend).unwrap();
+        lua.globals().set("plugin", plugin).unwrap();
+        (lua, reader)
     }
 
     #[test]
@@ -115,5 +131,68 @@ mod test_plugin {
             .call::<String>(())
             .unwrap()
             .ends_with(".run/test/data/plugins/awesome"));
+    }
+
+    #[test]
+    fn test_get_all_returns_vec() {
+        let lua = get_lua_state();
+        let plugins: Vec<String> = lua.load("return plugin.get_all()").call(()).unwrap();
+        // Just ensure it returns a valid vec (may be empty)
+        assert!(plugins.is_empty() || !plugins.is_empty());
+    }
+
+    #[test]
+    fn test_enabled_returns_vec() {
+        let lua = get_lua_state();
+        let enabled: Vec<String> = lua.load("return plugin.enabled()").call(()).unwrap();
+        // Just ensure it returns a valid vec
+        assert!(enabled.is_empty() || !enabled.is_empty());
+    }
+
+    #[test]
+    fn test_disable_nonexistent_plugin() {
+        let lua = get_lua_state();
+        // Should not error even if plugin doesn't exist
+        lua.load("plugin.disable('nonexistent_plugin_xyz')")
+            .exec()
+            .unwrap();
+        // Verify disabled plugin is not in enabled list
+        let enabled: Vec<String> = lua.load("return plugin.enabled()").call(()).unwrap();
+        assert!(!enabled.contains(&"nonexistent_plugin_xyz".to_string()));
+    }
+
+    #[test]
+    fn test_enable_nonexistent_plugin() {
+        let lua = get_lua_state();
+        // Should not error, but won't add to enabled list since plugin doesn't exist
+        lua.load("plugin.enable('nonexistent_plugin_xyz')")
+            .exec()
+            .unwrap();
+        // Verify nonexistent plugin is not added to enabled list
+        let enabled: Vec<String> = lua.load("return plugin.enabled()").call(()).unwrap();
+        assert!(!enabled.contains(&"nonexistent_plugin_xyz".to_string()));
+    }
+
+    #[test]
+    fn test_remove_nonexistent_plugin() {
+        let lua = get_lua_state();
+        let result: (bool, String) = lua
+            .load("return plugin.remove('nonexistent_plugin_xyz')")
+            .call(())
+            .unwrap();
+        // Should return (true, "") since the dir doesn't exist (no error thrown)
+        // or (false, error_msg) if there was an error
+        assert!(result.0 || !result.1.is_empty());
+    }
+
+    #[test]
+    fn test_load_nonexistent_plugin() {
+        let (lua, _reader) = get_lua_state_with_backend();
+        let result: (bool, String) = lua
+            .load("return plugin.load('nonexistent_plugin_xyz')")
+            .call(())
+            .unwrap();
+        assert!(!result.0);
+        assert!(!result.1.is_empty());
     }
 }

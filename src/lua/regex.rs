@@ -323,6 +323,68 @@ mod test_regexp {
     }
 
     #[test]
+    fn test_regex_method() {
+        let state = get_lua();
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("^test$")
+            return re:regex()
+            "#,
+                )
+                .call::<String>(())
+                .unwrap(),
+            "^test$"
+        );
+    }
+
+    #[test]
+    fn test_invalid_regex() {
+        let state = get_lua();
+        let result: Result<(), _> = state
+            .load(
+                r#"
+            local re = regex.new("[invalid")
+            "#,
+            )
+            .exec();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_match_all_no_matches() {
+        let state = get_lua();
+        let result: Option<Vec<Vec<String>>> = state
+            .load(
+                r#"
+            local re = regex.new("xyz")
+            return re:match_all("abc def ghi")
+            "#,
+            )
+            .call(())
+            .unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_replace_no_limit() {
+        let state = get_lua();
+        assert_eq!(
+            state
+                .load(
+                    r#"
+            local re = regex.new("a")
+            return re:replace("banana", "o")
+            "#,
+                )
+                .call::<String>(())
+                .unwrap(),
+            "bonono"
+        );
+    }
+
+    #[test]
     fn test_options() {
         let state = get_lua();
         assert_eq!(

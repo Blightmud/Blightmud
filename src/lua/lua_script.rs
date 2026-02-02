@@ -192,7 +192,7 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         globals.set("plugin", plugin::Handler::new())?;
         globals.set("audio", Audio {})?;
         globals.set("socket", SocketLib {})?;
-        globals.set("servers", Servers {})?;
+        globals.set("servers", Servers())?;
         globals.set("prompt", Prompt {})?;
         globals.set("prompt_mask", PromptMask {})?;
         #[cfg(feature = "spellcheck")]

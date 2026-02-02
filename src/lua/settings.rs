@@ -75,4 +75,34 @@ mod test_settings {
 
         assert!(matches!(value, mlua::Value::Boolean(_)));
     }
+
+    #[test]
+    fn test_get_invalid_setting() {
+        let lua = Lua::new();
+        lua.globals()
+            .set(Settings::LUA_GLOBAL_NAME, Settings::new())
+            .unwrap();
+
+        let result: Result<bool, _> = lua
+            .load("return settings.get(\"invalid_setting_xyz\")")
+            .call(());
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_list_contains_all_settings() {
+        let lua = Lua::new();
+        lua.globals()
+            .set(Settings::LUA_GLOBAL_NAME, Settings::new())
+            .unwrap();
+
+        let settings_table: mlua::Table = lua.load("return settings.list()").call(()).unwrap();
+
+        // Check that all known settings are present
+        for setting in model::SETTINGS.iter() {
+            let value: mlua::Value = settings_table.raw_get(*setting).unwrap();
+            assert!(matches!(value, mlua::Value::Boolean(_)));
+        }
+    }
 }

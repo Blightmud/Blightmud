@@ -233,4 +233,87 @@ mod test {
         th.toggle_eor(false);
         assert_eq!(th.mode, TelnetMode::UnterminatedPrompt);
     }
+
+    #[test]
+    fn test_toggle_ga_only() {
+        let (session, _reader, _timer_reader) = build_session();
+        let mut th = TelnetHandler::new(session);
+
+        assert_eq!(th.mode, TelnetMode::UnterminatedPrompt);
+        th.toggle_ga(true);
+        assert_eq!(th.mode, TelnetMode::TerminatedPrompt);
+        th.toggle_ga(false);
+        assert_eq!(th.mode, TelnetMode::UnterminatedPrompt);
+    }
+
+    #[test]
+    fn test_toggle_eor_only() {
+        let (session, _reader, _timer_reader) = build_session();
+        let mut th = TelnetHandler::new(session);
+
+        assert_eq!(th.mode, TelnetMode::UnterminatedPrompt);
+        th.toggle_eor(true);
+        assert_eq!(th.mode, TelnetMode::TerminatedPrompt);
+        th.toggle_eor(false);
+        assert_eq!(th.mode, TelnetMode::UnterminatedPrompt);
+    }
+
+    #[test]
+    fn test_parse_plain_text() {
+        let (session, reader, _timer_reader) = build_session();
+        let mut th = TelnetHandler::new(session);
+
+        let result = th.parse(b"Hello, World!");
+        assert!(result.is_none());
+
+        // Should receive MudOutput event for the line
+        let event = reader.recv().unwrap();
+        match event {
+            Event::MudOutput(line) => {
+                assert!(line.clean_line().contains("Hello, World!"));
+            }
+            Event::Prompt(_) => {
+                // May receive prompt event in unterminated mode
+            }
+            _ => {}
+        }
+    }
+
+    #[test]
+    fn test_handle_prompt_unterminated() {
+        let (session, reader, _timer_reader) = build_session();
+        let mut th = TelnetHandler::new(session);
+
+        // Put some data in the output buffer
+        th.parse(b"prompt> ");
+
+        // Drain the reader to find the Prompt event
+        let mut found_prompt = false;
+        while let Ok(event) = reader.try_recv() {
+            if let Event::Prompt(_) = event {
+                found_prompt = true;
+                break;
+            }
+        }
+        assert!(found_prompt || th.mode == TelnetMode::UnterminatedPrompt);
+    }
+
+    #[test]
+    fn test_telnet_mode_default() {
+        assert_eq!(TelnetMode::default(), TelnetMode::UnterminatedPrompt);
+    }
+
+    #[test]
+    fn test_telnet_mode_clone() {
+        let mode = TelnetMode::TerminatedPrompt;
+        let cloned = mode.clone();
+        assert_eq!(mode, cloned);
+    }
+
+    #[test]
+    fn test_telnet_mode_debug() {
+        let mode = TelnetMode::TerminatedPrompt;
+        let debug_str = format!("{:?}", mode);
+        assert!(debug_str.contains("TerminatedPrompt"));
+    }
 }

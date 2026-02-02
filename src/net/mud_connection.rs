@@ -155,3 +155,85 @@ impl Write for MudConnection {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mud_connection_new() {
+        let conn = MudConnection::new();
+        assert_eq!(conn.host, "0.0.0.0");
+        assert_eq!(conn.port, 4000);
+        assert!(!conn.tls);
+        assert!(!conn.connected());
+        assert!(conn.name.is_none());
+    }
+
+    #[test]
+    fn test_mud_connection_new_unique_ids() {
+        let conn1 = MudConnection::new();
+        let conn2 = MudConnection::new();
+        assert_ne!(conn1.id, conn2.id);
+    }
+
+    #[test]
+    fn test_mud_connection_not_connected() {
+        let conn = MudConnection::new();
+        assert!(!conn.connected());
+    }
+
+    #[test]
+    fn test_mud_connection_disconnect_when_not_connected() {
+        let mut conn = MudConnection::new();
+        // Disconnect when not connected should be ok
+        assert!(conn.disconnect().is_ok());
+    }
+
+    #[test]
+    fn test_mud_connection_read_not_connected() {
+        let mut conn = MudConnection::new();
+        let mut buf = [0u8; 10];
+        let result = conn.read(&mut buf);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_mud_connection_write_not_connected() {
+        let mut conn = MudConnection::new();
+        let result = conn.write(b"test");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_mud_connection_flush_not_connected() {
+        let mut conn = MudConnection::new();
+        let result = conn.flush();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_mud_connection_write_all_not_connected() {
+        let mut conn = MudConnection::new();
+        let result = conn.write_all(b"test");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_mud_connection_clone() {
+        let conn = MudConnection::new();
+        let cloned = conn.clone();
+        assert_eq!(conn.id, cloned.id);
+        assert_eq!(conn.host, cloned.host);
+        assert_eq!(conn.port, cloned.port);
+    }
+
+    #[test]
+    fn test_connection_id_increments() {
+        let id1 = connection_id();
+        let id2 = connection_id();
+        assert!(id2 > id1);
+    }
+}

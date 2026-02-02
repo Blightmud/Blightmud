@@ -79,4 +79,76 @@ mod test_store {
             .unwrap();
         assert_eq!("def", value);
     }
+
+    #[test]
+    fn test_session_read_missing_key() {
+        let lua = Lua::new();
+        let store = Store::new();
+        lua.globals().set(Store::LUA_GLOBAL_NAME, store).unwrap();
+
+        let value: Option<String> = lua
+            .load("return store.session_read(\"nonexistent\")")
+            .call(())
+            .unwrap();
+        assert_eq!(value, None);
+    }
+
+    #[test]
+    fn test_session_write_overwrite() {
+        let lua = Lua::new();
+        let store = Store::new();
+        lua.globals().set(Store::LUA_GLOBAL_NAME, store).unwrap();
+
+        lua.load("store.session_write(\"key\", \"value1\")")
+            .exec()
+            .unwrap();
+        lua.load("store.session_write(\"key\", \"value2\")")
+            .exec()
+            .unwrap();
+        let value: String = lua
+            .load("return store.session_read(\"key\")")
+            .call(())
+            .unwrap();
+        assert_eq!("value2", value);
+    }
+
+    #[test]
+    fn test_store_new() {
+        let store = Store::new();
+        assert!(store.memory_storage.is_empty());
+    }
+
+    #[test]
+    fn test_multiple_keys() {
+        let lua = Lua::new();
+        let store = Store::new();
+        lua.globals().set(Store::LUA_GLOBAL_NAME, store).unwrap();
+
+        lua.load("store.session_write(\"key1\", \"value1\")")
+            .exec()
+            .unwrap();
+        lua.load("store.session_write(\"key2\", \"value2\")")
+            .exec()
+            .unwrap();
+        lua.load("store.session_write(\"key3\", \"value3\")")
+            .exec()
+            .unwrap();
+
+        let value1: String = lua
+            .load("return store.session_read(\"key1\")")
+            .call(())
+            .unwrap();
+        let value2: String = lua
+            .load("return store.session_read(\"key2\")")
+            .call(())
+            .unwrap();
+        let value3: String = lua
+            .load("return store.session_read(\"key3\")")
+            .call(())
+            .unwrap();
+
+        assert_eq!("value1", value1);
+        assert_eq!("value2", value2);
+        assert_eq!("value3", value3);
+    }
 }

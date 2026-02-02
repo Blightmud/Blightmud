@@ -94,4 +94,58 @@ mod logger_tests {
         logger.stop_logging().unwrap();
         assert!(!logger.is_logging());
     }
+
+    #[test]
+    fn test_logger_default() {
+        let logger = Logger::default();
+        assert!(!logger.is_logging());
+    }
+
+    #[test]
+    fn test_logger_start_twice() {
+        let mut logger = Logger::default();
+        logger.start_logging("test_host").unwrap();
+        // Starting again should be a no-op (file already exists)
+        logger.start_logging("test_host").unwrap();
+        assert!(logger.is_logging());
+        logger.stop_logging().unwrap();
+    }
+
+    #[test]
+    fn test_logger_log_str() {
+        let mut logger = Logger::default();
+        logger.start_logging("test_host_log").unwrap();
+        assert!(logger.log_str("test line").is_ok());
+        assert!(logger.log_str("test line with newline\n").is_ok());
+        logger.stop_logging().unwrap();
+    }
+
+    #[test]
+    fn test_logger_log_str_not_logging() {
+        let mut logger = Logger::default();
+        // Should not error when not logging
+        assert!(logger.log_str("test line").is_ok());
+    }
+
+    #[test]
+    fn test_logger_log_line() {
+        let mut logger = Logger::default();
+        logger.start_logging("test_host_line").unwrap();
+        let line = Line::from("test output line");
+        assert!(logger.log_line("[<<] ", &line).is_ok());
+        logger.stop_logging().unwrap();
+    }
+
+    #[test]
+    fn test_logger_stop_not_started() {
+        let mut logger = Logger::default();
+        // Should not error when stopping without starting
+        assert!(logger.stop_logging().is_ok());
+    }
+
+    #[test]
+    fn test_get_and_ensure_log_dir() {
+        let path = get_and_ensure_log_dir("test_create_dir");
+        assert!(path.to_string_lossy().contains("test_create_dir"));
+    }
 }

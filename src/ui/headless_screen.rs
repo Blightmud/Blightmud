@@ -43,6 +43,11 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
+    fn clear_output_area(&mut self) -> anyhow::Result<()> {
+        // No-op for headless screen
+        Ok(())
+    }
+
     fn scroll_down(&mut self) -> anyhow::Result<()> {
         Ok(())
     }

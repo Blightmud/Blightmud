@@ -113,3 +113,150 @@ impl UserInterface for HeadlessScreen {
         bail!("Can't destroy a headless ui")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{Line, Regex};
+
+    #[test]
+    fn test_headless_screen_setup() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.setup().is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_reset() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.reset().is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_reset_scroll() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.reset_scroll().is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_scroll_down() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.scroll_down().is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_scroll_up() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.scroll_up().is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_scroll_lock() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.scroll_lock(true).is_ok());
+        assert!(screen.scroll_lock(false).is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_scroll_to() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.scroll_to(100).is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_scroll_top() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.scroll_top().is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_find_up() {
+        let mut screen = HeadlessScreen {};
+        let pattern = Regex::new("test", None).unwrap();
+        assert!(screen.find_up(&pattern).is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_find_down() {
+        let mut screen = HeadlessScreen {};
+        let pattern = Regex::new("test", None).unwrap();
+        assert!(screen.find_down(&pattern).is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_set_host() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.set_host("example.com", 4000).is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_add_tag() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.add_tag("GMCP").is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_remove_tag() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.remove_tag("GMCP").is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_clear_tags() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.clear_tags().is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_set_status_area_height() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.set_status_area_height(5).is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_set_status_line() {
+        let mut screen = HeadlessScreen {};
+        assert!(screen.set_status_line(0, "Status".to_string()).is_ok());
+    }
+
+    #[test]
+    fn test_headless_screen_width() {
+        let screen = HeadlessScreen {};
+        assert_eq!(screen.width(), 0);
+    }
+
+    #[test]
+    fn test_headless_screen_height() {
+        let screen = HeadlessScreen {};
+        assert_eq!(screen.height(), 0);
+    }
+
+    #[test]
+    fn test_headless_screen_destroy_fails() {
+        let screen = Box::new(HeadlessScreen {});
+        let result = screen.destroy();
+        assert!(result.is_err());
+        if let Err(e) = result {
+            assert!(e.to_string().contains("Can't destroy"));
+        }
+    }
+
+    #[test]
+    fn test_headless_screen_print_and_flush_methods() {
+        // Consolidate all void-returning print/flush methods into one test
+        // These methods just write to stdout and don't return values to assert on
+        let mut screen = HeadlessScreen {};
+        let line = Line::from("test content");
+
+        // Test all print methods complete without panic
+        screen.print_error("test error");
+        screen.print_info("test info");
+        screen.print_output(&line);
+        screen.print_prompt(&line);
+        screen.print_send(&line);
+        screen.print_prompt_input("test input", 5);
+        screen.flush();
+
+        // If we got here, all methods executed successfully
+        assert!(true);
+    }
+}

@@ -35,4 +35,35 @@ mod test_exec {
                 .stdout
         );
     }
+
+    #[test]
+    fn test_exec_with_exit_code() {
+        let output = exec("exit 0").unwrap();
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn test_exec_with_stderr() {
+        let output = exec("echo error >&2").unwrap();
+        assert_eq!(b"error\n".to_vec(), output.stderr);
+    }
+
+    #[test]
+    fn test_exec_args_empty() {
+        let result = exec_args(&[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exec_args_single() {
+        let output = exec_args(&["true".to_string()]).unwrap();
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn test_exec_args_multiple() {
+        let output =
+            exec_args(&["echo".to_string(), "hello".to_string(), "world".to_string()]).unwrap();
+        assert_eq!(b"hello world\n".to_vec(), output.stdout);
+    }
 }

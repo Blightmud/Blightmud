@@ -21,7 +21,9 @@ The table contains the following:
 ***trigger.add(regex, options, callback)***
 Create a new trigger
 
-- `regex`    A string describing the regex to match against incoming data
+- `regex`    A string pattern or a Regex object (see `/help regex`) to match
+             against incoming data. Using a Regex object allows for regex options
+             like case insensitivity.
 - `options`  A table of options (See `Trigger Options` at the top
 - `callback` Lua function to call when match is found. Parameters are a table
              of matches and the line that got matched (See `/help line`)
@@ -108,7 +110,9 @@ Do not change the ID of a trigger.
 Creates a new trigger object. Note that the trigger will not work without being
 part of at least one trigger group
 
-- `regex`    A string describing the regex to match against incoming data
+- `regex`    A string pattern or a Regex object (see `/help regex`) to match against
+             incoming data. Using a Regex object allows for regex options like case
+             insensitivity.
 - `options`  A table of options (See `Trigger Options` at the top
 - `callback` Lua function to call when match is found. Parameters are a table
              of matches and the line that got matched (See `/help line`)
@@ -181,7 +185,7 @@ Adds a trigger to the group.
 
 The second and third arguments are optional if the first is a `Trigger`.
 
-- `regex_or_trigger` The trigger object to add or a regex string to create a new trigger
+- `regex_or_trigger` A Trigger object, a regex string, or a Regex object (see `/help regex`).
 - `options`          Options for the new trigger (optional)
 - `callback`         Callback for the new trigger (optional)
 

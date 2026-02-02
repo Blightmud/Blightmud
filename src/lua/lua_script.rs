@@ -816,6 +816,132 @@ mod lua_script_tests {
     }
 
     #[test]
+    fn test_trigger_with_regex_object() {
+        let create_trigger_lua = r#"
+        local re = regex.new("^test$", {case_insensitive = true})
+        trigger.add(re, {gag=true}, function () end)
+        "#;
+
+        let lua = get_lua().0;
+        lua.state.load(create_trigger_lua).exec().unwrap();
+
+        // Should match lowercase
+        assert!(test_trigger("test", &lua));
+        // Should match uppercase due to case_insensitive
+        assert!(test_trigger("TEST", &lua));
+        // Should match mixed case
+        assert!(test_trigger("TeSt", &lua));
+    }
+
+    #[test]
+    fn test_trigger_with_regex_object_returns_trigger() {
+        let lua = get_lua().0;
+        let id: u32 = lua
+            .state
+            .load(
+                r#"
+        local re = regex.new("^test$")
+        return trigger.add(re, {}, function () end).id
+        "#,
+            )
+            .call(())
+            .unwrap();
+
+        assert!(id > 0);
+    }
+
+    #[test]
+    fn test_trigger_group_add_with_regex_object() {
+        let lua = get_lua().0;
+        lua.state
+            .load(
+                r#"
+        local re = regex.new("^hello$", {case_insensitive = true})
+        local group = trigger.add_group()
+        group:add(re, {}, function () end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_alias_with_regex_object() {
+        let create_alias_lua = r#"
+        local re = regex.new("^test$", {case_insensitive = true})
+        alias.add(re, function () end)
+        "#;
+
+        let lua = get_lua().0;
+        lua.state.load(create_alias_lua).exec().unwrap();
+
+        // Should match lowercase
+        assert!(check_alias_match(&lua, Line::from("test")));
+        // Should match uppercase due to case_insensitive
+        assert!(check_alias_match(&lua, Line::from("TEST")));
+        // Should match mixed case
+        assert!(check_alias_match(&lua, Line::from("TeSt")));
+    }
+
+    #[test]
+    fn test_alias_with_regex_object_returns_alias() {
+        let lua = get_lua().0;
+        let id: u32 = lua
+            .state
+            .load(
+                r#"
+        local re = regex.new("^test$")
+        return alias.add(re, function () end).id
+        "#,
+            )
+            .call(())
+            .unwrap();
+
+        assert!(id > 0);
+    }
+
+    #[test]
+    fn test_alias_group_add_with_regex_object() {
+        let lua = get_lua().0;
+        lua.state
+            .load(
+                r#"
+        local re = regex.new("^hello$", {case_insensitive = true})
+        local group = alias.add_group()
+        group:add(re, function () end)
+        "#,
+            )
+            .exec()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_trigger_string_still_works() {
+        // Verify existing string-based API still works
+        let lua = get_lua().0;
+        lua.state
+            .load(r#"trigger.add("^test$", {}, function () end)"#)
+            .exec()
+            .unwrap();
+
+        assert!(test_trigger("test", &lua));
+        assert!(!test_trigger("TEST", &lua)); // Should NOT match - no case_insensitive
+    }
+
+    #[test]
+    fn test_alias_string_still_works() {
+        // Verify existing string-based API still works
+        let lua = get_lua().0;
+        lua.state
+            .load(r#"alias.add("^test$", function () end)"#)
+            .exec()
+            .unwrap();
+
+        assert!(check_alias_match(&lua, Line::from("test")));
+        assert!(!check_alias_match(&lua, Line::from("TEST"))); // Should NOT match - no case_insensitive
+    }
+
+    #[test]
     fn test_dimensions() {
         let mut lua = get_lua().0;
         lua.state

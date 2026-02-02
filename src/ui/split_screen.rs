@@ -253,29 +253,38 @@ impl UserInterface for SplitScreen {
     }
 
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
-        // Sanity check
-        debug_assert!(pos <= input.len());
+        // Sanity check: pos is a character index
+        debug_assert!(pos <= input.chars().count());
 
         self.prompt_input = input.to_string();
         self.prompt_input_pos = pos;
 
+        // Calculate display width up to cursor position
+        let chars_before_cursor: String = input.chars().take(pos).collect();
+        let mut cursor_display_pos = chars_before_cursor.as_str().display_width();
+
         let mut input = input;
-        let mut pos = pos;
         let width = self.width as usize;
-        while input.printable_chars().count() >= width && pos >= width {
-            if let Some((i, _)) = input.printable_char_indices().nth(width) {
-                input = input.split_at(i).1;
+
+        // Scroll the view when cursor goes past the visible width
+        while input.display_width() >= width && cursor_display_pos >= width {
+            let (byte_idx, skipped_width) = input.byte_index_at_display_width(width);
+            if byte_idx < input.len() {
+                input = input.split_at(byte_idx).1;
+                cursor_display_pos -= skipped_width;
             } else {
                 input = "";
-            }
-            pos -= width;
-        }
-        if input.printable_chars().count() >= width {
-            if let Some((i, _)) = input.printable_char_indices().nth(width) {
-                input = input.split_at(i).0;
+                cursor_display_pos = 0;
             }
         }
-        self.cursor_prompt_pos = pos as u16 + 1;
+
+        // Truncate input if it's still too wide for the display
+        if input.display_width() >= width {
+            let (byte_idx, _) = input.byte_index_at_display_width(width);
+            input = input.split_at(byte_idx).0;
+        }
+
+        self.cursor_prompt_pos = cursor_display_pos as u16 + 1;
         write!(
             self.screen,
             "{}{}{}{}{}{}{}{}{}",

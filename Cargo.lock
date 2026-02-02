@@ -267,6 +267,7 @@ dependencies = [
  "termion",
  "timer",
  "tts",
+ "unicode-width",
  "vte 0.15.0",
  "webpki-roots",
 ]

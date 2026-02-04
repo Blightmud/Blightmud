@@ -269,9 +269,11 @@ impl UserInterface for SplitScreen {
 
         let mut input = input;
         let width = self.width as usize;
+        let mut wrapped = false;
 
         // Scroll the view when cursor goes past the visible width
         while input.display_width() >= width && cursor_display_pos >= width {
+            wrapped = true;
             let (byte_idx, skipped_width) = input.byte_index_at_display_width(width);
             if byte_idx < input.len() {
                 input = input.split_at(byte_idx).1;
@@ -282,22 +284,30 @@ impl UserInterface for SplitScreen {
             }
         }
 
+        // When wrapped, reserve 1 column for the '>' indicator
+        let effective_width = if wrapped { width - 1 } else { width };
+
         // Truncate input if it's still too wide for the display
-        if input.display_width() >= width {
-            let (byte_idx, _) = input.byte_index_at_display_width(width);
+        if input.display_width() >= effective_width {
+            let (byte_idx, _) = input.byte_index_at_display_width(effective_width);
             input = input.split_at(byte_idx).0;
         }
 
-        self.cursor_prompt_pos = cursor_display_pos as u16 + 1;
+        // Adjust cursor position for the wrap indicator
+        let cursor_offset = if wrapped { 2 } else { 1 };
+        self.cursor_prompt_pos = cursor_display_pos as u16 + cursor_offset;
+
+        let wrap_indicator = if wrapped { ">" } else { "" };
         write!(
             self.screen,
-            "{}{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}{}",
             termion::cursor::Save,
             termion::cursor::Goto(1, self.prompt_line),
             Fg(termion::color::Reset),
             Bg(termion::color::Reset),
             termion::style::Reset,
             termion::clear::CurrentLine,
+            wrap_indicator,
             input,
             termion::cursor::Restore,
             self.goto_prompt(),

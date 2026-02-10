@@ -1,9 +1,7 @@
-use crate::net::RwStream;
 use anyhow::Result;
 use rustls::pki_types::ServerName;
-use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
+use rustls::{ClientConfig, ClientConnection, RootCertStore};
 use std::fmt::{Display, Formatter};
-use std::net::TcpStream;
 use std::sync::Arc;
 
 /// Indicates a user's preference for certificate validation.
@@ -39,59 +37,48 @@ impl From<bool> for CertificateValidation {
     }
 }
 
-/// TlsStream is an alias for a read/write stream over an owned TLS client connection stream
-/// using a TCP transport.
-pub(super) type TlsStream = RwStream<StreamOwned<ClientConnection, TcpStream>>;
+/// Create a TLS ClientConnection for use with the event loop.
+///
+/// This creates a TLS client connection that can be used with non-blocking I/O
+/// in the event loop architecture.
+///
+/// ## DANGER
+/// If the `verify_cert` bool is set to false no certificate verification is performed and
+/// the connection is vulnerable to person-in-the-middle attacks and tampering.
+pub(super) fn create_tls_connection(
+    host: &str,
+    validation: CertificateValidation,
+) -> Result<ClientConnection> {
+    create_tls_connection_with_roots(host, validation, default_root_certs())
+}
 
-impl TlsStream {
-    /// new constructs a [TlsStream] by attempting to establish a TLS session over the given
-    /// [TcpStream] for the provided hostname. Certificate chains will be validated using
-    /// a built-in set of CA certificates populated from the Mozilla root certificate program
-    /// used by Firefox.
-    ///
-    /// ## DANGER
-    /// If the `verify_cert` bool is set to false no certificate verification is performed and
-    /// the connection is vulnerable to person-in-the-middle attacks and tampering.
-    pub(super) fn tls_init(
-        stream: TcpStream,
-        host: &str,
-        validation: CertificateValidation,
-    ) -> Result<TlsStream> {
-        Self::tls_init_with_roots(stream, host, validation, Self::default_root_certs())
-    }
+fn create_tls_connection_with_roots(
+    host: &str,
+    validation: CertificateValidation,
+    roots: RootCertStore,
+) -> Result<ClientConnection> {
+    let mut config = ClientConfig::builder()
+        .with_root_certificates(roots)
+        .with_no_client_auth();
 
-    // tls_init, but also accepts a RootCertStore. Presently this is only used by tests to
-    // allow verifying certificate validation with a non-standard test CA.
-    fn tls_init_with_roots(
-        stream: TcpStream,
-        host: &str,
-        validation: CertificateValidation,
-        roots: RootCertStore,
-    ) -> Result<TlsStream> {
-        let mut config = ClientConfig::builder()
-            .with_root_certificates(roots)
-            .with_no_client_auth();
+    // Enable support for SSLKEYLOGFILE. Setting this env var to a file path will
+    // cause Rustls to write a Wireshark compatible session key log to the file. The
+    // key log file can be shared with developers to enable debugging w/ pcaps that would
+    // otherwise be encrypted opaque data.
+    config.key_log = Arc::new(rustls::KeyLogFile::new());
 
-        // Enable support for SSLKEYLOGFILE. Setting this env var to a file path will
-        // cause Rustls to write a Wireshark compatible session key log to the file. The
-        // key log file can be shared with developers to enable debugging w/ pcaps that would
-        // otherwise be encrypted opaque data.
-        config.key_log = Arc::new(rustls::KeyLogFile::new());
+    if let CertificateValidation::DangerousDisabled = validation {
+        config
+            .dangerous()
+            .set_certificate_verifier(Arc::new(danger::NoCertificateVerification::new()));
+    };
+    let server_name = ServerName::try_from(host)?.to_owned();
+    Ok(ClientConnection::new(Arc::new(config), server_name)?)
+}
 
-        if let CertificateValidation::DangerousDisabled = validation {
-            config
-                .dangerous()
-                .set_certificate_verifier(Arc::new(danger::NoCertificateVerification::new()));
-        };
-        let server_name = ServerName::try_from(host)?.to_owned();
-        let conn = ClientConnection::new(Arc::new(config), server_name)?;
-        Ok(RwStream::new(StreamOwned::new(conn, stream)))
-    }
-
-    fn default_root_certs() -> RootCertStore {
-        RootCertStore {
-            roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
-        }
+fn default_root_certs() -> RootCertStore {
+    RootCertStore {
+        roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
     }
 }
 
@@ -168,19 +155,41 @@ mod danger {
 
 #[cfg(test)]
 mod test_tls {
-    use crate::net::tls::TlsStream;
-    use crate::net::CertificateValidation;
+    use super::{create_tls_connection_with_roots, default_root_certs, CertificateValidation};
+    use crate::net::rw_stream::RwStream;
     use log::debug;
     use rustls::pki_types::{CertificateDer, PrivateKeyDer};
     use rustls::{
-        CertificateError, Error::InvalidCertificate, RootCertStore, ServerConfig, ServerConnection,
-        StreamOwned,
+        CertificateError, ClientConnection, Error::InvalidCertificate, RootCertStore, ServerConfig,
+        ServerConnection, StreamOwned,
     };
-    use std::io::{BufReader, Read};
+    #[allow(unused_imports)]
+    use std::io::{BufReader, Read, Write};
     use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
     use std::sync::Arc;
     use std::thread::JoinHandle;
     use std::{fs, thread, time};
+
+    /// TlsStream for testing - uses the old RwStream-based approach for simple blocking tests
+    type TlsStream = RwStream<StreamOwned<ClientConnection, TcpStream>>;
+
+    fn tls_init(
+        stream: TcpStream,
+        host: &str,
+        validation: CertificateValidation,
+    ) -> anyhow::Result<TlsStream> {
+        tls_init_with_roots(stream, host, validation, default_root_certs())
+    }
+
+    fn tls_init_with_roots(
+        stream: TcpStream,
+        host: &str,
+        validation: CertificateValidation,
+        roots: RootCertStore,
+    ) -> anyhow::Result<TlsStream> {
+        let conn = create_tls_connection_with_roots(host, validation, roots)?;
+        Ok(RwStream::new(StreamOwned::new(conn, stream)))
+    }
 
     // See tests/certs/README.md for information on how to (re)generate these files.
     const TEST_SERVER_CERTS: &str = "tests/certs/localhost/cert.pem";
@@ -280,7 +289,7 @@ mod test_tls {
         // certificates since our test server isn't using a "real" certificate from a CA in the
         // root CA collection provided by default_root_certs().
         debug!("connecting to {}", bound_addr);
-        let tls_stream = TlsStream::tls_init_with_roots(
+        let tls_stream = tls_init_with_roots(
             connect_to_server(bound_addr),
             "localhost",
             CertificateValidation::Enabled,
@@ -319,7 +328,7 @@ mod test_tls {
         // the test CA roots. This should cause the connection attempt to fail when we try to write
         // as the server's certificate isn't issued by a CA we know about.
         debug!("connecting to {}", bound_addr);
-        let tls_stream = TlsStream::tls_init(
+        let tls_stream = tls_init(
             connect_to_server(bound_addr),
             "localhost",
             CertificateValidation::Enabled,
@@ -362,7 +371,7 @@ mod test_tls {
         // Even though our test server uses a cert issued by an unknown root certificate this
         // configuration should not error because of the dangerous certificate validation state.
         debug!("connecting to {}", bound_addr);
-        let tls_stream = TlsStream::tls_init(
+        let tls_stream = tls_init(
             connect_to_server(bound_addr),
             "localhost",
             CertificateValidation::DangerousDisabled,

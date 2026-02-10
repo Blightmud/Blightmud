@@ -1,7 +1,6 @@
 use anyhow::{bail, Result};
 use audio::Player;
 use lazy_static::lazy_static;
-use libmudtelnet::bytes::Bytes;
 use libmudtelnet::events::TelnetEvents;
 use log::{error, info};
 use std::path::PathBuf;
@@ -34,7 +33,7 @@ use crate::ui::{spawn_input_thread, UiWrapper, UserInterface};
 use event::EventHandler;
 use getopts::Matches;
 use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, SAVE_HISTORY};
-use net::check_latest_version;
+use net::{check_latest_version, WakingSender};
 
 pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), env!("GIT_DESCRIBE"));
 pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -44,8 +43,6 @@ const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
 
 #[cfg(all(not(test), not(debug_assertions)))]
 const XDG_CONFIG_DIR: &str = "~/.config/blightmud";
-
-type TelnetData = Option<Bytes>;
 
 lazy_static! {
     pub static ref DATA_DIR: PathBuf = {
@@ -248,7 +245,7 @@ fn handle_config(main_writer: &Sender<Event>, rt: &RuntimeConfig) {
 }
 
 fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfig) -> Result<()> {
-    let mut transmit_writer: Option<Sender<TelnetData>> = None;
+    let mut transmit_writer: Option<WakingSender> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 

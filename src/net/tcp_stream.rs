@@ -1,78 +1,16 @@
-use crate::{event::Event, model::Connection, net::TelnetHandler, session::Session};
-use flate2::read::ZlibDecoder;
+use crate::{event::Event, model::Connection, session::Session};
 use libmudtelnet::bytes::Bytes;
 use log::{debug, error};
 use std::{
-    io::{Chain, Cursor, Read, Write},
-    sync::mpsc::Receiver,
+    net::TcpStream,
+    sync::mpsc::{Receiver, Sender},
     thread,
 };
 
-use super::MudConnection;
-
-type Decoder = ZlibDecoder<Chain<Cursor<Vec<u8>>, MudConnection>>;
+use super::event_loop::{NetworkEventLoop, WakingSender};
+use super::tls::create_tls_connection;
 
 pub const BUFFER_SIZE: usize = 32 * 1024;
-
-struct MudReceiver {
-    connection: MudConnection,
-    decoder: Option<Decoder>,
-}
-
-impl MudReceiver {
-    fn open_zlib_stream(&mut self, existing: Vec<u8>) {
-        debug!("Opening Zlib stream");
-        let chain = ZlibDecoder::new(Cursor::new(existing).chain(self.connection.clone()));
-        self.decoder.replace(chain);
-    }
-
-    fn read_bytes(&mut self) -> Vec<u8> {
-        let mut data = vec![0; BUFFER_SIZE];
-        if let Some(decoder) = &mut self.decoder {
-            debug!(
-                "Waiting for zlib data... ({} ---> {})",
-                decoder.total_in(),
-                decoder.total_out()
-            );
-            match decoder.read(&mut data) {
-                Ok(bytes_read) => {
-                    debug!("Read {} bytes from zlib stream", bytes_read);
-                    if bytes_read > 0 {
-                        data = data[..bytes_read].to_vec();
-                    } else {
-                        data = vec![];
-                    }
-                }
-                Err(err) => {
-                    error!("Error: {}", err);
-                    data = vec![];
-                }
-            }
-        } else {
-            match self.connection.read(&mut data) {
-                Ok(bytes_read) => {
-                    debug!("Read {bytes_read} bytes from stream");
-                    data = data[..bytes_read].to_vec();
-                }
-                Err(err) => {
-                    error!("Error: {err}");
-                    data = vec![];
-                }
-            }
-        }
-        debug!("Bytes: {:?}", data);
-        data
-    }
-}
-
-impl From<&Session> for MudReceiver {
-    fn from(session: &Session) -> Self {
-        Self {
-            connection: session.connection.lock().unwrap().clone(),
-            decoder: None,
-        }
-    }
-}
 
 pub fn spawn_connect_thread(
     mut session: Session,
@@ -102,57 +40,82 @@ pub fn spawn_connect_thread(
         .unwrap()
 }
 
-pub fn spawn_receive_thread(session: Session) -> thread::JoinHandle<()> {
-    thread::Builder::new()
-        .name("tcp-receive-thread".to_string())
-        .spawn(move || {
-            let mut mud_receiver = MudReceiver::from(&session);
-            let writer = &session.main_writer;
-            let mut telnet_handler = TelnetHandler::new(session.clone());
-
-            debug!("Receive stream spawned");
-            let mut remaining_bytes = None;
-            loop {
-                if let Some(bytes) = remaining_bytes {
-                    mud_receiver.open_zlib_stream(bytes);
-                }
-
-                let bytes = mud_receiver.read_bytes();
-                if bytes.is_empty() {
-                    writer
-                        .send(Event::Info("Connection closed".to_string()))
-                        .unwrap();
-                    writer.send(Event::Disconnect).unwrap();
-                    break;
-                }
-
-                remaining_bytes = telnet_handler.parse(&bytes);
-            }
-            debug!("Receive stream closing");
-        })
-        .unwrap()
-}
-
-pub fn spawn_transmit_thread(
-    mut session: Session,
-    transmit_read: Receiver<Option<Bytes>>,
+/// Spawn a single network thread using mio-based event loop.
+/// This replaces the separate receive and transmit threads to fix TLS race conditions.
+///
+/// Takes a sender for outgoing data and a channel to send back the WakingSender.
+/// The WakingSender wraps the original sender with a waker that immediately wakes
+/// the event loop when data is sent, eliminating the worst-case 10ms poll timeout delay.
+pub fn spawn_network_thread(
+    session: Session,
+    stream: TcpStream,
+    tls: bool,
+    host: &str,
+    tls_validation: super::tls::CertificateValidation,
+    transmit_sender: Sender<Option<Bytes>>,
+    transmit_receiver: Receiver<Option<Bytes>>,
+    waking_sender_tx: Sender<WakingSender>,
 ) -> thread::JoinHandle<()> {
-    let connection = session.connection.lock().unwrap().clone();
+    let host = host.to_string();
     thread::Builder::new()
-        .name("tcp-send-thread".to_string())
+        .name("network-event-loop".to_string())
         .spawn(move || {
-            let mut connection = connection;
-            let transmit_read = transmit_read;
-            debug!("Transmit stream spawned");
-            while let Ok(Some(data)) = transmit_read.recv() {
-                if let Err(info) = connection.write_all(&data) {
-                    session.disconnect();
-                    let error = format!("Failed to write to socket: {info}").to_string();
-                    session.send_event(Event::Error(error));
-                    session.send_event(Event::Disconnect);
+            debug!("Network event loop thread starting (tls: {})", tls);
+
+            let mut event_loop = if tls {
+                // Create TLS connection
+                let tls_conn = match create_tls_connection(&host, tls_validation) {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        error!("Failed to create TLS connection: {}", e);
+                        let _ = session
+                            .main_writer
+                            .send(Event::Error(format!("TLS initialization failed: {}", e)));
+                        let _ = session.main_writer.send(Event::Disconnect);
+                        return;
+                    }
+                };
+
+                match NetworkEventLoop::new_tls(
+                    stream,
+                    tls_conn,
+                    transmit_receiver,
+                    session.clone(),
+                ) {
+                    Ok((el, waker)) => {
+                        // Send the WakingSender back to the main thread
+                        let _ = waking_sender_tx.send(WakingSender::new(transmit_sender, waker));
+                        el
+                    }
+                    Err(e) => {
+                        error!("Failed to create TLS event loop: {}", e);
+                        let _ = session
+                            .main_writer
+                            .send(Event::Error(format!("Event loop creation failed: {}", e)));
+                        let _ = session.main_writer.send(Event::Disconnect);
+                        return;
+                    }
                 }
-            }
-            debug!("Transmit stream closing");
+            } else {
+                match NetworkEventLoop::new_plain(stream, transmit_receiver, session.clone()) {
+                    Ok((el, waker)) => {
+                        // Send the WakingSender back to the main thread
+                        let _ = waking_sender_tx.send(WakingSender::new(transmit_sender, waker));
+                        el
+                    }
+                    Err(e) => {
+                        error!("Failed to create event loop: {}", e);
+                        let _ = session
+                            .main_writer
+                            .send(Event::Error(format!("Event loop creation failed: {}", e)));
+                        let _ = session.main_writer.send(Event::Disconnect);
+                        return;
+                    }
+                }
+            };
+
+            event_loop.run();
+            debug!("Network event loop thread exiting");
         })
         .unwrap()
 }

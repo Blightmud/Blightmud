@@ -51,6 +51,7 @@ rustls = { version = "0.23", default-features = false, features = ['ring', 'tls1
 webpki-roots = "1.0"
 reqwest = { version = "0.12.28", default-features = false, features = ['blocking', '__rustls-ring', 'json'] }
 socket2 = { version = "0.6.0", features = ['all'] }
+mio = { version = "1.1", features = ["os-poll", "net"] }
 
 encoding_rs = "0.8"
 unicode-width = "0.2"

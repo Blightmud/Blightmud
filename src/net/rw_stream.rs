@@ -94,11 +94,6 @@ impl<T: Read + Write + Send + 'static> RwStream<T> {
     pub fn inner(&self) -> &T {
         self.mutator.get()
     }
-
-    #[allow(clippy::mut_from_ref)]
-    pub fn inner_mut(&self) -> &mut T {
-        self.mutator.get_mut()
-    }
 }
 
 impl<T: Read + Write + Send + 'static> Clone for RwStream<T> {

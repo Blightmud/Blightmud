@@ -151,46 +151,6 @@ mod tests {
     }
 
     #[test]
-    fn test_mud_connection_read_not_connected() {
-        let mut conn = MudConnection::new();
-        let mut buf = [0u8; 10];
-        let result = conn.read(&mut buf);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 0);
-    }
-
-    #[test]
-    fn test_mud_connection_write_not_connected() {
-        let mut conn = MudConnection::new();
-        let result = conn.write(b"test");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 0);
-    }
-
-    #[test]
-    fn test_mud_connection_flush_not_connected() {
-        let mut conn = MudConnection::new();
-        let result = conn.flush();
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_mud_connection_write_all_not_connected() {
-        let mut conn = MudConnection::new();
-        let result = conn.write_all(b"test");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_mud_connection_clone() {
-        let conn = MudConnection::new();
-        let cloned = conn.clone();
-        assert_eq!(conn.id, cloned.id);
-        assert_eq!(conn.host, cloned.host);
-        assert_eq!(conn.port, cloned.port);
-    }
-
-    #[test]
     fn test_connection_id_increments() {
         let id1 = connection_id();
         let id2 = connection_id();

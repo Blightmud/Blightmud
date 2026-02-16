@@ -145,7 +145,7 @@ fn md_settings(syntax_set: &'_ SyntaxSet) -> MDSettings<'_> {
     let terminal_size = TerminalSize::detect().unwrap_or_default();
 
     MDSettings {
-        terminal_capabilities: TerminalProgram::Ansi.capabilities(),
+        terminal_capabilities: TerminalProgram::detect().capabilities(),
         terminal_size,
         theme: Theme::default(),
         syntax_set,

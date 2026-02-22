@@ -249,11 +249,8 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
-    let mut player = if !rt.integration_test {
-        Player::new()
-    } else {
-        Player::disabled()
-    };
+    let mut player: Option<Player> = None;
+    let audio_disabled = rt.integration_test;
 
     let mut screen: Box<dyn UserInterface> = if !rt.headless_mode {
         Box::new(UiWrapper::new(&session)?)
@@ -381,8 +378,13 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 event_handler.handle_output_events(event, &mut screen)?;
             }
             Event::PlayMusic(_, _) | Event::StopMusic | Event::PlaySFX(_, _) | Event::StopSFX => {
-                if let Err(err) = audio::handle_audio_event(event, &mut player) {
-                    screen.print_error(&err.to_string())
+                if player.is_none() && !audio_disabled {
+                    player = Some(Player::new());
+                }
+                if let Some(ref mut p) = player {
+                    if let Err(err) = audio::handle_audio_event(event, p) {
+                        screen.print_error(&err.to_string())
+                    }
                 }
             }
             Event::TTSEnabled(enabled) => {

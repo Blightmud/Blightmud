@@ -1,15 +1,13 @@
 use crate::{event::Event, model::Line, VERSION};
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
 use anyhow::Result;
 use log::debug;
-use pulldown_cmark::{Options, Parser};
-use pulldown_cmark_mdcat::terminal::{TerminalProgram, TerminalSize};
-use pulldown_cmark_mdcat::{ResourceUrlHandler, Settings as MDSettings, Theme};
 use std::fmt::Write;
-use syntect::parsing::SyntaxSet;
+use termimad::crossterm::style::{Attribute, Color};
+use termimad::MadSkin;
 
 pub struct HelpHandler {
     writer: Sender<Event>,
@@ -60,35 +58,9 @@ impl HelpHandler {
     }
 
     fn parse_markdown(&self, file_content: &str) -> Option<Line> {
-        let mut options = Options::empty();
-        options.insert(Options::ENABLE_TASKLISTS);
-        options.insert(Options::ENABLE_STRIKETHROUGH);
-
-        let parser = Parser::new_ext(file_content, options);
-
-        // Useless as files are embedded into binary.
-        let base_dir = Path::new("/");
-
-        let mut md_bytes = vec![];
-        let env = pulldown_cmark_mdcat::Environment::for_local_directory(&base_dir).unwrap();
-        let resource_handler = NoopResourceUrlHandler {};
-        if pulldown_cmark_mdcat::push_tty(
-            &md_settings(&SyntaxSet::load_defaults_newlines()),
-            &env,
-            &resource_handler,
-            &mut md_bytes,
-            parser,
-        )
-        .is_ok()
-        {
-            if let Ok(md_string) = String::from_utf8(md_bytes) {
-                Some(Line::from(format!("\n\n{md_string}")))
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        let width = termion::terminal_size().map(|(w, _)| w as usize - 1).ok();
+        let rendered = make_skin().text(file_content, width).to_string();
+        Some(Line::from(format!("\n\n{rendered}")))
     }
 
     fn parse_helpfile(&self, file: &str) -> Option<Line> {
@@ -141,32 +113,15 @@ impl HelpHandler {
     }
 }
 
-fn md_settings(syntax_set: &'_ SyntaxSet) -> MDSettings<'_> {
-    let terminal_size = TerminalSize::detect().unwrap_or_default();
 
-    MDSettings {
-        terminal_capabilities: TerminalProgram::Ansi.capabilities(),
-        terminal_size,
-        theme: Theme::default(),
-        syntax_set,
-    }
-}
-
-struct NoopResourceUrlHandler;
-
-impl std::fmt::Debug for NoopResourceUrlHandler {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NoopResourceUrlHandler").finish()
-    }
-}
-
-impl ResourceUrlHandler for NoopResourceUrlHandler {
-    fn read_resource(
-        &self,
-        _: &reqwest::Url,
-    ) -> std::io::Result<pulldown_cmark_mdcat::resources::MimeData> {
-        Err(std::io::Error::from(std::io::ErrorKind::Unsupported))
-    }
+fn make_skin() -> MadSkin {
+    let mut skin = MadSkin::default();
+    skin.headers[0].set_fg(Color::Yellow);
+    skin.headers[0].add_attr(Attribute::Bold);
+    skin.headers[1].set_fg(Color::Cyan);
+    skin.headers[1].add_attr(Attribute::Bold);
+    skin.headers[2].set_fg(Color::Green);
+    skin
 }
 
 macro_rules! help_files {

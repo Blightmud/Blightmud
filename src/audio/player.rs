@@ -1,12 +1,12 @@
 use std::{fs::File, io::BufReader};
 
 use anyhow::Result;
-use rodio::{source::Source, Sink};
+use rodio::{source::Source, Player as RodioPlayer};
 
 pub struct Player {
-    _stream: Option<rodio::OutputStream>,
-    music: Option<Sink>,
-    sfx: Option<Sink>,
+    _stream: Option<rodio::MixerDeviceSink>,
+    music: Option<RodioPlayer>,
+    sfx: Option<RodioPlayer>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -29,9 +29,9 @@ impl Player {
         let mut music = None;
         let mut sfx = None;
         let mut stream = None;
-        if let Ok(ostream) = rodio::OutputStreamBuilder::open_default_stream() {
-            music = Some(rodio::Sink::connect_new(ostream.mixer()));
-            sfx = Some(rodio::Sink::connect_new(ostream.mixer()));
+        if let Ok(ostream) = rodio::DeviceSinkBuilder::open_default_sink() {
+            music = Some(RodioPlayer::connect_new(ostream.mixer()));
+            sfx = Some(RodioPlayer::connect_new(ostream.mixer()));
             stream = Some(ostream);
         }
 
@@ -53,7 +53,7 @@ impl Player {
     pub fn play_music(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.music.is_none() {
             if let Some(ostream) = &self._stream {
-                self.music = Some(rodio::Sink::connect_new(ostream.mixer()));
+                self.music = Some(RodioPlayer::connect_new(ostream.mixer()));
             }
         }
         if let Some(music) = &self.music {
@@ -78,7 +78,7 @@ impl Player {
     pub fn play_sfx(&mut self, fpath: &str, options: SourceOptions) -> Result<()> {
         if self.sfx.is_none() {
             if let Some(ostream) = &self._stream {
-                self.sfx = Some(rodio::Sink::connect_new(ostream.mixer()));
+                self.sfx = Some(RodioPlayer::connect_new(ostream.mixer()));
             }
         }
         if let Some(sfx) = &self.sfx {

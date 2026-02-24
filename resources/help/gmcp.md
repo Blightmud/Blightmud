@@ -4,76 +4,106 @@ These methods allow Blightmud to send and receive GMCP data. They are slightly
 co-dependent, so a complete example is provided at the end to demonstrate
 how they all work together.
 
-##
+---
 
-***gmcp.on_ready(callback)***
-Registers a callback that is triggered when the client and server have agreed
+**gmcp.on_ready(callback)**
+
+*Registers a callback that is triggered when the client and server have agreed
 to use the GMCP protocol.
 You may only register one callback. A secondary callback will
-overwrite the first one.
+overwrite the first one.*
 
-- `callback`   The Lua function that gets triggered.
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | The Lua function that gets triggered. |
+|-
 
-##
+---
 
-***gmcp.register(module)***
-Instructs the server that our client (you) wants to receive updates for
-the defined module.
+**gmcp.register(module)**
 
-- `module`  The name of the GMCP module to receive updates for.
+*Instructs the server that our client (you) wants to receive updates for
+the defined module.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `module` | The name of the GMCP module to receive updates for. |
+|-
 
 ```lua
 gmcp.register("Room.Info")
 ```
 
-##
+---
 
-***gmcp.unregister(module)***
-Instructs the server that our client (you) don't want to receive updates for
-the defined module.
+**gmcp.unregister(module)**
 
-- `module`  The name of the GMCP module to not receive updates anymore.
+*Instructs the server that our client (you) don't want to receive updates for
+the defined module.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `module` | The name of the GMCP module to not receive updates anymore. |
+|-
 
 ```lua
 gmcp.unregister("Room.Info")
 ```
 
-##
+---
 
-***gmcp.receive(module, callback)***
-Registers a callback that is executed and provided with the GMCP data when
+**gmcp.receive(module, callback)**
+
+*Registers a callback that is executed and provided with the GMCP data when
 the specified module data is received from the server. The data you receive
 will be the raw data as a string. The 'json' module is readily available
-within the Lua state for you to use: https://github.com/rxi/json.lua
+within the Lua state for you to use: https://github.com/rxi/json.lua*
 
-- `module`   The name of the GMCP module to register.
-- `callback` The Lua function that will receive <module> updates.
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `module` | The name of the GMCP module to register. |
+| `callback` | The Lua function that will receive <module> updates. |
+|-
 
 ```lua
 gmcp.receive("Room.Info", function (data) blight.output(data) end)
 ```
 
-##
+---
 
-***gmcp.send(msg)***
-Sends the provided msg string as GMCP to the MUD.
+**gmcp.send(msg)**
 
-- `msg`   The string to send.
+*Sends the provided msg string as GMCP to the MUD.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `msg` | The string to send. |
+|-
 
 ```lua
 data = { char = { hp = "1234" } }
 gmcp.send("Char.Health " .. json.encode(data))
 ```
 
-##
+---
 
-***gmcp.echo(enabled)***
-Toggle the gmcp module echoing. If true all received GMCP data will be printed
-to screen
+**gmcp.echo(enabled)**
 
-- `enabled`   true or false
+*Toggle the gmcp module echoing. If true all received GMCP data will be printed
+to screen*
 
-## Complete GMCP example: 
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `enabled` | true or false |
+|-
+
+## Complete GMCP example:
 
 ```lua
 gmcp.on_ready(function ()

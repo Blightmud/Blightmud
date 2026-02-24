@@ -4,115 +4,155 @@ Aliases allow you to trigger a callback function when a certain command is typed
 
 ## Creating an Alias
 
-***alias.add(regex, callback) -> id***
-Creates an alias which when triggered runs the provided callback function.
+**alias.add(regex, callback) -> id**
 
-- `regex`    A string pattern or a Regex object (see `/help regex`) to match as
-             the command name. Using a Regex object allows for regex options like case
-             insensitivity.
-- `callback` Lua function to call when match is found. Parameters are a table
-             of matches and the line that got matched (See `/help line`)
-- Returns an Alias object (see below)
+*Creates an alias which when triggered runs the provided callback function.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex` | A string pattern or a Regex object (see `/help regex`) to match as the command name. Using a Regex object allows for regex options like case insensitivity. |
+| `callback` | Lua function to call when match is found. Parameters are a table of matches and the line that got matched (See `/help line`) |
+|-
 
-***alias.get(id)***
-Fetches an alias by id
+**Returns** an Alias object (see below)
 
-- `id`      The id of the alias to get
-- Returns the Alias with the given id or `nil` if not found
+---
 
-##
+**alias.get(id)**
 
-***alias.get_group(id)***
-Gets an alias group by id
+*Fetches an alias by id*
 
-- `id`  The id of the alias group
-- Returns the `AliasGroup` with the give id or `nil` if not found
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | The id of the alias to get |
+|-
 
-##
+**Returns** the Alias with the given id or `nil` if not found
 
-***alias.remove(id)***
-Remove the alias with the give ind. If the alias exists in multiple groups it
-will be removed from all of them.
+---
 
-- `id`  The id of the alias to remove
+**alias.get_group(id)**
 
-##
+*Gets an alias group by id*
 
-***alias.clear()***
-Remove all aliases. If groups are being used then they will all be cleared.
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | The id of the alias group |
+|-
 
-##
+**Returns** the `AliasGroup` with the give id or `nil` if not found
 
-***alias.add_group()***
-Creates a new alias group
+---
 
-- Returns the newly created `AliasGroup`
+**alias.remove(id)**
+
+*Remove the alias with the give ind. If the alias exists in multiple groups it will be removed from all of them.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | The id of the alias to remove |
+|-
+
+---
+
+**alias.clear()**
+
+*Remove all aliases. If groups are being used then they will all be cleared.*
+
+---
+
+**alias.add_group()**
+
+*Creates a new alias group*
+
+**Returns** the newly created `AliasGroup`
 
 ## Alias
 
 The alias object represents an individial alias. It has the following
 attributes:
 
-- `regex`       A regex object used for matching (See `/help regex`)
-- `callback`    The callback function
-- `enabled`     Enabled status of the alias
-- `id`          The id of the alias
+|-|-|
+| **Parameter** | **Description** |
+|-|-|
+| `regex` | A regex object used for matching (See `/help regex`) |
+| `callback` | The callback function |
+| `enabled` | Enabled status of the alias |
+| `id` | The id of the alias |
+|-
 
 Do not change the id of an Alias.
 
-##
+---
 
-***alias.Alias.new(regex, callback)***
-Creates a new alias object. Note that this has no effect if it's not a part of
-an alias group.
+**alias.Alias.new(regex, callback)**
 
-- `regex`       a string pattern or a regex object (see `/help regex`) to match
-                as the command name. using a regex object allows for regex options like case
-                insensitivity.
-- `callback`    The callback function for this alias
-- Returns a `AliasObject`
+*Creates a new alias object. Note that this has no effect if it's not a part of an alias group.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex` | a string pattern or a regex object (see `/help regex`) to match as the command name. using a regex object allows for regex options like case insensitivity. |
+| `callback` | The callback function for this alias |
+|-
 
-***alias.Alias.is_alias(object)***
-Tests wether a given table is an alias.
+**Returns** a `AliasObject`
 
-- Returns true or false
+---
 
-##
+**alias.Alias.is_alias(object)**
 
-***Alias:enable()***
-Enable the alias
+*Tests wether a given table is an alias.*
 
-##
+**Returns** true or false
 
-***Alias:disable()***
-Disable the alias
+---
 
-##
+**Alias:enable()**
 
-***Alias:set_enabled(enabled)***
-Sets the `enabled` status of the alias
+*Enable the alias*
 
-- `enabled`     True or false
+---
 
-##
+**Alias:disable()**
 
-***Alias:is_enabled()***
-Check if an alias is enabled
+*Disable the alias*
 
-- Returns true or false
+---
 
-##
+**Alias:set_enabled(enabled)**
 
-***Alias:check_line(line)***
-Runs the alias against a given line. If the alias matches, the callback
-will be executed, count will be lowered, etc.
-Mainly for internal use.
+*Sets the `enabled` status of the alias*
 
-- `line`    A `Line` object (See `/help line`)
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `enabled` | True or false |
+|-
+
+---
+
+**Alias:is_enabled()**
+
+*Check if an alias is enabled*
+
+**Returns** true or false
+
+---
+
+**Alias:check_line(line)**
+
+*Runs the alias against a given line. If the alias matches, the callback will be executed, count will be lowered, etc. Mainly for internal use.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `line` | A `Line` object (See `/help line`) |
+|-
 
 ## AliasGroup
 An `AliasGroup` represents a collection of aliases. By default, there is only
@@ -120,76 +160,105 @@ one alias group available.
 
 It has the following attributes:
 
-- `id`      The id of the alias group
-- `aliases` A table of aliases contained in the group.
+|-|-|
+| **Parameter** | **Description** |
+|-|-|
+| `id` | The id of the alias group |
+| `aliases` | A table of aliases contained in the group. |
+|-
 
 Don't modify these attributes directly
 
-##
+---
 
-***alias.AliasGroup.new(id)***
-Creates a new `AliasGroup` object. Note that the alias group will not be
-registered internally and thus will not function. Prefer to use `alias.add_group`
+**alias.AliasGroup.new(id)**
 
-- `id`  The id of the new `AliasGroup`
-- Returns an `AliasGroup`
+*Creates a new `AliasGroup` object. Note that the alias group will not be registered internally and thus will not function. Prefer to use `alias.add_group`*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | The id of the new `AliasGroup` |
+|-
 
-***AliasGroup:add(regex_or_alias[, callback])***
-Adds an alias to the group.
+**Returns** an `AliasGroup`
+
+---
+
+**AliasGroup:add(regex_or_alias[, callback])**
+
+*Adds an alias to the group.*
 
 The second argument is optional if the first is an `Alias`.
 
-- `regex_or_alias`  An Alias object, a regex string, or a Regex object (see `/help regex`).
-- `callback`        A callback function (optional)
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex_or_alias` | An Alias object, a regex string, or a Regex object (see `/help regex`). |
+| `callback` | A callback function (optional) |
+|-
 
-##
+---
 
-***AliasGroup:get(id)***
-Gets an alias from the group
+**AliasGroup:get(id)**
 
-- `id`  The id of the alias to get
-- Returns the `Alias` if it exists in the group or `nil`
+*Gets an alias from the group*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | The id of the alias to get |
+|-
 
-***AliasGroup:get_aliases()***
-Returns a table of all aliases in the group.
+**Returns** the `Alias` if it exists in the group or `nil`
 
-- Returns the aliases contained in the group
+---
 
-##
+**AliasGroup:get_aliases()**
 
-***AliasGroup:clear()***
-Removes all aliases from the group
+*Returns a table of all aliases in the group.*
 
-##
+**Returns** the aliases contained in the group
 
-***AliasGroup:is_enabled()***
-Returns whether this group is enabled
+---
 
-##
+**AliasGroup:clear()**
 
-***AliasGroup:set_enabled(flag)***
-Toggle enabled state for this group.
-A groups enabled state is separate from it's contained aliases.
+*Removes all aliases from the group*
 
-- `flag`     true or false
+---
 
-##
+**AliasGroup:is_enabled()**
 
-***AliasGroup:disable()***
-Disable the group
+*Returns whether this group is enabled*
 
-##
+---
 
-***AliasGroup:enable()***
-Disable the group
+**AliasGroup:set_enabled(flag)**
 
-##
+*Toggle enabled state for this group. A groups enabled state is separate from it's contained aliases.*
 
-***AliasGroup:check_line(line)***
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `flag` | true or false |
+|-
+
+---
+
+**AliasGroup:disable()**
+
+*Disable the group*
+
+---
+
+**AliasGroup:enable()**
+
+*Disable the group*
+
+---
+
+**AliasGroup:check_line(line)**
 
 Dispatches `Alias:check_line` calls to all contained aliases.
 Mainly used internally.

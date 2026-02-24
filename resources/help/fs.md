@@ -3,18 +3,23 @@
 This module allows interacting with the filesystem on your local machine.
 For regular file read/write operations please refer to luas standard `io` module.
 
-##
+---
 
-***fs.monitor(path, callback)***
-Monitor a directory for file operations.
+**fs.monitor(path, callback)**
+
+*Monitor a directory for file operations.*
 
 This will trigger events for any read, write, remove and create operations
 inside the provided directory (recursive). Due to various differences between
 operating systems there is no agnostic way of knowing what type of event
 occured. If something happens with a file you will get an event.
 
-- `path`        The path to monitor
-- `callback`    The callback function. Should accept an FSEvent (see below)
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `path` | The path to monitor |
+| `callback` | The callback function. Should accept an FSEvent (see below) |
+|-
 
 The monitor has a standard de-bounce of 5 seconds. This means that repeated
 writes to the same file within 5 seconds will only trigger one `write` event.

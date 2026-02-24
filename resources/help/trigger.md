@@ -5,223 +5,316 @@ received from the MUD
 
 ## Trigger Options
 
-Triggers can be created with various options. To that end, a table of options
-is passed in at creation.
+Triggers can be created with various options. To that end, a table of options is passed in at creation.
 The table contains the following:
 
-- `gag`     Gag (don't print) the matched line
-- `raw`     Match on the raw MUD line (ANSI escape sequences intact)
-- `prompt`  Match against the prompt instead of regular lines
-- `count`   Number of times this trigger will match before it is automatically
-            removed (default: `nil` = infinite)
-- `enabled` Whether the trigger is enabled or not (default `true`)
+|-|-|
+| **Parameter** | **Description** |
+|-|-|
+| `gag` | Gag (don't print) the matched line |
+| `raw` | Match on the raw MUD line (ANSI escape sequences intact) |
+| `prompt` | Match against the prompt instead of regular lines |
+| `count` | Number of times this trigger will match before it is automatically removed (default: `nil` = infinite) |
+| `enabled` | Whether the trigger is enabled or not (default `true`) |
+|-
 
 ## Module functions
 
-***trigger.add(regex, options, callback)***
-Create a new trigger
+---
 
-- `regex`    A string pattern or a Regex object (see `/help regex`) to match
-             against incoming data. Using a Regex object allows for regex options
-             like case insensitivity.
-- `options`  A table of options (See `Trigger Options` at the top
-- `callback` Lua function to call when match is found. Parameters are a table
-             of matches and the line that got matched (See `/help line`)
-- Returns a `Trigger` object (see below)
+**trigger.add(regex, options, callback)**
 
-##
+*Create a new trigger*
 
-***trigger.get(id)***
-Gets a trigger by its ID. If trigger groups are used, all groups will be searched
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex` | A string pattern or a Regex object (see `/help regex`) to match against incoming data. Using a Regex object allows for regex options like case insensitivity. |
+| `options` | A table of options (See `Trigger Options` at the top |
+| `callback` | Lua function to call when match is found. Parameters are a table of matches and the line that got matched (See `/help line`) |
+|-
 
-- `id` ID of the trigger to find
-- Returns the `Trigger` with the given ID or `nil` if not found
+**Returns** a `Trigger` object (see below)
 
-##
+---
 
-***trigger.get_group(id)***
-Gets a trigger group by its ID.
+**trigger.get(id)**
 
-- `id` ID of the trigger group
-- Returns the `TriggerGroup` with the given ID or `nil` if not found
+*Gets a trigger by its ID. If trigger groups are used, all groups will be searched*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | ID of the trigger to find |
+|-
 
-***trigger.remove(id)***
-Removes the trigger with the given ID. If the trigger is in multiple groups, it
-will be removed from all of them
+**Returns** the `Trigger` with the given ID or `nil` if not found
 
-- `id` ID of the trigger to remove
+---
 
-##
+**trigger.get_group(id)**
 
-***trigger.clear()***
-Deletes all triggers. If trigger groups are used, they will all be cleared
+*Gets a trigger group by its ID.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | ID of the trigger group |
+|-
 
-***TriggerGroup:is_enabled()***
-Returns whether this group is enabled
+**Returns** the `TriggerGroup` with the given ID or `nil` if not found
 
-##
+---
 
-***TriggerGroup:set_enabled(flag)***
-Toggle enabled state for this group.
-A groups enabled state is separate from it's contained triggers.
+**trigger.remove(id)**
 
-- `flag`     true or false
+*Removes the trigger with the given ID. If the trigger is in multiple groups, it
+will be removed from all of them*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | ID of the trigger to remove |
+|-
 
-***TriggerGroup:disable()***
-Disable the group
+---
 
-##
+**trigger.clear()**
 
-***TriggerGroup:enable()***
-Disable the group
+*Deletes all triggers. If trigger groups are used, they will all be cleared*
 
-##
+---
 
-***trigger.add_group()***
-Creates a new trigger group
+**TriggerGroup:is_enabled()**
 
-- Returns the newly created `TriggerGroup`
+*Returns whether this group is enabled*
+
+---
+
+**TriggerGroup:set_enabled(flag)**
+
+*Toggle enabled state for this group.
+A groups enabled state is separate from it's contained triggers.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `flag` | true or false |
+|-
+
+---
+
+**TriggerGroup:disable()**
+
+*Disable the group*
+
+---
+
+**TriggerGroup:enable()**
+
+*Disable the group*
+
+---
+
+**trigger.add_group()**
+
+*Creates a new trigger group*
+
+**Returns** the newly created `TriggerGroup`
 
 ## Trigger
 
 The trigger object represents an individual trigger. It has the following
 attributes:
 
-- `regex`    A regex object that is matched against (See `/help regex`)
-- `callback` The callback function
-- `gag`      See `Trigger Options`
-- `raw`      See `Trigger Options`
-- `prompt`   See `Trigger Options`
-- `count`    See `Trigger Options`
-- `enabled`  See `Trigger Options`
-- `id`       The ID of the trigger
+|-|-|
+| **Parameter** | **Description** |
+|-|-|
+| `regex` | A regex object that is matched against (See `/help regex`) |
+| `callback` | The callback function |
+| `gag` | See `Trigger Options` |
+| `raw` | See `Trigger Options` |
+| `prompt` | See `Trigger Options` |
+| `count` | See `Trigger Options` |
+| `enabled` | See `Trigger Options` |
+| `id` | The ID of the trigger |
+|-
 
 Do not change the ID of a trigger.
 
-##
+---
 
-***trigger.Trigger.new(regex, options, callback)***
-Creates a new trigger object. Note that the trigger will not work without being
-part of at least one trigger group
+**trigger.Trigger.new(regex, options, callback)**
 
-- `regex`    A string pattern or a Regex object (see `/help regex`) to match against
-             incoming data. Using a Regex object allows for regex options like case
-             insensitivity.
-- `options`  A table of options (See `Trigger Options` at the top
-- `callback` Lua function to call when match is found. Parameters are a table
-             of matches and the line that got matched (See `/help line`)
-- Returns a `Trigger` object
+*Creates a new trigger object. Note that the trigger will not work without being
+part of at least one trigger group*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex` | A string pattern or a Regex object (see `/help regex`) to match against incoming data. Using a Regex object allows for regex options like case insensitivity. |
+| `options` | A table of options (See `Trigger Options` at the top |
+| `callback` | Lua function to call when match is found. Parameters are a table of matches and the line that got matched (See `/help line`) |
+|-
 
-***trigger.Trigger.is_trigger(object)***
-Tests whether a given table is a trigger
+**Returns** a `Trigger` object
 
-- `object` The table to test
-- Returns `true` if `object` is a `Trigger`. `false` otherwise.
+---
 
-##
+**trigger.Trigger.is_trigger(object)**
 
-***Trigger:enable()***
-Enabled the trigger
+*Tests whether a given table is a trigger*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `object` | The table to test |
+|-
 
-***Trigger:disable()***
-Disables the trigger
+**Returns** `true` if `object` is a `Trigger`. `false` otherwise.
 
-##
+---
 
-***Trigger:set_enabled(enabled)***
-Sets the `enabled` status of the trigger
+**Trigger:enable()**
 
-- `enabled` Whether the trigger should be enabled
+*Enabled the trigger*
 
-##
+---
 
-***Trigger:is_enabled()***
-Returns whether the trigger is enabled
+**Trigger:disable()**
 
-- Returns `true` if the trigger is enabled. `false` otherwise.
+*Disables the trigger*
 
-##
+---
 
-***Trigger:check_line(line)***
-Runs the trigger against a given line. If the trigger matches, the callback
+**Trigger:set_enabled(enabled)**
+
+*Sets the `enabled` status of the trigger*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `enabled` | Whether the trigger should be enabled |
+|-
+
+---
+
+**Trigger:is_enabled()**
+
+*Returns whether the trigger is enabled*
+
+**Returns** `true` if the trigger is enabled. `false` otherwise.
+
+---
+
+**Trigger:check_line(line)**
+
+*Runs the trigger against a given line. If the trigger matches, the callback
 will be executed, count will be lowered, etc.
-Mainly used internally.
+Mainly used internally.*
 
-- `line` A `Line` object to check (See `/help line`)
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `line` | A `Line` object to check (See `/help line`) |
+|-
 
 ## TriggerGroup
 A `TriggerGroup` represents a collection of triggers. By default, there is only one trigger group available.
 
 It has the following attributes:
 
-- `id`       The ID of the trigger group
-- `triggers` A table of triggers contained in this group
+|-|-|
+| **Parameter** | **Description** |
+|-|-|
+| `id` | The ID of the trigger group |
+| `triggers` | A table of triggers contained in this group |
+|-
 
 Do not modify any of these attributes.
 
-##
+---
 
-***trigger.TriggerGroup.new(id)***
-Creates a new `TriggerGroup` object. Note that the trigger group will not be
-registered internally and thus will not function. Prefer to use `trigger.addGroup`
+**trigger.TriggerGroup.new(id)**
 
-- `id` The ID of the new `TriggerGroup`
-- Returns a `TriggerGroup`
+*Creates a new `TriggerGroup` object. Note that the trigger group will not be
+registered internally and thus will not function. Prefer to use `trigger.addGroup`*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | The ID of the new `TriggerGroup` |
+|-
 
-***TriggerGroup:add(regex_or_trigger[, options, callback])***
-Adds a trigger to the group.
+**Returns** a `TriggerGroup`
+
+---
+
+**TriggerGroup:add(regex_or_trigger[, options, callback])**
+
+*Adds a trigger to the group.*
 
 The second and third arguments are optional if the first is a `Trigger`.
 
-- `regex_or_trigger` A Trigger object, a regex string, or a Regex object (see `/help regex`).
-- `options`          Options for the new trigger (optional)
-- `callback`         Callback for the new trigger (optional)
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex_or_trigger` | A Trigger object, a regex string, or a Regex object (see `/help regex`). |
+| `options` | Options for the new trigger (optional) |
+| `callback` | Callback for the new trigger (optional) |
+|-
 
-##
+---
 
-***TriggerGroup:get(id)***
-Gets a trigger from the group
+**TriggerGroup:get(id)**
 
-- `id` ID of the trigger
-- Returns the `Trigger` if found in the group. `nil` otherwise.
+*Gets a trigger from the group*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | ID of the trigger |
+|-
 
-***TriggerGroup:get_triggers()***
-Returns a table of all the triggers in the group.
+**Returns** the `Trigger` if found in the group. `nil` otherwise.
 
-- Returns the triggers in the group
+---
+
+**TriggerGroup:get_triggers()**
+
+*Returns a table of all the triggers in the group.*
+
+**Returns** the triggers in the group
 
 Avoid modifying the returned table directly.
 
-##
+---
 
-***TriggerGroup:remove(id)***
-Removes a trigger from the group
+**TriggerGroup:remove(id)**
 
-- `id` ID of the trigger to remove
+*Removes a trigger from the group*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `id` | ID of the trigger to remove |
+|-
 
-***TriggerGroup:clear()***
-Removes all triggers from the group
+---
 
-##
+**TriggerGroup:clear()**
 
-***TriggerGroup:check_line(line)***
-Dispatches `Trigger:check_line` calls to all contained triggers.
-Mainly used internally.
+*Removes all triggers from the group*
 
-- `line` The `Line` object to pass to the triggers (See `/help line`)
+---
+
+**TriggerGroup:check_line(line)**
+
+*Dispatches `Trigger:check_line` calls to all contained triggers.
+Mainly used internally.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `line` | The `Line` object to pass to the triggers (See `/help line`) |
+|-

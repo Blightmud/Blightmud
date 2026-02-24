@@ -8,13 +8,17 @@ When supported by the current mud server the MSSP tag will be set in the top bar
 
 ## Functions
 
-***mssp.get() -> {}***
-Will return all collected MSSP values in one big table. With variable-names as
-keys and values as values.
+---
 
-##
+**mssp.get() -> {}**
 
-***mssp.print()***
-Will print all received MSSP variables and values.
+*Will return all collected MSSP values in one big table. With variable-names as
+keys and values as values.*
 
-##
+---
+
+**mssp.print()**
+
+*Will print all received MSSP variables and values.*
+
+---

@@ -9,68 +9,109 @@ MSDP values can be strings, lists or tables.
 
 You can read more about the protocol [here](https://mudhalla.net/tintin/protocols/msdp/):
 
-##
+---
 
-***msdp.list(list)***
-Request information on a list that the server supports. When the MSDP handshake
+**msdp.list(list)**
+
+*Request information on a list that the server supports. When the MSDP handshake
 is completed the `msdp` module will automatically request the list
-`REPORTABLE_VARIABLES`.
+`REPORTABLE_VARIABLES`.*
 
-- `list`    The name of the requested list
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `list` | The name of the requested list |
+|-
 
-##
+---
 
-***msdp.send(var)***
-Request that the server return the value of the provided variable.
+**msdp.send(var)**
 
-- `var`   The variable (string) or a list of variables (table)
+*Request that the server return the value of the provided variable.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `var` | The variable (string) or a list of variables (table) |
+|-
 
-***msdp.report(var)***
-Request that the server re-send variables when their values change
+---
 
-- `var`   The variable (string) or a list of variables (table)
+**msdp.report(var)**
 
-##
+*Request that the server re-send variables when their values change*
 
-***msdp.unreport(var)***
-Request that the server stop reporting on a variable(s)
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `var` | The variable (string) or a list of variables (table) |
+|-
 
-- `var`   The variable (string) or a list of variables (table)
+---
 
-##
+**msdp.unreport(var)**
 
-***msdp.set(var val)***
-Set a variable on the server, commonly one of the `CONFIGURABLE_VARIABLES`
+*Request that the server stop reporting on a variable(s)*
 
-- `var`   The variable name
-- `val`   The variable value
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `var` | The variable (string) or a list of variables (table) |
+|-
 
-##
+---
 
-***msdp.get(var) -> value***
-Get a variable from the `msdp` module. This is not a value fetched directly
+**msdp.set(var val)**
+
+*Set a variable on the server, commonly one of the `CONFIGURABLE_VARIABLES`*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `var` | The variable name |
+| `val` | The variable value |
+|-
+
+---
+
+**msdp.get(var) -> value**
+
+*Get a variable from the `msdp` module. This is not a value fetched directly
 from the server. It's a variable that has been previously requested through
-`msdp.report()`, `msdp.send()` or `msdp.list()`
+`msdp.report()`, `msdp.send()` or `msdp.list()`*
 
-- `var`     The variable to fetch
-- Returns either a string, or table
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `var` | The variable to fetch |
+|-
 
-##
+**Returns** either a string, or table
 
-***msdp.register(var, callback)***
-Register for updates on a variable that is being reported (see
-`msdp.report()`).
+---
 
-- `var`         The variable name
-- `callback`    The callback method, should take a value as an argument
+**msdp.register(var, callback)**
 
-##
+*Register for updates on a variable that is being reported (see
+`msdp.report()`).*
 
-***msdp.on_ready(callback)***
-Register a callback to be triggered when MSDP is ready between the client and
-server
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `var` | The variable name |
+| `callback` | The callback method, should take a value as an argument |
+|-
 
-- `callback`    The callback to trigger when ready
+---
+
+**msdp.on_ready(callback)**
+
+*Register a callback to be triggered when MSDP is ready between the client and
+server*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | The callback to trigger when ready |
+|-
 

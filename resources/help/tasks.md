@@ -6,14 +6,20 @@ Note that tasks have a safety function: If the task does not relinquish control
 (e.g. with `tasks.yield` or `tasks.sleep`) for 2 seconds, the task will be
 automatically killed.
 
-##
+---
 
-***tasks.spawn(f, ...)***
-Create a new task and schedule it for execution immediately
+**tasks.spawn(f, ...)**
 
-- `f`   The Lua function that will be executed
-- `...` Arguments to the function
-- Returns the `Task` that was created
+*Create a new task and schedule it for execution immediately*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `f` | The Lua function that will be executed |
+| `...` | Arguments to the function |
+|-
+
+**Returns** the `Task` that was created
 
 Example:
 ```lua
@@ -22,29 +28,41 @@ tasks.spawn(function(a)
 end, "Hello World!")
 ```
 
-##
+---
 
-***tasks.spawn_later(time, f, ...)***
-Create a new task and schedule it for execution later
+**tasks.spawn_later(time, f, ...)**
 
-- `time` Number of seconds to wait before execution
-- `f`    The Lua function that will be executed
-- `...`  Arguments to the function
-- Returns the `Task` that was created
+*Create a new task and schedule it for execution later*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `time` | Number of seconds to wait before execution |
+| `f` | The Lua function that will be executed |
+| `...` | Arguments to the function |
+|-
 
-***tasks.yield()***
-Relinquishes control back to the system.
+**Returns** the `Task` that was created
 
-- Returns a table of sent data (see `Task:send`)
+---
 
-##
+**tasks.yield()**
 
-***tasks.sleep(time)***
-Pauses execution for a given time
+*Relinquishes control back to the system.*
 
-- `time` Number of seconds to sleep
+**Returns** a table of sent data (see `Task:send`)
+
+---
+
+**tasks.sleep(time)**
+
+*Pauses execution for a given time*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `time` | Number of seconds to sleep |
+|-
 
 Example:
 ```lua
@@ -60,50 +78,66 @@ tasks.spawn(someTask)
 ```
 The example task runs for a total of 3 seconds.
 
-##
+---
 
-***tasks.idle()***
-Stops running the current task until no other tasks run
+**tasks.idle()**
 
-##
+*Stops running the current task until no other tasks run*
 
-***tasks.get_current()***
-Gets the currently running task
+---
 
-- Returns the `Task` that is currently running (nil if no task is running)
+**tasks.get_current()**
 
-##
+*Gets the currently running task*
 
-***tasks.get_tasks()***
-Get all scheduled tasks
+**Returns** the `Task` that is currently running (nil if no task is running)
 
-- Returns a table of all scheduled tasks
+---
 
-##
+**tasks.get_tasks()**
 
-***tasks.is_task(table)***
-Tests whether a given table is a `Task`
+*Get all scheduled tasks*
 
-- `table` The table to test
-- Returns `true` is `table` is a `Task`. `false` otherwise
+**Returns** a table of all scheduled tasks
+
+---
+
+**tasks.is_task(table)**
+
+*Tests whether a given table is a `Task`*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `table` | The table to test |
+|-
+
+**Returns** `true` is `table` is a `Task`. `false` otherwise
 
 # Task objects
 `tasks.Task` is essentially a class, with multiple methods (some of them static)
 Lua method syntax is used for normal methods, while normal table indexing is used for static methods
 
-##
+---
 
-***tasks.Task.new(f, ...)***
-Create a new `Task`. Note that the `Task` will NOT be scheduled
+**tasks.Task.new(f, ...)**
 
-- `f`    The Lua function that will be executed
-- `...`  Arguments to the function
-- Returns the new `Task`
+*Create a new `Task`. Note that the `Task` will NOT be scheduled*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `f` | The Lua function that will be executed |
+| `...` | Arguments to the function |
+|-
 
-***tasks.Task.spawn(f, ...)***
-Same as `tasks.spawn(f, ...)` above
+**Returns** the new `Task`
+
+---
+
+**tasks.Task.spawn(f, ...)**
+
+*Same as `tasks.spawn(f, ...)` above*
 
 Example:
 ```lua
@@ -112,40 +146,53 @@ tasks.Task.spawn(function(a)
 end, "Hello World!")
 ```
 
-##
+---
 
-***tasks.Task.spawn_later(time, f, ...)***
-Same as `tasks.spawn_later(time, f, ...)` above
+**tasks.Task.spawn_later(time, f, ...)**
 
-##
+*Same as `tasks.spawn_later(time, f, ...)` above*
 
-***tasks.Task.get_current()***
-Same as `tasks.get_current()` above
+---
 
-##
+**tasks.Task.get_current()**
 
-***tasks.Task:start()***
-Schedules the task to run immediately
-Note that this is not necessary if `tasks.spawn` is used.
+*Same as `tasks.get_current()` above*
 
-##
+---
 
-***tasks.Task:startLater(time)***
-Schedules the task to run after a given time
+**tasks.Task:start()**
 
-- `time` Number of seconds to wait before running the task
+*Schedules the task to run immediately. Note that this is not necessary if `tasks.spawn` is used.*
 
-##
+---
 
-***tasks.Task:kill()***
-Stops scheduling the task and marks it as dead
+**tasks.Task:startLater(time)**
 
-##
+*Schedules the task to run after a given time*
 
-***tasks.Task:send(value)***
-Sends a value to the task, which can retrieve it from the return value of `tasks.yield`.
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `time` | Number of seconds to wait before running the task |
+|-
 
-- `value` The value to send
+---
+
+**tasks.Task:kill()**
+
+*Stops scheduling the task and marks it as dead*
+
+---
+
+**tasks.Task:send(value)**
+
+*Sends a value to the task, which can retrieve it from the return value of `tasks.yield`.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `value` | The value to send |
+|-
 
 Example:
 ```lua
@@ -168,14 +215,20 @@ Hello
 World
 ```
 
-##
+---
 
-***tasks.Task:sleep(time)***
-Stops running the task for a given number of seconds
+**tasks.Task:sleep(time)**
 
-- `time` Number of seconds to pause the task
+*Stops running the task for a given number of seconds*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `time` | Number of seconds to pause the task |
+|-
 
-***tasks.Task:idle()***
-Stops running the task until no other tasks run
+---
+
+**tasks.Task:idle()**
+
+*Stops running the task until no other tasks run*

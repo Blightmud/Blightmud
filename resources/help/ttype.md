@@ -49,30 +49,50 @@ mtts = mtts | ttype.MTTS_256_COLOR
 mtts = mtts | ttype.MTTS_TRUE_COLOR
 ```
 
-##
+---
 
-***ttype.set_term(new_val)***
-Will override the default for TERM with your provided string.
+**ttype.set_term(new_val)**
 
-- `new_val` The new TERM value. Eg. "xterm-256color"
+*Will override the default for TERM with your provided string.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `new_val` | The new TERM value. Eg. "xterm-256color" |
+|-
 
-***ttype.set_mtts(new_mtts)***
-Will override the MTTS value with the provided number.
+---
 
-- `new_mtts` The new value for MTTS. Eg. 137
+**ttype.set_mtts(new_mtts)**
 
-##
+*Will override the MTTS value with the provided number.*
 
-***ttype.add_option(opt)***
-Add an MTTS option to the current MTTS value. See options above
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `new_mtts` | The new value for MTTS. Eg. 137 |
+|-
 
-- `opt` The option to add. Eg. `TTYPE_OPT_MTTS_256C`
+---
 
-##
+**ttype.add_option(opt)**
 
-***ttype.rem_option(opt)***
-Remove an MTTS option from the current MTTS value. See options above
+*Add an MTTS option to the current MTTS value. See options above*
 
-- `opt` The option to remove. Eg. `TTYPE_OPT_MTTS_256C`
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `opt` | The option to add. Eg. `TTYPE_OPT_MTTS_256C` |
+|-
+
+---
+
+**ttype.rem_option(opt)**
+
+*Remove an MTTS option from the current MTTS value. See options above*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `opt` | The option to remove. Eg. `TTYPE_OPT_MTTS_256C` |
+|-

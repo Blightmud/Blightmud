@@ -14,8 +14,9 @@ You may also bind on escape sequences. For example `\x1b[1;5A` (ctrl-up). When
 unbound, blightmud will echo these commands to the output when pressed. This
 will make it easy for you to find the escape sequence you want to bind.
 
-***blight.bind(cmd, callback)***
-Is the command to use when creating a binding.
+**blight.bind(cmd, callback)**
+
+*Is the command to use when creating a binding.*
 
 `cmd` has to be in the following format:
 - `Ctrl-{}` where {} is a character, ex. a, b, c, etc.
@@ -32,12 +33,13 @@ blight.bind("\x1b[1;5D", function ()
 end)
 ```
 
-***blight.unbind(cmd)***
-Is the command to use when you want to remove a binding
-You can't unbind `Ctrl-c` or `Ctrl-l`
+**blight.unbind(cmd)**
 
-***blight.ui(cmd)***
-Allows for interactions with the UI.
+*Is the command to use when you want to remove a binding. You can't unbind `Ctrl-c` or `Ctrl-l`*
+
+**blight.ui(cmd)**
+
+*Allows for interactions with the UI.*
 
 The following options are available for `cmd`:
 - `"step_left"`         : Moves the cursor left

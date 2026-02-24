@@ -5,21 +5,24 @@ been typed on the prompt line but not yet sent to the server.
 
 See also `/help prompt`.
 
-##
+---
 
-***prompt_mask.set(data, table) -> bool***
-Set the prompt mask table to be associated with the input data. Returns true
+**prompt_mask.set(data, table) -> bool**
+
+*Set the prompt mask table to be associated with the input data. Returns true
 if the mask is valid, and the prompt data hasn't changed. Returns false if
 the mask is not valid, or the prompt data has changed and no longer matches
-the data argument.
+the data argument.*
 
-Multiple calls to `prompt_mask.set` will merge the tables, with colliding 
+Multiple calls to `prompt_mask.set` will merge the tables, with colliding
 keys having their value replaced by the value from the last call.
 
-- `data`    Prompt data to mask. Must match current prompt input data.
-- `table`   A Lua table of integer index keys and mask content values.
-            Each index must be a valid character index within the bounds
-            of data (1-indexed) and must fall at a character boundary.
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `data` | Prompt data to mask. Must match current prompt input data. |
+| `table` | A Lua table of integer index keys and mask content values. Each index must be a valid character index within the bounds of data (1-indexed) and must fall at a character boundary. |
+|-
 
 
 ```lua
@@ -36,17 +39,20 @@ prompt.add_prompt_listener(function()
 end)
 ```
 
-##
+---
 
-***prompt_mask.clear()***
-Clear the current prompt mask table (if any).
+**prompt_mask.clear()**
 
-##
+*Clear the current prompt mask table (if any).*
 
-***prompt_mask.get() -> table***
-Return the current prompt mask table (if any).
+---
 
-- `table`   A Lua table of integer index keys and mask content values
-            previously set with calls to `prompt_mask.set`.
-            Each index key will be a character index within the bounds
-            of the current prompt input data (1-indexed).
+**prompt_mask.get() -> table**
+
+*Return the current prompt mask table (if any).*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `table` | A Lua table of integer index keys and mask content values previously set with calls to `prompt_mask.set`. Each index key will be a character index within the bounds of the current prompt input data (1-indexed). |
+|-

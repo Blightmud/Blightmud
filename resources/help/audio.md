@@ -20,34 +20,47 @@ The audio module supports the following formats:
 The following options can be provided to a **playback function**. The options
 should be provided as a table with the following optional keys:
 
-- `loop`    Loop the sound infinitely (music only)
-- `amplify` A float value to amplify the sound. (1.0 is default)
+|-|-|
+| **Parameter** | **Description** |
+|-|-|
+| `loop` | Loop the sound infinitely (music only) |
+| `amplify` | A float value to amplify the sound. (1.0 is default) |
+|-
 
-##
+---
 
-***audio.play_music(path[, options])***
-Queues up an audio file to play. If there is already music playing then the new
-file will be played as soon as the current one finishes. Note that `repeat`
-will prevent a file from ever completing.
+**audio.play_music(path[, options])**
 
-- `path`    Path to the audio file you want to play
-- `options` Playback options *(optional)*
+*Queues up an audio file to play. If there is already music playing then the new file will be played as soon as the current one finishes. Note that `repeat` will prevent a file from ever completing.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `path` | Path to the audio file you want to play |
+| `options` | Playback options *(optional)* |
+|-
 
-***audio.stop_music()***
-Clears the music play queue and stops output.
+---
 
-##
+**audio.stop_music()**
 
-***audio.play_sfx(path[, options])***
-Queues up an audio file to play. If there is already sound playing then the
-provided will play after those have completed.
+*Clears the music play queue and stops output.*
 
-- `path`    The path to the audio file to play.
-- `options` Playback options *(optional)*
+---
 
-##
+**audio.play_sfx(path[, options])**
 
-***audio.stop_sfx()***
-Stops all sfx playback and clears the queue.
+*Queues up an audio file to play. If there is already sound playing then the provided will play after those have completed.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `path` | The path to the audio file to play. |
+| `options` | Playback options *(optional)* |
+|-
+
+---
+
+**audio.stop_sfx()**
+
+*Stops all sfx playback and clears the queue.*

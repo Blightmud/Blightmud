@@ -5,11 +5,15 @@ provided duration between each call.
 
 ## Creating a Timer
 
-***timer.add(secs, repeat, callback)***
+**timer.add(secs, repeat, callback)**
 
-- `secs`       The number of seconds to wait between calls to the callback function.
-- `repeat`     The number of times to repeat the timer. A repeat of 0 will run the timer indefinitely.
-- `callback`   The Lua function to run when the time has elapsed.
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `secs` | The number of seconds to wait between calls to the callback function. |
+| `repeat` | The number of times to repeat the timer. A repeat of 0 will run the timer indefinitely. |
+| `callback` | The Lua function to run when the time has elapsed. |
+|-
 
 ```lua
 local count = 0
@@ -19,11 +23,15 @@ timer.add(0.5, 3, function ()
 end)
 ```
 
-##
+---
 
-***timer.remove(timer_id)***
+**timer.remove(timer_id)**
 
-- `timer_id` The id returned when creating a timer
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `timer_id` | The id returned when creating a timer |
+|-
 
 ```lua
 local count = 0
@@ -38,24 +46,28 @@ timer_id = timer.add(0.5, 3, function ()
 end)
 ```
 
-##
+---
 
-***timer.get_ids()***
+**timer.get_ids()**
 
-- Returns a list of all timer ids
+**Returns** a list of all timer ids
 
-##
+---
 
-***timer.clear()***
+**timer.clear()**
 
-Removes all timers
+*Removes all timers*
 
-##
+---
 
-***timer.on_tick(callback)***
+**timer.on_tick(callback)**
 
-Will execute the provided callback every 100ms. The callback may take one
+*Will execute the provided callback every 100ms. The callback may take one
 argument which will be the amount of milliseconds that have passed since
-Blightmud was started.
+Blightmud was started.*
 
-- `callback` The callback function
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | The callback function |
+|-

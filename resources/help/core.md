@@ -7,23 +7,29 @@ Take note that these functions are here mostly for plugin developers and
 advanced users.  Use them with caution. For a general script implementation
 they should not be needed.
 
-##
+---
 
-***core.enable_protocol(proto)***
-Makes Blightmud respond with `IAC DO PROTO` if the server asks for it.  Take
-note that this method is best called before a client actually connects to a mud.
-All servers don't play as nice if the client isn't quick to respond to a `IAC
-WILL PROTO`.
+**core.enable_protocol(proto)**
 
-- `proto`     The protocol u8 identifier
+*Makes Blightmud respond with `IAC DO PROTO` if the server asks for it.  Take note that this method is best called before a client actually connects to a mud. All servers don't play as nice if the client isn't quick to respond to a `IAC WILL PROTO`.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `proto` | The protocol u8 identifier |
+|-
 
-***core.on_protocol_enabled(callback)***
-A callback to receive updates when protocols are enabled. This will trigger for
-all protocols so make sure the one you are interested in is the one supplied.
+---
 
-- `callback`  A callback function that takes a u8 as an argument
+**core.on_protocol_enabled(callback)**
+
+*A callback to receive updates when protocols are enabled. This will trigger for all protocols so make sure the one you are interested in is the one supplied.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | A callback function that takes a u8 as an argument |
+|-
 
 ```lua
 core.on_protocol_enabled(function (proto)
@@ -33,14 +39,17 @@ core.on_protocol_enabled(function (proto)
 end)
 ```
 
-##
+---
 
-***core.on_protocol_disabled(callback)***
-A callback to receive updates when protocols are disabled. This will trigger
-for all protocols so make sure the one you are interested in is the one
-supplied.
+**core.on_protocol_disabled(callback)**
 
-- `callback`  A callback function that takes a u8 as an argument
+*A callback to receive updates when protocols are disabled. This will trigger for all protocols so make sure the one you are interested in is the one supplied.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | A callback function that takes a u8 as an argument |
+|-
 
 ```lua
 core.on_protocol_disabled(function (proto)
@@ -50,21 +59,30 @@ core.on_protocol_disabled(function (proto)
 end)
 ```
 
-##
+---
 
-***core.subneg_send(proto, data)***
-Send a subnegotation to the mud. This will send an `IAC SB proto data IAC SE`
-to the mud.
+**core.subneg_send(proto, data)**
 
-- `proto`     The subnegotiation protocol identifier
-- `data`      The bytes you want to send
+*Send a subnegotation to the mud. This will send an `IAC SB proto data IAC SE` to the mud.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `proto` | The subnegotiation protocol identifier |
+| `data` | The bytes you want to send |
+|-
 
-***core.subneg_recv(callback)***
-Listen for protocol subnegotiation communication.
+---
 
-- `callback`  A function that takes the protocol and bytes in a table as arguments
+**core.subneg_recv(callback)**
+
+*Listen for protocol subnegotiation communication.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | A function that takes the protocol and bytes in a table as arguments |
+|-
 
 ```lua
 core.subneg_recv(function (proto, data)
@@ -74,14 +92,19 @@ core.subneg_recv(function (proto, data)
 end)
 ```
 
-##
+---
 
-***core.exec(shellcommand) -> ExecResponse***
-Execute a command on the OS
+**core.exec(shellcommand) -> ExecResponse**
 
-- `shellcommand` A command to run in the shell
-- Returns a Response object containg stdout, stderr and status of the executed
-  command. Described below.
+*Execute a command on the OS*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `shellcommand` | A command to run in the shell |
+|-
+
+**Returns** a Response object containg stdout, stderr and status of the executed command. Described below.
 
 `shellcommand` can be a string, in which case it's passed to `sh`:
 ```lua
@@ -90,20 +113,26 @@ blight.output("The ip is: " .. response:stdout())
 ```
 Or `shellcommand` can be a sequential table, in which case the first entry is the executable to execute, and the rest are passed as arguments. `$PATH` lookup is performed on the executable.
 
-***core.ExecResponse***
-The object returned from the exec
+**core.ExecResponse**
 
-***ExecResponse:code()***
-Returns the exit status of the executed command or nil if it was interrupted by a signal
+*The object returned from the exec*
 
-***ExecResponse:stdout()***
-Returns the stdout output of the executed command
+**ExecResponse:code()**
 
-***ExecResponse:stderr()***
-Returns the stderr output of the executed command
+*Returns the exit status of the executed command or nil if it was interrupted by a signal*
 
-***core.time() -> int***
-Returns the current local timestamp in millis from 1970-01-01
+**ExecResponse:stdout()**
 
-***core.command_line() -> table***
-Returns a list of the command line arguments Blightmud was started with. The first entry is the path that was used to invoke Blightmud itself.
+*Returns the stdout output of the executed command*
+
+**ExecResponse:stderr()**
+
+*Returns the stderr output of the executed command*
+
+**core.time() -> int**
+
+*Returns the current local timestamp in millis from 1970-01-01*
+
+**core.command_line() -> table**
+
+*Returns a list of the command line arguments Blightmud was started with. The first entry is the path that was used to invoke Blightmud itself.*

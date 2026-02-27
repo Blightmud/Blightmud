@@ -2,13 +2,18 @@
 
 Exposes methods to load and reset lua code in blightmud.
 
-##
+---
 
-***script.load(file)***
-Loads a script file. You can also use the regular `require` command for this.
+**script.load(file)**
 
-- `file`  The filename of the script to load.
- 
+*Loads a script file. You can also use the regular `require` command for this.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `file` | The filename of the script to load. |
+|-
+
 When loading a file the Lua `package.path` will be prepended with the current
 dir of this script. Eg. If you
 `script.load("/home/user/scripts/mud/script.lua")` then package path will be
@@ -26,17 +31,23 @@ The prepended path will be removed from the lua state once `script.load`
 completes. So you don't need to worry about conflicts with future loads and
 paths.
 
-##
+---
 
-***script.reset()***
-Resets the script engine, clearing the entire Lua environment.
+**script.reset()**
 
-##
+*Resets the script engine, clearing the entire Lua environment.*
 
-***script.on_reset(cb)***
-Register a callback that will be triggered right before a `script.reset()` executes.
+---
 
-- `cb`  The callback function to trigger
+**script.on_reset(cb)**
+
+*Register a callback that will be triggered right before a `script.reset()` executes.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `cb` | The callback function to trigger |
+|-
 
 ## Tips and tricks
 

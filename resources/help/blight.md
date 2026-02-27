@@ -2,13 +2,18 @@
 
 Exposes methods to print to blightmuds output area and bind keys.
 
-##
+---
 
-***blight.output(str...)***
-Prints output to the screen. Also aliased as `print()`.
+**blight.output(str...)**
 
-- `str...`  The string(s) to output.
- 
+*Prints output to the screen. Also aliased as `print()`.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `str...` | The string(s) to output. |
+|-
+
 ```lua
 -- Standard printing
 blight.output("A", "nice", "message")
@@ -22,20 +27,21 @@ print("Another", BG_BLUE .. "nice" .. C_RESET, "message")
 ```
 For a list of available colors se `/help colors`
 
-##
+---
 
-***blight.terminal_dimensions() -> width, height***
-Gets the current terminal dimensions (these can change on window resize).
+**blight.terminal_dimensions() -> width, height**
+
+*Gets the current terminal dimensions (these can change on window resize).*
+
 ```lua
 width, height = blight.terminal_dimensions()
 ```
 
-##
+---
 
-***blight.on_dimensions_change(callback: function(width: int, height: int) -> nil)***
-Registers a callback function to be called when the terminal dimensions change.
-The callback function will receive the updated terminal width and height as
-arguments.
+**blight.on_dimensions_change(callback: function(width: int, height: int) -> nil)**
+
+*Registers a callback function to be called when the terminal dimensions change. The callback function will receive the updated terminal width and height as arguments.*
 
 ```lua
 blight.on_dimensions_change(function (width, height)
@@ -43,54 +49,78 @@ blight.on_dimensions_change(function (width, height)
 end)
 ```
 
-##
+---
 
-***blight.is_reader_mode() -> bool***
-Returns true or false depending on if reader mode is enabled or not.
+**blight.is_reader_mode() -> bool**
 
-##
+*Returns true or false depending on if reader mode is enabled or not.*
 
-***blight.version() -> name, version***
-Returns Blightmud name and version in string format
+---
 
-##
+**blight.version() -> name, version**
 
-***blight.config_dir() -> Path***
-Returns blightmuds config directory path on the current system
+*Returns Blightmud name and version in string format*
 
-##
+---
 
-***blight.data_dir() -> Path***
-Returns blightmuds data directory path on the current system
+**blight.config_dir() -> Path**
 
-##
+*Returns blightmuds config directory path on the current system*
 
-***blight.show_help(subject, lock_scroll)***
-Render a helpfile
+---
 
-- `subject`     The name of the helpfile to show
-- `lock_scroll` Lock scroll to top of the helpfile
+**blight.data_dir() -> Path**
 
-##
+*Returns blightmuds data directory path on the current system*
 
-***blight.find_backward(regex)***
-Searches for a string backward from current position
+---
 
-- `regex`    The `regex` to search for
+**blight.show_help(subject, lock_scroll)**
 
-##
+*Render a helpfile*
 
-***blight.find_forward(regex)***
-Searches for a string forward from current position
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `subject` | The name of the helpfile to show |
+| `lock_scroll` | Lock scroll to top of the helpfile |
+|-
 
-- `regex`    The `regex` to search for
+---
 
-##
+**blight.find_backward(regex)**
 
-***blight.on_complete(callback: function(input: string) -> [string], lock | nil)***
-Allows users to insert custom tab completion logic into Blightmud
+*Searches for a string backward from current position*
 
-- `callback`    The function that gets called on a `complete` event. 
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex` | The `regex` to search for |
+|-
+
+---
+
+**blight.find_forward(regex)**
+
+*Searches for a string forward from current position*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `regex` | The `regex` to search for |
+|-
+
+---
+
+**blight.on_complete(callback: function(input: string) -> [string], lock | nil)**
+
+*Allows users to insert custom tab completion logic into Blightmud*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | The function that gets called on a `complete` event. |
+|-
 
 The `input` argument to the callback function is the current promptline in its
 entirety.  Eg. If user types `/connect bat<tab>` then `input` will contain
@@ -132,16 +162,22 @@ blight.on_complete(function (input)
 end)
 ```
 
-##
+---
 
-***blight.quit()***
-Exit Blightmud
+**blight.quit()**
 
-##
+*Exit Blightmud*
 
-***blight.on_quit(callback)***
-Registers a function to be called when blightmud exits
+---
 
-- `callback`    The function to be called
+**blight.on_quit(callback)**
 
-##
+*Registers a function to be called when blightmud exits*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `callback` | The function to be called |
+|-
+
+---

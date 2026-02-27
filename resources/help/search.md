@@ -3,42 +3,51 @@
 This modules allows you to easily search for occurences of text
 in the output history of your mud session.
 
-##
+---
 
-***search.search(pattern)***
-Searches backwards from current position for a matching pattern.
+**search.search(pattern)**
 
-- `pattern` A string to search for. This can be in `regex` format.
+*Searches backwards from current position for a matching pattern.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `pattern` | A string to search for. This can be in `regex` format. |
+|-
 
-***search.find_up()***
-Searches upwards from current position for the last `search.search(pattern)`
-call.
+---
 
-##
+**search.find_up()**
 
-***search.find_down()***
-Searches downwards from current position for the last `search.search(pattern)`
-call.
+*Searches upwards from current position for the last `search.search(pattern)`
+call.*
 
-##
+---
 
-***search.find_last_input()***
-Searches upwards from current position for the previous occurence of an input
-string. Eg. `> your input`.
+**search.find_down()**
+
+*Searches downwards from current position for the last `search.search(pattern)`
+call.*
+
+---
+
+**search.find_last_input()**
+
+*Searches upwards from current position for the previous occurence of an input
+string. Eg. `> your input`.*
 
 **Note:** Requires `/set echo_input on`.
 
-##
+---
 
-***search.find_next_input()***
-Searches downwards from current position for the next occurence of an input
-string. Eg. `> your input`.
+**search.find_next_input()**
+
+*Searches downwards from current position for the next occurence of an input
+string. Eg. `> your input`.*
 
 **Note:** Requires `/set echo_input on`.
 
-##
+---
 
 By default this module is utilized as follows:
 - `/search <pattern>` or `/s <pattern>` will initiate a search

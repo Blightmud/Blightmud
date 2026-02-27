@@ -6,28 +6,40 @@ is currently no handling for receiving data.  The main use-case when it was
 built was to send and display mud information in separate terminal windows by
 sending data to an echoing server.
 
-##
+---
 
-***socket.connect(host, port)***
-Connect to a host and port.
+**socket.connect(host, port)**
 
-- `host`    The host to connect to (eg. "localhost")
-- `port`    The port to connect to
-- Returns a socket object or nil if connection failed.
+*Connect to a host and port.*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `host` | The host to connect to (eg. "localhost") |
+| `port` | The port to connect to |
+|-
 
-***Socket:send(msg)***
-Send a string over the socket
+**Returns** a socket object or nil if connection failed.
 
-- `msg`     The string to send
+---
 
-##
+**Socket:send(msg)**
 
-***Socket:close()***
-Closes the socket connection
+*Send a string over the socket*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `msg` | The string to send |
+|-
+
+---
+
+**Socket:close()**
+
+*Closes the socket connection*
+
+---
 
 Example:
 ```lua

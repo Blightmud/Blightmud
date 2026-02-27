@@ -8,7 +8,7 @@ The following commands are available:
 - `/start_log <hostname>` : Starts a log in the provided hostname folder
 - `/stop_log`             : Stops logging
 
-You may also setup blightmud to automatically log your playing. 
+You may also setup blightmud to automatically log your playing.
 - `/set logging_enabled`          : Prints current setting
 - `/set logging_enabled <on/off>` : Sets auto logging on or off
 

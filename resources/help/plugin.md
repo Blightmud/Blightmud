@@ -21,62 +21,100 @@ If you are developing a plugin see `/help plugin_developer`
 The following methods exist on the `plugin` module for easy automation and
 scripting.
 
-##
+---
 
-***plugin.add(url_or_path, with_submodules)***
-Fetches a plugin to your local machine. If with_submodules is true, it will fetch the top layer of submodules as well (useful if, say, a plugin adds assets such as sound to the repository).
+**plugin.add(url_or_path, with_submodules)**
 
-- `url_or_path`     The path or url to install the plugin from
-- `with_submodules` also fetches the top layer of submodules (be warned that this could increase the fetch time)
+*Fetches a plugin to your local machine. If with_submodules is true, it will fetch the top layer of submodules as well (useful if, say, a plugin adds assets such as sound to the repository).*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `url_or_path` | The path or url to install the plugin from |
+| `with_submodules` | also fetches the top layer of submodules (be warned that this could increase the fetch time) |
+|-
 
-***plugin.load(name)***
-Load a plugins main script into blightmud
+---
 
-- `name`    The name of the plugin
+**plugin.load(name)**
 
-##
+*Load a plugins main script into blightmud*
 
-***plugin.remove(name)***
-Remove a plugin from your local machine
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `name` | The name of the plugin |
+|-
 
-- `name`    The name of the plugin
+---
 
-##
+**plugin.remove(name)**
 
-***plugin.get_all() -> {}***
-Returns a list of all installed plugins
+*Remove a plugin from your local machine*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `name` | The name of the plugin |
+|-
 
-***plugin.update(name)***
-Updates a plugin (note that if you hadn't cloned it recursively, the uninitialized submodules will be passed over)
+---
 
-- `name`    The name of the plugin
+**plugin.get_all() -> {}**
 
-##
+**Returns** a list of all installed plugins
 
-***plugin.enable(name)***
-Toggle plugin autoload on (default after install)
+---
 
-- `name`    The name of the plugin
+**plugin.update(name)**
 
-##
+*Updates a plugin (note that if you hadn't cloned it recursively, the uninitialized submodules will be passed over)*
 
-***plugin.disable(name)***
-Toggle plugin autoload off
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `name` | The name of the plugin |
+|-
 
-- `name`    The name of the plugin
+---
 
-##
+**plugin.enable(name)**
 
-***plugin.enabled() -> {}***
-Returns a list of all enabled (autoloaded) plugins
+*Toggle plugin autoload on (default after install)*
 
-##
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `name` | The name of the plugin |
+|-
 
-***plugin.dir(plugin) -> Path***
-Returns the path to blightmuds root plugin dir or the path to a given plugin.
+---
 
-- `plugin`  The name of a plugin, *optional*.
+**plugin.disable(name)**
+
+*Toggle plugin autoload off*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `name` | The name of the plugin |
+|-
+
+---
+
+**plugin.enabled() -> {}**
+
+**Returns** a list of all enabled (autoloaded) plugins
+
+---
+
+**plugin.dir(plugin) -> Path**
+
+*Returns the path to blightmuds root plugin dir or the path to a given plugin.*
+
+|-|-|
+| **Arg** | **Description** |
+|-|-|
+| `plugin` | The name of a plugin, *optional*. |
+|-
+

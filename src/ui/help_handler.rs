@@ -114,6 +114,31 @@ impl HelpHandler {
 }
 
 
+fn make_code_highlighter() -> termimad::CodeHighlighter {
+    use std::sync::Arc;
+    use syntect::easy::HighlightLines;
+    use syntect::highlighting::ThemeSet;
+    use syntect::parsing::SyntaxSet;
+    use syntect::util::as_24_bit_terminal_escaped;
+
+    let ps = SyntaxSet::load_defaults_newlines();
+    let ts = ThemeSet::load_defaults();
+    let theme = ts.themes["base16-ocean.dark"].clone();
+
+    termimad::CodeHighlighter(Arc::new(move |code: &str, lang: Option<&str>| {
+        let syntax = lang
+            .and_then(|l| ps.find_syntax_by_token(l))
+            .unwrap_or_else(|| ps.find_syntax_plain_text());
+        let mut h = HighlightLines::new(syntax, &theme);
+        code.lines()
+            .map(|line| {
+                let ranges = h.highlight_line(line, &ps).unwrap_or_default();
+                as_24_bit_terminal_escaped(&ranges, false)
+            })
+            .collect()
+    }))
+}
+
 fn make_skin() -> MadSkin {
     let mut skin = MadSkin::default();
     skin.headers[0].set_fg(Color::Yellow);
@@ -121,6 +146,7 @@ fn make_skin() -> MadSkin {
     skin.headers[1].set_fg(Color::Cyan);
     skin.headers[1].add_attr(Attribute::Bold);
     skin.headers[2].set_fg(Color::Green);
+    skin.code_syntax_highlighter = Some(make_code_highlighter());
     skin
 }
 

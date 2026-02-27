@@ -52,7 +52,8 @@ mio = { version = "1.1", features = ["os-poll", "net"] }
 
 encoding_rs = "0.8"
 unicode-width = "0.2"
-termimad = "0.34.1"
+termimad = { git = "https://github.com/LiquidityC/termimad", branch = "feature/optional_syntax_highlighting" }
+syntect = { version = "5", features = ["default-syntaxes", "default-themes"] }
 
 [dev-dependencies]
 mockall = "0.14.0"

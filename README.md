@@ -70,6 +70,7 @@ me to the word **blight** and here we are.
 - **Cargo**              : If you have rust installed just run `cargo install --git https://github.com/blightmud/blightmud blightmud` from your favourite terminal.
 - **Other/Alternative**  : Download source and run `cargo install --path .` from the project root
 - **Windows**            : No native windows support but Blightmud runs fine under WSL
+- **Android**            : Can run in [Termux](https://termux.dev/) by compiling from source
 
 ## Compiling
 
@@ -80,6 +81,7 @@ me to the word **blight** and here we are.
 Dependencies include, openssl, alsa-libs and pkg-config
 - Ubuntu    `apt install pkg-config libssl-dev libasound2-dev libclang-dev` (libopenssl-dev on older versions)
 - Arch      `pacman -S pkgconf alsa-lib openssl clang`
+- Termux    `pkg install pkg-config libgit2 rust`
 
 ### Compile with text-to-speech
 

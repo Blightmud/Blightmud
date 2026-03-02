@@ -37,6 +37,7 @@ use net::{check_latest_version, WakingSender};
 
 pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), env!("GIT_DESCRIBE"));
 pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
+pub const TERMUX_VERSION: Option<&'static str> = option_env!("TERMUX_VERSION");
 
 #[cfg(all(not(test), not(debug_assertions)))]
 const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
@@ -249,10 +250,10 @@ fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfi
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
-    let mut player = if !rt.integration_test {
-        Player::new()
-    } else {
+    let mut player = if TERMUX_VERSION.is_some() || rt.integration_test {
         Player::disabled()
+    } else {
+        Player::new()
     };
 
     let mut screen: Box<dyn UserInterface> = if !rt.headless_mode {

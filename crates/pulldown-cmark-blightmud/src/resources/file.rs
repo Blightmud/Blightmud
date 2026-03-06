@@ -71,10 +71,10 @@ impl ResourceUrlHandler for FileResourceHandler {
                         .read_to_end(&mut buffer)?;
 
                     if self.read_limit < buffer.len() as u64 {
-                        Err(Error::new(
-                            ErrorKind::FileTooLarge,
-                            format!("Contents of {url} exceeded {} bytes", self.read_limit),
-                        ))
+                        Err(Error::other(format!(
+                            "Contents of {url} exceeded {} bytes",
+                            self.read_limit
+                        )))
                     } else {
                         let mime_type = guess_mimetype(&path);
                         if mime_type.is_none() {

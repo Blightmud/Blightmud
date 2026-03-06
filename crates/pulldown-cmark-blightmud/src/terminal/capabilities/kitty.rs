@@ -60,7 +60,7 @@ impl std::error::Error for KittyImageError {
 
 impl From<KittyImageError> for std::io::Error {
     fn from(value: KittyImageError) -> Self {
-        std::io::Error::new(ErrorKind::Other, value)
+        std::io::Error::other(value)
     }
 }
 

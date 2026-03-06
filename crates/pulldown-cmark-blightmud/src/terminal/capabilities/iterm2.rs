@@ -59,7 +59,7 @@ impl InlineImageProtocol for ITerm2Protocol {
         // If the URL has no last segment do not tell iterm about a file name.
         let name = url
             .path_segments()
-            .and_then(|s| s.last())
+            .and_then(|mut s| s.next_back())
             .map(Cow::Borrowed);
         let (name, contents) = if let Some("image/svg+xml") = mime_data.mime_type_essence() {
             event!(Level::DEBUG, "Rendering SVG from {}", url);

@@ -97,7 +97,7 @@ impl TerminalProgram {
             Some("ghostty") => Some(Self::Ghostty),
             Some("vscode")
                 if get_term_program_major_minor_version()
-                    .map_or(false, |version| (1, 80) <= version) =>
+                    .is_some_and(|version| (1, 80) <= version) =>
             {
                 Some(Self::VSCode)
             }

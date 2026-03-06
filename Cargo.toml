@@ -1,3 +1,6 @@
+[workspace]
+members = ["crates/pulldown-cmark-blightmud"]
+
 [package]
 name = "blightmud"
 version = "5.4.0"
@@ -30,8 +33,7 @@ strip-ansi-escapes = "0.2.1"
 vte = "0.15.0"
 timer = "0.2.0"
 flate2 = "1.1.9"
-pulldown-cmark-mdcat = { version = "2.7.1", default-features = false }
-pulldown-cmark = "0.12.2"
+pulldown-cmark-blightmud = { path = "crates/pulldown-cmark-blightmud", default-features = false }
 syntect = "5.3.0"
 serde = { version = "1.0.228", features = ['derive'] }
 ron = "0.12.0"

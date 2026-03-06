@@ -114,7 +114,7 @@ impl UserData for Core {
         methods.add_function(
             "command_line",
             |ctx, ()| -> Result<mlua::Table, mlua::Error> {
-                Ok(ctx.create_table_from((1..).zip(env::args()))?)
+                ctx.create_table_from((1..).zip(env::args()))
             },
         );
     }

@@ -43,7 +43,7 @@ human-panic = "2.0.6"
 tts = { version = "0.26.3", optional = true }
 serde_json = "1.0.149"
 git2 = "0.20.4"
-rodio = "0.22.1"
+rodio = "0.22.2"
 notify-debouncer-mini = "0.6.0"
 hunspell-rs = { version = "0.4.0", optional = true }
 hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }

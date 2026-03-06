@@ -97,4 +97,89 @@ mod test {
         scroll.clamp(&history);
         assert_eq!(scroll.pos, 1200 - history.drain_length);
     }
+
+    #[test]
+    fn test_scroll_data_new_defaults() {
+        let scroll = ScrollData::new();
+        assert!(!scroll.active);
+        assert!(!scroll.split);
+        assert_eq!(scroll.pos, 0);
+        assert!(!scroll.scroll_lock);
+        assert!(scroll.hilite.is_none());
+    }
+
+    #[test]
+    fn test_scroll_lock_disables_when_not_allowed() {
+        let mut scroll = ScrollData::new();
+        scroll.allow_scroll_lock = false;
+        assert!(scroll.lock(true).is_ok());
+        assert!(!scroll.scroll_lock);
+    }
+
+    #[test]
+    fn test_scroll_lock_enables_when_allowed() {
+        let mut scroll = ScrollData::new();
+        scroll.allow_scroll_lock = true;
+        assert!(scroll.lock(true).is_ok());
+        assert!(scroll.scroll_lock);
+    }
+
+    #[test]
+    fn test_not_scrolled_or_split_when_split() {
+        let mut scroll = ScrollData::new();
+        scroll.active = true;
+        scroll.split = true;
+        assert!(scroll.not_scrolled_or_split());
+    }
+
+    #[test]
+    fn test_not_scrolled_or_split_when_not_active() {
+        let scroll = ScrollData::new();
+        assert!(scroll.not_scrolled_or_split());
+    }
+
+    #[test]
+    fn test_clamp_when_not_active() {
+        let mut scroll = ScrollData::new();
+        scroll.active = false;
+        scroll.pos = 1200;
+
+        let mut history = History::new();
+        for _ in 0..1024 {
+            history.append("test")
+        }
+        // When not active, clamp should not modify pos
+        scroll.clamp(&history);
+        assert_eq!(scroll.pos, 1200);
+    }
+
+    #[test]
+    fn test_reset_with_non_empty_history() {
+        let mut scroll = ScrollData::new();
+        scroll.active = true;
+        scroll.split = true;
+        scroll.pos = 500;
+        scroll.hilite = Some(Regex::new("test", None).unwrap());
+
+        let mut history = History::new();
+        for _ in 0..100 {
+            history.append("line");
+        }
+
+        assert!(scroll.reset(&history).is_ok());
+        assert!(!scroll.active);
+        assert!(!scroll.split);
+        assert!(scroll.hilite.is_none());
+        assert_eq!(scroll.pos, history.len() - 1);
+    }
+
+    #[test]
+    fn test_reset_with_empty_history() {
+        let mut scroll = ScrollData::new();
+        scroll.pos = 500;
+
+        let history = History::new();
+        assert!(scroll.reset(&history).is_ok());
+        assert_eq!(scroll.pos, 0);
+    }
 }

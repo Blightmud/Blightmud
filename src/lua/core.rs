@@ -1,3 +1,4 @@
+use std::env;
 use std::sync::mpsc::Sender;
 
 use libmudtelnet::bytes::Bytes;
@@ -110,5 +111,11 @@ impl UserData for Core {
         methods.add_function("time", |_, ()| -> Result<i64, mlua::Error> {
             Ok(chrono::Local::now().timestamp_millis())
         });
+        methods.add_function(
+            "command_line",
+            |ctx, ()| -> Result<mlua::Table, mlua::Error> {
+                ctx.create_table_from((1..).zip(env::args()))
+            },
+        );
     }
 }

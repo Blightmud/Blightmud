@@ -14,6 +14,9 @@ pub struct Flags {
     pub tts_interrupt: bool,
     pub separate_receives: bool,
     pub source: Option<String>,
+    /// Set when the line contained screen-clearing escape sequences (ED sequences)
+    /// that were filtered out. The UI should clear its output area when this is set.
+    pub screen_clear: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -32,9 +35,87 @@ impl PartialEq for Line {
     }
 }
 
-fn get_content_from(line: &str) -> (String, String, bool) {
+impl Line {
+    pub fn from_codec(raw: &[u8], codec: Option<&'static encoding_rs::Encoding>) -> Self {
+        if let Some(codec) = codec {
+            let (line, _real_encoding, _is_sucess) = codec.decode(raw);
+
+            line.as_bytes().into()
+        } else {
+            raw.into()
+        }
+    }
+}
+
+/// Filters out screen-clearing ED (Erase in Display) escape sequences from a string.
+/// Returns (filtered_content, had_screen_clear).
+/// ED sequences: ESC[J, ESC[0J, ESC[1J, ESC[2J, ESC[3J
+fn filter_screen_clear_sequences(s: &str) -> (String, bool) {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    let mut had_screen_clear = false;
+
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            // Check for CSI sequence (ESC[)
+            if chars.peek() == Some(&'[') {
+                chars.next(); // consume '['
+
+                // Collect any digits
+                let mut param = String::new();
+                while let Some(&ch) = chars.peek() {
+                    if ch.is_ascii_digit() {
+                        param.push(chars.next().unwrap());
+                    } else {
+                        break;
+                    }
+                }
+
+                // Check for 'J' (ED - Erase in Display)
+                if chars.peek() == Some(&'J') {
+                    chars.next(); // consume 'J'
+                                  // Valid ED params are empty (defaults to 0), 0, 1, 2, or 3
+                    if param == "1" || param == "2" || param == "3" {
+                        had_screen_clear = true;
+                        // Don't add this sequence to result - it's filtered out
+                        continue;
+                    } else if param.is_empty() || param == "0" {
+                        // We are not interested in 'empty' and 0 since they clear from line to
+                        // bottom of screen which isn't really applicable for Blightmud, so these are
+                        // just filtered.
+                        continue;
+                    } else {
+                        // Unknown ED param, preserve the sequence
+                        result.push('\x1b');
+                        result.push('[');
+                        result.push_str(&param);
+                        result.push('J');
+                    }
+                } else {
+                    // Not an ED sequence, preserve what we consumed
+                    result.push('\x1b');
+                    result.push('[');
+                    result.push_str(&param);
+                }
+            } else {
+                // Not a CSI sequence, just an ESC
+                result.push(c);
+            }
+        } else {
+            result.push(c);
+        }
+    }
+
+    (result, had_screen_clear)
+}
+
+fn get_content_from(line: &str) -> (String, String, bool, bool) {
     let mut clean_utf8 = true;
-    let content = line.trim_end().to_string();
+    let trimmed = line.trim_end().to_string();
+
+    // Filter out screen-clearing sequences before storing content
+    let (content, screen_clear) = filter_screen_clear_sequences(&trimmed);
+
     let bytes = strip_ansi(&content);
     let clean_content = if let Ok(clean) = String::from_utf8(bytes.clone()) {
         clean
@@ -44,7 +125,7 @@ fn get_content_from(line: &str) -> (String, String, bool) {
         String::from_utf8_lossy(&bytes).to_mut().clone()
     };
     let clean_content = clean_content.replace('\r', "");
-    (content, clean_content, clean_utf8)
+    (content, clean_content, clean_utf8, screen_clear)
 }
 
 impl fmt::Display for Line {
@@ -66,36 +147,45 @@ impl From<&Line> for Line {
 
 impl From<&str> for Line {
     fn from(line: &str) -> Self {
-        let (content, clean_content, clean_utf8) = get_content_from(line);
+        let (content, clean_content, clean_utf8, screen_clear) = get_content_from(line);
         Self {
             content,
             clean_content,
             clean_utf8,
-            flags: Flags::default(),
+            flags: Flags {
+                screen_clear,
+                ..Flags::default()
+            },
         }
     }
 }
 
 impl From<String> for Line {
     fn from(line: String) -> Self {
-        let (content, clean_content, clean_utf8) = get_content_from(&line);
+        let (content, clean_content, clean_utf8, screen_clear) = get_content_from(&line);
         Self {
             content,
             clean_content,
             clean_utf8,
-            flags: Flags::default(),
+            flags: Flags {
+                screen_clear,
+                ..Flags::default()
+            },
         }
     }
 }
 
 impl From<&String> for Line {
     fn from(line: &String) -> Self {
-        let (content, clean_content, clean_utf8) = get_content_from(line);
+        let (content, clean_content, clean_utf8, screen_clear) = get_content_from(line);
         Self {
             content,
             clean_content,
             clean_utf8,
-            flags: Flags::default(),
+            flags: Flags {
+                screen_clear,
+                ..Flags::default()
+            },
         }
     }
 }
@@ -109,12 +199,15 @@ impl From<&[u8]> for Line {
             String::from_utf8_lossy(line).to_mut().clone()
         };
 
-        let (content, clean_content, clean_utf8) = get_content_from(&line);
+        let (content, clean_content, clean_utf8, screen_clear) = get_content_from(&line);
         Self {
             content,
             clean_content,
             clean_utf8,
-            flags: Flags::default(),
+            flags: Flags {
+                screen_clear,
+                ..Flags::default()
+            },
         }
     }
 }
@@ -129,12 +222,15 @@ impl From<&Vec<u8>> for Line {
             String::from_utf8_lossy(line).to_mut().clone()
         };
 
-        let (content, clean_content, _) = get_content_from(&line);
+        let (content, clean_content, _, screen_clear) = get_content_from(&line);
         Self {
             content,
             clean_content,
             clean_utf8,
-            flags: Flags::default(),
+            flags: Flags {
+                screen_clear,
+                ..Flags::default()
+            },
         }
     }
 }
@@ -142,10 +238,11 @@ impl From<&Vec<u8>> for Line {
 #[allow(dead_code)]
 impl Line {
     pub fn set_content(&mut self, line: &str) {
-        let (content, clean_content, clean_utf8) = get_content_from(line);
+        let (content, clean_content, clean_utf8, screen_clear) = get_content_from(line);
         self.content = content;
         self.clean_content = clean_content;
         self.clean_utf8 = clean_utf8;
+        self.flags.screen_clear = screen_clear;
     }
 
     pub fn print_line(&self) -> Option<&str> {
@@ -292,5 +389,77 @@ mod test_line {
         assert_eq!(it.next(), Some("test1"));
         assert_eq!(it.next(), Some("test2"));
         assert_eq!(it.next(), Some("test3"));
+    }
+
+    #[test]
+    fn test_screen_clear_filter_esc_j() {
+        // ESC[J (default, same as ESC[0J)
+        let line = Line::from("before\x1b[Jafter");
+        assert_eq!(line.line(), "beforeafter");
+        assert!(!line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_filter_esc_0j() {
+        // ESC[0J - clear from cursor to end of screen
+        let line = Line::from("before\x1b[0Jafter");
+        assert_eq!(line.line(), "beforeafter");
+        assert!(!line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_filter_esc_1j() {
+        // ESC[1J - clear from cursor to beginning of screen
+        let line = Line::from("before\x1b[1Jafter");
+        assert_eq!(line.line(), "beforeafter");
+        assert!(line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_filter_esc_2j() {
+        // ESC[2J - clear entire screen
+        let line = Line::from("before\x1b[2Jafter");
+        assert_eq!(line.line(), "beforeafter");
+        assert!(line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_filter_esc_3j() {
+        // ESC[3J - clear entire screen and scrollback
+        let line = Line::from("before\x1b[3Jafter");
+        assert_eq!(line.line(), "beforeafter");
+        assert!(line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_filter_preserves_other_escapes() {
+        // Color codes should be preserved
+        let line = Line::from("\x1b[32mgreen\x1b[0m");
+        assert_eq!(line.line(), "\x1b[32mgreen\x1b[0m");
+        assert!(!line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_filter_mixed() {
+        // Screen clear mixed with color codes
+        let line = Line::from("\x1b[32mgreen\x1b[2J\x1b[0mtext");
+        assert_eq!(line.line(), "\x1b[32mgreen\x1b[0mtext");
+        assert!(line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_no_false_positives() {
+        // ESC[K is erase in line, not erase in display - should not trigger screen_clear
+        let line = Line::from("test\x1b[Kmore");
+        assert_eq!(line.line(), "test\x1b[Kmore");
+        assert!(!line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_screen_clear_multiple() {
+        // Multiple clear sequences
+        let line = Line::from("\x1b[2J\x1b[J\x1b[1J");
+        assert_eq!(line.line(), "");
+        assert!(line.flags.screen_clear);
     }
 }

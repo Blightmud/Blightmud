@@ -187,4 +187,70 @@ mod test_lua_line {
         let line: Line = global!("test_line");
         assert_eq!(line.replacement, Some("test test".to_string()));
     }
+
+    #[test]
+    fn test_source() {
+        test_lua!("test_line" => test_line());
+        assert_lua!(Option<String>, "test_line:source()", None);
+    }
+
+    #[test]
+    fn test_line_from_mline() {
+        let m_line = mLine::from("test content");
+        let lua_line: Line = m_line.into();
+        assert_eq!(lua_line.inner.clean_line(), "test content");
+        assert!(lua_line.replacement.is_none());
+    }
+
+    #[test]
+    fn test_line_clone() {
+        let line = test_line();
+        let cloned = line.clone();
+        assert_eq!(line.inner.clean_line(), cloned.inner.clean_line());
+        assert_eq!(line.replacement, cloned.replacement);
+    }
+
+    #[test]
+    fn test_gag_returns_current_value() {
+        test_lua!("test_line" => test_line());
+        // Without argument, gag() returns current value
+        assert_lua_bool!("test_line:gag()", false);
+    }
+
+    #[test]
+    fn test_tts_gag_set_and_get() {
+        test_lua!("test_line" => test_line());
+        // Set to true
+        run_lua!("test_line:tts_gag(true)");
+        assert_lua_bool!("test_line:tts_gag()", true);
+        // Set back to false
+        run_lua!("test_line:tts_gag(false)");
+        assert_lua_bool!("test_line:tts_gag()", false);
+    }
+
+    #[test]
+    fn test_skip_log_set_and_get() {
+        test_lua!("test_line" => test_line());
+        run_lua!("test_line:skip_log(true)");
+        assert_lua_bool!("test_line:skip_log()", true);
+        run_lua!("test_line:skip_log(false)");
+        assert_lua_bool!("test_line:skip_log()", false);
+    }
+
+    #[test]
+    fn test_matched_set_and_get() {
+        test_lua!("test_line" => test_line());
+        run_lua!("test_line:matched(true)");
+        assert_lua_bool!("test_line:matched()", true);
+        run_lua!("test_line:matched(false)");
+        assert_lua_bool!("test_line:matched()", false);
+    }
+
+    #[test]
+    fn test_replacement_after_replace() {
+        test_lua!("test_line" => test_line());
+        run_lua!("test_line:replace('new content')");
+        let line: Line = global!("test_line");
+        assert_eq!(line.replacement, Some("new content".to_string()));
+    }
 }

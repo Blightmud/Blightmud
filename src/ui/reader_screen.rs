@@ -83,28 +83,37 @@ impl ReaderScreen {
     #[inline]
     fn print_wrapped_prompt_input(&mut self, line: &str, pos: usize) {
         let mut input = line;
-        let mut pos = pos;
         let width = self.width as usize;
-        while input.chars().count() >= width && pos >= width {
-            if let Some((i, _)) = input.char_indices().nth(width) {
-                input = input.split_at(i).1;
+
+        // Calculate display width up to cursor position (pos is character index)
+        let chars_before_cursor: String = line.chars().take(pos).collect();
+        let mut cursor_display_pos = chars_before_cursor.as_str().display_width();
+
+        // Scroll the view when cursor goes past the visible width
+        while input.display_width() >= width && cursor_display_pos >= width {
+            let (byte_idx, skipped_width) = input.byte_index_at_display_width(width);
+            if byte_idx < input.len() {
+                input = input.split_at(byte_idx).1;
+                cursor_display_pos -= skipped_width;
             } else {
                 input = "";
-            }
-            pos -= width;
-        }
-        if input.chars().count() >= width {
-            if let Some((i, _)) = input.char_indices().nth(width) {
-                input = input.split_at(i).0;
+                cursor_display_pos = 0;
             }
         }
+
+        // Truncate input if it's still too wide for the display
+        if input.display_width() >= width {
+            let (byte_idx, _) = input.byte_index_at_display_width(width);
+            input = input.split_at(byte_idx).0;
+        }
+
         write!(
             self.screen,
             "{}{}{}{}",
             Goto(1, self.prompt_line),
             clear::CurrentLine,
             input,
-            Goto(pos as u16 + 1, self.prompt_line)
+            Goto(cursor_display_pos as u16 + 1, self.prompt_line)
         )
         .unwrap();
     }
@@ -182,6 +191,10 @@ impl UserInterface for ReaderScreen {
     }
 
     fn print_output(&mut self, line: &Line) {
+        // Handle screen clear request from server
+        if line.flags.screen_clear {
+            self.clear_output_area().ok();
+        }
         if line.flags.separate_receives {
             if let Some(print_line) = line.print_line() {
                 self.history.remove_last_if_prefix(print_line);
@@ -217,25 +230,29 @@ impl UserInterface for ReaderScreen {
         // Reader screens only operate on printable input characters (no term control sequences, e.g. ANSI colour).
         let sanitized_input = input.printable_chars().collect::<String>();
         let input = sanitized_input.as_str();
-        let mut pos = pos;
         let width = self.width as usize;
-        if let Some((existing, orig)) = &self.prompt_input {
-            if (width - 1..width + 1).contains(&pos) {
+
+        // Calculate display width up to cursor position (pos is character index)
+        let chars_before_cursor: String = input.chars().take(pos).collect();
+        let mut display_pos = chars_before_cursor.as_str().display_width();
+
+        if let Some((existing, orig_display_pos)) = &self.prompt_input {
+            if (width - 1..width + 1).contains(&display_pos) {
                 // Fall back to default behaviour when the prompt wraps
                 self.print_wrapped_prompt_input(input, pos);
             } else {
-                let mut orig = *orig;
-                while pos >= width {
-                    pos -= width;
+                let mut orig = *orig_display_pos;
+                while display_pos >= width {
+                    display_pos -= width;
                     if orig >= width {
                         orig -= width;
                     }
                 }
                 if input.starts_with(existing) {
-                    let input = input[existing.len()..].to_owned();
-                    self.print_prompt_input_suffix(&input, orig, pos);
+                    let suffix = input[existing.len()..].to_owned();
+                    self.print_prompt_input_suffix(&suffix, orig, display_pos);
                 } else if existing.starts_with(input) {
-                    self.trim_prompt_input(pos);
+                    self.trim_prompt_input(display_pos);
                 } else {
                     self.print_wrapped_prompt_input(input, pos);
                 }
@@ -243,7 +260,7 @@ impl UserInterface for ReaderScreen {
         } else {
             self.print_wrapped_prompt_input(input, pos);
         }
-        self.prompt_input = Some((input.to_string(), pos));
+        self.prompt_input = Some((input.to_string(), display_pos));
     }
 
     fn print_send(&mut self, send: &Line) {
@@ -289,6 +306,25 @@ impl UserInterface for ReaderScreen {
                 )?;
             }
         }
+        Ok(())
+    }
+
+    fn clear_output_area(&mut self) -> Result<()> {
+        // Clear all lines in the output area
+        for line_no in 1..=self.output_line {
+            write!(
+                self.screen,
+                "{}{}",
+                cursor::Goto(1, line_no),
+                clear::CurrentLine,
+            )?;
+        }
+        // Clear the history buffer
+        self.history.clear();
+        // Reset scroll state
+        self.scroll_data.reset(&self.history)?;
+        // Reposition cursor
+        write!(self.screen, "{}", cursor::Goto(1, self.prompt_line))?;
         Ok(())
     }
 

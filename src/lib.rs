@@ -1,7 +1,6 @@
 use anyhow::{bail, Result};
 use audio::Player;
 use lazy_static::lazy_static;
-use libmudtelnet::bytes::Bytes;
 use libmudtelnet::events::TelnetEvents;
 use log::{error, info};
 use std::path::PathBuf;
@@ -34,7 +33,7 @@ use crate::ui::{spawn_input_thread, UiWrapper, UserInterface};
 use event::EventHandler;
 use getopts::Matches;
 use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, SAVE_HISTORY};
-use net::check_latest_version;
+use net::{check_latest_version, WakingSender};
 
 pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), env!("GIT_DESCRIBE"));
 pub const PROJECT_NAME: &str = env!("CARGO_PKG_NAME");
@@ -44,8 +43,6 @@ const XDG_DATA_DIR: &str = "~/.local/share/blightmud";
 
 #[cfg(all(not(test), not(debug_assertions)))]
 const XDG_CONFIG_DIR: &str = "~/.config/blightmud";
-
-type TelnetData = Option<Bytes>;
 
 lazy_static! {
     pub static ref DATA_DIR: PathBuf = {
@@ -140,6 +137,7 @@ pub struct RuntimeConfig {
     pub eval: Option<String>,
     pub integration_test: bool,
     pub no_update_check: bool,
+    pub codec: Option<&'static encoding_rs::Encoding>,
 }
 
 impl From<Matches> for RuntimeConfig {
@@ -147,6 +145,14 @@ impl From<Matches> for RuntimeConfig {
         let world = matches.opt_get::<String>("world").ok().unwrap();
         let connect = matches.opt_get::<String>("connect").ok().unwrap();
         let script = matches.opt_get::<String>("script").ok().unwrap();
+        let codec = matches.opt_get::<String>("codec").ok().unwrap();
+
+        let codec = if let Some(codec) = codec {
+            encoding_rs::Encoding::for_label(codec.as_bytes())
+        } else {
+            None
+        };
+
         Self {
             reader_mode: matches.opt_present("reader-mode"),
             headless_mode: false,
@@ -160,6 +166,7 @@ impl From<Matches> for RuntimeConfig {
             eval: None,
             integration_test: false,
             no_update_check: matches.opt_present("no-update-check"),
+            codec,
         }
     }
 }
@@ -197,6 +204,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         .headless(rt.headless_mode)
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .echo_input(settings.get(ECHO_INPUT).unwrap())
+        .codec(rt.codec)
         .build();
 
     if let Err(error) = run(main_thread_read, session, rt) {
@@ -237,15 +245,12 @@ fn handle_config(main_writer: &Sender<Event>, rt: &RuntimeConfig) {
 }
 
 fn run(main_thread_read: Receiver<Event>, mut session: Session, rt: RuntimeConfig) -> Result<()> {
-    let mut transmit_writer: Option<Sender<TelnetData>> = None;
+    let mut transmit_writer: Option<WakingSender> = None;
     let help_handler = HelpHandler::new(session.main_writer.clone());
     let mut event_handler = EventHandler::from(&session);
 
-    let mut player = if !rt.integration_test {
-        Player::new()
-    } else {
-        Player::disabled()
-    };
+    let mut player: Option<Player> = None;
+    let audio_disabled = rt.integration_test;
 
     let mut screen: Box<dyn UserInterface> = if !rt.headless_mode {
         Box::new(UiWrapper::new(&session)?)
@@ -373,8 +378,13 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 event_handler.handle_output_events(event, &mut screen)?;
             }
             Event::PlayMusic(_, _) | Event::StopMusic | Event::PlaySFX(_, _) | Event::StopSFX => {
-                if let Err(err) = audio::handle_audio_event(event, &mut player) {
-                    screen.print_error(&err.to_string())
+                if player.is_none() && !audio_disabled {
+                    player = Some(Player::new());
+                }
+                if let Some(ref mut p) = player {
+                    if let Err(err) = audio::handle_audio_event(event, p) {
+                        screen.print_error(&err.to_string())
+                    }
                 }
             }
             Event::TTSEnabled(enabled) => {

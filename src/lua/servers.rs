@@ -28,7 +28,7 @@ impl UserData for Server {
     }
 }
 
-pub struct Servers {}
+pub struct Servers();
 
 struct ServerLoader {}
 
@@ -65,6 +65,7 @@ impl UserData for Servers {
                         port,
                         tls,
                         verify_cert: verify.unwrap_or(false),
+                        name: None,
                     };
                     servers.insert(name, connection);
                     servers.save();
@@ -112,5 +113,103 @@ impl UserData for Servers {
                 })
                 .collect())
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mlua::Lua;
+
+    fn get_lua() -> Lua {
+        let lua = Lua::new();
+        lua.globals().set("servers", Servers()).unwrap();
+        lua
+    }
+
+    #[test]
+    fn test_server_index_invalid() {
+        let server = Server {
+            name: "test_server".to_string(),
+            connection: Connection::new("example.com", 4000, false, false),
+        };
+        let lua = Lua::new();
+        lua.globals().set("server", server).unwrap();
+
+        let result: Result<mlua::Value, _> = lua.load("return server.invalid_key").call(());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_server_index_name() {
+        let server = Server {
+            name: "test_server".to_string(),
+            connection: Connection::new("example.com", 4000, false, false),
+        };
+        let lua = Lua::new();
+        lua.globals().set("server", server).unwrap();
+
+        let name: String = lua.load("return server.name").call(()).unwrap();
+        assert_eq!(name, "test_server");
+    }
+
+    #[test]
+    fn test_server_index_host() {
+        let server = Server {
+            name: "test_server".to_string(),
+            connection: Connection::new("example.com", 4000, false, false),
+        };
+        let lua = Lua::new();
+        lua.globals().set("server", server).unwrap();
+
+        let host: String = lua.load("return server.host").call(()).unwrap();
+        assert_eq!(host, "example.com");
+    }
+
+    #[test]
+    fn test_server_index_port() {
+        let server = Server {
+            name: "test_server".to_string(),
+            connection: Connection::new("example.com", 4000, false, false),
+        };
+        let lua = Lua::new();
+        lua.globals().set("server", server).unwrap();
+
+        let port: u16 = lua.load("return server.port").call(()).unwrap();
+        assert_eq!(port, 4000);
+    }
+
+    #[test]
+    fn test_server_index_tls() {
+        let server = Server {
+            name: "test_server".to_string(),
+            connection: Connection::new("example.com", 4000, true, false),
+        };
+        let lua = Lua::new();
+        lua.globals().set("server", server).unwrap();
+
+        let tls: bool = lua.load("return server.tls").call(()).unwrap();
+        assert!(tls);
+    }
+
+    #[test]
+    fn test_server_index_verify_cert() {
+        let server = Server {
+            name: "test_server".to_string(),
+            connection: Connection::new("example.com", 4000, true, true),
+        };
+        let lua = Lua::new();
+        lua.globals().set("server", server).unwrap();
+
+        let verify: bool = lua.load("return server.verify_cert").call(()).unwrap();
+        assert!(verify);
+    }
+
+    #[test]
+    fn test_servers_get_all() {
+        let lua = get_lua();
+        // get_all should return a vec (possibly empty if no servers configured)
+        let result: Result<Vec<mlua::Value>, _> = lua.load("return servers.get_all()").call(());
+        assert!(result.is_ok());
     }
 }

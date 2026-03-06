@@ -229,6 +229,10 @@ impl UserInterface for SplitScreen {
 
     fn print_output(&mut self, line: &Line) {
         //debug!("UI: {:?}", line);
+        // Handle screen clear request from server
+        if line.flags.screen_clear {
+            self.clear_output_area().ok();
+        }
         if let Some(print_line) = line.print_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {
                 self.print_line(print_line);
@@ -253,38 +257,57 @@ impl UserInterface for SplitScreen {
     }
 
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
-        // Sanity check
-        debug_assert!(pos <= input.len());
+        // Sanity check: pos is a character index
+        debug_assert!(pos <= input.chars().count());
 
         self.prompt_input = input.to_string();
         self.prompt_input_pos = pos;
 
+        // Calculate display width up to cursor position
+        let chars_before_cursor: String = input.chars().take(pos).collect();
+        let mut cursor_display_pos = chars_before_cursor.as_str().display_width();
+
         let mut input = input;
-        let mut pos = pos;
         let width = self.width as usize;
-        while input.printable_chars().count() >= width && pos >= width {
-            if let Some((i, _)) = input.printable_char_indices().nth(width) {
-                input = input.split_at(i).1;
+        let mut wrapped = false;
+
+        // Scroll the view when cursor goes past the visible width
+        while input.display_width() >= width && cursor_display_pos >= width {
+            wrapped = true;
+            let (byte_idx, skipped_width) = input.byte_index_at_display_width(width);
+            if byte_idx < input.len() {
+                input = input.split_at(byte_idx).1;
+                cursor_display_pos -= skipped_width;
             } else {
                 input = "";
-            }
-            pos -= width;
-        }
-        if input.printable_chars().count() >= width {
-            if let Some((i, _)) = input.printable_char_indices().nth(width) {
-                input = input.split_at(i).0;
+                cursor_display_pos = 0;
             }
         }
-        self.cursor_prompt_pos = pos as u16 + 1;
+
+        // When wrapped, reserve 1 column for the '>' indicator
+        let effective_width = if wrapped { width - 1 } else { width };
+
+        // Truncate input if it's still too wide for the display
+        if input.display_width() >= effective_width {
+            let (byte_idx, _) = input.byte_index_at_display_width(effective_width);
+            input = input.split_at(byte_idx).0;
+        }
+
+        // Adjust cursor position for the wrap indicator
+        let cursor_offset = if wrapped { 2 } else { 1 };
+        self.cursor_prompt_pos = cursor_display_pos as u16 + cursor_offset;
+
+        let wrap_indicator = if wrapped { ">" } else { "" };
         write!(
             self.screen,
-            "{}{}{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}{}{}",
             termion::cursor::Save,
             termion::cursor::Goto(1, self.prompt_line),
             Fg(termion::color::Reset),
             Bg(termion::color::Reset),
             termion::style::Reset,
             termion::clear::CurrentLine,
+            wrap_indicator,
             input,
             termion::cursor::Restore,
             self.goto_prompt(),
@@ -358,6 +381,30 @@ impl UserInterface for SplitScreen {
                 )?;
             }
         }
+        Ok(())
+    }
+
+    fn clear_output_area(&mut self) -> Result<()> {
+        // Clear all lines in the output scroll region
+        for line_no in self.output_start_line..=self.output_line {
+            write!(
+                self.screen,
+                "{}{}",
+                termion::cursor::Goto(1, line_no),
+                termion::clear::CurrentLine,
+            )?;
+        }
+        // Clear the history buffer as well
+        self.history.clear();
+        // Reset scroll state
+        self.scroll_data.reset(&self.history)?;
+        // Reposition cursor
+        write!(
+            self.screen,
+            "{}{}",
+            termion::cursor::Goto(1, self.output_start_line),
+            self.goto_prompt(),
+        )?;
         Ok(())
     }
 

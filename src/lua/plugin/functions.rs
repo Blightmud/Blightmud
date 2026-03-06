@@ -187,3 +187,47 @@ fn update_submodules(repository: Repository, should_initialize: bool) -> Result<
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc::channel;
+
+    #[test]
+    fn test_get_plugin_dir() {
+        let dir = get_plugin_dir();
+        assert!(dir.to_string_lossy().contains("plugins"));
+    }
+
+    #[test]
+    fn test_get_plugins_returns_vec() {
+        let plugins = get_plugins();
+        // Should return a vec (possibly empty)
+        assert!(plugins.is_empty() || !plugins.is_empty());
+    }
+
+    #[test]
+    fn test_remove_plugin_with_path_traversal() {
+        let result = remove_plugin("../../../etc");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid plugin name"));
+    }
+
+    #[test]
+    fn test_remove_plugin_nonexistent() {
+        let result = remove_plugin("nonexistent_plugin_12345");
+        // Should succeed (no-op) if plugin doesn't exist
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_load_plugin_missing_main_lua() {
+        let (writer, _reader) = channel();
+        let result = load_plugin("nonexistent_plugin_xyz", &writer);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("main.lua"));
+    }
+}

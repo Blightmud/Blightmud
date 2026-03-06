@@ -50,7 +50,7 @@ impl UserData for Mud {
         });
         methods.add_function(
             "connect",
-            |ctx, (host, port, tls, verify): (String, u16, bool, Option<bool>)| {
+            |ctx, (host, port, tls, verify, name): (String, u16, bool, Option<bool>, Option<String>)| {
                 let backend: Backend = ctx.named_registry_value(BACKEND)?;
                 let verify_cert = if tls { verify.unwrap_or(true) } else { false };
                 backend
@@ -60,6 +60,7 @@ impl UserData for Mud {
                         port,
                         tls,
                         verify_cert,
+                        name,
                     }))
                     .unwrap();
                 Ok(())
@@ -206,6 +207,7 @@ mod test_mud {
                 port: 99,
                 tls: false,
                 verify_cert: false,
+                name: None,
             }),
         );
         assert_event(
@@ -215,6 +217,7 @@ mod test_mud {
                 port: 99,
                 tls: false,
                 verify_cert: false,
+                name: None,
             }),
         );
         assert_event(
@@ -224,6 +227,7 @@ mod test_mud {
                 port: 99,
                 tls: true,
                 verify_cert: true,
+                name: None,
             }),
         );
         assert_event(
@@ -233,6 +237,7 @@ mod test_mud {
                 port: 99,
                 tls: true,
                 verify_cert: true,
+                name: None,
             }),
         );
         assert_event(
@@ -242,6 +247,17 @@ mod test_mud {
                 port: 99,
                 tls: true,
                 verify_cert: false,
+                name: None,
+            }),
+        );
+        assert_event(
+            "mud.connect(\"hostname\", 99, true, false, \"myserver\")",
+            Event::Connect(Connection {
+                host: "hostname".to_string(),
+                port: 99,
+                tls: true,
+                verify_cert: false,
+                name: Some("myserver".to_string()),
             }),
         );
     }

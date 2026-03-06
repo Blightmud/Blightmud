@@ -13,7 +13,7 @@ jobs:
     name: Build deb & rpm
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Install deps
@@ -42,12 +42,12 @@ jobs:
           artifacts: ${{ steps.deb_path.outputs.deb_path }},${{ steps.rpm_path.outputs.rpm_path }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload deb
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: blightmud-deb-22.04
           path: ${{ steps.deb_path.outputs.deb_path }}
       - name: Upload rpm
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: blightmud-rpm
           path: ${{ steps.rpm_path.outputs.rpm_path }}
@@ -56,7 +56,7 @@ jobs:
     name: Build for macOS-latest
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Toolchain
         uses: dtolnay/rust-toolchain@stable
       - name: Build release
@@ -75,35 +75,7 @@ jobs:
           artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: blightmud-macos
           path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
-
-  build_macos_13:
-    name: Build for macOS-13
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v5
-      - name: Setup Toolchain
-        uses: dtolnay/rust-toolchain@stable
-      - name: Build release
-        run: cargo build --release --locked
-      - name: Get current version
-        id: get_version
-        run: echo VERSION=${GITHUB_REF#refs/tags/} >> $GITHUB_OUTPUT
-      - name: Package Binary
-        run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip blightmud
-      - name: Create/Update release
-        uses: ncipollo/release-action@v1
-        with:
-          allowUpdates: true
-          draft: true
-          omitBody: true
-          artifacts: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: blightmud-macos-13
-          path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos-13.zip

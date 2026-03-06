@@ -18,16 +18,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, macos-13, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
         toolchain: [stable, beta, nightly]
         include:
           - os: macos-latest
           - os: ubuntu-latest
-          - os: macos-13
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo

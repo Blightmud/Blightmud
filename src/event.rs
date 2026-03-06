@@ -1,13 +1,13 @@
 use crate::io::FSEvent;
+use crate::lua::ConnectionInfo;
 use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
     model::{Connection, Line, PromptMask},
-    net::{spawn_receive_thread, spawn_transmit_thread},
+    net::{spawn_network_thread, WakingSender},
     session::Session,
     tts::TTSEvent,
     ui::UserInterface,
-    TelnetData,
 };
 use libmudtelnet::{bytes::Bytes, events::TelnetEvents};
 use log::debug;
@@ -133,15 +133,15 @@ impl EventHandler {
         &mut self,
         event: Event,
         screen: &mut Box<dyn UserInterface>,
-        transmit_writer: &mut Option<Sender<TelnetData>>,
+        transmit_writer: &mut Option<WakingSender>,
     ) -> Result {
         match event {
             Event::ServerSend(data) => {
                 debug!("Sending: {:?}", data);
-                if let Some(transmit_writer) = &transmit_writer {
+                if let Some(transmit_writer) = transmit_writer {
                     transmit_writer.send(Some(data))?;
                 } else {
-                    screen.print_error("No active session");
+                    screen.print_error("No active session. Use '/connect <host> <port>' to connect. '/help' for more commands.");
                 }
                 Ok(())
             }
@@ -175,16 +175,67 @@ impl EventHandler {
                 Ok(())
             }
             Event::Connected(id) => {
-                let (writer, reader): (Sender<TelnetData>, Receiver<TelnetData>) = channel();
-                spawn_receive_thread(self.session.clone());
-                spawn_transmit_thread(self.session.clone(), reader);
-                transmit_writer.replace(writer);
-                let host = self.session.host();
-                let port = self.session.port();
+                let (writer, reader): (Sender<Option<Bytes>>, Receiver<Option<Bytes>>) = channel();
+                let (waking_sender_tx, waking_sender_rx): (
+                    Sender<WakingSender>,
+                    Receiver<WakingSender>,
+                ) = channel();
+
+                // Get connection info and take the stream for the event loop
+                let (stream, host, port, tls, tls_validation, name) = {
+                    let mut conn = self.session.connection.lock().unwrap();
+                    let stream = conn.take_stream();
+                    (
+                        stream,
+                        conn.host.clone(),
+                        conn.port,
+                        conn.tls,
+                        conn.tls_validation,
+                        conn.name.clone(),
+                    )
+                };
+
+                let verify_cert = tls_validation == crate::net::CertificateValidation::Enabled;
+
+                if let Some(stream) = stream {
+                    // Spawn the single network event loop thread
+                    spawn_network_thread(
+                        self.session.clone(),
+                        stream,
+                        tls,
+                        &host,
+                        tls_validation,
+                        writer,
+                        reader,
+                        waking_sender_tx,
+                    );
+                    // Wait for the WakingSender from the event loop thread
+                    match waking_sender_rx.recv() {
+                        Ok(waking_sender) => {
+                            transmit_writer.replace(waking_sender);
+                        }
+                        Err(_) => {
+                            screen.print_error("Failed to initialize network connection");
+                            return Ok(());
+                        }
+                    }
+                } else {
+                    screen.print_error("Failed to get connection stream");
+                    return Ok(());
+                }
+
                 debug!("Connected to {}:{}", host, port);
                 screen.set_host(&host, port)?;
                 if let Ok(mut script) = self.session.lua_script.lock() {
-                    script.on_connect(&host, port, id);
+                    let info = ConnectionInfo {
+                        host: host.clone(),
+                        port,
+                        tls,
+                        verify_cert,
+                        name,
+                        id,
+                    };
+                    script.on_connect(info);
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });
@@ -200,7 +251,8 @@ impl EventHandler {
                         self.session.port()
                     ));
                     if let Some(transmit_writer) = &transmit_writer {
-                        transmit_writer.send(None)?;
+                        // Ignore error if channel is already closed (event loop already exited)
+                        let _ = transmit_writer.send(None);
                     }
                     if let Ok(mut script) = self.session.lua_script.lock() {
                         script.on_disconnect();

@@ -15,7 +15,11 @@ Alias.__index = Alias
 function Alias.new(re, callback)
     local ret = setmetatable({}, Alias)
 
-    ret.regex = regex.new(re)
+    if regex.is_regex(re) then
+        ret.regex = re
+    else
+        ret.regex = regex.new(re)
+    end
     ret.callback = callback
     ret.enabled = true
     ret.id = next_id

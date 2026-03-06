@@ -119,6 +119,10 @@ impl UserInterface for UiWrapper {
         self.screen.reset_scroll()
     }
 
+    fn clear_output_area(&mut self) -> Result<()> {
+        self.screen.clear_output_area()
+    }
+
     fn scroll_down(&mut self) -> Result<()> {
         self.screen.scroll_down()
     }

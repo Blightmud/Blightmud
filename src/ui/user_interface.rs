@@ -63,6 +63,88 @@ pub trait UserInterface {
     fn destroy(self: Box<Self>) -> Result<(Box<dyn Write>, History)>;
 }
 
+/// Tracks the parser state for ANSI/VT escape sequences during line wrapping.
+/// This allows wrap_line to correctly skip over all escape sequences when
+/// calculating printable line width, not just SGR (\x1b[...m) sequences.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum EscapeState {
+    /// Normal text — characters contribute to print width.
+    Ground,
+    /// Saw ESC (\x1b), waiting to see what kind of sequence follows.
+    Escape,
+    /// Inside a CSI sequence (\x1b[...) — terminated by any byte in 0x40..=0x7E.
+    Csi,
+    /// Inside an OSC sequence (\x1b]...) — terminated by BEL (\x07) or ST (\x1b\\).
+    Osc,
+    /// Inside an OSC sequence, just saw ESC — might be the ST terminator (\x1b\\).
+    OscEscSeen,
+    /// Inside a DCS (\x1bP), SOS (\x1bX), PM (\x1b^), or APC (\x1b_) string —
+    /// terminated by ST (\x1b\\).
+    StringSeq,
+    /// Inside a string sequence, just saw ESC — might be the ST terminator.
+    StringEscSeen,
+    /// Saw ESC followed by an intermediate byte (e.g. '(', ')', '*', '+', '%')
+    /// for charset designation sequences like ESC ( B, ESC ) 0, etc.
+    /// Consumes the next (final) byte and returns to Ground.
+    EscapeIntermediate,
+}
+
+/// Returns true if the string contains at least one printable (non-escape) character.
+fn has_printable_chars(s: &str) -> bool {
+    let mut state = EscapeState::Ground;
+    for c in s.chars() {
+        match state {
+            EscapeState::Ground => {
+                if c == '\x1b' {
+                    state = EscapeState::Escape;
+                } else if !c.is_whitespace() {
+                    return true;
+                }
+            }
+            EscapeState::Escape => match c {
+                '[' => state = EscapeState::Csi,
+                ']' => state = EscapeState::Osc,
+                'P' | 'X' | '^' | '_' => state = EscapeState::StringSeq,
+                '(' | ')' | '*' | '+' | '%' => state = EscapeState::EscapeIntermediate,
+                _ => state = EscapeState::Ground,
+            },
+            EscapeState::EscapeIntermediate => state = EscapeState::Ground,
+            EscapeState::Csi => {
+                if (c as u32) >= 0x40 && (c as u32) <= 0x7E {
+                    state = EscapeState::Ground;
+                }
+            }
+            EscapeState::Osc => {
+                if c == '\x07' {
+                    state = EscapeState::Ground;
+                } else if c == '\x1b' {
+                    state = EscapeState::OscEscSeen;
+                }
+            }
+            EscapeState::OscEscSeen => {
+                state = if c == '\\' {
+                    EscapeState::Ground
+                } else {
+                    EscapeState::Osc
+                };
+            }
+            EscapeState::StringSeq => {
+                if c == '\x1b' {
+                    state = EscapeState::StringEscSeen;
+                }
+            }
+            EscapeState::StringEscSeen => {
+                state = if c == '\\' {
+                    EscapeState::Ground
+                } else {
+                    EscapeState::StringSeq
+                };
+            }
+        }
+    }
+    false
+}
+
 pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {
     let mut lines: Vec<&str> = vec![];
 
@@ -77,18 +159,92 @@ pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {
         let mut last_space: usize = 0;
         let mut print_length = 0;
         let mut print_length_since_space = 0;
-        let mut in_escape = false;
+        let mut state = EscapeState::Ground;
         for (length, c) in line.char_indices() {
-            // Check for escape sequences
-            if c == '\x1b' {
-                in_escape = true;
-                continue;
-            }
-
-            // Check for escape sequence endings
-            if in_escape {
-                in_escape = c != 'm';
-                continue;
+            match state {
+                EscapeState::Ground => {
+                    if c == '\x1b' {
+                        state = EscapeState::Escape;
+                        continue;
+                    }
+                }
+                EscapeState::Escape => {
+                    match c {
+                        '[' => {
+                            state = EscapeState::Csi;
+                            continue;
+                        }
+                        ']' => {
+                            state = EscapeState::Osc;
+                            continue;
+                        }
+                        // DCS, SOS, PM, APC — string sequences terminated by ST
+                        'P' | 'X' | '^' | '_' => {
+                            state = EscapeState::StringSeq;
+                            continue;
+                        }
+                        // Charset designation sequences: ESC ( F, ESC ) F, ESC * F,
+                        // ESC + F, ESC % F — intermediate byte + one final byte.
+                        '(' | ')' | '*' | '+' | '%' => {
+                            state = EscapeState::EscapeIntermediate;
+                            continue;
+                        }
+                        // Two-character escape sequences (e.g. ESC c, ESC 7, ESC 8, etc.)
+                        // and any other ESC + single byte — consume and return to ground.
+                        _ => {
+                            state = EscapeState::Ground;
+                            continue;
+                        }
+                    }
+                }
+                EscapeState::EscapeIntermediate => {
+                    // Consume the final byte of the charset designation sequence
+                    // (e.g. 'B' in ESC ( B, '0' in ESC ) 0) and return to ground.
+                    state = EscapeState::Ground;
+                    continue;
+                }
+                EscapeState::Csi => {
+                    // CSI parameters and intermediates: 0x20..=0x3F
+                    // Final byte: 0x40..=0x7E (any ASCII letter or @[\]^_`{|}~)
+                    if c as u32 >= 0x40 && c as u32 <= 0x7E {
+                        state = EscapeState::Ground;
+                    }
+                    continue;
+                }
+                EscapeState::Osc => {
+                    if c == '\x07' {
+                        // BEL terminates OSC
+                        state = EscapeState::Ground;
+                    } else if c == '\x1b' {
+                        // Might be start of ST (\x1b\\)
+                        state = EscapeState::OscEscSeen;
+                    }
+                    continue;
+                }
+                EscapeState::OscEscSeen => {
+                    // After ESC inside OSC: if '\' then ST terminates, otherwise
+                    // stay in OSC (the ESC was part of the OSC content).
+                    if c == '\\' {
+                        state = EscapeState::Ground;
+                    } else {
+                        state = EscapeState::Osc;
+                    }
+                    continue;
+                }
+                EscapeState::StringSeq => {
+                    if c == '\x1b' {
+                        state = EscapeState::StringEscSeen;
+                    }
+                    continue;
+                }
+                EscapeState::StringEscSeen => {
+                    if c == '\\' {
+                        state = EscapeState::Ground;
+                    } else {
+                        state = EscapeState::StringSeq;
+                    }
+                    continue;
+                }
             }
 
             // Keep track of printable line length
@@ -117,8 +273,10 @@ pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {
             }
         }
 
-        // Push the rest of the line if there is anything left
-        if last_cut < line.len() && !line[last_cut..].trim().is_empty() {
+        // Push the rest of the line if there is anything left with printable content.
+        // Trailing escape-only segments (e.g. an OSC 8 close sequence) are not pushed
+        // as separate lines to avoid producing blank visual lines.
+        if last_cut < line.len() && has_printable_chars(&line[last_cut..]) {
             lines.push(&line[last_cut..]);
         }
     }
@@ -157,5 +315,60 @@ mod tests {
             let num = format!("{}", i % 10);
             assert_eq!(line, &num.repeat(15).to_string());
         }
+    }
+
+    #[test]
+    fn test_wrap_line_with_osc8_hyperlink() {
+        // Simulates mdcat OSC 8 hyperlink output: ESC]8;;url ESC\ visible_text ESC]8;; ESC\
+        let line = "Visit \x1b]8;;https://example.com\x1b\\\x1b[34mhttps://example.com\x1b[0m\x1b]8;;\x1b\\ for info";
+        let lines = wrap_line(line, 80);
+        // The entire line fits in 80 columns (printable: "Visit https://example.com for info" = 34 chars)
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0], line);
+    }
+
+    #[test]
+    fn test_wrap_line_osc8_not_eaten() {
+        // With the old SGR-only parser, everything between ESC] and the next 'm' would be eaten.
+        // This test ensures the visible link text is counted toward print width.
+        let link = "\x1b]8;;http://x.co\x1b\\click here\x1b]8;;\x1b\\";
+        // "click here" = 10 printable chars; at width 5 it must wrap.
+        let lines = wrap_line(link, 5);
+        // 2 pieces: OSC-open + "click", " here" — trailing OSC-close escape bytes
+        // are not emitted as a separate segment (zero printable width).
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].ends_with("click"));
+        assert!(lines[1].contains("here"));
+    }
+
+    #[test]
+    fn test_wrap_line_csi_non_sgr() {
+        // CSI sequences other than SGR (e.g. cursor movement ESC[H, erase ESC[K)
+        // should also be skipped.
+        let line = "\x1b[Hsome text\x1b[K";
+        let lines = wrap_line(line, 80);
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0], line);
+    }
+
+    #[test]
+    fn test_wrap_line_charset_designation() {
+        // Charset designation sequences: ESC ( B (ASCII), ESC ) 0 (DEC Special Graphics),
+        // ESC * A, ESC + C, ESC % @ etc. — should all be skipped without consuming
+        // visible text.
+        let line = "\x1b(Bhello \x1b)0world\x1b*A!\x1b+C\x1b%@";
+        let lines = wrap_line(line, 80);
+        // Printable: "hello world!" = 12 chars, fits in 80 columns
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0], line);
+    }
+
+    #[test]
+    fn test_wrap_line_charset_designation_wrap() {
+        // Ensure charset designation sequences don't affect wrap width calculation.
+        let line = "\x1b(Babcde\x1b)0fghij";
+        // "abcdefghij" = 10 printable chars; at width 5 it must wrap.
+        let lines = wrap_line(line, 5);
+        assert_eq!(lines.len(), 2);
     }
 }

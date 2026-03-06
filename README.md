@@ -20,7 +20,7 @@ days.
 ## The name?
 
 The client is written in rust. Some navigating throught the thesaurus brought
-me to the word **blight** and here we are. 
+me to the word **blight** and here we are.
 
 ## Features
 

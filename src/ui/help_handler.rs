@@ -5,9 +5,9 @@ use std::{borrow::Cow, collections::HashMap, fs, sync::mpsc::Sender};
 
 use anyhow::Result;
 use log::debug;
-use pulldown_cmark::{Options, Parser};
-use pulldown_cmark_mdcat::terminal::{TerminalProgram, TerminalSize};
-use pulldown_cmark_mdcat::{ResourceUrlHandler, Settings as MDSettings, Theme};
+use pulldown_cmark_blightmud::pulldown_cmark::{Options, Parser};
+use pulldown_cmark_blightmud::terminal::{TerminalProgram, TerminalSize};
+use pulldown_cmark_blightmud::{ResourceUrlHandler, Settings as MDSettings, Theme};
 use std::fmt::Write;
 use syntect::parsing::SyntaxSet;
 
@@ -70,9 +70,9 @@ impl HelpHandler {
         let base_dir = Path::new("/");
 
         let mut md_bytes = vec![];
-        let env = pulldown_cmark_mdcat::Environment::for_local_directory(&base_dir).unwrap();
+        let env = pulldown_cmark_blightmud::Environment::for_local_directory(&base_dir).unwrap();
         let resource_handler = NoopResourceUrlHandler {};
-        if pulldown_cmark_mdcat::push_tty(
+        if pulldown_cmark_blightmud::push_tty(
             &md_settings(&SyntaxSet::load_defaults_newlines()),
             &env,
             &resource_handler,
@@ -164,7 +164,7 @@ impl ResourceUrlHandler for NoopResourceUrlHandler {
     fn read_resource(
         &self,
         _: &reqwest::Url,
-    ) -> std::io::Result<pulldown_cmark_mdcat::resources::MimeData> {
+    ) -> std::io::Result<pulldown_cmark_blightmud::resources::MimeData> {
         Err(std::io::Error::from(std::io::ErrorKind::Unsupported))
     }
 }

@@ -53,7 +53,8 @@ fn render_to_string<P: AsRef<Path>>(markdown_file: P, settings: &Settings) -> St
         hostname: "HOSTNAME".to_string(),
         ..Environment::for_local_directory(&base_dir).unwrap()
     };
-    pulldown_cmark_blightmud::push_tty(settings, &env, &resource_handler(), &mut sink, parser).unwrap();
+    pulldown_cmark_blightmud::push_tty(settings, &env, &resource_handler(), &mut sink, parser)
+        .unwrap();
     String::from_utf8(sink).unwrap()
 }
 

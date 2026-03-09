@@ -52,7 +52,7 @@ hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }
 rustls = { version = "0.23", default-features = false, features = ['ring', 'tls12', 'std'] }
 webpki-roots = "1.0"
 reqwest = { version = "0.12.28", default-features = false, features = ['blocking', '__rustls-ring', 'json'] }
-socket2 = { version = "0.6.0", features = ['all'] }
+socket2 = { version = "0.6.3", features = ['all'] }
 mio = { version = "1.1", features = ["os-poll", "net"] }
 
 encoding_rs = "0.8"

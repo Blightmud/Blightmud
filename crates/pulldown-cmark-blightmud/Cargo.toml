@@ -46,7 +46,7 @@ regex = { version = "1.10.6", default-features = false }
 syntect = { version = "5", features = ["plist-load", "dump-create"] }
 
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "0.38.34", default-features = false, features = ["std", "termios", "system"] }
+rustix = { version = "1.0.7", default-features = false, features = ["std", "termios", "system"] }
 
 [target.'cfg(windows)'.dependencies]
 terminal_size = "0.3.0"

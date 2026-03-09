@@ -49,4 +49,4 @@ syntect = { version = "5", features = ["plist-load", "dump-create"] }
 rustix = { version = "0.38.34", default-features = false, features = ["std", "termios", "system"] }
 
 [target.'cfg(windows)'.dependencies]
-terminal_size = "0.3.0"
+terminal_size = "0.4.2"

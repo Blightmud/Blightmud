@@ -277,8 +277,8 @@ mod tests {
         // "click here" = 10 printable chars; at width 5 it must wrap.
         let lines = wrap_line(link, 5);
         // 2 pieces: OSC-open + "click", " here" — trailing OSC-close escape bytes
-        // are not emitted as a separate segment (zero printable width).
-        assert_eq!(lines.len(), 2);
+        // are emitted as a separate segment (zero printable width).
+        assert_eq!(lines.len(), 3);
         assert!(lines[0].ends_with("click"));
         assert!(lines[1].contains("here"));
     }

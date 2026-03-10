@@ -583,6 +583,7 @@ mod command_test {
             Arc::new(Mutex::new(
                 LuaScriptBuilder::new(tx).dimensions((100, 100)).build(),
             )),
+            false,
         );
         (buffer, rx)
     }
@@ -787,7 +788,7 @@ mod command_test {
                 .dimensions((100, 100))
                 .build(),
         ));
-        let mut buffer = CommandBuffer::new(tts, script.clone());
+        let mut buffer = CommandBuffer::new(tts, script.clone(), false);
 
         assert!(check_command_binds(
             Key::Alt('b'),
@@ -871,5 +872,108 @@ mod command_test {
             &script,
             &tx
         ));
+    }
+
+    fn get_command_with_last() -> (CommandBuffer, Receiver<Event>) {
+        let (tx, rx): (Sender<Event>, Receiver<Event>) = channel();
+        let buffer = CommandBuffer::new(
+            Arc::new(Mutex::new(TTSController::new(false, true))),
+            Arc::new(Mutex::new(
+                LuaScriptBuilder::new(tx).dimensions((100, 100)).build(),
+            )),
+            true,
+        );
+        (buffer, rx)
+    }
+
+    #[test]
+    fn test_last_command_stored_after_submit() {
+        let mut buffer = get_command_with_last().0;
+        push_string(&mut buffer, "hello");
+        buffer.submit();
+        // buffer should be empty, last_buffer should hold the command
+        assert!(buffer.buffer.is_empty());
+        assert_eq!(buffer.last_buffer.iter().collect::<String>(), "hello");
+    }
+
+    #[test]
+    fn test_last_command_replayed_on_empty_submit() {
+        let mut buffer = get_command_with_last().0;
+        push_string(&mut buffer, "hello");
+        buffer.submit();
+        // submit again with empty buffer — should replay last command
+        let replayed = buffer.submit();
+        assert_eq!(replayed, "hello");
+    }
+
+    #[test]
+    fn test_last_command_updates_on_new_submit() {
+        let mut buffer = get_command_with_last().0;
+        push_string(&mut buffer, "first");
+        buffer.submit();
+        push_string(&mut buffer, "second");
+        buffer.submit();
+        assert_eq!(buffer.last_buffer.iter().collect::<String>(), "second");
+    }
+
+    #[test]
+    fn test_last_command_disabled_clears_last_buffer() {
+        let mut buffer = get_command_with_last().0;
+        push_string(&mut buffer, "hello");
+        buffer.submit();
+        assert!(!buffer.last_buffer.is_empty());
+        buffer.enable_last_command(false);
+        assert!(buffer.last_buffer.is_empty());
+        assert!(!buffer.last_command_enabled);
+    }
+
+    #[test]
+    fn test_last_command_enabled_sets_flag() {
+        let mut buffer = get_command().0;
+        assert!(!buffer.last_command_enabled);
+        buffer.enable_last_command(true);
+        assert!(buffer.last_command_enabled);
+    }
+
+    #[test]
+    fn test_step_right_expands_last_command() {
+        let mut buffer = get_command_with_last().0;
+        push_string(&mut buffer, "hello");
+        buffer.submit();
+        assert!(buffer.buffer.is_empty());
+        // step_right on empty buffer should swap in last_buffer
+        buffer.step_right();
+        assert_eq!(buffer.get_buffer(), "hello");
+        assert_eq!(buffer.cursor_pos, "hello".len());
+    }
+
+    #[test]
+    fn test_last_command_mask_covers_full_buffer() {
+        let mut buffer = get_command_with_last().0;
+        push_string(&mut buffer, "hello");
+        buffer.submit();
+        let mask = buffer.get_last_command_mask();
+        // mask should have entries at 0 (open) and len of last_buffer (close)
+        assert!(mask.contains_key(&0));
+        assert!(mask.contains_key(&(buffer.last_buffer.len() as i32)));
+    }
+
+    #[test]
+    fn test_last_command_not_stored_when_disabled() {
+        let mut buffer = get_command().0; // last_command_enabled = false
+        push_string(&mut buffer, "hello");
+        buffer.submit();
+        assert!(buffer.last_buffer.is_empty());
+        assert!(buffer.buffer.is_empty());
+    }
+
+    #[test]
+    fn test_last_command_empty_submit_when_disabled() {
+        let mut buffer = get_command().0; // last_command_enabled = false
+        push_string(&mut buffer, "hello");
+        buffer.submit();
+        // empty submit should return empty string, not replay last
+        let result = buffer.submit();
+        assert_eq!(result, String::new());
     }
 }

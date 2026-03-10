@@ -514,7 +514,6 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
 
                                 // If 'last command' is applicable then render it.
                                 if buffer.buffer.is_empty() && !buffer.last_buffer.is_empty() {
-                                    debug!("Last command render");
                                     let mask = buffer.get_last_command_mask();
                                     writer
                                         .send(Event::UserInputBuffer(
@@ -523,7 +522,6 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                                         ))
                                         .unwrap();
                                 } else {
-                                    debug!("No last command render");
                                     writer
                                         .send(Event::UserInputBuffer(
                                             buffer.get_buffer(),

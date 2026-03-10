@@ -367,7 +367,6 @@ impl EventHandler {
                 Ok(())
             }
             Event::UserInputBuffer(input_buffer, pos) => {
-                debug!("User input buffer: {input_buffer}");
                 if let Ok(script) = self.session.lua_script.lock() {
                     script.on_prompt_update(&input_buffer);
                 }

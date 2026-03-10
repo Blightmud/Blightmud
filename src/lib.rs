@@ -24,7 +24,7 @@ mod ui;
 
 use crate::event::{spawn_quit_confirm_timeout_thread, Event, QuitMethod};
 use crate::io::{FSMonitor, SaveData};
-use crate::model::{Servers, ECHO_INPUT, HIDE_TOPBAR, READER_MODE, SCROLL_SPLIT};
+use crate::model::{Servers, ECHO_INPUT, HIDE_TOPBAR, LAST_COMMAND, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
@@ -204,6 +204,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         .headless(rt.headless_mode)
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .echo_input(settings.get(ECHO_INPUT).unwrap())
+        .last_command(settings.get(LAST_COMMAND).unwrap())
         .codec(rt.codec)
         .build();
 
@@ -407,6 +408,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     screen.setup()?;
                 }
                 ECHO_INPUT => session.echo_input.store(value, Ordering::Relaxed),
+                LAST_COMMAND => {
+                    if let Ok(mut buffer) = session.command_buffer.lock() {
+                        buffer.enable_last_command(value);
+                    }
+                }
                 _ => {}
             },
             Event::StartLogging(world, force) => {

@@ -177,6 +177,7 @@ pub struct SessionBuilder {
     save_history: bool,
     headless: bool,
     echo_input: bool,
+    last_command: bool,
     codec: Option<&'static encoding_rs::Encoding>,
 }
 
@@ -191,6 +192,7 @@ impl SessionBuilder {
             save_history: false,
             headless: false,
             echo_input: true,
+            last_command: true,
             codec: None,
         }
     }
@@ -235,6 +237,11 @@ impl SessionBuilder {
         self
     }
 
+    pub fn last_command(mut self, last_command: bool) -> Self {
+        self.last_command = last_command;
+        self
+    }
+
     pub fn codec(mut self, codec: Option<&'static Encoding>) -> Self {
         self.codec = codec;
         self
@@ -249,6 +256,7 @@ impl SessionBuilder {
         let headless = self.headless;
         let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled, headless)));
         let echo_input = self.echo_input;
+        let last_command_enabled = self.last_command;
 
         let lua_builder = LuaScriptBuilder::new(main_writer.clone())
             .dimensions(dimensions)
@@ -272,7 +280,11 @@ impl SessionBuilder {
             lua_script: lua_script.clone(),
             logger: Arc::new(Mutex::new(Logger::default())),
             tts_ctrl: tts_ctrl.clone(),
-            command_buffer: Arc::new(Mutex::new(CommandBuffer::new(tts_ctrl, lua_script))),
+            command_buffer: Arc::new(Mutex::new(CommandBuffer::new(
+                tts_ctrl,
+                lua_script,
+                last_command_enabled,
+            ))),
             echo_input: Arc::new(AtomicBool::new(echo_input)),
             _codec: self.codec,
         }

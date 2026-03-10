@@ -1,7 +1,7 @@
-local MSSP_PROTO        = 70
-local MSSP_VAR          = 1
-local MSSP_VAL          = 2
-local MSSP_CACHE_KEY    = "__mssp_recv_key"
+local MSSP_PROTO = 70
+local MSSP_VAR = 1
+local MSSP_VAL = 2
+local MSSP_CACHE_KEY = "__mssp_recv_key"
 
 local mod = {}
 local mssp_values = json.decode(store.session_read(MSSP_CACHE_KEY) or "{}")
@@ -11,7 +11,7 @@ local function Info(msg)
 end
 
 local function print_info()
-    for k,v in pairs(mssp_values) do
+    for k, v in pairs(mssp_values) do
         Info(k .. " = " .. v)
     end
 end
@@ -19,7 +19,7 @@ end
 local function decode(data)
     local parse_key, parse_val
 
-    parse_key = function (index)
+    parse_key = function(index)
         local value = ""
         local i = index + 1
         while i <= #data do
@@ -36,7 +36,7 @@ local function decode(data)
         return value, i
     end
 
-    parse_val = function (index)
+    parse_val = function(index)
         local value = ""
         local i = index + 1
         while i <= #data do
@@ -71,20 +71,20 @@ end
 
 core.enable_protocol(MSSP_PROTO)
 
-core.on_protocol_enabled(function (proto)
+core.on_protocol_enabled(function(proto)
     if proto == MSSP_PROTO then
         mud.add_tag("MSSP")
     end
 end)
 
-core.subneg_recv(function (proto, recv)
+core.subneg_recv(function(proto, recv)
     if proto == MSSP_PROTO then
         mssp_values = decode(recv)
         store.session_write(MSSP_CACHE_KEY, json.encode(mssp_values))
     end
 end)
 
-mod.get = function ()
+mod.get = function()
     return mssp_values
 end
 mod.print = print_info

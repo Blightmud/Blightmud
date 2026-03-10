@@ -5,7 +5,7 @@ local naws_enabled = false
 -- Return table with the network byte order (e.g. big endian) encoding of the
 -- width and height given.
 local function network_dimensions(width, height)
-    bytes = {}
+    local bytes = {}
     local append_byte = function(c)
         table.insert(bytes, string.byte(c))
     end
@@ -27,7 +27,7 @@ core.enable_protocol(NAWS_PROTOCOL)
 
 -- If NAWS is negotiated update our enabled status and send the current
 -- window dimensions.
-core.on_protocol_enabled(function (proto)
+core.on_protocol_enabled(function(proto)
     if proto == NAWS_PROTOCOL then
         mud.add_tag("NAWS")
         naws_enabled = true
@@ -35,7 +35,7 @@ core.on_protocol_enabled(function (proto)
     end
 end)
 
-core.on_protocol_disabled(function (proto)
+core.on_protocol_disabled(function(proto)
     if proto == NAWS_PROTOCOL then
         mud.remove_tag("NAWS")
         naws_enabled = false
@@ -43,7 +43,7 @@ core.on_protocol_disabled(function (proto)
 end)
 
 -- When dimensions change, send an updated NAWS message when enabled.
-blight.on_dimensions_change(function (width, height)
+blight.on_dimensions_change(function(width, height)
     if naws_enabled then
         send_dimensions(width, height)
     end

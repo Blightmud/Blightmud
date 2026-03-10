@@ -1,6 +1,6 @@
 local function auto_load_plugins()
     local plugins = plugin.enabled()
-    for _,p in ipairs(plugins) do
+    for _, p in ipairs(plugins) do
         local ok, err = plugin.load(p)
         if ok then
             print("[plugin]: Loaded '", p, "'")

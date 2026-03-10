@@ -8,17 +8,17 @@ local auto_reader_mode = true
 
 local mod = {}
 
-mod.MTTS_ANSI           =   0x001 -- Ansi support
-mod.MTTS_VT100          =   0x002 -- VT100 support
-mod.MTTS_UTF8           =   0x004 -- UTF-8 Support
-mod.MTTS_256_COLOR      =   0x008 -- 256 color support
-mod.MTTS_MOUSE_TRACKING =   0x010 -- Mouse tracking support
-mod.MTTS_OSC_COLOR      =   0x020 -- OSC color palette support (true color)
-mod.MTTS_SCREEN_READER  =   0x040 -- Client using screen reader
-mod.MTTS_PROXY          =   0x080 -- This is a proxy connection
-mod.MTTS_TRUE_COLOR     =   0x100 -- True color support
-mod.MTTS_MNES           =   0x200 -- Mud New Env Standard enabled
-mod.MTTS_MSLP           =   0x400 -- Mud Server Link Protocol enabled
+mod.MTTS_ANSI = 0x001 -- Ansi support
+mod.MTTS_VT100 = 0x002 -- VT100 support
+mod.MTTS_UTF8 = 0x004 -- UTF-8 Support
+mod.MTTS_256_COLOR = 0x008 -- 256 color support
+mod.MTTS_MOUSE_TRACKING = 0x010 -- Mouse tracking support
+mod.MTTS_OSC_COLOR = 0x020 -- OSC color palette support (true color)
+mod.MTTS_SCREEN_READER = 0x040 -- Client using screen reader
+mod.MTTS_PROXY = 0x080 -- This is a proxy connection
+mod.MTTS_TRUE_COLOR = 0x100 -- True color support
+mod.MTTS_MNES = 0x200 -- Mud New Env Standard enabled
+mod.MTTS_MSLP = 0x400 -- Mud Server Link Protocol enabled
 
 -- Build the default MTTS value
 local mtts = 0x0
@@ -61,17 +61,17 @@ local function string_to_bytes(str)
 end
 
 local function concat(a, b)
-    for _,v in ipairs(b) do
-        a[#a+1] = v
+    for _, v in ipairs(b) do
+        a[#a + 1] = v
     end
     return a
 end
 
-core.subneg_recv(function (proto, recv)
+core.subneg_recv(function(proto, recv)
     if proto == 24 and recv[1] == 1 then
         local data = NEGOTIATION_STACK[index]:upper()
         blight.debug("[TTYPE] Negotiating: " .. data)
-        local payload = concat({0}, string_to_bytes(data))
+        local payload = concat({ 0 }, string_to_bytes(data))
         core.subneg_send(24, payload)
         index = index + 1
         if index > #NEGOTIATION_STACK then
@@ -80,14 +80,14 @@ core.subneg_recv(function (proto, recv)
     end
 end)
 
-core.on_protocol_enabled(function (proto)
+core.on_protocol_enabled(function(proto)
     if proto == 24 then
         mud.add_tag("TTYPE")
         init()
     end
 end)
 
-core.on_protocol_disabled(function (proto)
+core.on_protocol_disabled(function(proto)
     if proto == 24 then
         mud.remove_tag("TTYPE")
         init()

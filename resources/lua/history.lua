@@ -10,7 +10,7 @@ local search_commands = nil
 
 if settings.get("save_history") then
     commands = json.decode(store.disk_read("__command_history") or "[]")
-    for _,c in ipairs(commands) do
+    for _, c in ipairs(commands) do
         command_set[c] = true
     end
 end
@@ -28,9 +28,9 @@ end
 
 local function find_match_up()
     if not search_commands then
-        local command_subset = {[orig_cmd]=true}
+        local command_subset = { [orig_cmd] = true }
         search_commands = {}
-        for i,c in ipairs(commands) do
+        for i, c in ipairs(commands) do
             if startsWith(c, orig_cmd) then
                 if not command_subset[c] then
                     table.insert(search_commands, i)
@@ -55,6 +55,8 @@ local function find_match_down()
         search_index = search_index + 1
         if search_index > #search_commands then
             return nil
+        elseif search_commands == nil then
+            return nil
         else
             return search_commands[search_index]
         end
@@ -70,7 +72,7 @@ function mod.previous_command()
         if not index then
             index = #commands
         else
-            index = math.max(index-1, 1)
+            index = math.max(index - 1, 1)
         end
     else
         index = find_match_up()
@@ -124,7 +126,7 @@ script.on_reset(write_to_disk)
 
 local function shift_commands(new_cmd)
     if command_set[new_cmd] then
-        for i,cmd in ipairs(commands) do
+        for i, cmd in ipairs(commands) do
             if cmd == new_cmd then
                 table.remove(commands, i)
             end
@@ -133,7 +135,7 @@ local function shift_commands(new_cmd)
     table.insert(commands, new_cmd)
 end
 
-mud.add_input_listener(function (line)
+mud.add_input_listener(function(line)
     reset()
     if line:source() == "user" then
         local str = line:line()

@@ -1,4 +1,3 @@
-local unpack = table.unpack
 local OPT = 201
 
 local function GMCP()
@@ -12,10 +11,10 @@ local function GMCP()
 
     local function parse_gmcp(msg)
         local mod = msg
-        local body = {}
+        local body = ""
         local split = string.find(msg, " ")
         if split ~= nil then
-            mod = string.sub(msg, 0, split-1)
+            mod = string.sub(msg, 0, split - 1)
             body = string.sub(msg, split)
         end
         return mod, body
@@ -29,26 +28,26 @@ local function GMCP()
         return values
     end
 
-    local _on_enable = function (proto)
+    local _on_enable = function(proto)
         if proto == OPT then
             mud.add_tag("GMCP")
             self.gmcp_ready = true
             store.session_write("__gmcp_ready", "true")
             local program, version = blight.version()
             local hello_obj = {
-                version=version,
-                client=program,
+                version = version,
+                client = program,
             }
             core.subneg_send(201, string_to_bytes("Core.Hello " .. json.encode(hello_obj)))
-            for _,cb in ipairs(self.ready_listeners) do
+            for _, cb in ipairs(self.ready_listeners) do
                 cb()
             end
         end
     end
 
-    local _on_disable = function (proto)
+    local _on_disable = function(proto)
         if proto == OPT then
-            mud.remove_tag("GMCP");
+            mud.remove_tag("GMCP")
             self.gmcp_ready = false
         end
     end
@@ -64,7 +63,7 @@ local function GMCP()
         return table.concat(bytearr)
     end
 
-    local _subneg_recv = function (proto, data)
+    local _subneg_recv = function(proto, data)
         if proto == OPT then
             local msg = _utf8_from(data)
             local mod, json_data = parse_gmcp(msg)
@@ -74,27 +73,27 @@ local function GMCP()
                 blight.output("[GMCP]: " .. msg)
             end
             if self.receivers[mod] ~= nil then
-                for _,cb in ipairs(self.receivers[mod]) do
+                for _, cb in ipairs(self.receivers[mod]) do
                     cb(json_data)
                 end
             end
         end
     end
 
-    local echo = function (enabled)
+    local echo = function(enabled)
         store.session_write("__echo_gmcp", tostring(enabled))
         self.echo_gmcp = enabled
     end
 
-    local register = function (mod)
-        core.subneg_send(OPT, string_to_bytes("Core.Supports.Add [\"" .. mod .. " 1\"]"))
+    local register = function(mod)
+        core.subneg_send(OPT, string_to_bytes('Core.Supports.Add ["' .. mod .. ' 1"]'))
     end
 
-    local unregister = function (mod)
-        core.subneg_send(OPT, string_to_bytes("Core.Supports.Remove [\"" .. mod .. " 1\"]"))
+    local unregister = function(mod)
+        core.subneg_send(OPT, string_to_bytes('Core.Supports.Remove ["' .. mod .. ' 1"]'))
     end
 
-    local receive = function (mod, callback)
+    local receive = function(mod, callback)
         if self.receivers[mod] == nil then
             self.receivers[mod] = {}
         end
@@ -104,18 +103,18 @@ local function GMCP()
         end
     end
 
-    local send = function (msg)
+    local send = function(msg)
         core.subneg_send(OPT, string_to_bytes(msg))
     end
 
-    local on_ready = function (cb)
+    local on_ready = function(cb)
         table.insert(self.ready_listeners, cb)
         if self.gmcp_ready then
             cb()
         end
     end
 
-    local _reset = function ()
+    local _reset = function()
         self.gmcp_ready = false
         self.recv_cache = {}
         store.session_write("__gmcp_recv_cache", "{}")
@@ -140,16 +139,16 @@ local gmcp = GMCP()
 
 -- Register the module
 core.enable_protocol(OPT)
-core.on_protocol_enabled(function (proto)
+core.on_protocol_enabled(function(proto)
     gmcp._on_enable(proto)
 end)
-core.on_protocol_disabled(function (proto)
+core.on_protocol_disabled(function(proto)
     gmcp._on_disable(proto)
 end)
-core.subneg_recv(function (proto, data)
+core.subneg_recv(function(proto, data)
     gmcp._subneg_recv(proto, data)
 end)
-mud.on_disconnect(function ()
+mud.on_disconnect(function()
     gmcp._reset()
 end)
 

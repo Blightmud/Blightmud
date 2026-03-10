@@ -57,15 +57,15 @@ function Alias:check_line(line)
     if matches then
         line:matched(true)
         local startTime = os.time()
-        debug.sethook(function ()
+        debug.sethook(function()
             if os.time() > startTime + 2 then
                 debug.sethook()
                 error("Alias callback has been running for +2 seconds. Aborting", 2)
             end
         end, "", 500)
-    self.callback(matches, line)
-    debug.sethook()
-end
+        self.callback(matches, line)
+        debug.sethook()
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -74,8 +74,7 @@ end
 
 local next_group_id = 2
 
-mod.AliasGroup = {
-}
+mod.AliasGroup = {}
 local AliasGroup = mod.AliasGroup
 AliasGroup.__index = AliasGroup
 
@@ -153,12 +152,12 @@ end
 --------------------------------------------------------------------------------
 
 mod.alias_groups = {
-    AliasGroup.new(1)
+    AliasGroup.new(1),
 }
 local user_alias_groups = mod.alias_groups
 
 mod.system_alias_groups = {
-    AliasGroup.new(1)
+    AliasGroup.new(1),
 }
 local system_alias_groups = mod.system_alias_groups
 
@@ -176,13 +175,17 @@ end
 function mod.get(id)
     for _, group in pairs(get_alias_groups()) do
         local alias = group:get(id)
-        if alias then return alias end
+        if alias then
+            return alias
+        end
     end
     return nil
 end
 
 function mod.get_group(id)
-    if not id then id = 1 end
+    if not id then
+        id = 1
+    end
     return get_alias_groups()[id]
 end
 

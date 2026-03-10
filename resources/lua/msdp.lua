@@ -15,11 +15,11 @@ local function decode(data)
         while i <= #data do
             local val = data[i]
             if val == MSDP_TABLE_CLOSE then
-                return obj, i+1
+                return obj, i + 1
             elseif val == MSDP_VAR then
                 local name = ""
                 local value = nil
-                name, value, i = parse_var(i+1)
+                name, value, i = parse_var(i + 1)
                 obj[name] = value
             else
                 blight.output("[MSDP]: Malformed table")
@@ -34,10 +34,10 @@ local function decode(data)
         while i <= #data do
             local val = data[i]
             if val == MSDP_ARRAY_CLOSE then
-                return array, i+1
+                return array, i + 1
             elseif val == MSDP_VAL then
                 local value = nil
-                value, i = parse_val(i+1)
+                value, i = parse_val(i + 1)
                 table.insert(array, value)
             else
                 blight.output("[MSDP]: Malformed array")
@@ -49,18 +49,18 @@ local function decode(data)
     parse_val = function(index)
         local val = data[index]
         if val == MSDP_TABLE_OPEN then
-            return parse_table(index+1)
+            return parse_table(index + 1)
         elseif val == MSDP_ARRAY_OPEN then
-            return parse_array(index+1)
+            return parse_array(index + 1)
         else
             local value = ""
             local i = index
             while i <= #data do
-                local val = data[i]
-                if val <= MSDP_ARRAY_CLOSE then
+                local byte = data[i]
+                if byte <= MSDP_ARRAY_CLOSE then
                     return value, i
                 else
-                    value = value .. string.char(val)
+                    value = value .. string.char(byte)
                 end
                 i = i + 1
             end
@@ -75,7 +75,7 @@ local function decode(data)
         while i <= #data do
             local val = data[i]
             if val == MSDP_VAL then
-                value, i = parse_val(i+1)
+                value, i = parse_val(i + 1)
                 break
             else
                 name = name .. string.char(val)
@@ -92,7 +92,7 @@ local function decode(data)
         if val == MSDP_VAR then
             local name = ""
             local value = nil
-            name, value, i = parse_var(i+1)
+            name, value, i = parse_var(i + 1)
             content[name] = value
         end
         i = i + 1
@@ -109,7 +109,7 @@ function msdp()
     }
 
     local function string_to_bytes(str)
-        values = {}
+        local values = {}
         for i, v in utf8.codes(str) do
             values[i] = v
         end
@@ -117,14 +117,14 @@ function msdp()
     end
 
     local function concat(t1, t2)
-        for _,v in ipairs(t2) do
+        for _, v in ipairs(t2) do
             table.insert(t1, v)
         end
     end
 
     local function assemble(data)
         local bytes = {}
-        for _,v in ipairs(data) do
+        for _, v in ipairs(data) do
             if type(v) == "string" then
                 concat(bytes, string_to_bytes(v))
             else
@@ -140,7 +140,7 @@ function msdp()
 
     local function store_content(content)
         if content ~= nil then
-            for k,v in pairs(content) do
+            for k, v in pairs(content) do
                 self.content[k] = v
             end
             store.session_write("__msdp_content", json.encode(self.content))
@@ -150,15 +150,15 @@ function msdp()
         end
     end
 
-    local get = function (key)
+    local get = function(key)
         return self.content[key]
     end
 
-    local set = function (var, val)
+    local set = function(var, val)
         msdp_send({ MSDP_VAR, var, MSDP_VAL, val })
     end
 
-    local register = function (value, cb)
+    local register = function(value, cb)
         if not self.update_listeners[value] then
             self.update_listeners[value] = {}
         end
@@ -168,55 +168,53 @@ function msdp()
         end
     end
 
-    local report = function (value)
+    local report = function(value)
         local payload = { MSDP_VAR, "REPORT" }
         if type(value) == "string" then
             table.insert(payload, MSDP_VAL)
             table.insert(payload, value)
             msdp_send(payload)
         elseif type(value) == "table" then
-            for _,val in ipairs(value) do
+            for _, val in ipairs(value) do
                 table.insert(payload, MSDP_VAL)
                 table.insert(payload, val)
             end
             msdp_send(payload)
         end
-
     end
 
-    local unreport = function (value)
+    local unreport = function(value)
         local payload = { MSDP_VAR, "UNREPORT" }
         if type(value) == "string" then
             table.insert(payload, MSDP_VAL)
             table.insert(payload, value)
             msdp_send(payload)
         elseif type(value) == "table" then
-            for _,val in ipairs(value) do
+            for _, val in ipairs(value) do
                 table.insert(payload, MSDP_VAL)
                 table.insert(payload, val)
             end
             msdp_send(payload)
         end
-
     end
 
-    local list = function (list)
+    local list = function(list)
         msdp_send({
-                MSDP_VAR,
-                "LIST",
-                MSDP_VAL,
-                list
-            })
+            MSDP_VAR,
+            "LIST",
+            MSDP_VAL,
+            list,
+        })
     end
 
-    local send = function (var)
+    local send = function(var)
         local payload = { MSDP_VAR, "SEND" }
         if type(var) == "string" then
             table.insert(payload, MSDP_VAL)
             table.insert(payload, var)
             msdp_send(payload)
         elseif type(var) == "table" then
-            for _,v in pairs(var) do
+            for _, v in pairs(var) do
                 table.insert(payload, MSDP_VAL)
                 table.insert(payload, v)
             end
@@ -224,52 +222,52 @@ function msdp()
         end
     end
 
-    local on_ready = function (cb)
+    local on_ready = function(cb)
         table.insert(self.ready_listeners, cb)
         if self.enabled then
             cb()
         end
     end
 
-    local _on_enable = function ()
+    local _on_enable = function()
         mud.add_tag("MSDP")
         self.enabled = true
         store.session_write("__msdp_enabled", tostring(true))
         store_content(nil)
-        for _,list in ipairs({
-                "REPORTABLE_VARIABLES",
-            }) do
+        for _, list_name in ipairs({
+            "REPORTABLE_VARIABLES",
+        }) do
             msdp_send({
-                    MSDP_VAR,
-                    "LIST",
-                    MSDP_VAL,
-                    list
-                })
+                MSDP_VAR,
+                "LIST",
+                MSDP_VAL,
+                list_name,
+            })
         end
-        for _,cb in ipairs(self.ready_listeners) do
+        for _, cb in ipairs(self.ready_listeners) do
             cb()
         end
     end
 
-    local _on_disable = function ()
+    local _on_disable = function()
         mud.remove_tag("MSDP")
         self.enabled = false
         store.session_write("__msdp_enabled", tostring(false))
     end
 
-    local _subneg_recv = function (data)
+    local _subneg_recv = function(data)
         local recv = decode(data)
         store_content(recv)
-        for var,val in pairs(recv) do
+        for var, val in pairs(recv) do
             if self.update_listeners[var] ~= nil then
-                for _,cb in ipairs(self.update_listeners[var]) do
+                for _, cb in ipairs(self.update_listeners[var]) do
                     cb(val)
                 end
             end
         end
     end
 
-    local _reset = function ()
+    local _reset = function()
         self.enabled = false
         store.session_write("__msdp_enabled", tostring(false))
         store_content(nil)
@@ -293,22 +291,22 @@ end
 
 local msdp = msdp()
 core.enable_protocol(MSDP)
-core.on_protocol_enabled(function (proto) 
+core.on_protocol_enabled(function(proto)
     if proto == MSDP then
         msdp._on_enable()
     end
 end)
-core.on_protocol_disabled(function (proto) 
+core.on_protocol_disabled(function(proto)
     if proto == MSDP then
         msdp._on_disable()
     end
 end)
-core.subneg_recv(function (proto, data)
+core.subneg_recv(function(proto, data)
     if proto == MSDP then
         msdp._subneg_recv(data)
     end
 end)
-mud.on_disconnect(function ()
+mud.on_disconnect(function()
     msdp._reset()
 end)
 

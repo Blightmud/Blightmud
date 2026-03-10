@@ -1,5 +1,7 @@
 local function bind(cmd, event)
-	blight.bind(cmd, function () blight.ui(event) end)
+    blight.bind(cmd, function()
+        blight.ui(event)
+    end)
 end
 
 bind("alt-b", "step_word_left")
@@ -24,13 +26,15 @@ bind("pageup", "scroll_up")
 bind("pagedown", "scroll_down")
 
 -- ctrl + up/down
-blight.bind("ctrl-up", function () search.find_up() end)
-blight.bind("ctrl-down", function () search.find_down() end)
+blight.bind("ctrl-up", search.find_up)
+blight.bind("ctrl-down", search.find_down)
 
 -- ctrl + pgup/pgdn
-blight.bind("\x1b[5;5~", function () search.find_last_input() end)
-blight.bind("\x1b[6;5~", function () search.find_next_input() end)
-blight.bind("ctrl-s", function () tts:stop() end)
+blight.bind("\x1b[5;5~", search.find_last_input)
+blight.bind("\x1b[6;5~", search.find_next_input)
+blight.bind("ctrl-s", function()
+    tts:stop()
+end)
 
 -- History navigation
 blight.bind("up", history.previous_command)

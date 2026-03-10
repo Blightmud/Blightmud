@@ -8,14 +8,13 @@ mod.Task = {}
 local Task = mod.Task
 Task.__index = Task
 
-
 function Task.new(callable, ...)
     local ret = setmetatable({}, Task)
 
-    local args = {...}
+    local args = { ... }
 
-	ret.callable = callable
-    ret.args = {...}
+    ret.callable = callable
+    ret.args = { ... }
     ret.coro = coroutine.create(function()
         return callable(table.unpack(args))
     end)
@@ -53,14 +52,14 @@ function Task:start()
     if self.dead then
         error("Attempt to start dead task")
     end
-    tasks[self] = {time = 0}
+    tasks[self] = { time = 0 }
 end
 
 function Task:startLater(time)
     if self.dead then
         error("Attempt to start dead task")
     end
-    tasks[self] = {time = os.time() + time}
+    tasks[self] = { time = os.time() + time }
 end
 
 function Task:kill()
@@ -69,16 +68,18 @@ function Task:kill()
 end
 
 function Task:send(value)
-    self.sentData[#self.sentData+1] = value
+    self.sentData[#self.sentData + 1] = value
 end
 
 function Task:sleep(time)
-    if tasks[self].idle then return end
+    if tasks[self].idle then
+        return
+    end
 
     if tasks[self].time < os.time() then
-        tasks[self] = {time = os.time() + time}
+        tasks[self] = { time = os.time() + time }
     else
-        tasks[self] = {time = tasks[self].time + time}
+        tasks[self] = { time = tasks[self].time + time }
     end
 end
 
@@ -86,11 +87,9 @@ function Task:idle()
     tasks[self].idle = true
 end
 
-
 mod.spawn = Task.spawn
 mod.spawn_later = Task.spawn_later
 mod.yield = coroutine.yield
-
 
 function mod.sleep(time)
     if currentTask == nil then
@@ -108,11 +107,9 @@ function mod.idle()
     coroutine.yield()
 end
 
-
 function mod.get_current()
     return currentTask
 end
-
 
 function mod.get_tasks()
     local ret = {}
@@ -126,11 +123,9 @@ function mod.get_tasks()
     return ret
 end
 
-
 function mod.is_task(obj)
     return getmetatable(obj) == Task
 end
-
 
 local function run_task(task)
     currentTask = task
@@ -143,10 +138,10 @@ local function run_task(task)
     end, "", 500)
     local ret
     if task.started then
-        ret = {coroutine.resume(task.coro, task.sentData)}
+        ret = { coroutine.resume(task.coro, task.sentData) }
         task.sentData = {}
     else
-        ret = {coroutine.resume(task.coro)}
+        ret = { coroutine.resume(task.coro) }
         task.started = true
     end
     debug.sethook()
@@ -166,8 +161,7 @@ local function run_task(task)
     end
 end
 
-
-timer.on_tick(function (millis)
+timer.on_tick(function(millis)
     local somethingRan = false
     for task, timespec in pairs(tasks) do
         if timespec.time < os.time() and not timespec.idle then
@@ -184,6 +178,5 @@ timer.on_tick(function (millis)
         end
     end
 end)
-
 
 return mod

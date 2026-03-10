@@ -18,7 +18,7 @@ local function split(istr, sep)
     if sep == nil then
         sep = "%s"
     end
-    local t={}
+    local t = {}
     for str in string.gmatch(istr, "([^" .. sep .. "]+)") do
         table.insert(t, str)
     end
@@ -45,7 +45,7 @@ local function send_reject()
     core.subneg_send(PROTOCOL, { REJECTED })
 end
 
-core.subneg_recv(function (proto, recv)
+core.subneg_recv(function(proto, recv)
     if proto ~= PROTOCOL or recv[1] ~= REQUEST then
         return
     end
@@ -56,8 +56,8 @@ core.subneg_recv(function (proto, recv)
     local options = utf8.char(unpack(recv))
     blight.debug("TELCHR[received]: " .. options)
 
-    for _,opt in ipairs(split(options, sep)) do
-        for _,accepted in ipairs(ACCEPTED_ENCODINGS) do
+    for _, opt in ipairs(split(options, sep)) do
+        for _, accepted in ipairs(ACCEPTED_ENCODINGS) do
             if lower(opt) == lower(accepted) then
                 send_accept(opt)
                 return
@@ -67,13 +67,13 @@ core.subneg_recv(function (proto, recv)
     send_reject()
 end)
 
-core.on_protocol_enabled(function (proto)
+core.on_protocol_enabled(function(proto)
     if proto == PROTOCOL then
         mud.add_tag("TELCHR")
     end
 end)
 
-core.on_protocol_disabled(function (proto)
+core.on_protocol_disabled(function(proto)
     if proto == PROTOCOL then
         mud.remove_tag("TELCHR")
     end

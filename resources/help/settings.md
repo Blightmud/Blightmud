@@ -79,5 +79,6 @@ Makes the command history slightly more useful.
 
 ***last_command***
 After submitting a command it will be displayed in prompt with a background
-color. Typing anything will clear the "last command". Pressing 'right' or
-'stepping right' will 'activate' the command in the prompt and you can edit it.
+color. Typing anything will clear the "last command". Pressing `right`
+(stepping right) or `tab` will *activate* the command in the prompt and you can
+edit it.

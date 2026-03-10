@@ -244,7 +244,12 @@ impl CommandBuffer {
     }
 
     fn tab_complete(&mut self) {
-        if self.buffer.len() > 1 {
+        if self.buffer.is_empty() {
+            // Actualize the last buffer if the current is empty
+            mem::swap(&mut self.last_buffer, &mut self.buffer);
+            self.cursor_pos = self.buffer.len();
+        } else if self.buffer.len() > 1 {
+            // Otherwise attempt a tab-complete
             if self.completion.is_empty() {
                 let mut completions = Completions::default();
                 let strbuf = self.get_buffer();

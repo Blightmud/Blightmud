@@ -149,8 +149,7 @@ impl CommandBuffer {
         if self.buffer.is_empty() {
             mem::swap(&mut self.last_buffer, &mut self.buffer);
             self.cursor_pos = self.buffer.len();
-        }
-        if self.cursor_pos < self.buffer.len() {
+        } else if self.cursor_pos < self.buffer.len() {
             self.cursor_pos += 1;
         }
     }
@@ -352,6 +351,7 @@ fn parse_key_event(
             if let Ok(mut script) = script.lock() {
                 script.set_prompt_content(buffer.get_buffer(), buffer.get_pos());
             }
+            buffer.last_buffer.clear();
         }
         Key::Delete => buffer.delete_right(),
         _ => {}

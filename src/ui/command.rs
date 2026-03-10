@@ -5,11 +5,11 @@ use crate::{lua::LuaScript, lua::UiEvent, session::Session, SaveData};
 use log::debug;
 use rs_complete::CompletionTree;
 use std::collections::HashSet;
-use std::thread;
 use std::{
     io::stdin,
     sync::{mpsc::Sender, Arc, Mutex},
 };
+use std::{mem, thread};
 use termion::{event::Key, input::TermRead};
 
 #[derive(Default)]
@@ -47,6 +47,8 @@ impl CompletionStepData {
 
 pub struct CommandBuffer {
     buffer: Vec<char>,
+    last_buffer: Vec<char>,
+    last_command_enabled: bool,
     cursor_pos: usize,
     completion_tree: CompletionTree,
     completion: CompletionStepData,
@@ -56,12 +58,18 @@ pub struct CommandBuffer {
 }
 
 impl CommandBuffer {
-    pub fn new(tts_ctrl: Arc<Mutex<TTSController>>, script: Arc<Mutex<LuaScript>>) -> Self {
+    pub fn new(
+        tts_ctrl: Arc<Mutex<TTSController>>,
+        script: Arc<Mutex<LuaScript>>,
+        last_command_enabled: bool,
+    ) -> Self {
         let mut completion = CompletionTree::with_inclusions(&['/', '_']);
         completion.set_min_word_len(3);
 
         Self {
             buffer: vec![],
+            last_buffer: vec![],
+            last_command_enabled,
             cursor_pos: 0,
             completion_tree: completion,
             completion: CompletionStepData::default(),
@@ -83,11 +91,30 @@ impl CommandBuffer {
         &self.prompt_mask
     }
 
+    pub fn get_last_command_mask(&self) -> PromptMask {
+        let mut mask = PromptMask::new();
+        mask.insert(0, "\x1b[44m".to_string()); // BG blue
+        mask.insert(self.last_buffer.len() as i32, "\x1b[0m".to_string());
+        mask
+    }
+
+    pub fn enable_last_command(&mut self, enabled: bool) {
+        self.last_command_enabled = enabled;
+        if !enabled {
+            self.last_buffer.clear();
+        }
+    }
+
     pub fn get_pos(&self) -> usize {
         self.cursor_pos
     }
 
     fn submit(&mut self) -> String {
+        // If we have no buffer then swap in the last buffer
+        if self.last_command_enabled && self.buffer.is_empty() {
+            mem::swap(&mut self.last_buffer, &mut self.buffer);
+        }
+
         // Insert history
         let cmd = if !self.buffer.is_empty() {
             let command = self.get_buffer();
@@ -97,7 +124,14 @@ impl CommandBuffer {
             String::new()
         };
 
-        self.buffer.clear();
+        if self.last_command_enabled {
+            // Clear the last buffer and swap them
+            self.last_buffer.clear();
+            mem::swap(&mut self.last_buffer, &mut self.buffer);
+        } else {
+            self.buffer.clear();
+        }
+
         self.clear_mask();
         self.cursor_pos = 0;
 
@@ -111,6 +145,11 @@ impl CommandBuffer {
     }
 
     fn step_right(&mut self) {
+        // Actualize the last buffer if the current is empty
+        if self.buffer.is_empty() {
+            mem::swap(&mut self.last_buffer, &mut self.buffer);
+            self.cursor_pos = self.buffer.len();
+        }
         if self.cursor_pos < self.buffer.len() {
             self.cursor_pos += 1;
         }
@@ -294,6 +333,7 @@ fn parse_key_event(
             if let Ok(mut script) = script.lock() {
                 script.set_prompt_content(buffer.get_buffer(), buffer.get_pos());
             }
+            buffer.last_buffer.clear();
         }
         Key::Ctrl('l') => writer.send(Event::Redraw).unwrap(),
         Key::Ctrl('c') => {
@@ -471,12 +511,26 @@ pub fn spawn_input_thread(session: Session) -> thread::JoinHandle<()> {
                                     luascript
                                         .set_prompt_content(buffer.get_buffer(), buffer.get_pos());
                                 }
-                                writer
-                                    .send(Event::UserInputBuffer(
-                                        buffer.get_buffer(),
-                                        buffer.get_pos(),
-                                    ))
-                                    .unwrap();
+
+                                // If 'last command' is applicable then render it.
+                                if buffer.buffer.is_empty() && !buffer.last_buffer.is_empty() {
+                                    debug!("Last command render");
+                                    let mask = buffer.get_last_command_mask();
+                                    writer
+                                        .send(Event::UserInputBuffer(
+                                            mask.mask_buffer(&buffer.last_buffer),
+                                            0,
+                                        ))
+                                        .unwrap();
+                                } else {
+                                    debug!("No last command render");
+                                    writer
+                                        .send(Event::UserInputBuffer(
+                                            buffer.get_buffer(),
+                                            buffer.get_pos(),
+                                        ))
+                                        .unwrap();
+                                }
                             }
                         }
                     }

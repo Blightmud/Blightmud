@@ -18,6 +18,8 @@ jobs:
           fetch-depth: 0
       - name: Install deps
         run: sudo apt-get update && sudo apt-get install libasound-dev libudev-dev pkg-config rpm
+      - name: Set version from tag
+        run: sed -i "s/^version = \"0.0.0\"/version = \"${GITHUB_REF#refs/tags/v}\"/" Cargo.toml
       - name: Install cargo-deb
         run: cargo install cargo-deb || true
       - name: Install cargo-rpm

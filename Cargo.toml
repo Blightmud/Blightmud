@@ -3,7 +3,7 @@ members = ["crates/pulldown-cmark-blightmud"]
 
 [package]
 name = "blightmud"
-version = "5.4.0"
+version = "0.0.0" # Placeholder. Will be overridden in build.rs from git tags if available
 description = "A terminal mud-client"
 readme = "README.md"
 license = "GPL3"

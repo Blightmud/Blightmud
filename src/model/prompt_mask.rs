@@ -1,6 +1,6 @@
 use mlua::{Integer as LuaInt, Lua, Result as LuaResult, String as LuaString, Table as LuaTable};
 use std::collections::BTreeMap;
-use std::ops::{AddAssign, Deref};
+use std::ops::{AddAssign, Deref, DerefMut};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct PromptMask {
@@ -43,6 +43,12 @@ impl Deref for PromptMask {
 
     fn deref(&self) -> &Self::Target {
         &self.mask
+    }
+}
+
+impl DerefMut for PromptMask {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.mask
     }
 }
 

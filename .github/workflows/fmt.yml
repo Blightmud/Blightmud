@@ -38,6 +38,16 @@ jobs:
         run: cargo check --locked
       - name: Clippy (all features)
         run: cargo clippy --locked
+  lua-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check resources/lua/
+
   validate-nightly:
     runs-on: ubuntu-latest
     steps:

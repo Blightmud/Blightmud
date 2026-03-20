@@ -42,15 +42,16 @@ Available settings are:
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
                         (See additional details below)
 - `save_history`        Save your last 100 commands to disk.
-- `command_search`      Makes command history context aware (See info below for details)
-- `smart_history`       Enable smart command history (See info below for details)
+- `command_search`      Makes command history context aware (See info below for details).
+- `smart_history`       Enable smart command history (See info below for details).
 - `confirm_quit`        Ask for confirmation before quitting Blightmud when pressing `ctrl-c`.
-- `scroll_split`        Split screen when scrolling
-- `scroll_lock`         Set scroll position at start of text when showing long help files
-- `tts_enabled`         Enable tts (only if compiled with TTS)
-- `reader_mode`         Switches to a screen reader friendly TUI. (Does not support `status area`.)
-- `hide_topbar`         Toggles the topbar
+- `scroll_split`        Split screen when scrolling.
+- `scroll_lock`         Set scroll position at start of text when showing long help files.
+- `tts_enabled`         Enable tts (only if compiled with TTS).
+- `reader_mode`         Switches to a screen reader friendly TUI. (Does not support `status area`).
+- `hide_topbar`         Toggles the topbar.
 - `echo_input`          Toggles whether user input is echoed on-screen with a `> ` prefix.
+- `last_command`        Toggles whether last command is persisted for easy repeat submission.
 
 ##
 
@@ -75,3 +76,9 @@ Makes the command history slightly more useful.
 - A command will never appear twice in the history
 - First history command will always be the last typed command
 - Entering a previously entered command will shift it to the front of the history.
+
+***last_command***
+After submitting a command it will be displayed in prompt with a background
+color. Typing anything will clear the "last command". Pressing `right`
+(stepping right) or `tab` will *activate* the command in the prompt and you can
+edit it.

@@ -59,7 +59,9 @@ function Trigger:check_line(line)
     if not self.enabled then
         return
     end
-    if line:prompt() ~= self.prompt then return end
+    if line:prompt() ~= self.prompt then
+        return
+    end
     local str
     if self.raw then
         str = line:raw()
@@ -78,15 +80,15 @@ function Trigger:check_line(line)
         end
 
         local startTime = os.time()
-        debug.sethook(function ()
+        debug.sethook(function()
             if os.time() > startTime + 2 then
                 debug.sethook()
                 error("Trigger callback has been running for +2 seconds. Aborting", 2)
             end
         end, "", 500)
-    self.callback(matches, line)
-    debug.sethook()
-end
+        self.callback(matches, line)
+        debug.sethook()
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -95,8 +97,7 @@ end
 
 local next_group_id = 2
 
-mod.TriggerGroup = {
-}
+mod.TriggerGroup = {}
 local TriggerGroup = mod.TriggerGroup
 TriggerGroup.__index = TriggerGroup
 
@@ -174,12 +175,12 @@ end
 --------------------------------------------------------------------------------
 
 mod.trigger_groups = {
-    TriggerGroup.new(1)
+    TriggerGroup.new(1),
 }
 local user_trigger_groups = mod.trigger_groups
 
 mod.system_trigger_groups = {
-    TriggerGroup.new(1)
+    TriggerGroup.new(1),
 }
 local system_trigger_groups = mod.system_trigger_groups
 
@@ -197,13 +198,17 @@ end
 function mod.get(id)
     for _, group in pairs(get_trigger_groups()) do
         local trigger = group:get(id)
-        if trigger then return trigger end
+        if trigger then
+            return trigger
+        end
     end
     return nil
 end
 
 function mod.get_group(id)
-    if not id then id = 1 end
+    if not id then
+        id = 1
+    end
     return get_trigger_groups()[id]
 end
 

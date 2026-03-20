@@ -21,6 +21,29 @@ fn main() {
     };
     println!("cargo:rustc-env=GIT_TAG={git_tag}");
 
+    let latest_version_tag = if let Ok(output) = Command::new("git")
+        .args([
+            "describe",
+            "--tags",
+            "--match",
+            "v[0-9]*.[0-9]*.[0-9]*",
+            "--abbrev=0",
+        ])
+        .output()
+    {
+        String::from_utf8(output.stdout).unwrap_or_default()
+    } else {
+        String::new()
+    };
+    let git_version = latest_version_tag
+        .trim()
+        .strip_prefix('v')
+        .unwrap_or("")
+        .to_string();
+    if !git_version.is_empty() {
+        println!("cargo:rustc-env=CARGO_PKG_VERSION={git_version}");
+    }
+
     if git_tag.is_empty() {
         let git_describe =
             if let Ok(output) = Command::new("git").args(["describe", "--tags"]).output() {

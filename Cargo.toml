@@ -3,7 +3,7 @@ members = ["crates/pulldown-cmark-blightmud"]
 
 [package]
 name = "blightmud"
-version = "5.3.1"
+version = "0.0.0" # Placeholder. Will be overridden in build.rs from git tags if available
 description = "A terminal mud-client"
 readme = "README.md"
 license = "GPL3"
@@ -52,7 +52,7 @@ hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }
 rustls = { version = "0.23", default-features = false, features = ['ring', 'tls12', 'std'] }
 webpki-roots = "1.0"
 reqwest = { version = "0.12.28", default-features = false, features = ['blocking', '__rustls-ring', 'json'] }
-socket2 = { version = "0.6.0", features = ['all'] }
+socket2 = { version = "0.6.3", features = ['all'] }
 mio = { version = "1.1", features = ["os-poll", "net"] }
 
 encoding_rs = "0.8"
@@ -68,6 +68,13 @@ env_logger = "0.11.9"
 # fixes debug profile build errs from warnings of the form:
 #   warning _FORTIFY_SOURCE requires compiling with optimization (-O)
 opt-level = 3
+
+[package.metadata.deb]
+assets = [
+    ["target/release/blightmud", "usr/bin/blightmud", "755"],
+    ["resources/lua/types/blightmud.d.lua", "usr/share/blightmud/lua/types/blightmud.d.lua", "644"],
+    ["resources/lua/types/luarc.json", "usr/share/blightmud/luarc.json", "644"],
+]
 
 [package.metadata.rpm]
 package = "blightmud"

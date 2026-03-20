@@ -89,62 +89,6 @@ enum EscapeState {
     EscapeIntermediate,
 }
 
-/// Returns true if the string contains at least one printable (non-escape) character.
-fn has_printable_chars(s: &str) -> bool {
-    let mut state = EscapeState::Ground;
-    for c in s.chars() {
-        match state {
-            EscapeState::Ground => {
-                if c == '\x1b' {
-                    state = EscapeState::Escape;
-                } else if !c.is_whitespace() {
-                    return true;
-                }
-            }
-            EscapeState::Escape => match c {
-                '[' => state = EscapeState::Csi,
-                ']' => state = EscapeState::Osc,
-                'P' | 'X' | '^' | '_' => state = EscapeState::StringSeq,
-                '(' | ')' | '*' | '+' | '%' => state = EscapeState::EscapeIntermediate,
-                _ => state = EscapeState::Ground,
-            },
-            EscapeState::EscapeIntermediate => state = EscapeState::Ground,
-            EscapeState::Csi => {
-                if (c as u32) >= 0x40 && (c as u32) <= 0x7E {
-                    state = EscapeState::Ground;
-                }
-            }
-            EscapeState::Osc => {
-                if c == '\x07' {
-                    state = EscapeState::Ground;
-                } else if c == '\x1b' {
-                    state = EscapeState::OscEscSeen;
-                }
-            }
-            EscapeState::OscEscSeen => {
-                state = if c == '\\' {
-                    EscapeState::Ground
-                } else {
-                    EscapeState::Osc
-                };
-            }
-            EscapeState::StringSeq => {
-                if c == '\x1b' {
-                    state = EscapeState::StringEscSeen;
-                }
-            }
-            EscapeState::StringEscSeen => {
-                state = if c == '\\' {
-                    EscapeState::Ground
-                } else {
-                    EscapeState::StringSeq
-                };
-            }
-        }
-    }
-    false
-}
-
 pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {
     let mut lines: Vec<&str> = vec![];
 
@@ -273,10 +217,8 @@ pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {
             }
         }
 
-        // Push the rest of the line if there is anything left with printable content.
-        // Trailing escape-only segments (e.g. an OSC 8 close sequence) are not pushed
-        // as separate lines to avoid producing blank visual lines.
-        if last_cut < line.len() && has_printable_chars(&line[last_cut..]) {
+        // Push the rest of the line if there is anything left
+        if last_cut < line.len() && !line[last_cut..].trim().is_empty() {
             lines.push(&line[last_cut..]);
         }
     }
@@ -335,8 +277,8 @@ mod tests {
         // "click here" = 10 printable chars; at width 5 it must wrap.
         let lines = wrap_line(link, 5);
         // 2 pieces: OSC-open + "click", " here" — trailing OSC-close escape bytes
-        // are not emitted as a separate segment (zero printable width).
-        assert_eq!(lines.len(), 2);
+        // are emitted as a separate segment (zero printable width).
+        assert_eq!(lines.len(), 3);
         assert!(lines[0].ends_with("click"));
         assert!(lines[1].contains("here"));
     }

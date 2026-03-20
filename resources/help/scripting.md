@@ -52,7 +52,7 @@ that provides autocomplete, type checking and inline documentation while writing
 scripts. To enable it, place a `.luarc.json` in your script workspace root that
 points LuaLS at the definitions.
 
-**If installed via RPM or DEB:**
+**If installed via RPM/DEB or AUR:**
 ```
 cp /usr/share/blightmud/luarc.json /path/to/your/scripts/.luarc.json
 ```

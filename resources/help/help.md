@@ -1,7 +1,7 @@
 # Help
 
-`/help <topic>`               : Get more information on a topic
-`/help <word>`                : Search all topics for `<word>`
+- `/help <topic>`               : Get more information on a topic
+- `/help <word>`                : Search all topics for `<word>`
 
 Available topics:
 

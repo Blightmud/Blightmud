@@ -22,6 +22,11 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 rm -rf %{buildroot}
 mkdir -p %{buildroot}
 cp -a * %{buildroot}
+mkdir -p %{buildroot}%{_datadir}/blightmud/lua/types
+install -m 644 resources/lua/types/blightmud.d.lua \
+    %{buildroot}%{_datadir}/blightmud/lua/types/blightmud.d.lua
+install -m 644 resources/lua/types/luarc.json \
+    %{buildroot}%{_datadir}/blightmud/luarc.json
 
 %clean
 rm -rf %{buildroot}
@@ -29,3 +34,4 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/*
+%{_datadir}/blightmud/

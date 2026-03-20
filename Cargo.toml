@@ -69,6 +69,13 @@ env_logger = "0.11.9"
 #   warning _FORTIFY_SOURCE requires compiling with optimization (-O)
 opt-level = 3
 
+[package.metadata.deb]
+assets = [
+    ["target/release/blightmud", "usr/bin/blightmud", "755"],
+    ["resources/lua/types/blightmud.d.lua", "usr/share/blightmud/lua/types/blightmud.d.lua", "644"],
+    ["resources/lua/types/luarc.json", "usr/share/blightmud/luarc.json", "644"],
+]
+
 [package.metadata.rpm]
 package = "blightmud"
 

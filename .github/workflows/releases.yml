@@ -67,7 +67,10 @@ jobs:
         id: get_version
         run: echo VERSION=${GITHUB_REF#refs/tags/} >> $GITHUB_OUTPUT
       - name: Package Binary
-        run: cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip blightmud
+        run: |
+          mkdir -p target/release/lua/types
+          cp resources/lua/types/blightmud.d.lua target/release/lua/types/
+          cd target/release && zip -r blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip blightmud lua/
       - name: Create/Update release
         uses: ncipollo/release-action@v1
         with:

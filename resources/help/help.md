@@ -1,16 +1,52 @@
 # Help
 
 `/help <topic>`               : Get more information on a topic
+`/help <word>`                : Search all topics for `<word>`
 
 Available topics:
 
-- `config_scripts`
-- `scripting`
-- `tts`
-- `logging`
-- `settings`
-- `search`
-- `scrolling`
+- aliases
+- audio
+- bindings
+- blight
+- changes
+- colors
+- config_scripts
+- core
+- fs
+- gmcp
+- help
+- history
+- json
+- line
+- logging
+- log
+- msdp
+- mssp
+- mud
+- no_tts
+- plugin_developer
+- plugin
+- prompt_mask
+- prompt
+- regex
+- scripte_example
+- scripting
+- script
+- scrolling
+- search
+- servers
+- settings
+- socket
+- spellcheck
+- status_area
+- storage
+- tasks
+- timers
+- trigger
+- tts
+- ttype
+- welcome
 
 Helpfiles can also be viewed [online](https://github.com/Blightmud/Blightmud/tree/master/resources/help)
 

@@ -57,6 +57,11 @@ points LuaLS at the definitions.
 cp /usr/share/blightmud/luarc.json /path/to/your/scripts/.luarc.json
 ```
 
+**If installed via Homebrew:**
+```
+cp $(brew --prefix)/share/blightmud/luarc.json /path/to/your/scripts/.luarc.json
+```
+
 **If installed via `cargo install` or compiled from source:**
 The type definitions are not installed to a system path. Either:
 - Clone the repository and point `workspace.library` at `resources/lua/types/`

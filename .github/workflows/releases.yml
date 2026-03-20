@@ -31,7 +31,11 @@ jobs:
         run: |
           ls -1 target/debian/*.deb | awk '{print "deb_path="$1}' >> $GITHUB_OUTPUT
       - name: Package RPM
-        run: cargo rpm build
+        run: |
+          mkdir -p target/release/rpmbuild/SOURCES
+          cp resources/lua/types/blightmud.d.lua target/release/rpmbuild/SOURCES/
+          cp resources/lua/types/luarc.json target/release/rpmbuild/SOURCES/
+          cargo rpm build
       - name: Set .rpm path
         id: rpm_path
         run: |

@@ -88,3 +88,66 @@ jobs:
         with:
           name: blightmud-macos
           path: target/release/blightmud-${{ steps.get_version.outputs.VERSION }}-macos.zip
+
+  update_homebrew:
+    name: Update Homebrew formula
+    needs: build_macos_latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version
+        id: version
+        run: |
+          echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: blightmud-macos
+
+      - name: Compute sha256
+        id: sha256
+        run: |
+          echo "SHA256=$(sha256sum blightmud-${{ steps.version.outputs.TAG }}-macos.zip | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
+      - name: Checkout homebrew tap
+        uses: actions/checkout@v6
+        with:
+          repository: Blightmud/homebrew-blightmud
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-blightmud
+
+      - name: Update formula and push
+        run: |
+          cd homebrew-blightmud
+          sed -i 's/  version ".*"/  version "${{ steps.version.outputs.VERSION }}"/' Formula/blightmud.rb
+          sed -i 's/  sha256 ".*"/  sha256 "${{ steps.sha256.outputs.SHA256 }}"/' Formula/blightmud.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "Version ${{ steps.version.outputs.VERSION }}"
+          git push
+
+  update_aur:
+    name: Update AUR package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Fetch current PKGBUILD from AUR
+        run: git clone https://aur.archlinux.org/blightmud.git pkgbuild
+
+      - name: Bump pkgver
+        run: sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.VERSION }}/" pkgbuild/PKGBUILD
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: blightmud
+          pkgbuild_path: ./pkgbuild/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_KEY }}
+          commit_message: Version ${{ steps.version.outputs.VERSION }}
+          updpkgsums: true

@@ -32,6 +32,33 @@ impl UserData for Line {
             Ok(this.inner.flags.gag)
         });
         methods.add_method_mut(
+            "tag_color",
+            |_, this, color: Option<String>| -> mlua::Result<String> {
+                if let Some(color) = color {
+                    this.inner.tag.color = color;
+                }
+                Ok(this.inner.tag.color.clone())
+            },
+        );
+        methods.add_method_mut(
+            "tag_key",
+            |_, this, key: Option<String>| -> mlua::Result<String> {
+                if let Some(key) = key {
+                    this.inner.tag.key = key;
+                }
+                Ok(this.inner.tag.key.clone())
+            },
+        );
+        methods.add_method_mut(
+            "tag_symbol",
+            |_, this, sym: Option<char>| -> mlua::Result<char> {
+                if let Some(sym) = sym {
+                    this.inner.tag.symbol = sym;
+                }
+                Ok(this.inner.tag.symbol)
+            },
+        );
+        methods.add_method_mut(
             "tts_gag",
             |_, this, gag: Option<bool>| -> mlua::Result<bool> {
                 if let Some(gag) = gag {
@@ -244,6 +271,54 @@ mod test_lua_line {
         assert_lua_bool!("test_line:matched()", true);
         run_lua!("test_line:matched(false)");
         assert_lua_bool!("test_line:matched()", false);
+    }
+
+    #[test]
+    fn test_tag_color() {
+        test_lua!("test_line" => test_line());
+
+        assert_lua_string!("test_line:tag_color()", "");
+        run_lua!("test_line:tag_color('red')");
+        assert_lua_string!("test_line:tag_color()", "red");
+
+        let line: Line = global!("test_line");
+        assert_eq!(line.inner.tag.color, "red");
+    }
+
+    #[test]
+    fn test_tag_key() {
+        test_lua!("test_line" => test_line());
+
+        assert_lua_string!("test_line:tag_key()", "");
+        run_lua!("test_line:tag_key('mykey')");
+        assert_lua_string!("test_line:tag_key()", "mykey");
+
+        let line: Line = global!("test_line");
+        assert_eq!(line.inner.tag.key, "mykey");
+    }
+
+    #[test]
+    fn test_tag_color_does_not_affect_key() {
+        test_lua!("test_line" => test_line());
+
+        run_lua!("test_line:tag_color('blue')");
+        run_lua!("test_line:tag_key('k')");
+
+        let line: Line = global!("test_line");
+        assert_eq!(line.inner.tag.color, "blue");
+        assert_eq!(line.inner.tag.key, "k");
+    }
+
+    #[test]
+    fn test_tag_symbol() {
+        test_lua!("test_line" => test_line());
+
+        assert_lua_string!("test_line:tag_symbol()", "┃");
+        run_lua!("test_line:tag_symbol('!')");
+        assert_lua_string!("test_line:tag_symbol()", "!");
+
+        let line: Line = global!("test_line");
+        assert_eq!(line.inner.tag.symbol, '!');
     }
 
     #[test]

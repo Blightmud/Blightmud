@@ -233,13 +233,13 @@ impl UserInterface for SplitScreen {
         if line.flags.screen_clear {
             self.clear_output_area().ok();
         }
-        if let Some(print_line) = line.print_line() {
+        if let Some(print_line) = line.tagged_line() {
             if !line.is_utf8() || print_line.trim().is_empty() {
-                self.print_line(print_line);
+                self.print_line(&print_line);
             } else {
                 let mut count = 0;
                 let cur_line = self.history.len();
-                for l in wrap_line(print_line, self.width as usize) {
+                for l in wrap_line(&print_line, self.width as usize) {
                     self.print_line(l);
                     count += 1;
                 }
@@ -614,7 +614,8 @@ impl SplitScreen {
     }
 
     fn redraw_prompt(&mut self) {
-        let prompt_line = self.mud_prompt.print_line().unwrap_or("");
+        let prompt_line = self.mud_prompt.tagged_line().unwrap_or_default();
+        let prompt_line = prompt_line.as_str();
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,

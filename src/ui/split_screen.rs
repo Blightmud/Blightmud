@@ -5,7 +5,7 @@ use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{Settings, HIDE_TOPBAR};
 use crate::{
-    model::Line, model::Regex, model::ToLine, ui::ansi::*,
+    model::Line, model::Regex, model::TagMask, model::ToLine, ui::ansi::*,
     ui::printable_chars::PrintableCharsIterator,
 };
 use anyhow::Result;
@@ -180,6 +180,7 @@ pub struct SplitScreen {
     prompt_input: String,
     prompt_input_pos: usize,
     show_tags: bool,
+    tag_mask: TagMask,
 }
 
 impl UserInterface for SplitScreen {
@@ -369,7 +370,7 @@ impl UserInterface for SplitScreen {
         self.redraw_prompt();
 
         let output_range = self.output_range();
-        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
+        let output_start_index = self.history.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
             for i in 0..output_range {
@@ -385,7 +386,7 @@ impl UserInterface for SplitScreen {
                 )?;
             }
         } else {
-            for i in 0..self.history.inner.len() {
+            for i in 0..self.history.len() {
                 let rendered = self.render_history_line(i);
                 write!(
                     self.screen,
@@ -426,7 +427,7 @@ impl UserInterface for SplitScreen {
         self.scroll_data.clamp(&self.history);
         if self.scroll_data.active {
             let output_range = self.scroll_range() as i32;
-            let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
+            let max_start_index: i32 = self.history.len() as i32 - output_range;
             let new_start_index = self.scroll_data.pos + 5;
             if new_start_index >= max_start_index as usize {
                 self.reset_scroll()?;
@@ -445,7 +446,7 @@ impl UserInterface for SplitScreen {
     fn scroll_to(&mut self, row: usize) -> Result<()> {
         self.scroll_data.clamp(&self.history);
         if self.history.len() > self.scroll_range() as usize {
-            let max_start_index = self.history.inner.len() as i32 - self.scroll_range() as i32;
+            let max_start_index = self.history.len() as i32 - self.scroll_range() as i32;
             if max_start_index > 0 && row < max_start_index as usize {
                 self.init_scroll()?;
                 self.scroll_data.pos = row;
@@ -458,7 +459,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn scroll_top(&mut self) -> Result<()> {
-        if self.history.inner.len() as u16 >= self.output_line {
+        if self.history.len() as u16 >= self.output_line {
             self.init_scroll()?;
             self.scroll_data.pos = 0;
             self.draw_scroll()?;
@@ -469,10 +470,10 @@ impl UserInterface for SplitScreen {
     fn scroll_up(&mut self) -> Result<()> {
         self.scroll_data.clamp(&self.history);
         let output_range: usize = self.scroll_range() as usize;
-        if self.history.inner.len() > output_range {
+        if self.history.len() > output_range {
             if !self.scroll_data.active {
                 self.init_scroll()?;
-                self.scroll_data.pos = self.history.inner.len() - output_range;
+                self.scroll_data.pos = self.history.len() - output_range;
             }
             self.scroll_data.pos -= self.scroll_data.pos.min(5);
             self.draw_scroll()?;
@@ -549,6 +550,12 @@ impl UserInterface for SplitScreen {
         self.setup()
     }
 
+    fn set_tag_mask(&mut self, mask: TagMask) {
+        self.tag_mask = mask.clone();
+        self.history.set_tag_mask(mask);
+        self.setup().ok();
+    }
+
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
         self.status_area.redraw_line(&mut self.screen, line)?;
@@ -604,11 +611,12 @@ impl SplitScreen {
             prompt_input: String::new(),
             prompt_input_pos: 0,
             show_tags: false,
+            tag_mask: TagMask::default(),
         })
     }
 
     fn render_history_line(&self, index: usize) -> String {
-        let line = &self.history.inner[index];
+        let line = self.history.get(index);
         if self.show_tags {
             line.tagged_line().unwrap_or_default()
         } else {
@@ -617,6 +625,11 @@ impl SplitScreen {
     }
 
     fn print_line(&mut self, line: Line) {
+        let masked = line.is_masked(&self.tag_mask);
+        self.history.append_line(line.clone());
+        if masked {
+            return;
+        }
         let rendered = if self.show_tags {
             line.tagged_line().unwrap_or_default()
         } else {
@@ -632,7 +645,6 @@ impl SplitScreen {
             )
             .unwrap();
         }
-        self.history.append_line(line);
     }
 
     fn clear_prompt(&mut self) {
@@ -745,7 +757,7 @@ impl SplitScreen {
         let output_range = self.scroll_range();
         for i in 0..output_range {
             let index = self.scroll_data.pos + i as usize;
-            if index >= self.history.inner.len() {
+            if index >= self.history.len() {
                 // History has been trimmed during scrolling
                 // TODO: It should be possible to lock history during render perhaps?
                 // The lock would prevent the drain function until scrolls is done.
@@ -801,7 +813,7 @@ mod screen_test {
 
         let mut history = History::new();
         history.append(line);
-        let content: Vec<&str> = history.inner.iter().map(|l| l.line()).collect();
+        let content: Vec<&str> = history.iter().map(|l| l.line()).collect();
         assert_eq!(
             content,
             vec![
@@ -846,5 +858,81 @@ mod screen_test {
         assert_eq!(history.len(), 19);
         history.append("test");
         assert_eq!(history.len(), 10);
+    }
+
+    // Tests for print_line tag mask behaviour. SplitScreen::new requires a real
+    // terminal so we exercise the behaviour through History directly, which is
+    // what print_line delegates to.
+
+    #[test]
+    fn test_print_line_masked_stored_in_inner_not_visible() {
+        // Simulates print_line: always calls history.append_line, skips
+        // rendering when masked. Verify masked line lands in inner but not
+        // visible.
+        let mut history = History::new();
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+
+        let mut masked = Line::from("combat hit");
+        masked.tag.key = "combat".to_string();
+        // print_line always appends regardless of mask
+        history.append_line(masked);
+        history.append_line(Line::from("normal line"));
+
+        assert_eq!(history.len(), 1); // only unmasked in visible
+        assert_eq!(history.get(0).clean_line(), "normal line");
+    }
+
+    #[test]
+    fn test_print_line_unmasked_line_visible() {
+        let mut history = History::new();
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+
+        history.append_line(Line::from("system message"));
+        assert_eq!(history.len(), 1);
+        assert_eq!(history.get(0).clean_line(), "system message");
+    }
+
+    #[test]
+    fn test_set_tag_mask_retroactive() {
+        // Simulates set_tag_mask on SplitScreen: history is rebuilt from inner
+        // so previously appended lines are filtered retroactively.
+        let mut history = History::new();
+
+        let mut combat = Line::from("combat hit");
+        combat.tag.key = "combat".to_string();
+        history.append_line(combat);
+        history.append_line(Line::from("normal line"));
+        assert_eq!(history.len(), 2);
+
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(history.len(), 1);
+        assert_eq!(history.get(0).clean_line(), "normal line");
+    }
+
+    #[test]
+    fn test_clear_tag_mask_restores_all_lines() {
+        let mut history = History::new();
+        let mut combat = Line::from("combat hit");
+        combat.tag.key = "combat".to_string();
+        history.append_line(combat);
+        history.append_line(Line::from("normal line"));
+
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(history.len(), 1);
+
+        history.set_tag_mask(TagMask::default());
+        assert_eq!(history.len(), 2);
     }
 }

@@ -283,6 +283,24 @@ function BlightLib.status_line(index, line) end
 ---@return boolean
 function BlightLib.show_tags(show) end
 
+---Filters output lines by tag color. Lines whose tag color matches will be hidden.
+---Pass nil to clear the color filter.
+---@param color? string
+function BlightLib.filter_tag_color(color) end
+
+---Filters output lines by tag key. Lines whose tag key matches will be hidden.
+---Pass nil to clear the key filter.
+---@param key? string
+function BlightLib.filter_tag_key(key) end
+
+---Filters output lines by tag symbol. Lines whose tag symbol matches will be hidden.
+---Pass nil to clear the symbol filter.
+---@param symbol? string
+function BlightLib.filter_tag_symbol(symbol) end
+
+---Clears all active tag filters.
+function BlightLib.filter_tag_reset() end
+
 ---Returns the application name and version as two separate values.
 ---@return string, string
 function BlightLib.version() end

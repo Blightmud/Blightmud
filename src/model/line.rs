@@ -26,6 +26,13 @@ pub struct Tag {
     pub color: String,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TagMask {
+    pub symbol: Option<char>,
+    pub key: Option<String>,
+    pub color: Option<String>,
+}
+
 impl Default for Tag {
     fn default() -> Self {
         Self {
@@ -78,6 +85,18 @@ impl Line {
             line.as_bytes().into()
         } else {
             raw.into()
+        }
+    }
+
+    pub fn is_masked(&self, mask: &TagMask) -> bool {
+        if let Some(color) = &mask.color {
+            self.tag.color == *color
+        } else if let Some(key) = &mask.key {
+            self.tag.key == *key
+        } else if let Some(symbol) = mask.symbol {
+            self.tag.symbol == symbol
+        } else {
+            false
         }
     }
 }
@@ -536,5 +555,70 @@ mod test_line {
         let mut line = Line::from("hello");
         line.flags.gag = true;
         assert_eq!(line.tagged_line(), None);
+    }
+
+    #[test]
+    fn test_is_masked_empty_mask() {
+        let line = Line::from("hello");
+        let mask = super::TagMask::default();
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_key() {
+        let mut line = Line::from("hello");
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_key_no_match() {
+        let mut line = Line::from("hello");
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            key: Some("loot".to_string()),
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_color() {
+        let mut line = Line::from("hello");
+        line.tag.color = "\x1b[31m".to_string();
+        let mask = super::TagMask {
+            color: Some("\x1b[31m".to_string()),
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_symbol() {
+        let mut line = Line::from("hello");
+        line.tag.symbol = '!';
+        let mask = super::TagMask {
+            symbol: Some('!'),
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_color_takes_priority_over_key() {
+        // When color is set in mask, key is not checked
+        let mut line = Line::from("hello");
+        line.tag.color = "\x1b[32m".to_string();
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            color: Some("\x1b[31m".to_string()), // different color — no match
+            key: Some("combat".to_string()),     // key would match, but color is checked first
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
     }
 }

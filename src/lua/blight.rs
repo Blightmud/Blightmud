@@ -1,6 +1,9 @@
 use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::{Event, QuitMethod};
-use crate::{model::Line, PROJECT_NAME, VERSION};
+use crate::{
+    model::{Line, TagMask},
+    PROJECT_NAME, VERSION,
+};
 use log::debug;
 use mlua::{
     AnyUserData, FromLua, Function, Result as LuaResult, Table, UserData, UserDataMethods, Variadic,
@@ -16,6 +19,7 @@ pub struct Blight {
     pub core_mode: bool,
     pub reader_mode: bool,
     pub _tts_enabled: bool,
+    tag_mask: TagMask,
 }
 
 impl Blight {
@@ -28,6 +32,7 @@ impl Blight {
             core_mode: false,
             reader_mode: false,
             _tts_enabled: false,
+            tag_mask: TagMask::default(),
         }
     }
 
@@ -187,6 +192,42 @@ impl UserData for Blight {
                 Ok(ctx.named_registry_value(SHOW_TAGS).unwrap_or(false))
             },
         );
+        methods.add_function("filter_tag_color", |ctx, color: Option<String>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask.color = color;
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("filter_tag_key", |ctx, key: Option<String>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask.key = key;
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("filter_tag_symbol", |ctx, symbol: Option<String>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask.symbol = symbol.and_then(|s| s.chars().next());
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("filter_tag_reset", |ctx, ()| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask = TagMask::default();
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
         methods.add_function("find_backward", |ctx, re: Regex| {
             let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;

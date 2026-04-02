@@ -134,6 +134,35 @@ end)
 
 ##
 
+***blight.filter_tag_color(color)***
+Filter output lines by tag color. Lines with a matching tag color will be hidden.
+Pass `nil` to clear the color filter.
+
+- `color`  The tag color string to filter on, or `nil` to clear.
+
+##
+
+***blight.filter_tag_key(key)***
+Filter output lines by tag key. Lines with a matching tag key will be hidden.
+Pass `nil` to clear the key filter.
+
+- `key`  The tag key string to filter on, or `nil` to clear.
+
+##
+
+***blight.filter_tag_symbol(symbol)***
+Filter output lines by tag symbol. Lines with a matching tag symbol will be hidden.
+Pass `nil` to clear the symbol filter.
+
+- `symbol`  A single-character string for the tag symbol to filter on, or `nil` to clear.
+
+##
+
+***blight.filter_tag_reset()***
+Clears all active tag filters.
+
+##
+
 ***blight.quit()***
 Exit Blightmud
 

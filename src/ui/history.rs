@@ -1,7 +1,7 @@
-use crate::model::Regex;
+use crate::model::{Line, Regex};
 
 pub struct History {
-    pub inner: Vec<String>,
+    pub inner: Vec<Line>,
     pub capacity: usize,
     pub drain_length: usize,
 }
@@ -23,20 +23,29 @@ impl History {
         }
     }
 
+    pub fn append_str(&mut self, line: &str) {
+        self.append(line);
+    }
+
     pub fn append(&mut self, line: &str) {
         if !line.trim().is_empty() {
-            for line in line.lines() {
-                self.inner.push(String::from(line));
+            for segment in line.lines() {
+                self.inner.push(Line::from(segment));
             }
         } else {
-            self.inner.push("".to_string());
+            self.inner.push(Line::from(""));
         }
         self.drain();
     }
 
-    pub fn remove_last_if_prefix(&mut self, line: &str) -> Option<String> {
+    pub fn append_line(&mut self, line: Line) {
+        self.inner.push(line);
+        self.drain();
+    }
+
+    pub fn remove_last_if_prefix(&mut self, line: &str) -> Option<Line> {
         if let Some(prefix) = self.inner.last() {
-            if line.starts_with(prefix) {
+            if line.starts_with(prefix.line()) {
                 self.inner.pop()
             } else {
                 None
@@ -61,7 +70,7 @@ impl History {
     pub fn find_forward(&self, pattern: &Regex, pos: usize) -> Option<usize> {
         self.inner[pos..]
             .iter()
-            .position(|l| pattern.is_match(l))
+            .position(|l| pattern.is_match(l.clean_line()))
             .map(|index| pos + index)
     }
 
@@ -69,7 +78,7 @@ impl History {
         self.inner[..pos]
             .iter()
             .rev()
-            .position(|l| pattern.is_match(l))
+            .position(|l| pattern.is_match(l.clean_line()))
             .map(|index| pos - index - 1)
     }
 }
@@ -147,5 +156,16 @@ mod test {
             goal += 1000;
             index += 1;
         }
+    }
+
+    #[test]
+    fn test_append_line() {
+        let mut history = History::new();
+        let mut line = Line::from("hello world");
+        line.tag.color = "\x1b[31m".to_string();
+        history.append_line(line);
+        assert_eq!(history.len(), 1);
+        assert_eq!(history.inner[0].clean_line(), "hello world");
+        assert_eq!(history.inner[0].tag.color, "\x1b[31m");
     }
 }

@@ -56,6 +56,7 @@ pub trait UserInterface {
     fn remove_tag(&mut self, proto: &str) -> Result<()>;
     fn clear_tags(&mut self) -> Result<()>;
     fn set_status_area_height(&mut self, height: u16) -> Result<()>;
+    fn set_show_tags(&mut self, show: bool) -> Result<()>;
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;
     fn flush(&mut self);
     fn width(&self) -> u16;

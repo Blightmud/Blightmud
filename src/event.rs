@@ -71,6 +71,7 @@ pub enum Event {
     ServerSend(Bytes),
     SettingChanged(String, bool),
     ShowHelp(String, bool),
+    ShowTags(bool),
     Speak(String, bool),
     SpeakStop,
     StartLogging(String, bool),

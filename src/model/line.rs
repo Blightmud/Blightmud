@@ -2,6 +2,23 @@ use log::error;
 use std::fmt;
 use strip_ansi_escapes::strip as strip_ansi;
 
+pub trait ToLine {
+    fn to_line(&self) -> Line;
+    fn to_internal_line(&self) -> Line;
+}
+
+impl ToLine for str {
+    fn to_line(&self) -> Line {
+        Line::from(self)
+    }
+
+    fn to_internal_line(&self) -> Line {
+        let mut line = self.to_line();
+        line.tag.key = "internal".to_string();
+        line
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Tag {
     pub symbol: char,

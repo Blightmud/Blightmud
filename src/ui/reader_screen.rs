@@ -49,7 +49,7 @@ impl ReaderScreen {
 
     #[inline]
     fn print(&mut self, line: &str, new_line: bool) {
-        self.history.append(line);
+        self.history.append_str(line);
         if !self.scroll_data.active {
             write!(
                 self.screen,
@@ -66,7 +66,7 @@ impl ReaderScreen {
     #[inline]
     fn print_line(&mut self, line: &Line) {
         if let Some(print_line) = &line.print_line() {
-            self.history.append(print_line);
+            self.history.append_str(print_line);
             if !self.scroll_data.active {
                 writeln!(
                     self.screen,
@@ -144,13 +144,12 @@ impl ReaderScreen {
     fn draw_scroll(&mut self) -> Result<()> {
         for i in 0..self.height - 1 {
             let index = self.scroll_data.pos + i as usize;
-            let line = self.history.inner[index].clone();
             write!(
                 self.screen,
                 "{}{}{}{}",
                 termion::cursor::Goto(1, i + 1),
                 termion::clear::CurrentLine,
-                line,
+                self.history.inner[index].line(),
                 cursor::Goto(1, self.prompt_line),
             )?;
         }
@@ -268,7 +267,7 @@ impl UserInterface for ReaderScreen {
             self.reset_scroll().ok();
         }
         if let Some(print_line) = send.print_line() {
-            self.history.append(print_line);
+            self.history.append_str(print_line);
         }
     }
 
@@ -290,7 +289,7 @@ impl UserInterface for ReaderScreen {
                     "{}{}{}{}",
                     cursor::Goto(1, 1 + i),
                     clear::AfterCursor,
-                    self.history.inner[index],
+                    self.history.inner[index].line(),
                     cursor::Goto(1, self.prompt_line),
                 )?;
             }
@@ -301,7 +300,7 @@ impl UserInterface for ReaderScreen {
                     "{}\n{}{}{}",
                     Goto(1, self.output_line),
                     clear::AfterCursor,
-                    line,
+                    line.line(),
                     cursor::Goto(1, self.prompt_line),
                 )?;
             }
@@ -434,6 +433,10 @@ impl UserInterface for ReaderScreen {
     }
 
     fn set_status_area_height(&mut self, _height: u16) -> Result<()> {
+        Ok(())
+    }
+
+    fn set_show_tags(&mut self, _show: bool) -> Result<()> {
         Ok(())
     }
 

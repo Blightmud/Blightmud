@@ -4,7 +4,10 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{Settings, HIDE_TOPBAR};
-use crate::{model::Line, model::Regex, ui::ansi::*, ui::printable_chars::PrintableCharsIterator};
+use crate::{
+    model::Line, model::Regex, model::ToLine, ui::ansi::*,
+    ui::printable_chars::PrintableCharsIterator,
+};
 use anyhow::Result;
 use std::collections::HashSet;
 use std::io::Write;
@@ -176,6 +179,7 @@ pub struct SplitScreen {
     tags: HashSet<String>,
     prompt_input: String,
     prompt_input_pos: usize,
+    show_tags: bool,
 }
 
 impl UserInterface for SplitScreen {
@@ -219,12 +223,12 @@ impl UserInterface for SplitScreen {
 
     fn print_error(&mut self, output: &str) {
         let line = &format!("{}[!!] {}{}", Fg(color::Red), output, Fg(color::Reset));
-        self.print_line(line);
+        self.print_line(line.to_internal_line());
     }
 
     fn print_info(&mut self, output: &str) {
         let line = &format!("[**] {output}");
-        self.print_line(line);
+        self.print_line(line.to_internal_line());
     }
 
     fn print_output(&mut self, line: &Line) {
@@ -233,19 +237,26 @@ impl UserInterface for SplitScreen {
         if line.flags.screen_clear {
             self.clear_output_area().ok();
         }
-        if let Some(print_line) = line.tagged_line() {
-            if !line.is_utf8() || print_line.trim().is_empty() {
-                self.print_line(&print_line);
-            } else {
-                let mut count = 0;
-                let cur_line = self.history.len();
-                for l in wrap_line(&print_line, self.width as usize) {
-                    self.print_line(l);
-                    count += 1;
-                }
-                if self.scroll_data.scroll_lock && count > self.height {
-                    self.scroll_to(cur_line).ok();
-                }
+        let raw = match line.print_line() {
+            Some(r) => r,
+            None => return,
+        };
+        if !line.is_utf8() || raw.trim().is_empty() {
+            self.print_line(line.clone());
+        } else {
+            let segments: Vec<String> = wrap_line(raw, self.width as usize)
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+            let count = segments.len();
+            let cur_line = self.history.len();
+            for segment in segments {
+                let mut entry = line.clone();
+                entry.set_content(&segment);
+                self.print_line(entry);
+            }
+            if self.scroll_data.scroll_lock && count > self.height as usize {
+                self.scroll_to(cur_line).ok();
             }
         }
     }
@@ -329,7 +340,7 @@ impl UserInterface for SplitScreen {
                 Fg(color::Reset),
             );
             for line in wrap_line(line, self.width as usize) {
-                self.print_line(line);
+                self.print_line(line.to_internal_line());
             }
         }
     }
@@ -364,21 +375,23 @@ impl UserInterface for SplitScreen {
             for i in 0..output_range {
                 let index = output_start_index + i as usize;
                 let line_no = self.output_start_line + i;
+                let rendered = self.render_history_line(index);
                 write!(
                     self.screen,
                     "{}{}{}",
                     termion::cursor::Goto(1, line_no),
                     termion::clear::CurrentLine,
-                    self.history.inner[index],
+                    rendered,
                 )?;
             }
         } else {
-            for line in &self.history.inner {
+            for i in 0..self.history.inner.len() {
+                let rendered = self.render_history_line(i);
                 write!(
                     self.screen,
                     "{}\n{}",
                     termion::cursor::Goto(1, self.output_line),
-                    line,
+                    rendered,
                 )?;
             }
         }
@@ -531,6 +544,11 @@ impl UserInterface for SplitScreen {
         Ok(())
     }
 
+    fn set_show_tags(&mut self, show: bool) -> Result<()> {
+        self.show_tags = show;
+        self.setup()
+    }
+
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
         self.status_area.redraw_line(&mut self.screen, line)?;
@@ -585,21 +603,36 @@ impl SplitScreen {
             tags: HashSet::new(),
             prompt_input: String::new(),
             prompt_input_pos: 0,
+            show_tags: false,
         })
     }
 
-    fn print_line(&mut self, line: &str) {
-        self.history.append(line);
+    fn render_history_line(&self, index: usize) -> String {
+        let line = &self.history.inner[index];
+        if self.show_tags {
+            line.tagged_line().unwrap_or_default()
+        } else {
+            line.print_line().unwrap_or_default().to_string()
+        }
+    }
+
+    fn print_line(&mut self, line: Line) {
+        let rendered = if self.show_tags {
+            line.tagged_line().unwrap_or_default()
+        } else {
+            line.print_line().unwrap_or_default().to_string()
+        };
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
                 "{}\r\n{}{}",
                 termion::cursor::Goto(1, self.output_line),
-                &line,
+                &rendered,
                 self.goto_prompt(),
             )
             .unwrap();
         }
+        self.history.append_line(line);
     }
 
     fn clear_prompt(&mut self) {
@@ -614,7 +647,11 @@ impl SplitScreen {
     }
 
     fn redraw_prompt(&mut self) {
-        let prompt_line = self.mud_prompt.tagged_line().unwrap_or_default();
+        let prompt_line = if self.show_tags {
+            self.mud_prompt.tagged_line().unwrap_or_default()
+        } else {
+            self.mud_prompt.print_line().unwrap_or("").to_string()
+        };
         let prompt_line = prompt_line.as_str();
         if self.scroll_data.not_scrolled_or_split() {
             write!(
@@ -715,11 +752,11 @@ impl SplitScreen {
                 break;
             }
             let line_no = self.output_start_line + i;
-            let mut line = self.history.inner[index].clone();
+            let mut rendered = self.render_history_line(index);
             if let Some(pattern) = &self.scroll_data.hilite {
-                line = pattern
+                rendered = pattern
                     .replace_all(
-                        &line,
+                        &rendered,
                         format!(
                             "{}{}$0{}{}",
                             Fg(color::LightWhite),
@@ -735,7 +772,7 @@ impl SplitScreen {
                 "{}{}{}",
                 termion::cursor::Goto(1, line_no),
                 termion::clear::CurrentLine,
-                line,
+                rendered,
             )?;
         }
         Ok(())
@@ -764,8 +801,9 @@ mod screen_test {
 
         let mut history = History::new();
         history.append(line);
+        let content: Vec<&str> = history.inner.iter().map(|l| l.line()).collect();
         assert_eq!(
-            history.inner,
+            content,
             vec![
                 "a nice line",
                 "",

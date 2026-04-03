@@ -298,7 +298,14 @@ function BlightLib.filter_tag_key(key) end
 ---@param symbol? string
 function BlightLib.filter_tag_symbol(symbol) end
 
----Clears all active tag filters.
+---Gets or sets the filter reverse flag. When false (default), matching lines are
+---hidden. When true, non-matching lines are hidden (only matching lines shown).
+---Pass nil or omit to get the current value without changing it.
+---@param val? boolean
+---@return boolean
+function BlightLib.filter_tag_reverse(val) end
+
+---Clears all active tag filters, including the reverse flag.
 function BlightLib.filter_tag_reset() end
 
 ---Returns the application name and version as two separate values.

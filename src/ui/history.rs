@@ -291,6 +291,25 @@ mod test {
     }
 
     #[test]
+    fn test_tag_mask_reverse_shows_only_matching() {
+        let mut history = History::new();
+        let mut combat = Line::from("combat line");
+        combat.tag.key = "combat".to_string();
+        history.append_line(combat);
+        history.append_line(Line::from("normal line"));
+
+        let mask = TagMask {
+            key: Some("combat".to_string()),
+            reverse: true,
+            ..Default::default()
+        };
+        history.set_tag_mask(mask);
+
+        assert_eq!(history.len(), 1);
+        assert_eq!(history.get(0).clean_line(), "combat line");
+    }
+
+    #[test]
     fn test_remove_last_if_prefix_masked() {
         let mut history = History::new();
         let mask = TagMask {

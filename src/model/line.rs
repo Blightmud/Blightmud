@@ -31,6 +31,7 @@ pub struct TagMask {
     pub symbol: Option<char>,
     pub key: Option<String>,
     pub color: Option<String>,
+    pub reverse: bool,
 }
 
 impl Default for Tag {
@@ -89,14 +90,19 @@ impl Line {
     }
 
     pub fn is_masked(&self, mask: &TagMask) -> bool {
-        if let Some(color) = &mask.color {
+        let matched = if let Some(color) = &mask.color {
             self.tag.color == *color
         } else if let Some(key) = &mask.key {
             self.tag.key == *key
         } else if let Some(symbol) = mask.symbol {
             self.tag.symbol == symbol
         } else {
-            false
+            return false;
+        };
+        if mask.reverse {
+            !matched
+        } else {
+            matched
         }
     }
 }
@@ -618,6 +624,43 @@ mod test_line {
         let mask = super::TagMask {
             color: Some("\x1b[31m".to_string()), // different color — no match
             key: Some("combat".to_string()),     // key would match, but color is checked first
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_reverse_match_not_masked() {
+        // reverse: true — a matching line is NOT masked (it passes through)
+        let mut line = Line::from("hello");
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            key: Some("combat".to_string()),
+            reverse: true,
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_reverse_no_match_is_masked() {
+        // reverse: true — a non-matching line IS masked (hidden)
+        let mut line = Line::from("hello");
+        line.tag.key = "loot".to_string();
+        let mask = super::TagMask {
+            key: Some("combat".to_string()),
+            reverse: true,
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_reverse_empty_mask_never_masks() {
+        // reverse: true with no criteria — still never masks anything
+        let line = Line::from("hello");
+        let mask = super::TagMask {
+            reverse: true,
             ..Default::default()
         };
         assert!(!line.is_masked(&mask));

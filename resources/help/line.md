@@ -96,14 +96,14 @@ Possible values are:
 Get or set the ANSI color code used to render this line's tag symbol. When
 there is no color set the tag symbol won't be rendered.
 
-- `color`  An ANSI escape sequence string, e.g. `"\x1b[31m"` for red.
+- `color`  An ANSI escape sequence string, e.g. `"\x1b[31m"` or `C_RED` for red.
 
 ##
 
 ***line:tag_key(string) -> String***
 
-Get or set an arbitrary key associated with this line's tag. Intended for use
-by plugins to identify or group tagged lines.
+Get or set an arbitrary key associated with this line's tag. This can then be
+referenced when filtering the output view on certain tags.
 
 ##
 

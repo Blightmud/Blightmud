@@ -219,6 +219,17 @@ impl UserData for Blight {
                 .unwrap();
             Ok(())
         });
+        methods.add_function("filter_tag_reverse", |ctx, val: Option<bool>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            if let Some(val) = val {
+                this.tag_mask.reverse = val;
+                this.main_writer
+                    .send(Event::SetTagMask(this.tag_mask.clone()))
+                    .unwrap();
+            }
+            Ok(this.tag_mask.reverse)
+        });
         methods.add_function("filter_tag_reset", |ctx, ()| {
             let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let mut this = this_aux.borrow_mut::<Blight>()?;
@@ -484,6 +495,43 @@ mod test_blight {
         // Set back to false
         lua.load("blight.show_tags(false)").exec().unwrap();
         assert_eq!(reader.recv(), Ok(Event::ShowTags(false)));
+    }
+
+    #[test]
+    fn test_filter_tag_reverse() {
+        let (lua, reader) = get_lua_state();
+
+        // Default is false
+        let val = lua
+            .load("return blight.filter_tag_reverse()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(!val);
+
+        // Set to true
+        let val = lua
+            .load("return blight.filter_tag_reverse(true)")
+            .call::<bool>(())
+            .unwrap();
+        assert!(val);
+        // Discard the SetTagMask event
+        let _ = reader.recv();
+
+        // Getter reflects update
+        let val = lua
+            .load("return blight.filter_tag_reverse()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(val);
+
+        // Reset clears reverse too
+        lua.load("blight.filter_tag_reset()").exec().unwrap();
+        let _ = reader.recv();
+        let val = lua
+            .load("return blight.filter_tag_reverse()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(!val);
     }
 
     #[test]

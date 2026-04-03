@@ -158,8 +158,19 @@ Pass `nil` to clear the symbol filter.
 
 ##
 
+***blight.filter_tag_reverse([val]) -> bool***
+Get or set the filter reverse flag. When `false` (default), lines matching the
+filter are hidden. When `true`, lines that do *not* match the filter are hidden
+(i.e. only matching lines are shown). Pass `nil` or omit to get the current
+value without changing it.
+
+- `val`  `true` to reverse filter behavior, `false` to restore default behavior.
+- Returns the current value of the reverse flag.
+
+##
+
 ***blight.filter_tag_reset()***
-Clears all active tag filters.
+Clears all active tag filters, including the reverse flag.
 
 ##
 

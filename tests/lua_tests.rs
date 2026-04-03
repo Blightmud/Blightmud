@@ -33,6 +33,11 @@ fn regex_smoke_tests() {
 }
 
 #[test]
+fn test_line_tags() {
+    test_script("tests/tag_tests.lua");
+}
+
+#[test]
 fn test_mud() -> Result<()> {
     let mut server = common::Server::bind(0);
     let mut rt = RuntimeConfig::default();

@@ -358,6 +358,7 @@ impl Line {
 
     pub fn replace_with(&mut self, other: &Line) {
         self.flags = other.flags.clone();
+        self.tag = other.tag.clone();
     }
 }
 

@@ -239,7 +239,8 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "prompt" => "prompt.md",
         "prompt_mask" => "prompt_mask.md",
         "history" => "history.md",
-        "script_example" => "scripte_example.md"
+        "script_example" => "scripte_example.md",
+        "tags" => "tags.md"
     }
 }
 

@@ -58,6 +58,24 @@ function Line:source() end
 ---@return string|nil
 function Line:replacement() end
 
+---Gets or sets the ANSI color code used to render this line's tag symbol.
+---When set, the tag symbol and a trailing space are rendered in that color before the line content.
+---When empty, two plain spaces are rendered instead.
+---@param color? string ANSI escape sequence, e.g. `"\x1b[31m"` for red.
+---@return string
+function Line:tag_color(color) end
+
+---Gets or sets an arbitrary key associated with this line's tag.
+---@param key? string
+---@return string
+function Line:tag_key(key) end
+
+---Gets or sets the character used as the tag symbol. Defaults to `┃` (U+2503).
+---Only rendered when a tag color is set.
+---@param symbol? string
+---@return string
+function Line:tag_symbol(symbol) end
+
 --------------------------------------------------------------------------------
 -- Regex -----------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -257,6 +275,38 @@ function BlightLib.status_height(height) end
 ---@param index integer  0-based line index.
 ---@param line string
 function BlightLib.status_line(index, line) end
+
+---Gets or sets whether tag rendering is enabled. When enabled, each output
+---line is prefixed with the line's tag symbol and color (or two spaces if no
+---color is set). Defaults to false. Returns the current value.
+---@param show? boolean
+---@return boolean
+function BlightLib.show_tags(show) end
+
+---Filters output lines by tag color. Lines whose tag color matches will be hidden.
+---Pass nil to clear the color filter.
+---@param color? string
+function BlightLib.filter_tag_color(color) end
+
+---Filters output lines by tag key. Lines whose tag key matches will be hidden.
+---Pass nil to clear the key filter.
+---@param key? string
+function BlightLib.filter_tag_key(key) end
+
+---Filters output lines by tag symbol. Lines whose tag symbol matches will be hidden.
+---Pass nil to clear the symbol filter.
+---@param symbol? string
+function BlightLib.filter_tag_symbol(symbol) end
+
+---Gets or sets the filter reverse flag. When false (default), matching lines are
+---hidden. When true, non-matching lines are hidden (only matching lines shown).
+---Pass nil or omit to get the current value without changing it.
+---@param val? boolean
+---@return boolean
+function BlightLib.filter_tag_reverse(val) end
+
+---Clears all active tag filters, including the reverse flag.
+function BlightLib.filter_tag_reset() end
 
 ---Returns the application name and version as two separate values.
 ---@return string, string

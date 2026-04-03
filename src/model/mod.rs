@@ -8,6 +8,6 @@ mod settings;
 pub use self::{regex::Regex, regex::RegexOptions};
 pub use completions::Completions;
 pub use connection::{Connection, Servers};
-pub use line::Line;
+pub use line::{Line, TagMask, ToLine};
 pub use prompt_mask::PromptMask;
 pub use settings::*;

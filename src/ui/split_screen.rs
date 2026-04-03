@@ -4,7 +4,10 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{Settings, HIDE_TOPBAR};
-use crate::{model::Line, model::Regex, ui::ansi::*, ui::printable_chars::PrintableCharsIterator};
+use crate::{
+    model::Line, model::Regex, model::TagMask, model::ToLine, ui::ansi::*,
+    ui::printable_chars::PrintableCharsIterator,
+};
 use anyhow::Result;
 use std::collections::HashSet;
 use std::io::Write;
@@ -176,6 +179,8 @@ pub struct SplitScreen {
     tags: HashSet<String>,
     prompt_input: String,
     prompt_input_pos: usize,
+    show_tags: bool,
+    tag_mask: TagMask,
 }
 
 impl UserInterface for SplitScreen {
@@ -219,12 +224,12 @@ impl UserInterface for SplitScreen {
 
     fn print_error(&mut self, output: &str) {
         let line = &format!("{}[!!] {}{}", Fg(color::Red), output, Fg(color::Reset));
-        self.print_line(line);
+        self.print_line(line.to_internal_line());
     }
 
     fn print_info(&mut self, output: &str) {
         let line = &format!("[**] {output}");
-        self.print_line(line);
+        self.print_line(line.to_internal_line());
     }
 
     fn print_output(&mut self, line: &Line) {
@@ -233,19 +238,26 @@ impl UserInterface for SplitScreen {
         if line.flags.screen_clear {
             self.clear_output_area().ok();
         }
-        if let Some(print_line) = line.print_line() {
-            if !line.is_utf8() || print_line.trim().is_empty() {
-                self.print_line(print_line);
-            } else {
-                let mut count = 0;
-                let cur_line = self.history.len();
-                for l in wrap_line(print_line, self.width as usize) {
-                    self.print_line(l);
-                    count += 1;
-                }
-                if self.scroll_data.scroll_lock && count > self.height {
-                    self.scroll_to(cur_line).ok();
-                }
+        let raw = match line.print_line() {
+            Some(r) => r,
+            None => return,
+        };
+        if !line.is_utf8() || raw.trim().is_empty() {
+            self.print_line(line.clone());
+        } else {
+            let segments: Vec<String> = wrap_line(raw, self.width as usize)
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+            let count = segments.len();
+            let cur_line = self.history.len();
+            for segment in segments {
+                let mut entry = line.clone();
+                entry.set_content(&segment);
+                self.print_line(entry);
+            }
+            if self.scroll_data.scroll_lock && count > self.height as usize {
+                self.scroll_to(cur_line).ok();
             }
         }
     }
@@ -329,7 +341,7 @@ impl UserInterface for SplitScreen {
                 Fg(color::Reset),
             );
             for line in wrap_line(line, self.width as usize) {
-                self.print_line(line);
+                self.print_line(line.to_internal_line());
             }
         }
     }
@@ -358,27 +370,29 @@ impl UserInterface for SplitScreen {
         self.redraw_prompt();
 
         let output_range = self.output_range();
-        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
+        let output_start_index = self.history.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
             for i in 0..output_range {
                 let index = output_start_index + i as usize;
                 let line_no = self.output_start_line + i;
+                let rendered = self.render_history_line(index);
                 write!(
                     self.screen,
                     "{}{}{}",
                     termion::cursor::Goto(1, line_no),
                     termion::clear::CurrentLine,
-                    self.history.inner[index],
+                    rendered,
                 )?;
             }
         } else {
-            for line in &self.history.inner {
+            for i in 0..self.history.len() {
+                let rendered = self.render_history_line(i);
                 write!(
                     self.screen,
                     "{}\n{}",
                     termion::cursor::Goto(1, self.output_line),
-                    line,
+                    rendered,
                 )?;
             }
         }
@@ -413,7 +427,7 @@ impl UserInterface for SplitScreen {
         self.scroll_data.clamp(&self.history);
         if self.scroll_data.active {
             let output_range = self.scroll_range() as i32;
-            let max_start_index: i32 = self.history.inner.len() as i32 - output_range;
+            let max_start_index: i32 = self.history.len() as i32 - output_range;
             let new_start_index = self.scroll_data.pos + 5;
             if new_start_index >= max_start_index as usize {
                 self.reset_scroll()?;
@@ -432,7 +446,7 @@ impl UserInterface for SplitScreen {
     fn scroll_to(&mut self, row: usize) -> Result<()> {
         self.scroll_data.clamp(&self.history);
         if self.history.len() > self.scroll_range() as usize {
-            let max_start_index = self.history.inner.len() as i32 - self.scroll_range() as i32;
+            let max_start_index = self.history.len() as i32 - self.scroll_range() as i32;
             if max_start_index > 0 && row < max_start_index as usize {
                 self.init_scroll()?;
                 self.scroll_data.pos = row;
@@ -445,7 +459,7 @@ impl UserInterface for SplitScreen {
     }
 
     fn scroll_top(&mut self) -> Result<()> {
-        if self.history.inner.len() as u16 >= self.output_line {
+        if self.history.len() as u16 >= self.output_line {
             self.init_scroll()?;
             self.scroll_data.pos = 0;
             self.draw_scroll()?;
@@ -456,10 +470,10 @@ impl UserInterface for SplitScreen {
     fn scroll_up(&mut self) -> Result<()> {
         self.scroll_data.clamp(&self.history);
         let output_range: usize = self.scroll_range() as usize;
-        if self.history.inner.len() > output_range {
+        if self.history.len() > output_range {
             if !self.scroll_data.active {
                 self.init_scroll()?;
-                self.scroll_data.pos = self.history.inner.len() - output_range;
+                self.scroll_data.pos = self.history.len() - output_range;
             }
             self.scroll_data.pos -= self.scroll_data.pos.min(5);
             self.draw_scroll()?;
@@ -531,6 +545,17 @@ impl UserInterface for SplitScreen {
         Ok(())
     }
 
+    fn set_show_tags(&mut self, show: bool) -> Result<()> {
+        self.show_tags = show;
+        self.setup()
+    }
+
+    fn set_tag_mask(&mut self, mask: TagMask) {
+        self.tag_mask = mask.clone();
+        self.history.set_tag_mask(mask);
+        self.setup().ok();
+    }
+
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
         self.status_area.redraw_line(&mut self.screen, line)?;
@@ -585,17 +610,37 @@ impl SplitScreen {
             tags: HashSet::new(),
             prompt_input: String::new(),
             prompt_input_pos: 0,
+            show_tags: false,
+            tag_mask: TagMask::default(),
         })
     }
 
-    fn print_line(&mut self, line: &str) {
-        self.history.append(line);
+    fn render_history_line(&self, index: usize) -> String {
+        let line = self.history.get(index);
+        if self.show_tags {
+            line.tagged_line().unwrap_or_default()
+        } else {
+            line.print_line().unwrap_or_default().to_string()
+        }
+    }
+
+    fn print_line(&mut self, line: Line) {
+        let masked = line.is_masked(&self.tag_mask);
+        self.history.append_line(line.clone());
+        if masked {
+            return;
+        }
+        let rendered = if self.show_tags {
+            line.tagged_line().unwrap_or_default()
+        } else {
+            line.print_line().unwrap_or_default().to_string()
+        };
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
                 "{}\r\n{}{}",
                 termion::cursor::Goto(1, self.output_line),
-                &line,
+                &rendered,
                 self.goto_prompt(),
             )
             .unwrap();
@@ -614,7 +659,12 @@ impl SplitScreen {
     }
 
     fn redraw_prompt(&mut self) {
-        let prompt_line = self.mud_prompt.print_line().unwrap_or("");
+        let prompt_line = if self.show_tags {
+            self.mud_prompt.tagged_line().unwrap_or_default()
+        } else {
+            self.mud_prompt.print_line().unwrap_or("").to_string()
+        };
+        let prompt_line = prompt_line.as_str();
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
@@ -707,18 +757,18 @@ impl SplitScreen {
         let output_range = self.scroll_range();
         for i in 0..output_range {
             let index = self.scroll_data.pos + i as usize;
-            if index >= self.history.inner.len() {
+            if index >= self.history.len() {
                 // History has been trimmed during scrolling
                 // TODO: It should be possible to lock history during render perhaps?
                 // The lock would prevent the drain function until scrolls is done.
                 break;
             }
             let line_no = self.output_start_line + i;
-            let mut line = self.history.inner[index].clone();
+            let mut rendered = self.render_history_line(index);
             if let Some(pattern) = &self.scroll_data.hilite {
-                line = pattern
+                rendered = pattern
                     .replace_all(
-                        &line,
+                        &rendered,
                         format!(
                             "{}{}$0{}{}",
                             Fg(color::LightWhite),
@@ -734,7 +784,7 @@ impl SplitScreen {
                 "{}{}{}",
                 termion::cursor::Goto(1, line_no),
                 termion::clear::CurrentLine,
-                line,
+                rendered,
             )?;
         }
         Ok(())
@@ -763,8 +813,9 @@ mod screen_test {
 
         let mut history = History::new();
         history.append(line);
+        let content: Vec<&str> = history.iter().map(|l| l.line()).collect();
         assert_eq!(
-            history.inner,
+            content,
             vec![
                 "a nice line",
                 "",
@@ -807,5 +858,81 @@ mod screen_test {
         assert_eq!(history.len(), 19);
         history.append("test");
         assert_eq!(history.len(), 10);
+    }
+
+    // Tests for print_line tag mask behaviour. SplitScreen::new requires a real
+    // terminal so we exercise the behaviour through History directly, which is
+    // what print_line delegates to.
+
+    #[test]
+    fn test_print_line_masked_stored_in_inner_not_visible() {
+        // Simulates print_line: always calls history.append_line, skips
+        // rendering when masked. Verify masked line lands in inner but not
+        // visible.
+        let mut history = History::new();
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+
+        let mut masked = Line::from("combat hit");
+        masked.tag.key = "combat".to_string();
+        // print_line always appends regardless of mask
+        history.append_line(masked);
+        history.append_line(Line::from("normal line"));
+
+        assert_eq!(history.len(), 1); // only unmasked in visible
+        assert_eq!(history.get(0).clean_line(), "normal line");
+    }
+
+    #[test]
+    fn test_print_line_unmasked_line_visible() {
+        let mut history = History::new();
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+
+        history.append_line(Line::from("system message"));
+        assert_eq!(history.len(), 1);
+        assert_eq!(history.get(0).clean_line(), "system message");
+    }
+
+    #[test]
+    fn test_set_tag_mask_retroactive() {
+        // Simulates set_tag_mask on SplitScreen: history is rebuilt from inner
+        // so previously appended lines are filtered retroactively.
+        let mut history = History::new();
+
+        let mut combat = Line::from("combat hit");
+        combat.tag.key = "combat".to_string();
+        history.append_line(combat);
+        history.append_line(Line::from("normal line"));
+        assert_eq!(history.len(), 2);
+
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(history.len(), 1);
+        assert_eq!(history.get(0).clean_line(), "normal line");
+    }
+
+    #[test]
+    fn test_clear_tag_mask_restores_all_lines() {
+        let mut history = History::new();
+        let mut combat = Line::from("combat hit");
+        combat.tag.key = "combat".to_string();
+        history.append_line(combat);
+        history.append_line(Line::from("normal line"));
+
+        history.set_tag_mask(TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(history.len(), 1);
+
+        history.set_tag_mask(TagMask::default());
+        assert_eq!(history.len(), 2);
     }
 }

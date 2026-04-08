@@ -21,6 +21,7 @@ pub const PROMPT_INPUT_LISTENER_TABLE: &str = "__prompt_listeners";
 pub const FS_LISTENERS: &str = "__fs_listeners";
 pub const SCRIPT_RESET_LISTENERS: &str = "__script_reset_listeners";
 pub const STATUS_AREA_HEIGHT: &str = "__status_area_height";
+pub const SHOW_TAGS: &str = "__show_tags";
 
 // Core tables
 pub const PROTO_ENABLED_LISTENERS_TABLE: &str = "__protocol_enabled_listeners";

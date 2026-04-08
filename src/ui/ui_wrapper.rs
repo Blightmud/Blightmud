@@ -171,6 +171,14 @@ impl UserInterface for UiWrapper {
         self.screen.set_status_area_height(height)
     }
 
+    fn set_show_tags(&mut self, show: bool) -> Result<()> {
+        self.screen.set_show_tags(show)
+    }
+
+    fn set_tag_mask(&mut self, mask: crate::model::TagMask) {
+        self.screen.set_tag_mask(mask);
+    }
+
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.screen.set_status_line(line, info)
     }

@@ -139,7 +139,7 @@ impl<'a> Iterator for PrintableCharIndices<'a> {
 
 #[cfg(test)]
 mod test_printable_chars {
-    use crate::ui::printable_chars::PrintableCharsIterator;
+    use crate::tools::printable_chars::PrintableCharsIterator;
 
     const ANSI_RED: &str = "\x1b[30m";
     const ANSI_OFF: &str = "\x1b[0m";

@@ -3,7 +3,8 @@ use std::{error, fmt, io::Write};
 #[cfg(test)]
 use mockall::automock;
 
-use crate::model::{Line, Regex};
+use crate::model::{Line, Regex, TagMask};
+use crate::tools::printable_chars::PrintableCharsIterator;
 
 use anyhow::Result;
 
@@ -56,6 +57,8 @@ pub trait UserInterface {
     fn remove_tag(&mut self, proto: &str) -> Result<()>;
     fn clear_tags(&mut self) -> Result<()>;
     fn set_status_area_height(&mut self, height: u16) -> Result<()>;
+    fn set_show_tags(&mut self, show: bool) -> Result<()>;
+    fn set_tag_mask(&mut self, mask: TagMask);
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;
     fn flush(&mut self);
     fn width(&self) -> u16;
@@ -63,33 +66,8 @@ pub trait UserInterface {
     fn destroy(self: Box<Self>) -> Result<(Box<dyn Write>, History)>;
 }
 
-/// Tracks the parser state for ANSI/VT escape sequences during line wrapping.
-/// This allows wrap_line to correctly skip over all escape sequences when
-/// calculating printable line width, not just SGR (\x1b[...m) sequences.
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum EscapeState {
-    /// Normal text — characters contribute to print width.
-    Ground,
-    /// Saw ESC (\x1b), waiting to see what kind of sequence follows.
-    Escape,
-    /// Inside a CSI sequence (\x1b[...) — terminated by any byte in 0x40..=0x7E.
-    Csi,
-    /// Inside an OSC sequence (\x1b]...) — terminated by BEL (\x07) or ST (\x1b\\).
-    Osc,
-    /// Inside an OSC sequence, just saw ESC — might be the ST terminator (\x1b\\).
-    OscEscSeen,
-    /// Inside a DCS (\x1bP), SOS (\x1bX), PM (\x1b^), or APC (\x1b_) string —
-    /// terminated by ST (\x1b\\).
-    StringSeq,
-    /// Inside a string sequence, just saw ESC — might be the ST terminator.
-    StringEscSeen,
-    /// Saw ESC followed by an intermediate byte (e.g. '(', ')', '*', '+', '%')
-    /// for charset designation sequences like ESC ( B, ESC ) 0, etc.
-    /// Consumes the next (final) byte and returns to Ground.
-    EscapeIntermediate,
-}
-
-pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {
+pub fn wrap_line(line: &str, width: usize, padding: usize) -> Vec<&str> {
+    let width = width.saturating_sub(padding);
     let mut lines: Vec<&str> = vec![];
 
     for line in line.lines() {
@@ -103,94 +81,7 @@ pub fn wrap_line(line: &str, width: usize) -> Vec<&str> {
         let mut last_space: usize = 0;
         let mut print_length = 0;
         let mut print_length_since_space = 0;
-        let mut state = EscapeState::Ground;
-        for (length, c) in line.char_indices() {
-            match state {
-                EscapeState::Ground => {
-                    if c == '\x1b' {
-                        state = EscapeState::Escape;
-                        continue;
-                    }
-                }
-                EscapeState::Escape => {
-                    match c {
-                        '[' => {
-                            state = EscapeState::Csi;
-                            continue;
-                        }
-                        ']' => {
-                            state = EscapeState::Osc;
-                            continue;
-                        }
-                        // DCS, SOS, PM, APC — string sequences terminated by ST
-                        'P' | 'X' | '^' | '_' => {
-                            state = EscapeState::StringSeq;
-                            continue;
-                        }
-                        // Charset designation sequences: ESC ( F, ESC ) F, ESC * F,
-                        // ESC + F, ESC % F — intermediate byte + one final byte.
-                        '(' | ')' | '*' | '+' | '%' => {
-                            state = EscapeState::EscapeIntermediate;
-                            continue;
-                        }
-                        // Two-character escape sequences (e.g. ESC c, ESC 7, ESC 8, etc.)
-                        // and any other ESC + single byte — consume and return to ground.
-                        _ => {
-                            state = EscapeState::Ground;
-                            continue;
-                        }
-                    }
-                }
-                EscapeState::EscapeIntermediate => {
-                    // Consume the final byte of the charset designation sequence
-                    // (e.g. 'B' in ESC ( B, '0' in ESC ) 0) and return to ground.
-                    state = EscapeState::Ground;
-                    continue;
-                }
-                EscapeState::Csi => {
-                    // CSI parameters and intermediates: 0x20..=0x3F
-                    // Final byte: 0x40..=0x7E (any ASCII letter or @[\]^_`{|}~)
-                    if c as u32 >= 0x40 && c as u32 <= 0x7E {
-                        state = EscapeState::Ground;
-                    }
-                    continue;
-                }
-                EscapeState::Osc => {
-                    if c == '\x07' {
-                        // BEL terminates OSC
-                        state = EscapeState::Ground;
-                    } else if c == '\x1b' {
-                        // Might be start of ST (\x1b\\)
-                        state = EscapeState::OscEscSeen;
-                    }
-                    continue;
-                }
-                EscapeState::OscEscSeen => {
-                    // After ESC inside OSC: if '\' then ST terminates, otherwise
-                    // stay in OSC (the ESC was part of the OSC content).
-                    if c == '\\' {
-                        state = EscapeState::Ground;
-                    } else {
-                        state = EscapeState::Osc;
-                    }
-                    continue;
-                }
-                EscapeState::StringSeq => {
-                    if c == '\x1b' {
-                        state = EscapeState::StringEscSeen;
-                    }
-                    continue;
-                }
-                EscapeState::StringEscSeen => {
-                    if c == '\\' {
-                        state = EscapeState::Ground;
-                    } else {
-                        state = EscapeState::StringSeq;
-                    }
-                    continue;
-                }
-            }
-
+        for (length, c) in line.printable_char_indices() {
             // Keep track of printable line length
             print_length += 1;
 
@@ -233,13 +124,27 @@ mod tests {
     fn test_wrap_line() {
         let line: &'static str =
             "\x1b[34mSomething \x1b[0mthat's pretty \x1b[32mlong and annoying\x1b[0m";
-        let lines = wrap_line(line, 11);
+        let lines = wrap_line(line, 11, 0);
         let mut iter = lines.iter();
         assert_eq!(iter.next(), Some(&"\u{1b}[34mSomething"));
         assert_eq!(iter.next(), Some(&"\u{1b}[0mthat's"));
         assert_eq!(iter.next(), Some(&"pretty"));
         assert_eq!(iter.next(), Some(&"\u{1b}[32mlong and"));
         assert_eq!(iter.next(), Some(&"annoying\u{1b}[0m"));
+    }
+
+    #[test]
+    fn test_wrap_line_with_padding() {
+        // "hello world!!" is 13 printable chars.
+        // At width=14 with no padding it fits on one line.
+        // With padding=2 the effective width is 12, so it must wrap at the space.
+        let line = "hello world!!";
+        let lines = wrap_line(line, 14, 0);
+        assert_eq!(lines.len(), 1);
+        let lines = wrap_line(line, 14, 2);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "hello");
+        assert_eq!(lines[1], "world!!");
     }
 
     #[test]
@@ -251,7 +156,7 @@ mod tests {
                 line = format!("{}{}", line, num.repeat(15));
             }
         }
-        let lines = wrap_line(&line, 15);
+        let lines = wrap_line(&line, 15, 0);
         assert_eq!(lines.len(), 1000 * 10);
         for (i, line) in lines.iter().enumerate() {
             let num = format!("{}", i % 10);
@@ -263,7 +168,7 @@ mod tests {
     fn test_wrap_line_with_osc8_hyperlink() {
         // Simulates mdcat OSC 8 hyperlink output: ESC]8;;url ESC\ visible_text ESC]8;; ESC\
         let line = "Visit \x1b]8;;https://example.com\x1b\\\x1b[34mhttps://example.com\x1b[0m\x1b]8;;\x1b\\ for info";
-        let lines = wrap_line(line, 80);
+        let lines = wrap_line(line, 80, 0);
         // The entire line fits in 80 columns (printable: "Visit https://example.com for info" = 34 chars)
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0], line);
@@ -275,7 +180,7 @@ mod tests {
         // This test ensures the visible link text is counted toward print width.
         let link = "\x1b]8;;http://x.co\x1b\\click here\x1b]8;;\x1b\\";
         // "click here" = 10 printable chars; at width 5 it must wrap.
-        let lines = wrap_line(link, 5);
+        let lines = wrap_line(link, 5, 0);
         // 2 pieces: OSC-open + "click", " here" — trailing OSC-close escape bytes
         // are emitted as a separate segment (zero printable width).
         assert_eq!(lines.len(), 3);
@@ -288,7 +193,7 @@ mod tests {
         // CSI sequences other than SGR (e.g. cursor movement ESC[H, erase ESC[K)
         // should also be skipped.
         let line = "\x1b[Hsome text\x1b[K";
-        let lines = wrap_line(line, 80);
+        let lines = wrap_line(line, 80, 0);
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0], line);
     }
@@ -299,7 +204,7 @@ mod tests {
         // ESC * A, ESC + C, ESC % @ etc. — should all be skipped without consuming
         // visible text.
         let line = "\x1b(Bhello \x1b)0world\x1b*A!\x1b+C\x1b%@";
-        let lines = wrap_line(line, 80);
+        let lines = wrap_line(line, 80, 0);
         // Printable: "hello world!" = 12 chars, fits in 80 columns
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0], line);
@@ -310,7 +215,7 @@ mod tests {
         // Ensure charset designation sequences don't affect wrap width calculation.
         let line = "\x1b(Babcde\x1b)0fghij";
         // "abcdefghij" = 10 printable chars; at width 5 it must wrap.
-        let lines = wrap_line(line, 5);
+        let lines = wrap_line(line, 5, 0);
         assert_eq!(lines.len(), 2);
     }
 }

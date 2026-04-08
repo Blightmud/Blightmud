@@ -8,9 +8,8 @@ use termion::{
 
 use crate::{
     model::{Line, Regex},
-    ui::{
-        printable_chars::PrintableCharsIterator, DisableOriginMode, ResetScrollRegion, ScrollRegion,
-    },
+    tools::printable_chars::PrintableCharsIterator,
+    ui::{DisableOriginMode, ResetScrollRegion, ScrollRegion},
 };
 
 use super::{

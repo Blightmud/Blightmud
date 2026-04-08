@@ -5,8 +5,8 @@ use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{Settings, HIDE_TOPBAR};
 use crate::{
-    model::Line, model::Regex, model::TagMask, model::ToLine, ui::ansi::*,
-    ui::printable_chars::PrintableCharsIterator,
+    model::Line, model::Regex, model::TagMask, model::ToLine,
+    tools::printable_chars::PrintableCharsIterator, ui::ansi::*,
 };
 use anyhow::Result;
 use std::collections::HashSet;

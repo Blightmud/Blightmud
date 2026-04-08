@@ -2,6 +2,7 @@ use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::{Event, QuitMethod};
 use crate::{
     model::{Line, TagMask},
+    tools::printable_chars::PrintableCharsIterator,
     PROJECT_NAME, VERSION,
 };
 use log::debug;
@@ -195,7 +196,7 @@ impl UserData for Blight {
         methods.add_function("filter_tag_color", |ctx, color: Option<String>| {
             let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let mut this = this_aux.borrow_mut::<Blight>()?;
-            this.tag_mask.color = color;
+            this.tag_mask.color = color.filter(|c| c.as_str().display_width() == 0);
             this.main_writer
                 .send(Event::SetTagMask(this.tag_mask.clone()))
                 .unwrap();

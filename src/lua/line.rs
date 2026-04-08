@@ -1,6 +1,8 @@
+use log::warn;
 use mlua::{FromLua, UserData, UserDataMethods};
 
 use crate::model::Line as mLine;
+use crate::tools::printable_chars::PrintableCharsIterator;
 
 #[derive(Clone, FromLua)]
 pub struct Line {
@@ -35,7 +37,11 @@ impl UserData for Line {
             "tag_color",
             |_, this, color: Option<String>| -> mlua::Result<String> {
                 if let Some(color) = color {
-                    this.inner.tag.color = color;
+                    if color.as_str().display_width() == 0 {
+                        this.inner.tag.color = color;
+                    } else {
+                        warn!("Invalid ANSI color provided for tag: {color}");
+                    }
                 }
                 Ok(this.inner.tag.color.clone())
             },
@@ -278,11 +284,22 @@ mod test_lua_line {
         test_lua!("test_line" => test_line());
 
         assert_lua_string!("test_line:tag_color()", "");
-        run_lua!("test_line:tag_color('red')");
-        assert_lua_string!("test_line:tag_color()", "red");
+        run_lua!("test_line:tag_color('\x1b[31m')");
+        assert_lua_string!("test_line:tag_color()", "\x1b[31m");
 
         let line: Line = global!("test_line");
-        assert_eq!(line.inner.tag.color, "red");
+        assert_eq!(line.inner.tag.color, "\x1b[31m");
+    }
+
+    #[test]
+    fn test_tag_color_rejects_printable_strings() {
+        test_lua!("test_line" => test_line());
+
+        run_lua!("test_line:tag_color('red')");
+        assert_lua_string!("test_line:tag_color()", "");
+
+        let line: Line = global!("test_line");
+        assert_eq!(line.inner.tag.color, "");
     }
 
     #[test]
@@ -301,11 +318,11 @@ mod test_lua_line {
     fn test_tag_color_does_not_affect_key() {
         test_lua!("test_line" => test_line());
 
-        run_lua!("test_line:tag_color('blue')");
+        run_lua!("test_line:tag_color('\x1b[34m')");
         run_lua!("test_line:tag_key('k')");
 
         let line: Line = global!("test_line");
-        assert_eq!(line.inner.tag.color, "blue");
+        assert_eq!(line.inner.tag.color, "\x1b[34m");
         assert_eq!(line.inner.tag.key, "k");
     }
 

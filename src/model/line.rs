@@ -1,6 +1,7 @@
 use log::error;
 use std::fmt;
 use strip_ansi_escapes::strip as strip_ansi;
+use unicode_width::UnicodeWidthChar;
 
 pub trait ToLine {
     fn to_line(&self) -> Line;
@@ -323,6 +324,8 @@ impl Line {
         self.print_line().map(|content| {
             if self.tag.color.is_empty() {
                 format!("  {}", content)
+            } else if self.tag.symbol.width() == Some(2) {
+                format!("{}{}\x1b[0m{}", self.tag.color, self.tag.symbol, content)
             } else {
                 format!("{}{} \x1b[0m{}", self.tag.color, self.tag.symbol, content)
             }

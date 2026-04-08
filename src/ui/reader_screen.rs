@@ -205,7 +205,7 @@ impl UserInterface for ReaderScreen {
                 let mut new_line = !line.flags.separate_receives;
                 let mut count = 0;
                 let cur_line = self.history.len();
-                for l in wrap_line(print_line, self.width as usize) {
+                for l in wrap_line(print_line, self.width as usize, 0) {
                     self.print(l, new_line);
                     new_line = true;
                     count += 1;

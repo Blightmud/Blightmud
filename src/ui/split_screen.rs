@@ -245,7 +245,8 @@ impl UserInterface for SplitScreen {
         if !line.is_utf8() || raw.trim().is_empty() {
             self.print_line(line.clone());
         } else {
-            let segments: Vec<String> = wrap_line(raw, self.width as usize)
+            let padding = if self.show_tags { 2 } else { 0 };
+            let segments: Vec<String> = wrap_line(raw, self.width as usize, padding)
                 .into_iter()
                 .map(str::to_string)
                 .collect();
@@ -340,7 +341,11 @@ impl UserInterface for SplitScreen {
                 line,
                 Fg(color::Reset),
             );
-            for line in wrap_line(line, self.width as usize) {
+            for line in wrap_line(
+                line,
+                self.width as usize,
+                if self.show_tags { 2 } else { 0 },
+            ) {
                 self.print_line(line.to_internal_line());
             }
         }

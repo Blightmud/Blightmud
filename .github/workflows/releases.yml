@@ -141,11 +141,15 @@ jobs:
       - name: Bump pkgver
         run: sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.VERSION }}/" pkgbuild/PKGBUILD
 
+      - name: Read PKGBUILD
+        id: read_pkgbuild
+        run: echo "content<<EOF" >> $GITHUB_OUTPUT && cat pkgbuild/PKGBUILD >> $GITHUB_OUTPUT && echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Publish to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.2
         with:
           pkgname: blightmud
-          pkgbuild_path: ./pkgbuild/PKGBUILD
+          pkgbuild: ${{ steps.read_pkgbuild.outputs.content }}
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_KEY }}

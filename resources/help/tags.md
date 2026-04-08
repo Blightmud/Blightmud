@@ -43,7 +43,7 @@ BOX DRAWINGS HEAVY VERTICAL). Only rendered when a tag color is set.
 ***line:tag_key(key) -> string***
 
 Get or set an arbitrary string key associated with this line's tag. Useful for
-plugins to identify or group tagged lines.
+filtering lines.
 
 ### Example
 
@@ -76,7 +76,7 @@ Hide lines whose tag key equals `key`. Pass `nil` to clear.
 ***blight.filter_tag_symbol(symbol)***
 Hide lines whose tag symbol equals `symbol`. Pass `nil` to clear.
 
-***blight.filter_tag_reverse([val]) -> bool***
+***blight.filter_tag_reverse(val) -> bool***
 Get or set the reverse flag. When `false` (default), matching lines are hidden.
 When `true`, non-matching lines are hidden — only lines that match the filter
 are shown. Pass no argument to get the current value without changing it.

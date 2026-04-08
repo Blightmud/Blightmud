@@ -96,6 +96,12 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
+    fn set_show_tags(&mut self, _show: bool) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn set_tag_mask(&mut self, _mask: crate::model::TagMask) {}
+
     fn set_status_line(&mut self, _line: usize, _info: String) -> anyhow::Result<()> {
         Ok(())
     }

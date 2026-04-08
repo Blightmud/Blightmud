@@ -105,4 +105,10 @@ blight.bind("up", history.previous_command)
 blight.bind("down", history.next_command)
 blight.bind("ctrl-p", history.previous_command)
 blight.bind("ctrl-n", history.next_command)
+
+-- Toggle tag rendering
+blight.bind("ctrl-t", function()
+    print("Toggling tags")
+    blight.show_tags(not blight.show_tags())
+end)
 ```

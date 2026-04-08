@@ -91,7 +91,7 @@ mod test {
 
         let mut history = History::new();
         for _ in 0..1024 {
-            history.append("test")
+            history.append_str("test")
         }
         assert!(scroll.pos > history.len());
         scroll.clamp(&history);
@@ -146,7 +146,7 @@ mod test {
 
         let mut history = History::new();
         for _ in 0..1024 {
-            history.append("test")
+            history.append_str("test")
         }
         // When not active, clamp should not modify pos
         scroll.clamp(&history);
@@ -163,7 +163,7 @@ mod test {
 
         let mut history = History::new();
         for _ in 0..100 {
-            history.append("line");
+            history.append_str("line");
         }
 
         assert!(scroll.reset(&history).is_ok());

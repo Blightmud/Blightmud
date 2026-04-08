@@ -1,6 +1,10 @@
 use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::{Event, QuitMethod};
-use crate::{model::Line, PROJECT_NAME, VERSION};
+use crate::{
+    model::{Line, TagMask},
+    tools::printable_chars::PrintableCharsIterator,
+    PROJECT_NAME, VERSION,
+};
 use log::debug;
 use mlua::{
     AnyUserData, FromLua, Function, Result as LuaResult, Table, UserData, UserDataMethods, Variadic,
@@ -16,6 +20,7 @@ pub struct Blight {
     pub core_mode: bool,
     pub reader_mode: bool,
     pub _tts_enabled: bool,
+    tag_mask: TagMask,
 }
 
 impl Blight {
@@ -28,6 +33,7 @@ impl Blight {
             core_mode: false,
             reader_mode: false,
             _tts_enabled: false,
+            tag_mask: TagMask::default(),
         }
     }
 
@@ -175,6 +181,65 @@ impl UserData for Blight {
                 .unwrap();
             Ok(())
         });
+        methods.add_function(
+            "show_tags",
+            |ctx, val: Option<bool>| -> mlua::Result<bool> {
+                if let Some(val) = val {
+                    let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                    let this = this_aux.borrow::<Blight>()?;
+                    this.main_writer.send(Event::ShowTags(val)).unwrap();
+                    ctx.set_named_registry_value(SHOW_TAGS, val)?;
+                }
+                Ok(ctx.named_registry_value(SHOW_TAGS).unwrap_or(false))
+            },
+        );
+        methods.add_function("filter_tag_color", |ctx, color: Option<String>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask.color = color.filter(|c| c.as_str().display_width() == 0);
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("filter_tag_key", |ctx, key: Option<String>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask.key = key;
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("filter_tag_symbol", |ctx, symbol: Option<String>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask.symbol = symbol.and_then(|s| s.chars().next());
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
+        methods.add_function("filter_tag_reverse", |ctx, val: Option<bool>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            if let Some(val) = val {
+                this.tag_mask.reverse = val;
+                this.main_writer
+                    .send(Event::SetTagMask(this.tag_mask.clone()))
+                    .unwrap();
+            }
+            Ok(this.tag_mask.reverse)
+        });
+        methods.add_function("filter_tag_reset", |ctx, ()| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            this.tag_mask = TagMask::default();
+            this.main_writer
+                .send(Event::SetTagMask(this.tag_mask.clone()))
+                .unwrap();
+            Ok(())
+        });
         methods.add_function("find_backward", |ctx, re: Regex| {
             let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
             let this = this_aux.borrow::<Blight>()?;
@@ -204,7 +269,7 @@ mod test_blight {
     use super::Blight;
     use crate::lua::constants::{
         BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE, BLIGHT_ON_QUIT_LISTENER_TABLE,
-        COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE, STATUS_AREA_HEIGHT,
+        COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE, SHOW_TAGS, STATUS_AREA_HEIGHT,
     };
     use crate::{PROJECT_NAME, VERSION};
 
@@ -228,6 +293,7 @@ mod test_blight {
             .unwrap();
         lua.set_named_registry_value(STATUS_AREA_HEIGHT, 1u16)
             .unwrap();
+        lua.set_named_registry_value(SHOW_TAGS, false).unwrap();
         (lua, reader)
     }
 
@@ -399,6 +465,74 @@ mod test_blight {
         let bindings: mlua::Table = lua.named_registry_value(COMMAND_BINDING_TABLE).unwrap();
         assert!(bindings.get::<mlua::Function>("alt-H").is_ok());
         assert!(bindings.get::<mlua::Function>("alt-h").is_err());
+    }
+
+    #[test]
+    fn test_show_tags() {
+        let (lua, reader) = get_lua_state();
+
+        // Default is false
+        let val = lua
+            .load("return blight.show_tags()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(!val);
+
+        // Set to true
+        let val = lua
+            .load("return blight.show_tags(true)")
+            .call::<bool>(())
+            .unwrap();
+        assert!(val);
+        assert_eq!(reader.recv(), Ok(Event::ShowTags(true)));
+
+        // Getter reflects update
+        let val = lua
+            .load("return blight.show_tags()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(val);
+
+        // Set back to false
+        lua.load("blight.show_tags(false)").exec().unwrap();
+        assert_eq!(reader.recv(), Ok(Event::ShowTags(false)));
+    }
+
+    #[test]
+    fn test_filter_tag_reverse() {
+        let (lua, reader) = get_lua_state();
+
+        // Default is false
+        let val = lua
+            .load("return blight.filter_tag_reverse()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(!val);
+
+        // Set to true
+        let val = lua
+            .load("return blight.filter_tag_reverse(true)")
+            .call::<bool>(())
+            .unwrap();
+        assert!(val);
+        // Discard the SetTagMask event
+        let _ = reader.recv();
+
+        // Getter reflects update
+        let val = lua
+            .load("return blight.filter_tag_reverse()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(val);
+
+        // Reset clears reverse too
+        lua.load("blight.filter_tag_reset()").exec().unwrap();
+        let _ = reader.recv();
+        let val = lua
+            .load("return blight.filter_tag_reverse()")
+            .call::<bool>(())
+            .unwrap();
+        assert!(!val);
     }
 
     #[test]

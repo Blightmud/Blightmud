@@ -487,6 +487,8 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 event_handler.handle_scroll_events(event, &mut screen)?;
             }
             Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
+            Event::ShowTags(show) => screen.set_show_tags(show)?,
+            Event::SetTagMask(mask) => screen.set_tag_mask(mask),
             Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
             Event::LoadScript(path) => {
                 info!("Loading script: {}", path);

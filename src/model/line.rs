@@ -1,6 +1,49 @@
 use log::error;
 use std::fmt;
 use strip_ansi_escapes::strip as strip_ansi;
+use unicode_width::UnicodeWidthChar;
+
+pub trait ToLine {
+    fn to_line(&self) -> Line;
+    fn to_internal_line(&self) -> Line;
+}
+
+impl ToLine for str {
+    fn to_line(&self) -> Line {
+        Line::from(self)
+    }
+
+    fn to_internal_line(&self) -> Line {
+        let mut line = self.to_line();
+        line.tag.key = "internal".to_string();
+        line
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Tag {
+    pub symbol: char,
+    pub key: String,
+    pub color: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TagMask {
+    pub symbol: Option<char>,
+    pub key: Option<String>,
+    pub color: Option<String>,
+    pub reverse: bool,
+}
+
+impl Default for Tag {
+    fn default() -> Self {
+        Self {
+            symbol: '┃',
+            key: String::new(),
+            color: String::new(),
+        }
+    }
+}
 
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct Flags {
@@ -24,6 +67,7 @@ pub struct Line {
     content: String,
     clean_content: String,
     clean_utf8: bool,
+    pub tag: Tag,
     pub flags: Flags,
 }
 
@@ -43,6 +87,23 @@ impl Line {
             line.as_bytes().into()
         } else {
             raw.into()
+        }
+    }
+
+    pub fn is_masked(&self, mask: &TagMask) -> bool {
+        let matched = if let Some(color) = &mask.color {
+            self.tag.color == *color
+        } else if let Some(key) = &mask.key {
+            self.tag.key == *key
+        } else if let Some(symbol) = mask.symbol {
+            self.tag.symbol == symbol
+        } else {
+            return false;
+        };
+        if mask.reverse {
+            !matched
+        } else {
+            matched
         }
     }
 }
@@ -140,6 +201,7 @@ impl From<&Line> for Line {
             content: line.content.clone(),
             clean_content: line.clean_content.clone(),
             clean_utf8: line.clean_utf8,
+            tag: line.tag.clone(),
             flags: line.flags.clone(),
         }
     }
@@ -152,6 +214,7 @@ impl From<&str> for Line {
             content,
             clean_content,
             clean_utf8,
+            tag: Tag::default(),
             flags: Flags {
                 screen_clear,
                 ..Flags::default()
@@ -167,6 +230,7 @@ impl From<String> for Line {
             content,
             clean_content,
             clean_utf8,
+            tag: Tag::default(),
             flags: Flags {
                 screen_clear,
                 ..Flags::default()
@@ -182,6 +246,7 @@ impl From<&String> for Line {
             content,
             clean_content,
             clean_utf8,
+            tag: Tag::default(),
             flags: Flags {
                 screen_clear,
                 ..Flags::default()
@@ -204,6 +269,7 @@ impl From<&[u8]> for Line {
             content,
             clean_content,
             clean_utf8,
+            tag: Tag::default(),
             flags: Flags {
                 screen_clear,
                 ..Flags::default()
@@ -227,6 +293,7 @@ impl From<&Vec<u8>> for Line {
             content,
             clean_content,
             clean_utf8,
+            tag: Tag::default(),
             flags: Flags {
                 screen_clear,
                 ..Flags::default()
@@ -251,6 +318,18 @@ impl Line {
         } else {
             None
         }
+    }
+
+    pub fn tagged_line(&self) -> Option<String> {
+        self.print_line().map(|content| {
+            if self.tag.color.is_empty() {
+                format!("  {}", content)
+            } else if self.tag.symbol.width() == Some(2) {
+                format!("{}{}\x1b[0m{}", self.tag.color, self.tag.symbol, content)
+            } else {
+                format!("{}{} \x1b[0m{}", self.tag.color, self.tag.symbol, content)
+            }
+        })
     }
 
     pub fn is_utf8(&self) -> bool {
@@ -288,6 +367,7 @@ impl Line {
 
     pub fn replace_with(&mut self, other: &Line) {
         self.flags = other.flags.clone();
+        self.tag = other.tag.clone();
     }
 }
 
@@ -461,5 +541,131 @@ mod test_line {
         let line = Line::from("\x1b[2J\x1b[J\x1b[1J");
         assert_eq!(line.line(), "");
         assert!(line.flags.screen_clear);
+    }
+
+    #[test]
+    fn test_tagged_line_default() {
+        let line = Line::from("hello");
+        // Default tag has no color: render two spaces
+        assert_eq!(line.tagged_line(), Some("  hello".to_string()));
+    }
+
+    #[test]
+    fn test_tagged_line_with_color() {
+        let mut line = Line::from("hello");
+        line.tag.color = "\x1b[31m".to_string();
+        assert_eq!(
+            line.tagged_line(),
+            Some("\x1b[31m┃ \x1b[0mhello".to_string())
+        );
+    }
+
+    #[test]
+    fn test_tagged_line_gagged() {
+        let mut line = Line::from("hello");
+        line.flags.gag = true;
+        assert_eq!(line.tagged_line(), None);
+    }
+
+    #[test]
+    fn test_is_masked_empty_mask() {
+        let line = Line::from("hello");
+        let mask = super::TagMask::default();
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_key() {
+        let mut line = Line::from("hello");
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_key_no_match() {
+        let mut line = Line::from("hello");
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            key: Some("loot".to_string()),
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_color() {
+        let mut line = Line::from("hello");
+        line.tag.color = "\x1b[31m".to_string();
+        let mask = super::TagMask {
+            color: Some("\x1b[31m".to_string()),
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_by_symbol() {
+        let mut line = Line::from("hello");
+        line.tag.symbol = '!';
+        let mask = super::TagMask {
+            symbol: Some('!'),
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_color_takes_priority_over_key() {
+        // When color is set in mask, key is not checked
+        let mut line = Line::from("hello");
+        line.tag.color = "\x1b[32m".to_string();
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            color: Some("\x1b[31m".to_string()), // different color — no match
+            key: Some("combat".to_string()),     // key would match, but color is checked first
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_reverse_match_not_masked() {
+        // reverse: true — a matching line is NOT masked (it passes through)
+        let mut line = Line::from("hello");
+        line.tag.key = "combat".to_string();
+        let mask = super::TagMask {
+            key: Some("combat".to_string()),
+            reverse: true,
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_reverse_no_match_is_masked() {
+        // reverse: true — a non-matching line IS masked (hidden)
+        let mut line = Line::from("hello");
+        line.tag.key = "loot".to_string();
+        let mask = super::TagMask {
+            key: Some("combat".to_string()),
+            reverse: true,
+            ..Default::default()
+        };
+        assert!(line.is_masked(&mask));
+    }
+
+    #[test]
+    fn test_is_masked_reverse_empty_mask_never_masks() {
+        // reverse: true with no criteria — still never masks anything
+        let line = Line::from("hello");
+        let mask = super::TagMask {
+            reverse: true,
+            ..Default::default()
+        };
+        assert!(!line.is_masked(&mask));
     }
 }

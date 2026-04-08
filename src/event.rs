@@ -3,7 +3,7 @@ use crate::lua::ConnectionInfo;
 use crate::net::spawn_connect_thread;
 use crate::{audio::SourceOptions, model::Regex};
 use crate::{
-    model::{Connection, Line, PromptMask},
+    model::{Connection, Line, PromptMask, TagMask},
     net::{spawn_network_thread, WakingSender},
     session::Session,
     tts::TTSEvent,
@@ -71,6 +71,7 @@ pub enum Event {
     ServerSend(Bytes),
     SettingChanged(String, bool),
     ShowHelp(String, bool),
+    ShowTags(bool),
     Speak(String, bool),
     SpeakStop,
     StartLogging(String, bool),
@@ -87,6 +88,7 @@ pub enum Event {
     SetPromptCursorPos(usize),
     SetPromptMask(PromptMask),
     ClearPromptMask,
+    SetTagMask(TagMask),
     UserInputBuffer(String, usize),
     UserInputCursor(usize),
     FSEvent(FSEvent),

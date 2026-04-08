@@ -41,6 +41,7 @@ Available topics:
 - spellcheck
 - status_area
 - storage
+- tags
 - tasks
 - timers
 - trigger

@@ -8,9 +8,8 @@ use termion::{
 
 use crate::{
     model::{Line, Regex},
-    ui::{
-        printable_chars::PrintableCharsIterator, DisableOriginMode, ResetScrollRegion, ScrollRegion,
-    },
+    tools::printable_chars::PrintableCharsIterator,
+    ui::{DisableOriginMode, ResetScrollRegion, ScrollRegion},
 };
 
 use super::{
@@ -49,7 +48,7 @@ impl ReaderScreen {
 
     #[inline]
     fn print(&mut self, line: &str, new_line: bool) {
-        self.history.append(line);
+        self.history.append_str(line);
         if !self.scroll_data.active {
             write!(
                 self.screen,
@@ -66,7 +65,7 @@ impl ReaderScreen {
     #[inline]
     fn print_line(&mut self, line: &Line) {
         if let Some(print_line) = &line.print_line() {
-            self.history.append(print_line);
+            self.history.append_str(print_line);
             if !self.scroll_data.active {
                 writeln!(
                     self.screen,
@@ -144,13 +143,12 @@ impl ReaderScreen {
     fn draw_scroll(&mut self) -> Result<()> {
         for i in 0..self.height - 1 {
             let index = self.scroll_data.pos + i as usize;
-            let line = self.history.inner[index].clone();
             write!(
                 self.screen,
                 "{}{}{}{}",
                 termion::cursor::Goto(1, i + 1),
                 termion::clear::CurrentLine,
-                line,
+                self.history.get(index).line(),
                 cursor::Goto(1, self.prompt_line),
             )?;
         }
@@ -207,7 +205,7 @@ impl UserInterface for ReaderScreen {
                 let mut new_line = !line.flags.separate_receives;
                 let mut count = 0;
                 let cur_line = self.history.len();
-                for l in wrap_line(print_line, self.width as usize) {
+                for l in wrap_line(print_line, self.width as usize, 0) {
                     self.print(l, new_line);
                     new_line = true;
                     count += 1;
@@ -268,7 +266,7 @@ impl UserInterface for ReaderScreen {
             self.reset_scroll().ok();
         }
         if let Some(print_line) = send.print_line() {
-            self.history.append(print_line);
+            self.history.append_str(print_line);
         }
     }
 
@@ -280,7 +278,7 @@ impl UserInterface for ReaderScreen {
     fn reset_scroll(&mut self) -> Result<()> {
         self.scroll_data.reset(&self.history)?;
         let output_range = self.output_line;
-        let output_start_index = self.history.inner.len() as i32 - output_range as i32;
+        let output_start_index = self.history.len() as i32 - output_range as i32;
         if output_start_index >= 0 {
             let output_start_index = output_start_index as usize;
             for i in 0..output_range {
@@ -290,18 +288,18 @@ impl UserInterface for ReaderScreen {
                     "{}{}{}{}",
                     cursor::Goto(1, 1 + i),
                     clear::AfterCursor,
-                    self.history.inner[index],
+                    self.history.get(index).line(),
                     cursor::Goto(1, self.prompt_line),
                 )?;
             }
         } else {
-            for line in &self.history.inner {
+            for line in self.history.iter() {
                 write!(
                     self.screen,
                     "{}\n{}{}{}",
                     Goto(1, self.output_line),
                     clear::AfterCursor,
-                    line,
+                    line.line(),
                     cursor::Goto(1, self.prompt_line),
                 )?;
             }
@@ -332,7 +330,7 @@ impl UserInterface for ReaderScreen {
         self.scroll_data.clamp(&self.history);
         if self.scroll_data.active {
             let output_range = self.output_line as i32;
-            let max_start_index = self.history.inner.len() as i32 - output_range;
+            let max_start_index = self.history.len() as i32 - output_range;
             let new_start_index = self.scroll_data.pos + 5;
             if new_start_index >= max_start_index as usize {
                 self.reset_scroll()?;
@@ -351,7 +349,7 @@ impl UserInterface for ReaderScreen {
     fn scroll_to(&mut self, row: usize) -> Result<()> {
         self.scroll_data.clamp(&self.history);
         if self.history.len() > self.output_line as usize {
-            let max_start_index = self.history.inner.len() as i32 - self.output_line as i32;
+            let max_start_index = self.history.len() as i32 - self.output_line as i32;
             if max_start_index > 0 && row < max_start_index as usize {
                 self.scroll_data.active = true;
                 self.scroll_data.pos = row;
@@ -364,7 +362,7 @@ impl UserInterface for ReaderScreen {
     }
 
     fn scroll_top(&mut self) -> Result<()> {
-        if self.history.inner.len() as u16 >= self.output_line {
+        if self.history.len() as u16 >= self.output_line {
             self.scroll_data.active = true;
             self.scroll_data.pos = 0;
             self.draw_scroll()?;
@@ -375,10 +373,10 @@ impl UserInterface for ReaderScreen {
     fn scroll_up(&mut self) -> Result<()> {
         self.scroll_data.clamp(&self.history);
         let output_range = self.output_line as usize;
-        if self.history.inner.len() > output_range {
+        if self.history.len() > output_range {
             if !self.scroll_data.active {
                 self.scroll_data.active = true;
-                self.scroll_data.pos = self.history.inner.len() - output_range;
+                self.scroll_data.pos = self.history.len() - output_range;
             }
             self.scroll_data.pos -= self.scroll_data.pos.min(5);
             self.draw_scroll()?;
@@ -436,6 +434,12 @@ impl UserInterface for ReaderScreen {
     fn set_status_area_height(&mut self, _height: u16) -> Result<()> {
         Ok(())
     }
+
+    fn set_show_tags(&mut self, _show: bool) -> Result<()> {
+        Ok(())
+    }
+
+    fn set_tag_mask(&mut self, _mask: crate::model::TagMask) {}
 
     fn set_status_line(&mut self, _line: usize, _info: String) -> Result<()> {
         Ok(())

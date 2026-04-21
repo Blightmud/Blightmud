@@ -24,7 +24,7 @@ mod ui;
 
 use crate::event::{spawn_quit_confirm_timeout_thread, Event, QuitMethod};
 use crate::io::{FSMonitor, SaveData};
-use crate::model::{Servers, ECHO_INPUT, HIDE_TOPBAR, LAST_COMMAND, READER_MODE, SCROLL_SPLIT};
+use crate::model::{Servers, ECHO_INPUT, HIDE_TOPBAR, HIDE_PROMPT, LAST_COMMAND, READER_MODE, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
@@ -404,7 +404,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     }
                     screen = Box::new(UiWrapper::new_from(screen, &session, value)?);
                 }
-                HIDE_TOPBAR | SCROLL_SPLIT => {
+                HIDE_TOPBAR | HIDE_PROMPT | SCROLL_SPLIT => {
                     screen.setup()?;
                 }
                 ECHO_INPUT => session.echo_input.store(value, Ordering::Relaxed),

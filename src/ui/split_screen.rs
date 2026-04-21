@@ -3,7 +3,7 @@ use super::scroll_data::ScrollData;
 use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
-use crate::model::{Settings, HIDE_TOPBAR};
+use crate::model::{Settings, HIDE_TOPBAR, HIDE_PROMPT};
 use crate::{
     model::Line, model::Regex, model::TagMask, model::ToLine,
     tools::printable_chars::PrintableCharsIterator, ui::ansi::*,
@@ -194,7 +194,7 @@ impl UserInterface for SplitScreen {
         if width > 0 && height > 0 {
             self.width = width;
             self.height = height;
-            self.output_line = height - self.status_area.height() - 2;
+            self.output_line = height - self.status_area.height() - if settings.get(HIDE_PROMPT)? { 1 } else { 2 };
             self.mud_prompt_line = height - self.status_area.height() - 1;
             self.prompt_line = height;
             self.output_start_line = if settings.get(HIDE_TOPBAR)? { 1 } else { 2 };
@@ -265,8 +265,14 @@ impl UserInterface for SplitScreen {
 
     fn print_prompt(&mut self, prompt: &Line) {
         //debug!("UI: {:?}", prompt);
+        let settings = Settings::try_load().unwrap();
+
         self.mud_prompt = prompt.clone();
-        self.redraw_prompt();
+        if settings.get(HIDE_PROMPT).unwrap() {
+            self.print_output(prompt);
+        } else {
+            self.redraw_prompt();
+        };
     }
 
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
@@ -372,7 +378,11 @@ impl UserInterface for SplitScreen {
             self.status_area.set_scroll_marker(false);
             self.status_area.redraw_line(&mut self.screen, 0)?;
         }
-        self.redraw_prompt();
+
+        let settings = Settings::try_load().unwrap();
+        if !settings.get(HIDE_PROMPT).unwrap() {
+            self.redraw_prompt();
+        };
 
         let output_range = self.output_range();
         let output_start_index = self.history.len() as i32 - output_range as i32;
@@ -590,9 +600,11 @@ impl SplitScreen {
     pub fn new(screen: Box<dyn Write>, history: History) -> Result<Self> {
         let (width, height) = termion::terminal_size()?;
 
+        let settings = Settings::try_load()?;
+
         let output_start_line = 2;
         let status_area_height = 1;
-        let output_line = height - status_area_height - 2;
+        let output_line = height - status_area_height - if settings.get(HIDE_PROMPT)? { 1 } else { 2 };
         let mud_prompt_line = height - status_area_height - 1;
         let prompt_line = height;
 

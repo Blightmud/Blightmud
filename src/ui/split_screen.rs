@@ -170,6 +170,7 @@ pub struct SplitScreen {
     output_line: u16,
     mud_prompt_line: u16,
     mud_prompt: Line,
+    mud_prompt_enabled: bool,
     prompt_line: u16,
     status_area: StatusArea,
     cursor_prompt_pos: u16,
@@ -196,6 +197,7 @@ impl UserInterface for SplitScreen {
             self.height = height;
             self.output_line = height - self.status_area.height() - if settings.get(HIDE_PROMPT)? { 1 } else { 2 };
             self.mud_prompt_line = height - self.status_area.height() - 1;
+            self.mud_prompt_enabled = !settings.get(HIDE_PROMPT)?;
             self.prompt_line = height;
             self.output_start_line = if settings.get(HIDE_TOPBAR)? { 1 } else { 2 };
 
@@ -265,13 +267,11 @@ impl UserInterface for SplitScreen {
 
     fn print_prompt(&mut self, prompt: &Line) {
         //debug!("UI: {:?}", prompt);
-        let settings = Settings::try_load().unwrap();
-
         self.mud_prompt = prompt.clone();
-        if settings.get(HIDE_PROMPT).unwrap() {
-            self.print_output(prompt);
-        } else {
+        if self.mud_prompt_enabled {
             self.redraw_prompt();
+        } else {
+            self.print_output(prompt);
         };
     }
 
@@ -379,8 +379,7 @@ impl UserInterface for SplitScreen {
             self.status_area.redraw_line(&mut self.screen, 0)?;
         }
 
-        let settings = Settings::try_load().unwrap();
-        if !settings.get(HIDE_PROMPT).unwrap() {
+        if self.mud_prompt_enabled {
             self.redraw_prompt();
         };
 
@@ -606,6 +605,7 @@ impl SplitScreen {
         let status_area_height = 1;
         let output_line = height - status_area_height - if settings.get(HIDE_PROMPT)? { 1 } else { 2 };
         let mud_prompt_line = height - status_area_height - 1;
+        let mud_prompt_enabled = !settings.get(HIDE_PROMPT)?;
         let prompt_line = height;
 
         let status_area = StatusArea::new(status_area_height, mud_prompt_line + 1, width);
@@ -618,6 +618,7 @@ impl SplitScreen {
             output_line,
             mud_prompt_line,
             mud_prompt: Line::from(""),
+            mud_prompt_enabled,
             status_area,
             prompt_line,
             cursor_prompt_pos: 1,

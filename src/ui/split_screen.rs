@@ -3,7 +3,7 @@ use super::scroll_data::ScrollData;
 use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
-use crate::model::{Settings, HIDE_TOPBAR, HIDE_PROMPT};
+use crate::model::{Settings, HIDE_TOPBAR, CAPTURE_PROMPT};
 use crate::{
     model::Line, model::Regex, model::TagMask, model::ToLine,
     tools::printable_chars::PrintableCharsIterator, ui::ansi::*,
@@ -168,10 +168,10 @@ pub struct SplitScreen {
     height: u16,
     output_start_line: u16,
     output_line: u16,
-    mud_prompt_line: u16,
+    mud_prompt_line: Option<u16>,
     mud_prompt: Line,
-    mud_prompt_enabled: bool,
     prompt_line: u16,
+    status_area_line: u16,
     status_area: StatusArea,
     cursor_prompt_pos: u16,
     history: History,
@@ -195,9 +195,9 @@ impl UserInterface for SplitScreen {
         if width > 0 && height > 0 {
             self.width = width;
             self.height = height;
-            self.output_line = height - self.status_area.height() - if settings.get(HIDE_PROMPT)? { 1 } else { 2 };
-            self.mud_prompt_line = height - self.status_area.height() - 1;
-            self.mud_prompt_enabled = !settings.get(HIDE_PROMPT)?;
+            self.output_line = height - self.status_area.height() - if settings.get(CAPTURE_PROMPT)? { 2 } else { 1 };
+            self.mud_prompt_line = if settings.get(CAPTURE_PROMPT)? { Some(height - self.status_area.height() - 1) } else { None };
+            self.status_area_line = height - self.status_area.height();
             self.prompt_line = height;
             self.output_start_line = if settings.get(HIDE_TOPBAR)? { 1 } else { 2 };
 
@@ -268,7 +268,7 @@ impl UserInterface for SplitScreen {
     fn print_prompt(&mut self, prompt: &Line) {
         //debug!("UI: {:?}", prompt);
         self.mud_prompt = prompt.clone();
-        if self.mud_prompt_enabled {
+        if self.mud_prompt_line.is_some() {
             self.redraw_prompt();
         } else {
             self.print_output(prompt);
@@ -379,9 +379,7 @@ impl UserInterface for SplitScreen {
             self.status_area.redraw_line(&mut self.screen, 0)?;
         }
 
-        if self.mud_prompt_enabled {
-            self.redraw_prompt();
-        };
+        self.redraw_prompt();
 
         let output_range = self.output_range();
         let output_start_index = self.history.len() as i32 - output_range as i32;
@@ -603,12 +601,12 @@ impl SplitScreen {
 
         let output_start_line = 2;
         let status_area_height = 1;
-        let output_line = height - status_area_height - if settings.get(HIDE_PROMPT)? { 1 } else { 2 };
-        let mud_prompt_line = height - status_area_height - 1;
-        let mud_prompt_enabled = !settings.get(HIDE_PROMPT)?;
+        let output_line = height - status_area_height - if settings.get(CAPTURE_PROMPT)? { 2 } else { 1 };
+        let mud_prompt_line = if settings.get(CAPTURE_PROMPT)? { Some(height - status_area_height - 1) } else { None };
+        let status_area_line = height - status_area_height;
         let prompt_line = height;
 
-        let status_area = StatusArea::new(status_area_height, mud_prompt_line + 1, width);
+        let status_area = StatusArea::new(status_area_height, status_area_line, width);
 
         Ok(Self {
             screen,
@@ -618,8 +616,8 @@ impl SplitScreen {
             output_line,
             mud_prompt_line,
             mud_prompt: Line::from(""),
-            mud_prompt_enabled,
             status_area,
+            status_area_line,
             prompt_line,
             cursor_prompt_pos: 1,
             history,
@@ -666,10 +664,14 @@ impl SplitScreen {
     }
 
     fn clear_prompt(&mut self) {
+        if !self.mud_prompt_line.is_some() {
+            return;
+        }
+
         write!(
             self.screen,
             "{}{}{}",
-            termion::cursor::Goto(1, self.mud_prompt_line),
+            termion::cursor::Goto(1, self.mud_prompt_line.unwrap()),
             termion::clear::CurrentLine,
             self.goto_prompt(),
         )
@@ -677,6 +679,10 @@ impl SplitScreen {
     }
 
     fn redraw_prompt(&mut self) {
+        if !self.mud_prompt_line.is_some() {
+            return;
+        }
+
         let prompt_line = if self.show_tags {
             self.mud_prompt.tagged_line().unwrap_or_default()
         } else {
@@ -687,7 +693,7 @@ impl SplitScreen {
             write!(
                 self.screen,
                 "{}{}{}{}",
-                termion::cursor::Goto(1, self.mud_prompt_line),
+                termion::cursor::Goto(1, self.mud_prompt_line.unwrap()),
                 termion::clear::CurrentLine,
                 prompt_line,
                 self.goto_prompt(),
@@ -729,7 +735,7 @@ impl SplitScreen {
 
     fn redraw_status_area(&mut self) -> Result<()> {
         self.status_area.set_width(self.width);
-        self.status_area.update_pos(self.mud_prompt_line + 1);
+        self.status_area.update_pos(self.status_area_line);
         self.status_area.redraw(&mut self.screen)?;
         write!(self.screen, "{}", self.goto_prompt(),)?;
         Ok(())

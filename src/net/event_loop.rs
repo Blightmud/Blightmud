@@ -505,15 +505,17 @@ impl NetworkEventLoop {
     fn handle_received_data(&mut self, data: &[u8]) -> io::Result<()> {
         debug!("Received {} bytes", data.len());
 
+        // Helper function to extract decompressed data
+        let log_decompress_error = |result: io::Result<Vec<u8>>| {
+            result.map_err(|e| {
+                error!("Zlib decompression error: {e}");
+                e
+            })
+        };
+
         // Handle zlib decompression if active
         let data = if self.zlib_state.is_active() {
-            match self.zlib_state.decompress(data) {
-                Ok(decompressed) => decompressed,
-                Err(e) => {
-                    error!("Zlib decompression error: {}", e);
-                    return Err(e);
-                }
-            }
+            log_decompress_error(self.zlib_state.decompress(data))?
         } else {
             data.to_vec()
         };
@@ -524,13 +526,14 @@ impl NetworkEventLoop {
 
         // Parse through telnet handler
         // The telnet handler returns Some(remaining_bytes) when MCCP2 starts
-        if let Some(remaining) = self.telnet_handler.parse(&data) {
-            // Start zlib decompression and decompress the remaining data
-            if let Ok(decompressed) = self.zlib_state.start_decompression_with(remaining) {
-                if !decompressed.is_empty() {
-                    self.telnet_handler.parse(&decompressed);
-                }
-            }
+        let Some(remaining) = self.telnet_handler.parse(&data) else {
+            return Ok(());
+        };
+        // Start zlib decompression and decompress the remaining data
+        let decompressed =
+            log_decompress_error(self.zlib_state.start_decompression_with(remaining))?;
+        if !decompressed.is_empty() {
+            self.telnet_handler.parse(&decompressed);
         }
 
         Ok(())

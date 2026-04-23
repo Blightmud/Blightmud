@@ -72,22 +72,24 @@ impl Schedule {
         };
 
         if let Some(job) = opt_job {
-            if let Some(count) = job.count {
-                if count == 0 {
+            match job.count {
+                Some(0) => {
                     self.main_thread_writer
                         .send(Event::DropTimedEvent(callback_id))
                         .ok();
                     self.jobs.remove(&callback_id);
-                } else {
+                }
+                Some(count) => {
                     job.count.replace(count - 1);
                     self.main_thread_writer
                         .send(Event::TimedEvent(callback_id))
                         .ok();
                 }
-            } else {
-                self.main_thread_writer
-                    .send(Event::TimedEvent(callback_id))
-                    .ok();
+                None => {
+                    self.main_thread_writer
+                        .send(Event::TimedEvent(callback_id))
+                        .ok();
+                }
             }
         }
     }

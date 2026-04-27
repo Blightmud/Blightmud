@@ -103,6 +103,19 @@ build Blightmud without the spellcheck feature, use `--no-default-features`. E.g
 - Run `cargo build --no-default-features` or `cargo build --no-default-features --features text-to-speech`
 - Run `cargo run --no-default-features` or `cargo run --no-default-features --features text-to-speech` to run
 
+### Compile without audio
+
+If you're running Blightmud on a server or system without ALSA/audio libraries, you can disable
+audio support to avoid requiring these dependencies:
+
+- Install rust
+- Run `cargo build --no-default-features --features spellcheck`
+- Run `cargo run --no-default-features --features spellcheck` to run
+
+You can combine with other features as needed:
+- With text-to-speech: `cargo build --no-default-features --features spellcheck,text-to-speech`
+- Minimal build (no audio, no spellcheck): `cargo build --no-default-features`
+
 ### Nix
 
 If you're using [Nix](https://nixos.org/) or NixOS you can try Blightmud

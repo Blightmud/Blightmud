@@ -649,7 +649,7 @@ mod lua_script_tests {
     use super::LuaScriptBuilder;
     use super::CONNECTION_ID;
     use crate::event::QuitMethod;
-    use crate::lua::constants::TIMED_CALLBACK_TABLE;
+    use crate::lua::constants::{IS_CONNECTED, TIMED_CALLBACK_TABLE};
     use crate::model::Completions;
     use crate::model::{Connection, PromptMask, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
@@ -1320,6 +1320,30 @@ mod lua_script_tests {
                 Line::from("disconnected3"),
             ]
         );
+    }
+
+    #[test]
+    fn test_on_connection_failed() {
+        let lua_code = r#"
+        mud.on_connect_failed(function ()
+            blight.output("failed1")
+        end)
+        mud.on_connect_failed(function ()
+            blight.output("failed2")
+        end)
+        "#;
+
+        let (mut lua, _reader) = get_lua();
+        lua.state.load(lua_code).exec().unwrap();
+
+        lua.on_connection_failed();
+        assert_eq!(
+            lua.get_output_lines(),
+            [Line::from("failed1"), Line::from("failed2"),]
+        );
+
+        let is_connected: bool = lua.state.named_registry_value(IS_CONNECTED).unwrap();
+        assert!(!is_connected);
     }
 
     #[test]

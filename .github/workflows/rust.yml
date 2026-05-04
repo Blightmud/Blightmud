@@ -43,9 +43,12 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy, rustfmt
-      - name: Test
+      - name: Test feature combinations
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: cargo test --locked
+        run: |
+          cargo test --locked --no-default-features --features spellcheck
+          cargo test --locked --no-default-features
+          cargo test --locked
       - name: Test (all features)
         if: ${{ matrix.os != 'ubuntu-latest' }}
         run: cargo test --locked --all-features

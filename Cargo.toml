@@ -16,9 +16,10 @@ doctest = false
 crate-type = ["rlib"]
 
 [features]
-default = ["spellcheck"]
+default = ["spellcheck", "audio"]
 text-to-speech = ["tts"]
 spellcheck = ["hunspell-rs", "hunspell-sys"]
+audio = ["rodio"]
 
 [dependencies]
 libmudtelnet = "2.0.1"
@@ -45,7 +46,7 @@ human-panic = "2.0.8"
 tts = { version = "0.26.3", optional = true }
 serde_json = "1.0.149"
 git2 = "0.20.4"
-rodio = "0.22.2"
+rodio = { version = "0.22.2", optional = true }
 notify-debouncer-mini = "0.6.0"
 hunspell-rs = { version = "0.4.0", optional = true }
 hunspell-sys = { version = "0.3.0", features = ['bundled'], optional = true }

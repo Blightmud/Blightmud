@@ -6,13 +6,13 @@
 -- Will send "greet Bob" to the mud if the line:
 -- > Bob arrives from the west.
 -- is received from the mud.
-trigger.add("^(\\w+) arrives from .*$", {}, function (matches)
+trigger.add("^(\\w+) arrives from .*$", {}, function(matches)
     local person = matches[2]
     mud.send("greet " .. person)
 end)
 
 -- The following alias should make killing things require less typing
-alias.add("^k (.*)$", function (m)
+alias.add("^k (.*)$", function(m)
     mud.send("kill " .. m[2])
 end)
 
@@ -21,7 +21,14 @@ end)
 --
 -- The following will create a timer that will send
 -- "drink rum" to the mud every 3 minutes for eternity
-timer.add(60*3, 0, function ()
+timer.add(60 * 3, 0, function()
     mud.send("drink rum")
 end)
+
+-- Echo prompt to mud output and stop it from being captured
+-- at the bottom of the output view.
+trigger.add("^.*$", { prompt = true, gag = true }, function(_, line)
+    mud.output(line:raw())
+end)
+
 ```

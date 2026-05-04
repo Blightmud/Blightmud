@@ -277,9 +277,8 @@ impl UserInterface for SplitScreen {
         self.prompt_input_pos = pos;
 
         // Calculate display width up to cursor position
-        let (printable_char_indice, _) = input.byte_index_at_display_width(pos);
-        let chars_before_cursor: String = input.chars().take(printable_char_indice).collect();
-        let mut cursor_display_pos = chars_before_cursor.as_str().display_width();
+        let (byte_idx_at_cursor, _) = input.byte_index_at_display_width(pos);
+        let mut cursor_display_pos = (&input[..byte_idx_at_cursor]).display_width();
 
         let mut input = input;
         let width = self.width as usize;

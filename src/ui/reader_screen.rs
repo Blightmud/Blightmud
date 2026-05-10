@@ -469,4 +469,14 @@ impl UserInterface for ReaderScreen {
         self.reset()?;
         Ok((self.screen, self.history))
     }
+
+    fn swap_history(
+        &mut self,
+        new: super::history::History,
+    ) -> Result<super::history::History> {
+        self.scroll_data = ScrollData::new();
+        let old = std::mem::replace(&mut self.history, new);
+        self.setup()?;
+        Ok(old)
+    }
 }

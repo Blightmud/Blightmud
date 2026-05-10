@@ -18,6 +18,7 @@ mod lua;
 mod model;
 mod net;
 mod session;
+mod tabs;
 mod timer;
 mod tools;
 mod tts;
@@ -383,6 +384,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::AddTag(_)
             | Event::RemoveTag(_)
             | Event::ClearTags
+            | Event::TabCommand(_)
             | Event::UserInputBuffer(_, _)
             | Event::UserInputCursor(_)
             | Event::SetPromptMask(_)

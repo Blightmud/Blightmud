@@ -4,6 +4,7 @@ pub use self::{
     command::CommandBuffer,
     headless_screen::HeadlessScreen,
     help_handler::HelpHandler,
+    history::History,
     reader_screen::ReaderScreen,
     split_screen::SplitScreen,
     ui_wrapper::UiWrapper,

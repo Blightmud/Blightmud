@@ -610,6 +610,19 @@ impl UserInterface for SplitScreen {
         self.reset()?;
         Ok((self.screen, self.history))
     }
+
+    fn swap_history(&mut self, new: History) -> Result<History> {
+        // Reset the per-history scroll state — scroll_pos is meaningless
+        // against a different buffer.
+        self.scroll_data = ScrollData::new();
+        let old = std::mem::replace(&mut self.history, new);
+        // Re-apply the current tag mask so the new history's `visible`
+        // view is consistent with the screen's filter.
+        self.history.set_tag_mask(self.tag_mask.clone());
+        // Repaint with the new buffer.
+        self.setup()?;
+        Ok(old)
+    }
 }
 
 impl SplitScreen {

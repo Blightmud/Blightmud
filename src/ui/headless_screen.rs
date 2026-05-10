@@ -129,6 +129,16 @@ impl UserInterface for HeadlessScreen {
     ) -> anyhow::Result<(Box<dyn std::io::Write>, super::history::History)> {
         bail!("Can't destroy a headless ui")
     }
+
+    fn swap_history(
+        &mut self,
+        _new: super::history::History,
+    ) -> anyhow::Result<super::history::History> {
+        // Headless mode has no scrollback display; tab switching is
+        // a no-op. Return a fresh empty History so the caller's swap
+        // protocol completes — there's no real history to hand back.
+        Ok(super::history::History::new())
+    }
 }
 
 #[cfg(test)]

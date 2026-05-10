@@ -1,5 +1,6 @@
 use super::{constants::*, regex::Regex, ui_event::UiEvent};
-use crate::event::{Event, QuitMethod};
+use crate::event::{Event, QuitMethod, TabCommand};
+use crate::tabs::TabOpts;
 use crate::{
     model::{Line, TagMask},
     tools::printable_chars::PrintableCharsIterator,
@@ -273,6 +274,86 @@ impl UserData for Blight {
             this.main_writer.send(Event::FindForward(re.regex)).unwrap();
             Ok(())
         });
+
+        // ---- Tabs API ----
+        //
+        // Scripts can create named scrollable output buffers ("tabs") with
+        // their own filters, then bind keys to switch between them. The
+        // implicit `main` tab always exists; `blight.output(...)` continues
+        // to route there. Lines that match a tab's filter are mirrored into
+        // that tab in addition to main (unless the tab has gag_main=true,
+        // in which case the line skips main entirely).
+        //
+        // See `/help tabs` for usage.
+
+        methods.add_function(
+            "create_tab",
+            |ctx, (name, opts): (String, Option<Table>)| -> mlua::Result<()> {
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                let tab_opts = if let Some(t) = opts {
+                    TabOpts {
+                        label: t.get::<Option<String>>("label").unwrap_or(None),
+                        gag_main: t.get::<Option<bool>>("gag_main").unwrap_or(None).unwrap_or(false),
+                    }
+                } else {
+                    TabOpts::default()
+                };
+                this.main_writer
+                    .send(Event::TabCommand(TabCommand::Create {
+                        name,
+                        opts: tab_opts,
+                    }))
+                    .map_err(mlua::Error::external)?;
+                Ok(())
+            },
+        );
+
+        methods.add_function("switch_tab", |ctx, name: String| -> mlua::Result<()> {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer
+                .send(Event::TabCommand(TabCommand::Switch { name }))
+                .map_err(mlua::Error::external)?;
+            Ok(())
+        });
+
+        methods.add_function(
+            "add_tab_filter",
+            |ctx, (name, pattern): (String, String)| -> mlua::Result<()> {
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                this.main_writer
+                    .send(Event::TabCommand(TabCommand::AddFilter { name, pattern }))
+                    .map_err(mlua::Error::external)?;
+                Ok(())
+            },
+        );
+
+        methods.add_function(
+            "set_tab_label",
+            |ctx, (name, label): (String, String)| -> mlua::Result<()> {
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                this.main_writer
+                    .send(Event::TabCommand(TabCommand::SetLabel { name, label }))
+                    .map_err(mlua::Error::external)?;
+                Ok(())
+            },
+        );
+
+        methods.add_function(
+            "output_to",
+            |ctx, (name, strings): (String, Variadic<String>)| -> mlua::Result<()> {
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                let line = Line::from(strings.join(" "));
+                this.main_writer
+                    .send(Event::TabCommand(TabCommand::OutputTo { name, line }))
+                    .map_err(mlua::Error::external)?;
+                Ok(())
+            },
+        );
     }
 }
 

@@ -13,6 +13,7 @@ use crate::{
     net::MudConnection,
     net::BUFFER_SIZE,
     net::{OutputBuffer, TelnetMode},
+    tabs::TabSet,
     timer::TimerEvent,
     tts::TTSController,
     ui::CommandBuffer,
@@ -36,6 +37,12 @@ pub struct Session {
     pub tts_ctrl: Arc<Mutex<TTSController>>,
     pub command_buffer: Arc<Mutex<CommandBuffer>>,
     pub echo_input: Arc<AtomicBool>,
+    /// Tab routing + per-tab scrollback. The currently-active tab's
+    /// History lives in the [`UserInterface`]; this struct holds the rest.
+    /// See [`TabSet`] for the switch protocol.
+    ///
+    /// [`UserInterface`]: crate::ui::UserInterface
+    pub tab_set: Arc<Mutex<TabSet>>,
     pub _codec: Option<&'static encoding_rs::Encoding>,
 }
 
@@ -296,6 +303,7 @@ impl SessionBuilder {
                 last_command_enabled,
             ))),
             echo_input: Arc::new(AtomicBool::new(echo_input)),
+            tab_set: Arc::new(Mutex::new(TabSet::new())),
             _codec: self.codec,
         }
     }

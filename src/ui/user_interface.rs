@@ -66,6 +66,12 @@ pub trait UserInterface {
     fn width(&self) -> u16;
     fn height(&self) -> u16;
     fn destroy(self: Box<Self>) -> Result<(Box<dyn Write>, History)>;
+    /// Swap the screen's scrollback History with the supplied one and
+    /// trigger a redraw of the output area. Used by the tabs feature to
+    /// switch which tab's scrollback is being displayed.
+    ///
+    /// Returns the History that was previously installed.
+    fn swap_history(&mut self, new: History) -> Result<History>;
 }
 
 pub fn wrap_line(line: &str, width: usize, padding: usize) -> Vec<&str> {

@@ -6,6 +6,7 @@ use crate::{
     model::{Connection, Line, PromptMask, TagMask},
     net::{spawn_network_thread, WakingSender},
     session::Session,
+    tabs::TabOpts,
     tts::TTSEvent,
     ui::UserInterface,
 };
@@ -25,6 +26,25 @@ pub enum QuitMethod {
     Script,
     System,
     Error(String),
+}
+
+/// Inner enum for [`Event::TabCommand`] — keeps the tabs API surface from
+/// fanning out into many top-level Event variants.
+#[derive(Debug, PartialEq, Clone)]
+pub enum TabCommand {
+    /// Create a new named tab with the supplied label / gag-main settings.
+    Create { name: String, opts: TabOpts },
+    /// Switch the active tab. Triggers a swap of the screen's History.
+    Switch { name: String },
+    /// Append a regex-string filter to a tab. Lines that match this regex
+    /// (against the line's clean / ANSI-stripped form) are routed into the
+    /// tab in addition to main.
+    AddFilter { name: String, pattern: String },
+    /// Update a tab's display label (for the tab indicator row).
+    SetLabel { name: String, label: String },
+    /// Send a line directly into a specific tab, bypassing the filter
+    /// machinery. Used by `blight.output_to(name, ...)`.
+    OutputTo { name: String, line: Line },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -92,6 +112,9 @@ pub enum Event {
     ClearPromptMask,
     SetTagMask(TagMask),
     SetHistoryCapacity(usize),
+    /// Tabs control messages from Lua (`blight.create_tab`,
+    /// `blight.switch_tab`, etc.). See [`TabCommand`].
+    TabCommand(TabCommand),
     UserInputBuffer(String, usize),
     UserInputCursor(usize),
     FSEvent(FSEvent),
@@ -134,6 +157,25 @@ impl Error for BadEventRoutingError {
 }
 
 impl EventHandler {
+    /// Route an output line through the session's TabSet and only render
+    /// it via the screen if the active tab received it. This is the
+    /// integration point for the tabs feature: lines that match a
+    /// non-active tab's filter are appended to that tab's history (for
+    /// future scroll-back), and `gag_main=true` tabs suppress the line
+    /// from main entirely.
+    fn route_and_print(&self, line: &Line, screen: &mut Box<dyn UserInterface>) {
+        let render = if let Ok(mut tab_set) = self.session.tab_set.lock() {
+            tab_set.route(line).render_to_screen
+        } else {
+            // If the tab set is poisoned (very unusual), fall back to
+            // rendering — better to show too much than too little.
+            true
+        };
+        if render {
+            screen.print_output(line);
+        }
+    }
+
     pub fn handle_server_events(
         &mut self,
         event: Event,
@@ -343,15 +385,17 @@ impl EventHandler {
             Event::MudOutput(mut line) => {
                 if let Ok(script) = self.session.lua_script.lock() {
                     script.on_mud_output(&mut line);
-                    screen.print_output(&line);
-                    script.get_output_lines().iter().for_each(|l| {
-                        screen.print_output(l);
+                    self.route_and_print(&line, screen);
+                    let extra_lines = script.get_output_lines();
+                    drop(script);
+                    extra_lines.iter().for_each(|l| {
+                        self.route_and_print(l, screen);
                     });
                 }
                 Ok(())
             }
             Event::Output(line) => {
-                screen.print_output(&line);
+                self.route_and_print(&line, screen);
                 Ok(())
             }
             Event::Prompt(mut prompt) => {
@@ -415,7 +459,86 @@ impl EventHandler {
             }
             Event::AddTag(tag) => screen.add_tag(&tag),
             Event::RemoveTag(tag) => screen.remove_tag(&tag),
+            Event::TabCommand(cmd) => self.handle_tab_command(cmd, screen),
             _ => Err(BadEventRoutingError.into()),
+        }
+    }
+
+    /// Apply a tabs control message — see [`TabCommand`].
+    pub fn handle_tab_command(
+        &self,
+        cmd: TabCommand,
+        screen: &mut Box<dyn UserInterface>,
+    ) -> Result {
+        match cmd {
+            TabCommand::Create { name, opts } => {
+                if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                    if let Err(err) = tab_set.create(&name, opts) {
+                        screen.print_error(&format!("create_tab({name}): {err}"));
+                    }
+                }
+                Ok(())
+            }
+            TabCommand::AddFilter { name, pattern } => {
+                if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                    if let Err(err) = tab_set.add_filter(&name, &pattern) {
+                        screen.print_error(&format!("add_tab_filter({name}): {err}"));
+                    }
+                }
+                Ok(())
+            }
+            TabCommand::SetLabel { name, label } => {
+                if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                    if let Err(err) = tab_set.set_label(&name, &label) {
+                        screen.print_error(&format!("set_tab_label({name}): {err}"));
+                    }
+                }
+                Ok(())
+            }
+            TabCommand::Switch { name } => {
+                // Two-phase swap: take destination, hand to screen, return old.
+                let dest_history = match self.session.tab_set.lock() {
+                    Ok(mut tab_set) => match tab_set.take_for_switch(&name) {
+                        Ok(Some(h)) => h,
+                        Ok(None) => return Ok(()), // no-op: already active
+                        Err(err) => {
+                            screen.print_error(&format!("switch_tab({name}): {err}"));
+                            return Ok(());
+                        }
+                    },
+                    Err(_) => return Ok(()),
+                };
+                let old_history = match screen.swap_history(dest_history) {
+                    Ok(h) => h,
+                    Err(err) => {
+                        screen.print_error(&format!("switch_tab({name}): swap failed: {err}"));
+                        return Ok(());
+                    }
+                };
+                if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                    if let Err(err) = tab_set.complete_switch(old_history) {
+                        screen
+                            .print_error(&format!("switch_tab({name}): complete failed: {err}"));
+                    }
+                }
+                Ok(())
+            }
+            TabCommand::OutputTo { name, line } => {
+                let render_to_screen = match self.session.tab_set.lock() {
+                    Ok(mut tab_set) => match tab_set.output_to(&name, &line) {
+                        Ok(active) => active,
+                        Err(err) => {
+                            screen.print_error(&format!("output_to({name}): {err}"));
+                            return Ok(());
+                        }
+                    },
+                    Err(_) => return Ok(()),
+                };
+                if render_to_screen {
+                    screen.print_output(&line);
+                }
+                Ok(())
+            }
         }
     }
 

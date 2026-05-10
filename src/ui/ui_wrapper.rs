@@ -206,4 +206,8 @@ impl UserInterface for UiWrapper {
     fn destroy(self: Box<Self>) -> Result<(Box<dyn Write>, History)> {
         self.screen.destroy()
     }
+
+    fn swap_history(&mut self, new: History) -> Result<History> {
+        self.screen.swap_history(new)
+    }
 }

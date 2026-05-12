@@ -89,6 +89,22 @@ impl TabSet {
         Ok(())
     }
 
+    /// Add a regex string *exclude* to a tab. If any exclude matches a
+    /// candidate line, the line is not routed to this tab — even when a
+    /// `filters` pattern matches. Used for narrow blocklist holes inside
+    /// a broad include rule.
+    pub fn add_exclude(&mut self, name: &str, pattern: &str) -> Result<(), TabError> {
+        let idx = self
+            .idx_of(name)
+            .ok_or_else(|| TabError::Missing(name.to_string()))?;
+        let re = Regex::new(pattern).map_err(|e| TabError::BadRegex {
+            name: name.to_string(),
+            err: e.to_string(),
+        })?;
+        self.tabs[idx].excludes.push(re);
+        Ok(())
+    }
+
     pub fn set_label(&mut self, name: &str, label: &str) -> Result<(), TabError> {
         let idx = self
             .idx_of(name)
@@ -292,6 +308,64 @@ mod tests {
         let info = ts.list();
         let chat = info.iter().find(|t| t.name == "chat").unwrap();
         assert_eq!(chat.unread, 1);
+    }
+
+    #[test]
+    fn exclude_vetoes_a_matching_filter() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        // Broad include: any "<Name> says" line.
+        ts.add_filter("chat", r"^[A-Z][a-zA-Z0-9]+ says\b").unwrap();
+        // Exclude pronouns and a known NPC label.
+        ts.add_exclude("chat", r"^(He|She|It|They|We|Smuggler) says\b")
+            .unwrap();
+
+        // Real player: routes.
+        let r = ts.route(&line("Padalynn says: hello"));
+        assert!(r.indicator_dirty, "real player should still route to chat");
+
+        // Pronoun: vetoed.
+        let r = ts.route(&line("He says: Ah, traveler."));
+        assert!(!r.indicator_dirty, "pronoun speaker must NOT route to chat");
+
+        // NPC label: vetoed.
+        let r = ts.route(&line("Smuggler says: Okay, off we go."));
+        assert!(
+            !r.indicator_dirty,
+            "blocklisted NPC must NOT route to chat"
+        );
+    }
+
+    #[test]
+    fn exclude_without_matching_filter_is_noop() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        ts.add_exclude("chat", r"^He says\b").unwrap();
+        // No include filters at all → nothing routes regardless.
+        let r = ts.route(&line("He says: Ah, traveler."));
+        assert!(!r.indicator_dirty);
+        // …and a line that the exclude doesn't match also doesn't route.
+        let r = ts.route(&line("random text"));
+        assert!(!r.indicator_dirty);
+    }
+
+    #[test]
+    fn add_exclude_bad_regex_returns_err() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        assert!(matches!(
+            ts.add_exclude("chat", "(unbalanced"),
+            Err(TabError::BadRegex { .. })
+        ));
+    }
+
+    #[test]
+    fn add_exclude_missing_tab_returns_err() {
+        let mut ts = fresh();
+        assert!(matches!(
+            ts.add_exclude("nope", "x"),
+            Err(TabError::Missing(_))
+        ));
     }
 
     #[test]

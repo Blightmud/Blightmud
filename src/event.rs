@@ -40,6 +40,12 @@ pub enum TabCommand {
     /// (against the line's clean / ANSI-stripped form) are routed into the
     /// tab in addition to main.
     AddFilter { name: String, pattern: String },
+    /// Append a regex-string *exclude* to a tab. Any candidate line that
+    /// matches this regex is NOT routed to the tab, even when one of its
+    /// `AddFilter` patterns also matches. Used as a blocklist hole inside
+    /// a broad include rule (e.g. include `^\w+ says\b` but exclude
+    /// `^(He|She|Smuggler) says\b`).
+    AddExclude { name: String, pattern: String },
     /// Update a tab's display label (for the tab indicator row).
     SetLabel { name: String, label: String },
     /// Send a line directly into a specific tab, bypassing the filter
@@ -485,6 +491,15 @@ impl EventHandler {
                         screen.print_error(&format!("add_tab_filter({name}): {err}"));
                     }
                 }
+                Ok(())
+            }
+            TabCommand::AddExclude { name, pattern } => {
+                if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                    if let Err(err) = tab_set.add_exclude(&name, &pattern) {
+                        screen.print_error(&format!("add_tab_exclude_filter({name}): {err}"));
+                    }
+                }
+                // Visual state unchanged — no indicator refresh needed.
                 Ok(())
             }
             TabCommand::SetLabel { name, label } => {

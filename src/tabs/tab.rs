@@ -74,6 +74,13 @@ pub struct Tab {
     pub label: String,
     pub gag_main: bool,
     pub filters: Vec<Regex>,
+    /// Regex patterns that, when matched, veto routing into this tab even
+    /// if a `filters` pattern also matches. Used to carve narrow holes in
+    /// a broad include rule (e.g. include `^[A-Z]\w+ says\b` but exclude
+    /// `^(He|She|Smuggler) says\b`). Rust's `regex` crate has no
+    /// lookaround, so exclusions are expressed as a second list rather
+    /// than inline.
+    pub excludes: Vec<Regex>,
     pub history: Option<History>,
     pub unread: u32,
 }
@@ -87,6 +94,7 @@ impl Tab {
             label,
             gag_main: opts.gag_main,
             filters: Vec::new(),
+            excludes: Vec::new(),
             history: Some(History::new()),
             unread: 0,
         }
@@ -103,10 +111,14 @@ impl Tab {
         )
     }
 
-    /// `true` when any of this tab's regex filters match the line. The
-    /// `main` tab returns `false` here (it doesn't have filters — it's the
-    /// mirror, and routing handles main as a special case).
+    /// `true` when any of this tab's regex filters match the line AND no
+    /// exclude pattern vetoes it. The `main` tab returns `false` here (it
+    /// doesn't have filters — it's the mirror, and routing handles main
+    /// as a special case).
     pub fn matches(&self, clean_line: &str) -> bool {
+        if self.excludes.iter().any(|re| re.is_match(clean_line)) {
+            return false;
+        }
         self.filters.iter().any(|re| re.is_match(clean_line))
     }
 }

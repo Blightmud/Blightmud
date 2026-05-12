@@ -57,6 +57,33 @@ blight.add_tab_filter("combat", "####### Combat Summary|staggers and falls")
 
 ##
 
+***blight.add_tab_exclude_filter(name, pattern)***
+Append a regex-string *exclude* to a tab. Any inbound line whose
+ANSI-stripped text matches `pattern` is **not** routed into this tab —
+even when one of the tab's `add_tab_filter` patterns also matches.
+Excludes are a blocklist hole inside a broad include rule.
+
+Rust's `regex` crate has no lookaround, so a single include regex can't
+express "match X but not Y". `add_tab_exclude_filter` lets you compose
+that across two regexes.
+
+- `name`     Tab to apply the exclude to.
+- `pattern`  A Rust regex string. Multiple excludes may be added per
+              tab; any one match vetoes routing.
+
+```lua
+-- Include every "<Name> says" line in the chat tab…
+blight.add_tab_filter("chat", "^[A-Z][a-zA-Z0-9]+ says\\b")
+-- …but skip pronouns and known generic-NPC labels we don't want there.
+blight.add_tab_exclude_filter("chat", "^(He|She|It|They|We) says\\b")
+blight.add_tab_exclude_filter("chat", "^(Smuggler|Salesman|Soldier) says\\b")
+```
+
+Excludes apply only to filter-routed lines; `blight.output_to` ignores
+them, since that path is for explicit direct routing.
+
+##
+
 ***blight.set_tab_label(name, label)***
 Update the display label for a tab. Useful for live indicators like
 `"chat (3 new)"`.

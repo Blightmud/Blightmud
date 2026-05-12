@@ -330,6 +330,23 @@ impl UserData for Blight {
             },
         );
 
+        // Append a regex exclude to a tab. Lines matching the exclude are
+        // NOT routed to the tab even when an `add_tab_filter` pattern also
+        // matches — a blocklist hole inside a broad include rule. Useful
+        // because Rust's `regex` crate has no lookaround, so a single
+        // include regex can't say "match X but not Y".
+        methods.add_function(
+            "add_tab_exclude_filter",
+            |ctx, (name, pattern): (String, String)| -> mlua::Result<()> {
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                this.main_writer
+                    .send(Event::TabCommand(TabCommand::AddExclude { name, pattern }))
+                    .map_err(mlua::Error::external)?;
+                Ok(())
+            },
+        );
+
         methods.add_function(
             "set_tab_label",
             |ctx, (name, label): (String, String)| -> mlua::Result<()> {

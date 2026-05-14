@@ -36,6 +36,7 @@ pub enum Event {
     ClearTimers,
     Connect(Connection),
     Connected(u16),
+    ConnectionFailed,
     DisableProto(u8),
     Disconnect,
     DropTimedEvent(u32),
@@ -238,6 +239,15 @@ impl EventHandler {
                         id,
                     };
                     script.on_connect(info);
+                    script.get_output_lines().iter().for_each(|l| {
+                        screen.print_output(l);
+                    });
+                }
+                Ok(())
+            }
+            Event::ConnectionFailed => {
+                if let Ok(mut script) = self.session.lua_script.lock() {
+                    script.on_connection_failed();
                     script.get_output_lines().iter().for_each(|l| {
                         screen.print_output(l);
                     });

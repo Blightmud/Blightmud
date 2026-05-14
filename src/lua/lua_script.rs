@@ -170,6 +170,8 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         state.set_named_registry_value(PROTO_SUBNEG_LISTENERS_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_CONNECTION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(ON_DISCONNECT_CALLBACK_TABLE, state.create_table()?)?;
+        state
+            .set_named_registry_value(ON_CONNECTION_FAILED_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(COMPLETION_CALLBACK_TABLE, state.create_table()?)?;
         state.set_named_registry_value(FS_LISTENERS, state.create_table()?)?;
         state.set_named_registry_value(SCRIPT_RESET_LISTENERS, state.create_table()?)?;
@@ -488,6 +490,20 @@ impl LuaScript {
         });
     }
 
+    pub fn on_connection_failed(&mut self) {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            self.state.set_named_registry_value(IS_CONNECTED, false)?;
+            let table: mlua::Table = self
+                .state
+                .named_registry_value(ON_CONNECTION_FAILED_CALLBACK_TABLE)?;
+            for pair in table.pairs::<mlua::Value, mlua::Function>() {
+                let (_, cb) = pair.unwrap();
+                cb.call::<()>(())?;
+            }
+            Ok(())
+        });
+    }
+
     pub fn set_dimensions(&mut self, dim: (u16, u16)) {
         self.exec_lua(&mut || -> LuaResult<()> {
             let blight_aud: AnyUserData = self.state.globals().get("blight")?;
@@ -633,7 +649,7 @@ mod lua_script_tests {
     use super::LuaScriptBuilder;
     use super::CONNECTION_ID;
     use crate::event::QuitMethod;
-    use crate::lua::constants::TIMED_CALLBACK_TABLE;
+    use crate::lua::constants::{IS_CONNECTED, TIMED_CALLBACK_TABLE};
     use crate::model::Completions;
     use crate::model::{Connection, PromptMask, Regex};
     use crate::{event::Event, lua::regex::Regex as LReg, model::Line, PROJECT_NAME, VERSION};
@@ -1304,6 +1320,30 @@ mod lua_script_tests {
                 Line::from("disconnected3"),
             ]
         );
+    }
+
+    #[test]
+    fn test_on_connection_failed() {
+        let lua_code = r#"
+        mud.on_connect_failed(function ()
+            blight.output("failed1")
+        end)
+        mud.on_connect_failed(function ()
+            blight.output("failed2")
+        end)
+        "#;
+
+        let (mut lua, _reader) = get_lua();
+        lua.state.load(lua_code).exec().unwrap();
+
+        lua.on_connection_failed();
+        assert_eq!(
+            lua.get_output_lines(),
+            [Line::from("failed1"), Line::from("failed2"),]
+        );
+
+        let is_connected: bool = lua.state.named_registry_value(IS_CONNECTED).unwrap();
+        assert!(!is_connected);
     }
 
     #[test]

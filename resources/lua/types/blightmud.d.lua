@@ -418,6 +418,10 @@ function MudLib.on_connect(callback) end
 ---@param callback fun()
 function MudLib.on_disconnect(callback) end
 
+---Registers a callback invoked when a connection attempt fails.
+---@param callback fun()
+function MudLib.on_connect_failed(callback) end
+
 ---Returns true if currently connected to a MUD server.
 ---@return boolean
 function MudLib.is_connected() end

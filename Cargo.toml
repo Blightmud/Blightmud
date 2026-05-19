@@ -45,7 +45,7 @@ getopts = "0.2.24"
 human-panic = "2.0.8"
 tts = { version = "0.26.3", optional = true }
 serde_json = "1.0.149"
-git2 = "0.20.4"
+git2 = "0.21.0"
 rodio = { version = "0.22.2", optional = true }
 notify-debouncer-mini = "0.6.0"
 hunspell-rs = { version = "0.4.0", optional = true }

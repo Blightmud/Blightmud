@@ -107,7 +107,7 @@ fn register_terminal_resize_listener(session: Session) -> thread::JoinHandle<()>
         .unwrap()
 }
 
-fn start_logging(log_level: log::LevelFilter) -> std::io::Result<()> {
+fn start_logging(log_level: log::LevelFilter, verbose: bool) -> std::io::Result<()> {
     let log_level = if cfg!(debug_assertions) {
         log::LevelFilter::Debug
     } else {
@@ -117,10 +117,14 @@ fn start_logging(log_level: log::LevelFilter) -> std::io::Result<()> {
     let logpath = DATA_DIR.clone().join("logs");
     std::fs::create_dir_all(&logpath)?;
 
-    let logfile = logpath.join(format!(
-        "log.{}.txt",
-        Local::now().format("%Y%m%d.%H:%M:%S")
-    ));
+    let logfile = if verbose {
+        logpath.join(format!(
+            "log.{}.txt",
+            Local::now().format("%Y%m%d.%H:%M:%S")
+        ))
+    } else {
+        logpath.join("log.txt")
+    };
 
     simple_logging::log_to_file(logfile.to_str().unwrap(), log_level)?;
 
@@ -182,7 +186,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         log::LevelFilter::Info
     };
 
-    if let Err(e) = start_logging(log_level) {
+    if let Err(e) = start_logging(log_level, rt.verbose) {
         panic!("[!!] Logging failed to start: {e:?}");
     }
 

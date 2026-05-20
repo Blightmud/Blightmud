@@ -84,6 +84,19 @@ end)
 
 ##
 
+***mud.on_connect_failed(callback)***
+Registers a callback that is triggered when a connection attempt fails.
+
+- `callback`   A Lua function to be called upon connection failure.
+
+```lua
+mud.on_connect_failed(function ()
+    blight.output("Connection failed")
+end)
+```
+
+##
+
 ***mud.disconnect()***
 Disconnect from the current mud
 

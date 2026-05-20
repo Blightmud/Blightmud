@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use audio::Player;
+use chrono::Local;
 use lazy_static::lazy_static;
 use libmudtelnet::events::TelnetEvents;
 use log::{error, info};
@@ -116,7 +117,10 @@ fn start_logging(log_level: log::LevelFilter) -> std::io::Result<()> {
     let logpath = DATA_DIR.clone().join("logs");
     std::fs::create_dir_all(&logpath)?;
 
-    let logfile = logpath.join("log.txt");
+    let logfile = logpath.join(format!(
+        "log.{}.txt",
+        Local::now().format("%Y%m%d.%H:%M:%S")
+    ));
 
     simple_logging::log_to_file(logfile.to_str().unwrap(), log_level)?;
 

@@ -86,10 +86,18 @@ cargo build --features=tts && \
     ./target/debug/blightmud -V
 ```
 
+Running Blightmud in verbose mode (`--verbose` or `-V`) writes a timestamped logfile at `./.run/data/logs/log.<YYYYMMDD>.<HH:MM:SS>.txt` (or, in a release build, at `$XDG_DATA_HOME/blightmud/logs/`).
+
+This command tails the output of the mosst recently created such logfile:
+
 ```bash
 # Terminal B - Blightmud debug log
-tail -F ./.run/data/logs/log.txt
+tail -F "$(ls -t ./.run/data/logs/log.*.txt | head -n1)"
 ```
+
+If you have several debug sessions running at once, target the specific file you want.
+
+Then, in another terminal, run `gdb`:
 
 ```bash
 # Terminal C - GDB

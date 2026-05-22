@@ -710,7 +710,12 @@ impl SplitScreen {
     }
 
     // Almost identical to StatusArea.draw_bar, but with a double line bar character
-    fn draw_bar(width: usize, line: usize, screen: &mut impl Write, custom_info: &str) -> Result<()> {
+    fn draw_bar(
+        width: usize,
+        line: usize,
+        screen: &mut impl Write,
+        custom_info: &str,
+    ) -> Result<()> {
         write!(
             screen,
             "{}{}{}",
@@ -733,12 +738,7 @@ impl SplitScreen {
         let info_line = Line::from(&custom_info);
         let stripped_chars = info_line.line().len() - info_line.clean_line().len();
 
-        write!(
-            screen,
-            "{:═<1$}",
-            &custom_info,
-            width + stripped_chars
-        )?; // Print separator
+        write!(screen, "{:═<1$}", &custom_info, width + stripped_chars)?; // Print separator
         write!(screen, "{}", Fg(color::Reset))?;
         Ok(())
     }
@@ -746,7 +746,10 @@ impl SplitScreen {
     fn redraw_top_bar(&mut self) -> Result<()> {
         if self.output_start_line > 1 {
             let mut default_output = String::default();
-            let output = self.top_line.as_ref().unwrap_or_else(|| { default_output = self.default_top_bar(); &default_output });
+            let output = self.top_line.as_ref().unwrap_or_else(|| {
+                default_output = self.default_top_bar();
+                &default_output
+            });
             Self::draw_bar(self.width as usize, 1, &mut self.screen, output)?;
             write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
         }

@@ -181,6 +181,7 @@ pub struct SplitScreen {
     prompt_input_pos: usize,
     show_tags: bool,
     tag_mask: TagMask,
+    top_line: Option<String>,
 }
 
 impl UserInterface for SplitScreen {
@@ -567,6 +568,11 @@ impl UserInterface for SplitScreen {
         Ok(())
     }
 
+    fn set_top_line(&mut self, line: Option<String>) -> Result<()> {
+        self.top_line = line;
+        self.redraw_top_bar()
+    }
+
     fn flush(&mut self) {
         self.screen.flush().unwrap();
     }
@@ -616,6 +622,7 @@ impl SplitScreen {
             prompt_input_pos: 0,
             show_tags: false,
             tag_mask: TagMask::default(),
+            top_line: None,
         })
     }
 
@@ -682,32 +689,65 @@ impl SplitScreen {
         }
     }
 
+    fn default_top_bar(&self) -> String {
+        let host = if let Some(connection) = &self.connection {
+            connection
+        } else {
+            &String::default() // Empty String
+        };
+        let mut tags = self
+            .tags
+            .iter()
+            .map(|s| format!("[{s}]"))
+            .collect::<Vec<String>>();
+        tags.sort();
+        let tags = tags.join("");
+        let mut output = format!("{host}{tags}");
+        if !output.is_empty() {
+            output.push(' ');
+        }
+        return output;
+    }
+
+    // Almost identical to StatusArea.draw_bar, but with a double line bar character
+    fn draw_bar(width: usize, line: usize, screen: &mut impl Write, custom_info: &str) -> Result<()> {
+        write!(
+            screen,
+            "{}{}{}",
+            termion::cursor::Goto(1, line as u16),
+            termion::clear::CurrentLine,
+            Fg(color::Green),
+        )?;
+
+        let custom_info = if !custom_info.trim().is_empty() {
+            format!(
+                "═ {}{}{} ",
+                custom_info.trim(),
+                Fg(color::Reset),
+                Fg(color::Green)
+            )
+        } else {
+            "".to_string()
+        };
+
+        let info_line = Line::from(&custom_info);
+        let stripped_chars = info_line.line().len() - info_line.clean_line().len();
+
+        write!(
+            screen,
+            "{:═<1$}",
+            &custom_info,
+            width + stripped_chars
+        )?; // Print separator
+        write!(screen, "{}", Fg(color::Reset))?;
+        Ok(())
+    }
+
     fn redraw_top_bar(&mut self) -> Result<()> {
         if self.output_start_line > 1 {
-            write!(
-                self.screen,
-                "{}{}{}",
-                termion::cursor::Goto(1, 1),
-                termion::clear::CurrentLine,
-                Fg(color::Green),
-            )?;
-            let host = if let Some(connection) = &self.connection {
-                format!("═ {connection} ")
-            } else {
-                "".to_string()
-            };
-            let mut tags = self
-                .tags
-                .iter()
-                .map(|s| format!("[{s}]"))
-                .collect::<Vec<String>>();
-            tags.sort();
-            let tags = tags.join("");
-            let mut output = format!("{host}{tags}");
-            if !output.is_empty() {
-                output.push(' ');
-            }
-            write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
+            let mut default_output = String::default();
+            let output = self.top_line.as_ref().unwrap_or_else(|| { default_output = self.default_top_bar(); &default_output });
+            Self::draw_bar(self.width as usize, 1, &mut self.screen, output)?;
             write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
         }
         Ok(())

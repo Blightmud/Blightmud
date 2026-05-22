@@ -106,6 +106,10 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
+    fn set_top_line(&mut self, _info: Option<String>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn flush(&mut self) {
         std::io::stdout().flush().ok();
     }

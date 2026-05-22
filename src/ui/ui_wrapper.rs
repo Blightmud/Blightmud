@@ -183,6 +183,10 @@ impl UserInterface for UiWrapper {
         self.screen.set_status_line(line, info)
     }
 
+    fn set_top_line(&mut self, info: Option<String>) -> Result<()> {
+        self.screen.set_top_line(info)
+    }
+
     fn flush(&mut self) {
         self.screen.flush();
     }

@@ -275,6 +275,10 @@ function BlightLib.status_height(height) end
 ---@param index integer  0-based line index.
 ---@param line string
 function BlightLib.status_line(index, line) end
+---
+---Sets the content of the top bar line.
+---@param line string  The content to display. nil will reset to default content.
+function BlightLib.top_line(line) end
 
 ---Gets or sets whether tag rendering is enabled. When enabled, each output
 ---line is prefixed with the line's tag symbol and color (or two spaces if no

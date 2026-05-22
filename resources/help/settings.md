@@ -49,7 +49,7 @@ Available settings are:
 - `scroll_lock`         Set scroll position at start of text when showing long help files.
 - `tts_enabled`         Enable tts (only if compiled with TTS).
 - `reader_mode`         Switches to a screen reader friendly TUI. (Does not support `status area`).
-- `hide_topbar`         Toggles the topbar.
+- `hide_topbar`         Toggles the topbar. To customise the content, see `/help top_line`.
 - `echo_input`          Toggles whether user input is echoed on-screen with a `> ` prefix.
 - `last_command`        Toggles whether last command is persisted for easy repeat submission.
 

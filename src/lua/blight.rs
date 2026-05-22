@@ -134,6 +134,14 @@ impl UserData for Blight {
                 .unwrap();
             Ok(())
         });
+        methods.add_function("top_line", |ctx, line: Option<String>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer
+                .send(Event::TopLine(line))
+                .unwrap();
+            Ok(())
+        });
         methods.add_function("version", |_, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))
         });

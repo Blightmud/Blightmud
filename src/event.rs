@@ -81,6 +81,7 @@ pub enum Event {
     StopLogging,
     StopMusic,
     StopSFX,
+    TopLine(Option<String>),
     TTSEnabled(bool),
     TTSEvent(TTSEvent),
     TimedEvent(u32),

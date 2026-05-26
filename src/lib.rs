@@ -25,7 +25,7 @@ mod ui;
 
 use crate::event::{spawn_quit_confirm_timeout_thread, Event, QuitMethod};
 use crate::io::{FSMonitor, SaveData};
-use crate::model::{Servers, ECHO_INPUT, HIDE_TOPBAR, LAST_COMMAND, READER_MODE, SCROLL_SPLIT};
+use crate::model::{Servers, ECHO_INPUT, HIDE_TOPBAR, LAST_COMMAND, LOG_TIMESTAMPS, READER_MODE, SAVE_HISTORY, SCROLL_SPLIT};
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
 use crate::tools::patch::migrate_v2_settings_and_servers;
@@ -33,7 +33,7 @@ use crate::tools::util::expand_tilde;
 use crate::ui::{spawn_input_thread, UiWrapper, UserInterface};
 use event::EventHandler;
 use getopts::Matches;
-use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED, SAVE_HISTORY};
+use model::{Connection, Settings, CONFIRM_QUIT, LOGGING_ENABLED};
 use net::{check_latest_version, WakingSender};
 
 pub const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), env!("GIT_DESCRIBE"));
@@ -213,6 +213,7 @@ pub fn start(rt: RuntimeConfig) -> Result<()> {
         .save_history(settings.get(SAVE_HISTORY).unwrap())
         .echo_input(settings.get(ECHO_INPUT).unwrap())
         .last_command(settings.get(LAST_COMMAND).unwrap())
+        .log_timestamps(settings.get(LOG_TIMESTAMPS).unwrap())
         .codec(rt.codec)
         .build();
 
@@ -420,6 +421,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                 LAST_COMMAND => {
                     if let Ok(mut buffer) = session.command_buffer.lock() {
                         buffer.enable_last_command(value);
+                    }
+                }
+                LOG_TIMESTAMPS => {
+                    if let Ok(mut logger) = session.logger.lock() {
+                        logger.set_timestamps(value);
                     }
                 }
                 _ => {}

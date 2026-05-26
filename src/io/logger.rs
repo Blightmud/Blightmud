@@ -21,6 +21,8 @@ pub trait LogWriter {
 
     fn stop_logging(&mut self) -> Result<()>;
 
+    fn set_timestamps(&mut self, enabled: bool);
+
     #[cfg(test)]
     fn is_logging(&self) -> bool;
 }
@@ -28,6 +30,16 @@ pub trait LogWriter {
 #[derive(Default)]
 pub struct Logger {
     file: Option<BufWriter<StripWriter<File>>>,
+    timestamps: bool,
+}
+
+impl Logger {
+    pub fn new(timestamps: bool) -> Self {
+        Self {
+            file: None,
+            timestamps,
+        }
+    }
 }
 
 fn get_and_ensure_log_dir(host: &str) -> std::path::PathBuf {
@@ -49,6 +61,13 @@ impl LogWriter for Logger {
 
     fn log_str(&mut self, line: &str) -> Result<()> {
         if let Some(mut writer) = self.file.take() {
+            if self.timestamps {
+                write!(
+                    writer,
+                    "[{}] ",
+                    Local::now().format("%H:%M:%S")
+                )?;
+            }
             writer.write_all(line.as_bytes())?;
             if !line.ends_with('\n') {
                 writer.write_all(b"\n")?;
@@ -77,6 +96,10 @@ impl LogWriter for Logger {
     #[cfg(test)]
     fn is_logging(&self) -> bool {
         self.file.is_some()
+    }
+
+    fn set_timestamps(&mut self, enabled: bool) {
+        self.timestamps = enabled;
     }
 }
 

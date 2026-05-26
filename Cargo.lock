@@ -1783,9 +1783,9 @@ checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "libmudtelnet"
-version = "2.0.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a58a8e2fa47694c2b72b40e2bc40124b9b6d7aab7926b1f36a741ac2f955665b"
+checksum = "a10ab1ab4be318016487c307e6b7f2a679c7bed43f880d04825e42f1ff53ea7d"
 dependencies = [
  "bytes",
 ]

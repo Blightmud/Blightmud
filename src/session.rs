@@ -180,6 +180,7 @@ pub struct SessionBuilder {
     headless: bool,
     echo_input: bool,
     last_command: bool,
+    log_timestamps: bool,
     codec: Option<&'static encoding_rs::Encoding>,
 }
 
@@ -195,6 +196,7 @@ impl SessionBuilder {
             headless: false,
             echo_input: true,
             last_command: true,
+            log_timestamps: false,
             codec: None,
         }
     }
@@ -244,6 +246,11 @@ impl SessionBuilder {
         self
     }
 
+    pub fn log_timestamps(mut self, log_timestamps: bool) -> Self {
+        self.log_timestamps = log_timestamps;
+        self
+    }
+
     pub fn codec(mut self, codec: Option<&'static Encoding>) -> Self {
         self.codec = codec;
         self
@@ -259,6 +266,7 @@ impl SessionBuilder {
         let tts_ctrl = Arc::new(Mutex::new(TTSController::new(tts_enabled, headless)));
         let echo_input = self.echo_input;
         let last_command_enabled = self.last_command;
+        let log_timestamps = self.log_timestamps;
 
         let lua_builder = LuaScriptBuilder::new(main_writer.clone())
             .dimensions(dimensions)
@@ -280,7 +288,7 @@ impl SessionBuilder {
             ))),
             prompt_input: Arc::new(Mutex::new(String::new())),
             lua_script: lua_script.clone(),
-            logger: Arc::new(Mutex::new(Logger::default())),
+            logger: Arc::new(Mutex::new(Logger::new(log_timestamps))),
             tts_ctrl: tts_ctrl.clone(),
             command_buffer: Arc::new(Mutex::new(CommandBuffer::new(
                 tts_ctrl,

@@ -39,6 +39,7 @@ Settings are toggled from the command line as follows:
 Available settings are:
 
 - `logging_enabled`     See `/help logging`
+- `log_timestamps`      Add timestamps to session log lines. See `/help logging`
 - `mouse_enabled`       Experimental mouse scrolling support. Requires restart.
                         (See additional details below)
 - `save_history`        Save your last 100 commands to disk.

@@ -21,6 +21,8 @@ pub trait LogWriter {
 
     fn stop_logging(&mut self) -> Result<()>;
 
+    fn set_timestamps(&mut self, enabled: bool);
+
     #[cfg(test)]
     fn is_logging(&self) -> bool;
 }
@@ -28,6 +30,16 @@ pub trait LogWriter {
 #[derive(Default)]
 pub struct Logger {
     file: Option<BufWriter<StripWriter<File>>>,
+    timestamps: bool,
+}
+
+impl Logger {
+    pub fn new(timestamps: bool) -> Self {
+        Self {
+            file: None,
+            timestamps,
+        }
+    }
 }
 
 fn get_and_ensure_log_dir(host: &str) -> std::path::PathBuf {
@@ -49,9 +61,17 @@ impl LogWriter for Logger {
 
     fn log_str(&mut self, line: &str) -> Result<()> {
         if let Some(mut writer) = self.file.take() {
-            writer.write_all(line.as_bytes())?;
-            if !line.ends_with('\n') {
-                writer.write_all(b"\n")?;
+            if self.timestamps {
+                for part in line.split('\n') {
+                    write!(writer, "[{}] ", Local::now().format("%H:%M:%S"))?;
+                    writer.write_all(part.as_bytes())?;
+                    writer.write_all(b"\n")?;
+                }
+            } else {
+                writer.write_all(line.as_bytes())?;
+                if !line.ends_with('\n') {
+                    writer.write_all(b"\n")?;
+                }
             }
             writer.flush()?;
             self.file = Some(writer);
@@ -77,6 +97,10 @@ impl LogWriter for Logger {
     #[cfg(test)]
     fn is_logging(&self) -> bool {
         self.file.is_some()
+    }
+
+    fn set_timestamps(&mut self, enabled: bool) {
+        self.timestamps = enabled;
     }
 }
 
@@ -147,5 +171,38 @@ mod logger_tests {
     fn test_get_and_ensure_log_dir() {
         let path = get_and_ensure_log_dir("test_create_dir");
         assert!(path.to_string_lossy().contains("test_create_dir"));
+    }
+
+    #[test]
+    fn test_timestamps_default_disabled() {
+        let logger = Logger::default();
+        assert!(!logger.timestamps);
+    }
+
+    #[test]
+    fn test_set_timestamps() {
+        let mut logger = Logger::default();
+        assert!(!logger.timestamps);
+        logger.set_timestamps(true);
+        assert!(logger.timestamps);
+        logger.set_timestamps(false);
+        assert!(!logger.timestamps);
+    }
+
+    #[test]
+    fn test_logger_new_with_timestamps() {
+        let logger = Logger::new(true);
+        assert!(logger.timestamps);
+
+        let logger = Logger::new(false);
+        assert!(!logger.timestamps);
+    }
+
+    #[test]
+    fn test_timestamps_log_str() {
+        let mut logger = Logger::new(true);
+        logger.start_logging("test_timestamps").unwrap();
+        assert!(logger.log_str("test with timestamp").is_ok());
+        logger.stop_logging().unwrap();
     }
 }

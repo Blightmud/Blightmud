@@ -614,10 +614,10 @@ SettingsLib = {}
 
 ---Returns a table of all settings and their current values.
 ---
----Known settings: `logging_enabled`, `mouse_enabled`, `save_history`,
+---Known settings: `logging_enabled`, `log_timestamps`, `mouse_enabled`, `save_history`,
 ---`command_search`, `smart_history`, `confirm_quit`, `scroll_split`,
 ---`scroll_lock`, `tts_enabled`, `reader_mode`, `hide_topbar`,
----`echo_input`, `last_command`.
+---`echo_input`, `last_command`, `keepalive_enabled`.
 ---@return table<string, boolean>
 function SettingsLib.list() end
 

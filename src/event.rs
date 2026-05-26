@@ -162,7 +162,14 @@ impl EventHandler {
                     if !line.flags.matched {
                         if let Ok(mut parser) = self.session.telnet_parser.lock() {
                             if let TelnetEvents::DataSend(buffer) = parser.send_text(line.line()) {
-                                self.session.main_writer.send(Event::ServerSend(buffer))?;
+                                let data = if let Some(codec) = self.session._codec {
+                                    let text = std::str::from_utf8(&buffer).unwrap_or_default();
+                                    let (encoded, _, _) = codec.encode(text);
+                                    Bytes::copy_from_slice(&encoded)
+                                } else {
+                                    buffer
+                                };
+                                self.session.main_writer.send(Event::ServerSend(data))?;
                             }
                         }
                     }

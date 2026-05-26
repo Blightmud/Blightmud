@@ -726,8 +726,9 @@ impl SplitScreen {
 
         let custom_info = if !custom_info.trim().is_empty() {
             format!(
-                "═ {}{}{} ",
+                "═ {}{}{}{} ",
                 custom_info.trim(),
+                Bg(color::Reset),
                 Fg(color::Reset),
                 Fg(color::Green)
             )

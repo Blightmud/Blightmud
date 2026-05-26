@@ -22,7 +22,7 @@ spellcheck = ["hunspell-rs", "hunspell-sys"]
 audio = ["rodio"]
 
 [dependencies]
-libmudtelnet = "2.0.1"
+libmudtelnet = "2.0.2"
 termion = "4"
 log = "0.4.30"
 simple-logging = "2.0.2"

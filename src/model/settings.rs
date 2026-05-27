@@ -25,8 +25,9 @@ pub const ECHO_INPUT: &str = "echo_input";
 pub const LAST_COMMAND: &str = "last_command";
 
 pub const KEEPALIVE_ENABLED: &str = "keepalive_enabled";
+pub const LOG_TIMESTAMPS: &str = "log_timestamps";
 
-pub const SETTINGS: [&str; 14] = [
+pub const SETTINGS: [&str; 15] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
@@ -41,6 +42,7 @@ pub const SETTINGS: [&str; 14] = [
     ECHO_INPUT,
     LAST_COMMAND,
     KEEPALIVE_ENABLED,
+    LOG_TIMESTAMPS,
 ];
 
 impl Settings {
@@ -79,6 +81,7 @@ impl Default for Settings {
         settings.insert(ECHO_INPUT.to_string(), true);
         settings.insert(LAST_COMMAND.to_string(), true);
         settings.insert(KEEPALIVE_ENABLED.to_string(), true);
+        settings.insert(LOG_TIMESTAMPS.to_string(), false);
         Self { settings }
     }
 }

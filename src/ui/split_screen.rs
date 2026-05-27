@@ -621,11 +621,12 @@ impl SplitScreen {
 
     fn render_history_line(&self, index: usize) -> String {
         let line = self.history.get(index);
-        if self.show_tags {
+        let rendered = if self.show_tags {
             line.tagged_line().unwrap_or_default()
         } else {
             line.print_line().unwrap_or_default().to_string()
-        }
+        };
+        rendered + "\x1b[0m"
     }
 
     fn print_line(&mut self, line: Line) {
@@ -642,7 +643,7 @@ impl SplitScreen {
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
-                "{}\r\n{}{}",
+                "{}\r\n{}\x1b[0m{}",
                 termion::cursor::Goto(1, self.output_line),
                 &rendered,
                 self.goto_prompt(),
@@ -672,7 +673,7 @@ impl SplitScreen {
         if self.scroll_data.not_scrolled_or_split() {
             write!(
                 self.screen,
-                "{}{}{}{}",
+                "{}{}{}\x1b[0m{}",
                 termion::cursor::Goto(1, self.mud_prompt_line),
                 termion::clear::CurrentLine,
                 prompt_line,

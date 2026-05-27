@@ -702,7 +702,7 @@ impl SplitScreen {
             .collect::<Vec<String>>();
         tags.sort();
         let tags = tags.join("");
-        let mut output = format!("{host}{tags}");
+        let mut output = format!("{host} {tags}");
         if !output.is_empty() {
             output.push(' ');
         }

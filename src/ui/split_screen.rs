@@ -44,11 +44,13 @@ fn draw_bar(
         Fg(color::Green),
     )?;
 
-    let custom_info = if !custom_info.trim().is_empty() {
+    let trimmed = custom_info.trim();
+    let custom_info = if !trimmed.is_empty() {
+        let (max_bytes, _) = trimmed.byte_index_at_display_width(width - 4);
         format!(
             "{} {}{}{}{} ",
             barchar,
-            custom_info.trim(),
+            trimmed.get(0..max_bytes).unwrap_or(trimmed), // If byte index is bad, skip truncation
             Bg(color::Reset),
             Fg(color::Reset),
             Fg(color::Green)
@@ -993,5 +995,20 @@ mod screen_test {
             .collect::<String>();
 
         assert_eq!(clean_output, "━━━━━━━━━━");
+    }
+
+    #[test]
+    fn test_draw_bar_truncates_long_text() {
+        let mut buf = Vec::<u8>::new();
+
+        draw_bar('━', 10, 1, &mut buf, "this text is too long").unwrap();
+
+        let clean_output = String::from_utf8(buf)
+            .unwrap()
+            .as_str()
+            .printable_chars()
+            .collect::<String>();
+
+        assert_eq!(clean_output, "━ this t ━");
     }
 }

@@ -37,8 +37,14 @@ impl History {
 
     pub fn drain(&mut self) {
         if self.inner.len() >= self.capacity {
-            self.inner.drain(0..self.drain_length);
-            self.rebuild_visible();
+            let drained: Vec<Line> = self.inner.drain(0..self.drain_length).collect();
+            let visible_drain_count = drained
+                .iter()
+                .filter(|l| !l.is_masked(&self.tag_mask))
+                .count();
+            if visible_drain_count > 0 {
+                self.visible.drain(0..visible_drain_count);
+            }
         }
     }
 
@@ -328,5 +334,61 @@ mod test {
         // masked line removed from inner, visible unchanged
         assert_eq!(history.len(), 1);
         assert_eq!(history.inner.len(), 1);
+    }
+
+    #[test]
+    fn test_drain_incremental_no_mask() {
+        let mut history = History::new();
+        for i in 0..history.capacity - 1 {
+            history.append(&format!("line {}", i));
+        }
+        assert_eq!(history.inner.len(), history.capacity - 1);
+        let visible_before = history.len();
+        history.append("overflow line");
+        assert_eq!(history.inner.len(), history.capacity - history.drain_length);
+        assert_eq!(history.len(), visible_before - history.drain_length + 1);
+    }
+
+    #[test]
+    fn test_drain_incremental_with_mask() {
+        let mut history = History::new();
+        let mask = TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        };
+        history.set_tag_mask(mask);
+
+        for i in 0..history.capacity - 1 {
+            let mut line = Line::from(&format!("line {}", i));
+            if i % 2 == 0 {
+                line.tag.key = "combat".to_string();
+            }
+            history.append_line(line);
+        }
+        let visible_before = history.len();
+        let inner_before = history.inner.len();
+        assert_eq!(inner_before, history.capacity - 1);
+
+        let mut overflow = Line::from("overflow");
+        overflow.tag.key = "combat".to_string();
+        history.append_line(overflow);
+
+        assert_eq!(history.inner.len(), inner_before - history.drain_length + 1);
+        let drained_visible = visible_before - history.len() + 1;
+        assert!(drained_visible <= history.drain_length);
+    }
+
+    #[test]
+    fn test_drain_visible_inner_consistency() {
+        let mut history = History::new();
+        for i in 0..history.capacity + 100 {
+            history.append(&format!("line {}", i));
+        }
+        let visible_count = history.visible.len();
+        let inner_count = history.inner.len();
+        assert_eq!(visible_count, inner_count);
+        for i in 0..visible_count {
+            assert_eq!(history.visible[i].line(), history.inner[i].line());
+        }
     }
 }

@@ -60,6 +60,7 @@ pub trait UserInterface {
     fn set_show_tags(&mut self, show: bool) -> Result<()>;
     fn set_tag_mask(&mut self, mask: TagMask);
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;
+    fn set_top_line(&mut self, info: Option<String>) -> Result<()>;
     fn flush(&mut self);
     fn width(&self) -> u16;
     fn height(&self) -> u16;

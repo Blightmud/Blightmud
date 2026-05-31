@@ -21,6 +21,56 @@ const PROMPT_HEIGHT: u16 = 1;
 const STATUS_HEIGHT_MIN: u16 = 0;
 const STATUS_HEIGHT_MAX: u16 = 5;
 
+fn repeat_char(c: char, n: usize) -> String {
+    let mut s = String::with_capacity(n * c.len_utf8());
+    for _ in 0..n {
+        s.push(c);
+    }
+    s
+}
+
+fn draw_bar(
+    barchar: char,
+    width: usize,
+    line: usize,
+    screen: &mut impl Write,
+    custom_info: &str,
+) -> Result<()> {
+    write!(
+        screen,
+        "{}{}{}",
+        termion::cursor::Goto(1, line as u16),
+        termion::clear::CurrentLine,
+        Fg(color::Green),
+    )?;
+
+    let trimmed = custom_info.trim();
+    let custom_info = if !trimmed.is_empty() {
+        let (max_bytes, _) = trimmed.byte_index_at_display_width(width - 4);
+        format!(
+            "{} {}{}{}{} ",
+            barchar,
+            trimmed.get(0..max_bytes).unwrap_or(trimmed), // If byte index is bad, skip truncation
+            Bg(color::Reset),
+            Fg(color::Reset),
+            Fg(color::Green)
+        )
+    } else {
+        "".to_string()
+    };
+
+    let remainder = width - custom_info.as_str().display_width();
+
+    write!(screen, "{}", &custom_info)?;
+
+    if remainder > 0 {
+        screen.write_all(repeat_char(barchar, remainder).as_bytes())?;
+    }
+
+    write!(screen, "{}", Fg(color::Reset))?;
+    Ok(())
+}
+
 struct StatusArea {
     start_line: u16,
     width: u16,
@@ -97,7 +147,7 @@ impl StatusArea {
         }
 
         if line_no == 0 || line_no == self.status_lines.len() - 1 {
-            self.draw_bar(index, screen, &info)?;
+            draw_bar('━', self.width as usize, index, screen, &info)?;
         } else {
             self.draw_line(index, screen, &info)?;
         }
@@ -109,39 +159,6 @@ impl StatusArea {
         for line in 0..self.status_lines.len() {
             self.redraw_line(screen, line)?;
         }
-        Ok(())
-    }
-
-    fn draw_bar(&self, line: usize, screen: &mut impl Write, custom_info: &str) -> Result<()> {
-        write!(
-            screen,
-            "{}{}{}",
-            termion::cursor::Goto(1, line as u16),
-            termion::clear::CurrentLine,
-            Fg(color::Green),
-        )?;
-
-        let custom_info = if !custom_info.trim().is_empty() {
-            format!(
-                "━ {}{}{} ",
-                custom_info.trim(),
-                Fg(color::Reset),
-                Fg(color::Green)
-            )
-        } else {
-            "".to_string()
-        };
-
-        let info_line = Line::from(&custom_info);
-        let stripped_chars = info_line.line().len() - info_line.clean_line().len();
-
-        write!(
-            screen,
-            "{:━<1$}",
-            &custom_info,
-            self.width as usize + stripped_chars
-        )?; // Print separator
-        write!(screen, "{}", Fg(color::Reset))?;
         Ok(())
     }
 
@@ -181,6 +198,7 @@ pub struct SplitScreen {
     prompt_input_pos: usize,
     show_tags: bool,
     tag_mask: TagMask,
+    top_line: Option<String>,
 }
 
 impl UserInterface for SplitScreen {
@@ -567,6 +585,11 @@ impl UserInterface for SplitScreen {
         Ok(())
     }
 
+    fn set_top_line(&mut self, line: Option<String>) -> Result<()> {
+        self.top_line = line;
+        self.redraw_top_bar()
+    }
+
     fn flush(&mut self) {
         self.screen.flush().unwrap();
     }
@@ -616,6 +639,7 @@ impl SplitScreen {
             prompt_input_pos: 0,
             show_tags: false,
             tag_mask: TagMask::default(),
+            top_line: None,
         })
     }
 
@@ -682,32 +706,35 @@ impl SplitScreen {
         }
     }
 
+    fn default_top_bar(&self) -> String {
+        let host = if let Some(connection) = &self.connection {
+            connection
+        } else {
+            &String::default() // Empty String
+        };
+        let mut tags = self
+            .tags
+            .iter()
+            .map(|s| format!("[{s}]"))
+            .collect::<Vec<String>>();
+        tags.sort();
+        let tags = tags.join("");
+        let mut output = format!("{host} {tags}");
+        if !output.is_empty() {
+            output.push(' ');
+        }
+        output
+    }
+
     fn redraw_top_bar(&mut self) -> Result<()> {
         if self.output_start_line > 1 {
-            write!(
-                self.screen,
-                "{}{}{}",
-                termion::cursor::Goto(1, 1),
-                termion::clear::CurrentLine,
-                Fg(color::Green),
-            )?;
-            let host = if let Some(connection) = &self.connection {
-                format!("═ {connection} ")
-            } else {
-                "".to_string()
-            };
-            let mut tags = self
-                .tags
-                .iter()
-                .map(|s| format!("[{s}]"))
-                .collect::<Vec<String>>();
-            tags.sort();
-            let tags = tags.join("");
-            let mut output = format!("{host}{tags}");
-            if !output.is_empty() {
-                output.push(' ');
-            }
-            write!(self.screen, "{:═<1$}", output, self.width as usize)?; // Print separator
+            let mut default_output = String::default();
+            let output = self.top_line.as_ref().unwrap_or_else(|| {
+                default_output = self.default_top_bar();
+                &default_output
+            });
+
+            draw_bar('═', self.width as usize, 1, &mut self.screen, output)?;
             write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
         }
         Ok(())
@@ -938,5 +965,50 @@ mod screen_test {
 
         history.set_tag_mask(TagMask::default());
         assert_eq!(history.len(), 2);
+    }
+
+    #[test]
+    fn test_draw_bar_pads_to_length_ignoring_escape_sequences() {
+        let mut buf = Vec::<u8>::new();
+
+        draw_bar('━', 10, 1, &mut buf, "test").unwrap();
+
+        let clean_output = String::from_utf8(buf)
+            .unwrap()
+            .as_str()
+            .printable_chars()
+            .collect::<String>();
+
+        assert_eq!(clean_output, "━ test ━━━");
+    }
+
+    #[test]
+    fn test_draw_bar_is_unbroken_for_empty_string() {
+        let mut buf = Vec::<u8>::new();
+
+        draw_bar('━', 10, 1, &mut buf, "").unwrap();
+
+        let clean_output = String::from_utf8(buf)
+            .unwrap()
+            .as_str()
+            .printable_chars()
+            .collect::<String>();
+
+        assert_eq!(clean_output, "━━━━━━━━━━");
+    }
+
+    #[test]
+    fn test_draw_bar_truncates_long_text() {
+        let mut buf = Vec::<u8>::new();
+
+        draw_bar('━', 10, 1, &mut buf, "this text is too long").unwrap();
+
+        let clean_output = String::from_utf8(buf)
+            .unwrap()
+            .as_str()
+            .printable_chars()
+            .collect::<String>();
+
+        assert_eq!(clean_output, "━ this t ━");
     }
 }

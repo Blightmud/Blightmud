@@ -445,6 +445,10 @@ impl UserInterface for ReaderScreen {
         Ok(())
     }
 
+    fn set_top_line(&mut self, _info: Option<String>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn flush(&mut self) {
         self.screen.flush().unwrap();
     }

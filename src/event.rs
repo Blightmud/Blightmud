@@ -90,6 +90,7 @@ pub enum Event {
     SetPromptMask(PromptMask),
     ClearPromptMask,
     SetTagMask(TagMask),
+    SetHistoryCapacity(usize),
     UserInputBuffer(String, usize),
     UserInputCursor(usize),
     FSEvent(FSEvent),

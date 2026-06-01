@@ -35,6 +35,16 @@ impl History {
         self.rebuild_visible();
     }
 
+    pub fn set_capacity(&mut self, new_capacity: usize) {
+        self.capacity = new_capacity;
+        while self.inner.len() > self.capacity {
+            let drained = self.inner.remove(0);
+            if !drained.is_masked(&self.tag_mask) {
+                self.visible.remove(0);
+            }
+        }
+    }
+
     pub fn drain(&mut self) {
         if self.inner.len() >= self.capacity {
             let drained: Vec<Line> = self.inner.drain(0..self.drain_length).collect();
@@ -390,5 +400,63 @@ mod test {
         for i in 0..visible_count {
             assert_eq!(history.visible[i].line(), history.inner[i].line());
         }
+    }
+
+    #[test]
+    fn test_set_capacity_reduces_lines() {
+        let mut history = History::new();
+        for i in 0..1000 {
+            history.append(&format!("line {}", i));
+        }
+        assert_eq!(history.inner.len(), 1000);
+        assert_eq!(history.visible.len(), 1000);
+
+        history.set_capacity(500);
+        assert_eq!(history.capacity, 500);
+        assert_eq!(history.inner.len(), 500);
+        assert_eq!(history.visible.len(), 500);
+        assert_eq!(history.visible[0].line(), "line 500");
+    }
+
+    #[test]
+    fn test_set_capacity_with_mask() {
+        let mut history = History::new();
+        let mask = TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        };
+        history.set_tag_mask(mask);
+
+        for i in 0..1000 {
+            let mut line = Line::from(&format!("line {}", i));
+            if i % 2 == 0 {
+                line.tag.key = "combat".to_string();
+            }
+            history.append_line(line);
+        }
+        let visible_before = history.len();
+        let inner_before = history.inner.len();
+        assert_eq!(inner_before, 1000);
+        assert!(visible_before < inner_before);
+
+        history.set_capacity(500);
+        assert_eq!(history.capacity, 500);
+        assert_eq!(history.inner.len(), 500);
+        let visible_after = history.len();
+        assert!(visible_after < visible_before);
+    }
+
+    #[test]
+    fn test_set_capacity_larger_than_current() {
+        let mut history = History::new();
+        for i in 0..100 {
+            history.append(&format!("line {}", i));
+        }
+        assert_eq!(history.inner.len(), 100);
+
+        history.set_capacity(500);
+        assert_eq!(history.capacity, 500);
+        assert_eq!(history.inner.len(), 100);
+        assert_eq!(history.visible.len(), 100);
     }
 }

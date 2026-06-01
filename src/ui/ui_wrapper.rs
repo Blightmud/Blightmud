@@ -179,6 +179,10 @@ impl UserInterface for UiWrapper {
         self.screen.set_tag_mask(mask);
     }
 
+    fn set_history_capacity(&mut self, capacity: usize) {
+        self.screen.set_history_capacity(capacity);
+    }
+
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.screen.set_status_line(line, info)
     }

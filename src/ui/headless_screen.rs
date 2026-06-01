@@ -102,6 +102,8 @@ impl UserInterface for HeadlessScreen {
 
     fn set_tag_mask(&mut self, _mask: crate::model::TagMask) {}
 
+    fn set_history_capacity(&mut self, _capacity: usize) {}
+
     fn set_status_line(&mut self, _line: usize, _info: String) -> anyhow::Result<()> {
         Ok(())
     }

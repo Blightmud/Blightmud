@@ -60,6 +60,25 @@ Returns blightmuds config directory path on the current system
 
 ##
 
+***blight.history_capacity([capacity]) -> int***
+Get or set the scrollback buffer capacity. When called without arguments,
+returns the current capacity. When called with a capacity argument, sets the
+new capacity and trims excess lines if necessary.
+
+- `capacity`  The maximum number of lines to keep in the scrollback buffer (int)
+- Returns the current history capacity
+
+```lua
+-- Get current capacity
+local cap = blight.history_capacity()
+print("Current capacity: " .. cap)
+
+-- Set new capacity
+blight.history_capacity(5000)
+```
+
+##
+
 ***blight.data_dir() -> Path***
 Returns blightmuds data directory path on the current system
 

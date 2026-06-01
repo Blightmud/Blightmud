@@ -441,6 +441,10 @@ impl UserInterface for ReaderScreen {
 
     fn set_tag_mask(&mut self, _mask: crate::model::TagMask) {}
 
+    fn set_history_capacity(&mut self, capacity: usize) {
+        self.history.set_capacity(capacity);
+    }
+
     fn set_status_line(&mut self, _line: usize, _info: String) -> Result<()> {
         Ok(())
     }

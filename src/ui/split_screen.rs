@@ -560,6 +560,10 @@ impl UserInterface for SplitScreen {
         self.setup().ok();
     }
 
+    fn set_history_capacity(&mut self, capacity: usize) {
+        self.history.set_capacity(capacity);
+    }
+
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
         self.status_area.redraw_line(&mut self.screen, line)?;

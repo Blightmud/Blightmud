@@ -39,7 +39,7 @@ impl History {
         self.capacity = new_capacity;
         while self.inner.len() > self.capacity {
             let drained = self.inner.remove(0);
-            if !drained.is_masked(&self.tag_mask) {
+            if !drained.is_masked(&self.tag_mask) && !self.visible.is_empty() {
                 self.visible.remove(0);
             }
         }
@@ -52,7 +52,7 @@ impl History {
                 .iter()
                 .filter(|l| !l.is_masked(&self.tag_mask))
                 .count();
-            if visible_drain_count > 0 {
+            if visible_drain_count > 0 && visible_drain_count <= self.visible.len() {
                 self.visible.drain(0..visible_drain_count);
             }
         }

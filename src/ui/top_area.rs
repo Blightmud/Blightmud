@@ -795,4 +795,209 @@ mod tests {
         assert_eq!(area.find(row_names::HOST_STATUS), Some(1));
         assert_eq!(area.find("nonexistent"), None);
     }
+
+    #[test]
+    fn get_and_get_mut() {
+        let mut area = TopArea::new_default();
+        assert!(area.get(0).is_some());
+        assert!(area.get(99).is_none());
+        area.get_mut(1).unwrap().bar_char = '-';
+        assert_eq!(area.rows()[1].bar_char, '-');
+        assert!(area.get_mut(99).is_none());
+    }
+
+    #[test]
+    fn resolve_index_and_name() {
+        let area = TopArea::new_default();
+        assert_eq!(area.resolve(&TopRowSelector::Index(0)), Some(0));
+        assert_eq!(area.resolve(&TopRowSelector::Index(99)), None);
+        assert_eq!(
+            area.resolve(&TopRowSelector::Name(row_names::HOST_STATUS.to_string())),
+            Some(1)
+        );
+        assert_eq!(
+            area.resolve(&TopRowSelector::Name("nope".to_string())),
+            None
+        );
+    }
+
+    #[test]
+    fn apply_opts_updates_fields_and_reports_visibility() {
+        let mut area = TopArea::new_default();
+        // Non-visibility changes on the (already-visible) host row → false.
+        let changed = area.apply_opts(
+            1,
+            TopRowOpts {
+                name: Some("renamed".to_string()),
+                bar_char: Some('-'),
+                prefix: Some(Some(TopPrefix {
+                    text: " X ".to_string(),
+                    style: TopPrefixStyle::Plain,
+                })),
+                body: Some(TopRowBody::Text("body".to_string())),
+                visible: Some(true),
+            },
+        );
+        assert!(!changed);
+        let row = &area.rows()[1];
+        assert_eq!(row.name, "renamed");
+        assert_eq!(row.bar_char, '-');
+        assert!(row.prefix.is_some());
+        assert!(matches!(row.body, TopRowBody::Text(_)));
+
+        // Flipping the hidden tab_indicator row visible → true.
+        assert!(area.apply_opts(
+            0,
+            TopRowOpts {
+                visible: Some(true),
+                ..Default::default()
+            }
+        ));
+        // Clearing a prefix via Some(None).
+        area.apply_opts(
+            0,
+            TopRowOpts {
+                prefix: Some(None),
+                ..Default::default()
+            },
+        );
+        assert!(area.rows()[0].prefix.is_none());
+        // Out-of-bounds index → false, no panic.
+        assert!(!area.apply_opts(99, TopRowOpts::default()));
+    }
+
+    #[test]
+    fn reset_body_restores_builtins_and_skips_custom() {
+        let mut area = TopArea::new_default();
+        area.rows_mut()[0].body = TopRowBody::Text("x".to_string());
+        area.reset_body(0);
+        assert!(matches!(area.rows()[0].body, TopRowBody::TabIndicator));
+
+        area.rows_mut()[1].body = TopRowBody::Text("x".to_string());
+        area.reset_body(1);
+        assert!(matches!(area.rows()[1].body, TopRowBody::HostTags));
+
+        // Custom rows keep their body; out-of-bounds is a no-op.
+        let idx = area.add_row(TopRowOpts {
+            name: Some("c".to_string()),
+            body: Some(TopRowBody::Text("keep".to_string())),
+            ..Default::default()
+        });
+        area.reset_body(idx);
+        assert!(matches!(area.rows()[idx].body, TopRowBody::Text(_)));
+        area.reset_body(99);
+    }
+
+    #[test]
+    fn add_row_named_auto_named_and_collision() {
+        let mut area = TopArea::new_default();
+        let named = area.add_row(TopRowOpts {
+            name: Some("vitals".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(area.rows()[named].name, "vitals");
+
+        // Plant the auto-namer's first candidate (`custom_<len>`) so the
+        // generation loop has to advance past it.
+        let plant = format!("custom_{}", area.rows().len() + 1);
+        area.add_row(TopRowOpts {
+            name: Some(plant.clone()),
+            ..Default::default()
+        });
+        let auto = area.add_row(TopRowOpts::default());
+        let auto_name = area.rows()[auto].name.clone();
+        assert!(auto_name.starts_with("custom_"));
+        assert_ne!(auto_name, plant, "collision forces a fresh name");
+        assert_eq!(area.find(&auto_name), Some(auto));
+    }
+
+    #[test]
+    fn remove_row_refuses_builtins() {
+        let mut area = TopArea::new_default();
+        assert!(!area.remove_row(0)); // tab_indicator
+        assert!(!area.remove_row(1)); // host_status
+        assert!(!area.remove_row(99)); // out of bounds
+        let idx = area.add_row(TopRowOpts {
+            name: Some("temp".to_string()),
+            ..Default::default()
+        });
+        assert!(area.remove_row(idx));
+        assert_eq!(area.find("temp"), None);
+    }
+
+    #[test]
+    fn render_walks_visible_rows() {
+        let mut area = TopArea::new_default();
+        area.rows_mut()[0].visible = true; // show both built-ins
+        let tags = empty_tags();
+        let tabs = vec![
+            TabInfo {
+                name: "main".to_string(),
+                label: "main".to_string(),
+                active: true,
+                unread: 0,
+                shortcut: None,
+            },
+            TabInfo {
+                name: "chat".to_string(),
+                label: "chat".to_string(),
+                active: false,
+                unread: 2,
+                shortcut: Some("F2".to_string()),
+            },
+        ];
+        let context = ctx(60, None, &tags, &tabs);
+        let mut buf = Vec::<u8>::new();
+        area.render(1, &mut buf, &context).unwrap();
+        let printable = String::from_utf8(buf)
+            .unwrap()
+            .as_str()
+            .printable_chars()
+            .collect::<String>();
+        assert!(printable.contains("Blightmud"));
+        assert!(printable.contains("[main]"));
+        assert!(printable.contains("(F2 - chat·2)"));
+    }
+
+    #[test]
+    fn plain_prefix_renders() {
+        let row = TopRow {
+            name: "custom".to_string(),
+            bar_char: '═',
+            prefix: Some(TopPrefix {
+                text: " Vitals ".to_string(),
+                style: TopPrefixStyle::Plain,
+            }),
+            body: TopRowBody::Text("HP".to_string()),
+            visible: true,
+        };
+        let tags = empty_tags();
+        let tabs: [TabInfo; 0] = [];
+        let out = render_to_string(&row, &ctx(40, None, &tags, &tabs));
+        assert!(out.contains("Vitals"));
+        assert!(out.contains("HP"));
+        assert_eq!(out.chars().count(), 40);
+    }
+
+    #[test]
+    fn tab_indicator_with_one_tab_is_blank_bar() {
+        let row = TopRow {
+            name: row_names::TAB_INDICATOR.to_string(),
+            bar_char: '═',
+            prefix: None,
+            body: TopRowBody::TabIndicator,
+            visible: true,
+        };
+        let tags = empty_tags();
+        let tabs = vec![TabInfo {
+            name: "main".to_string(),
+            label: "main".to_string(),
+            active: true,
+            unread: 0,
+            shortcut: None,
+        }];
+        // <2 tabs → format_tabs_segment returns ("", 0) → empty body → bar fill.
+        let out = render_to_string(&row, &ctx(10, None, &tags, &tabs));
+        assert_eq!(out, "══════════");
+    }
 }

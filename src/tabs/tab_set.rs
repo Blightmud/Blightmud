@@ -434,4 +434,109 @@ mod tests {
         assert!(result.is_none(), "switching to active tab returns None");
         assert_eq!(ts.active_name(), MAIN_TAB);
     }
+
+    #[test]
+    fn create_duplicate_returns_err() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        assert!(matches!(
+            ts.create("chat", TabOpts::default()),
+            Err(TabError::AlreadyExists(_))
+        ));
+    }
+
+    #[test]
+    fn add_filter_error_paths() {
+        let mut ts = fresh();
+        assert!(matches!(
+            ts.add_filter("nope", "x"),
+            Err(TabError::Missing(_))
+        ));
+        ts.create("chat", TabOpts::default()).unwrap();
+        assert!(matches!(
+            ts.add_filter("chat", "(unbalanced"),
+            Err(TabError::BadRegex { .. })
+        ));
+    }
+
+    #[test]
+    fn set_label_updates_and_errors() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        ts.set_label("chat", "Chatter").unwrap();
+        let info = ts.list();
+        let chat = info.iter().find(|t| t.name == "chat").unwrap();
+        assert_eq!(chat.label, "Chatter");
+        assert!(matches!(
+            ts.set_label("nope", "x"),
+            Err(TabError::Missing(_))
+        ));
+    }
+
+    #[test]
+    fn set_shortcut_set_clear_and_error() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        ts.set_shortcut("chat", Some("F2".to_string())).unwrap();
+        let shortcut_of = |ts: &TabSet| {
+            ts.list()
+                .into_iter()
+                .find(|t| t.name == "chat")
+                .unwrap()
+                .shortcut
+        };
+        assert_eq!(shortcut_of(&ts), Some("F2".to_string()));
+        ts.set_shortcut("chat", None).unwrap();
+        assert_eq!(shortcut_of(&ts), None);
+        assert!(matches!(
+            ts.set_shortcut("nope", Some("F2".to_string())),
+            Err(TabError::Missing(_))
+        ));
+    }
+
+    #[test]
+    fn output_to_active_inactive_and_missing() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        // chat is inactive → appends to its history, returns false, bumps unread.
+        assert!(!ts.output_to("chat", &line("hello")).unwrap());
+        assert_eq!(
+            ts.list().iter().find(|t| t.name == "chat").unwrap().unread,
+            1
+        );
+        // main is active → returns true (the caller renders), no append here.
+        assert!(ts.output_to(MAIN_TAB, &line("hi")).unwrap());
+        // missing tab → err.
+        assert!(matches!(
+            ts.output_to("nope", &line("x")),
+            Err(TabError::Missing(_))
+        ));
+    }
+
+    #[test]
+    fn route_mirrors_to_main_when_active_is_non_main() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        ts.add_filter("chat", "tells you").unwrap();
+        // Make chat the active tab via the switch protocol.
+        let _dest = ts.take_for_switch("chat").unwrap().unwrap();
+        ts.complete_switch(History::new()).unwrap();
+        assert_eq!(ts.active_name(), "chat");
+
+        // A matching line: active chat receives it AND main mirrors it.
+        let res = ts.route(&line("Bob tells you: hi"));
+        assert!(
+            res.render_to_screen,
+            "active chat receives the matching line"
+        );
+
+        // A non-matching line: active chat ignores it, but main (now inactive)
+        // mirrors it → screen should NOT render, indicator IS dirty.
+        let res = ts.route(&line("random noise"));
+        assert!(!res.render_to_screen, "active chat doesn't match");
+        assert!(
+            res.indicator_dirty,
+            "inactive main mirror dirties the indicator"
+        );
+    }
 }

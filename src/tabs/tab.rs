@@ -134,3 +134,71 @@ impl Tab {
         self.filters.iter().any(|re| re.is_match(clean_line))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tab_error_display_messages() {
+        assert_eq!(
+            TabError::AlreadyExists("chat".into()).to_string(),
+            "tab already exists: chat"
+        );
+        assert_eq!(TabError::Missing("x".into()).to_string(), "no such tab: x");
+        assert_eq!(
+            TabError::Reserved("main".into()).to_string(),
+            "tab name is reserved: main"
+        );
+        assert_eq!(
+            TabError::BadRegex {
+                name: "chat".into(),
+                err: "oops".into()
+            }
+            .to_string(),
+            "bad regex for tab `chat`: oops"
+        );
+    }
+
+    #[test]
+    fn new_tab_label_falls_back_to_name() {
+        let plain = Tab::new("chat", TabOpts::default());
+        assert_eq!(plain.label, "chat");
+        assert!(plain.history.is_some());
+        assert_eq!(plain.unread, 0);
+        assert!(plain.shortcut.is_none());
+
+        let labeled = Tab::new(
+            "chat",
+            TabOpts {
+                label: Some("Chat".into()),
+                shortcut: Some("F2".into()),
+                gag_main: true,
+            },
+        );
+        assert_eq!(labeled.label, "Chat");
+        assert_eq!(labeled.shortcut, Some("F2".into()));
+        assert!(labeled.gag_main);
+    }
+
+    #[test]
+    fn main_tab_defaults() {
+        let main = Tab::new_main();
+        assert_eq!(main.name, MAIN_TAB);
+        assert_eq!(main.label, MAIN_TAB);
+        assert!(!main.gag_main);
+    }
+
+    #[test]
+    fn matches_respects_filters_and_excludes() {
+        let mut tab = Tab::new("chat", TabOpts::default());
+        // No filters → nothing matches.
+        assert!(!tab.matches("Bob tells you: hi"));
+        tab.filters.push(Regex::new("tells you").unwrap());
+        assert!(tab.matches("Bob tells you: hi"));
+        assert!(!tab.matches("nothing here"));
+        // An exclude vetoes an otherwise-matching line.
+        tab.excludes.push(Regex::new("^Bob").unwrap());
+        assert!(!tab.matches("Bob tells you: hi"));
+    }
+}

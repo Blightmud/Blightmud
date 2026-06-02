@@ -275,10 +275,15 @@ impl SessionBuilder {
         let last_command_enabled = self.last_command;
         let log_timestamps = self.log_timestamps;
 
+        // TabSet must be constructed before LuaScript so Blight can hold a
+        // reference to it (used by `blight.tabs()` / `blight.active_tab()`).
+        let tab_set = Arc::new(Mutex::new(TabSet::new()));
+
         let lua_builder = LuaScriptBuilder::new(main_writer.clone())
             .dimensions(dimensions)
             .tts_enabled(tts_enabled)
-            .reader_mode(reader_mode);
+            .reader_mode(reader_mode)
+            .tab_set(tab_set.clone());
 
         let lua_script = Arc::new(Mutex::new(lua_builder.build()));
         Session {
@@ -303,7 +308,7 @@ impl SessionBuilder {
                 last_command_enabled,
             ))),
             echo_input: Arc::new(AtomicBool::new(echo_input)),
-            tab_set: Arc::new(Mutex::new(TabSet::new())),
+            tab_set,
             _codec: self.codec,
         }
     }

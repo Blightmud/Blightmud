@@ -112,6 +112,26 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
+    fn set_top_row(
+        &mut self,
+        _selector: crate::ui::TopRowSelector,
+        _opts: crate::ui::TopRowOpts,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn reset_top_row(&mut self, _selector: crate::ui::TopRowSelector) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn add_top_row(&mut self, _opts: crate::ui::TopRowOpts) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn remove_top_row(&mut self, _selector: crate::ui::TopRowSelector) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn flush(&mut self) {
         std::io::stdout().flush().ok();
     }
@@ -138,6 +158,11 @@ impl UserInterface for HeadlessScreen {
         // a no-op. Return a fresh empty History so the caller's swap
         // protocol completes — there's no real history to hand back.
         Ok(super::history::History::new())
+    }
+
+    fn set_tab_indicator(&mut self, _tabs: Vec<crate::tabs::TabInfo>) -> anyhow::Result<()> {
+        // Headless mode has no UI. No-op.
+        Ok(())
     }
 }
 

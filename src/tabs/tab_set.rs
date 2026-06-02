@@ -113,6 +113,18 @@ impl TabSet {
         Ok(())
     }
 
+    /// Set or clear a tab's display-only shortcut hint (`"F2"`, `"Ctrl-A"`,
+    /// etc.). Pass `None` to remove an existing hint. The actual key
+    /// binding still has to be wired with `blight.bind` separately — this
+    /// only controls what the tab indicator renders.
+    pub fn set_shortcut(&mut self, name: &str, shortcut: Option<String>) -> Result<(), TabError> {
+        let idx = self
+            .idx_of(name)
+            .ok_or_else(|| TabError::Missing(name.to_string()))?;
+        self.tabs[idx].shortcut = shortcut;
+        Ok(())
+    }
+
     pub fn active_name(&self) -> &str {
         &self.tabs[self.active].name
     }
@@ -124,6 +136,7 @@ impl TabSet {
             .map(|(i, t)| TabInfo {
                 name: t.name.clone(),
                 label: t.label.clone(),
+                shortcut: t.shortcut.clone(),
                 unread: t.unread,
                 active: i == self.active,
             })
@@ -330,10 +343,7 @@ mod tests {
 
         // NPC label: vetoed.
         let r = ts.route(&line("Smuggler says: Okay, off we go."));
-        assert!(
-            !r.indicator_dirty,
-            "blocklisted NPC must NOT route to chat"
-        );
+        assert!(!r.indicator_dirty, "blocklisted NPC must NOT route to chat");
     }
 
     #[test]

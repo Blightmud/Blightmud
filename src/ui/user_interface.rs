@@ -4,11 +4,13 @@ use std::{error, fmt, io::Write};
 use mockall::automock;
 
 use crate::model::{Line, Regex, TagMask};
+use crate::tabs::TabInfo;
 use crate::tools::printable_chars::PrintableCharsIterator;
 
 use anyhow::Result;
 
 use super::history::History;
+use super::top_area::{TopRowOpts, TopRowSelector};
 
 #[derive(Debug)]
 pub struct TerminalSizeError;
@@ -62,6 +64,14 @@ pub trait UserInterface {
     fn set_history_capacity(&mut self, capacity: usize);
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;
     fn set_top_line(&mut self, info: Option<String>) -> Result<()>;
+    /// Mutate fields on an existing top row.
+    fn set_top_row(&mut self, selector: TopRowSelector, opts: TopRowOpts) -> Result<()>;
+    /// Reset a built-in top row's body to its dynamic default.
+    fn reset_top_row(&mut self, selector: TopRowSelector) -> Result<()>;
+    /// Append a new top row. Returns the assigned name when applicable.
+    fn add_top_row(&mut self, opts: TopRowOpts) -> Result<()>;
+    /// Remove a Lua-added top row. Built-ins refuse removal.
+    fn remove_top_row(&mut self, selector: TopRowSelector) -> Result<()>;
     fn flush(&mut self);
     fn width(&self) -> u16;
     fn height(&self) -> u16;
@@ -72,6 +82,13 @@ pub trait UserInterface {
     ///
     /// Returns the History that was previously installed.
     fn swap_history(&mut self, new: History) -> Result<History>;
+    /// Update the tab indicator with a fresh snapshot of all tabs.
+    ///
+    /// Called by the event handler whenever a tab is created, switched,
+    /// labeled, or has its unread counter bumped. The screen stores the
+    /// snapshot and re-renders the indicator row. Pass an empty `Vec` to
+    /// hide the indicator.
+    fn set_tab_indicator(&mut self, tabs: Vec<TabInfo>) -> Result<()>;
 }
 
 pub fn wrap_line(line: &str, width: usize, padding: usize) -> Vec<&str> {

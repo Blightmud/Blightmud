@@ -453,6 +453,26 @@ impl UserInterface for ReaderScreen {
         Ok(())
     }
 
+    fn set_top_row(
+        &mut self,
+        _selector: crate::ui::TopRowSelector,
+        _opts: crate::ui::TopRowOpts,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn reset_top_row(&mut self, _selector: crate::ui::TopRowSelector) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn add_top_row(&mut self, _opts: crate::ui::TopRowOpts) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn remove_top_row(&mut self, _selector: crate::ui::TopRowSelector) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn flush(&mut self) {
         self.screen.flush().unwrap();
     }
@@ -470,13 +490,16 @@ impl UserInterface for ReaderScreen {
         Ok((self.screen, self.history))
     }
 
-    fn swap_history(
-        &mut self,
-        new: super::history::History,
-    ) -> Result<super::history::History> {
+    fn swap_history(&mut self, new: super::history::History) -> Result<super::history::History> {
         self.scroll_data = ScrollData::new();
         let old = std::mem::replace(&mut self.history, new);
         self.setup()?;
         Ok(old)
+    }
+
+    fn set_tab_indicator(&mut self, _tabs: Vec<crate::tabs::TabInfo>) -> Result<()> {
+        // Reader mode skips the tab indicator (it's a screen-reader-friendly
+        // single-stream view). The active tab still drives what's read.
+        Ok(())
     }
 }

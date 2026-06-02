@@ -8,7 +8,7 @@ use crate::{
     session::Session,
     tabs::TabOpts,
     tts::TTSEvent,
-    ui::UserInterface,
+    ui::{TopRowOpts, TopRowSelector, UserInterface},
 };
 use libmudtelnet::{bytes::Bytes, events::TelnetEvents};
 use log::debug;
@@ -48,6 +48,13 @@ pub enum TabCommand {
     AddExclude { name: String, pattern: String },
     /// Update a tab's display label (for the tab indicator row).
     SetLabel { name: String, label: String },
+    /// Update a tab's display-only keyboard-shortcut hint (e.g. `Some("F2")`
+    /// shows the tab as `[F2 - chat]` in the indicator). `None` clears it.
+    /// Does NOT bind the key — use `blight.bind` for the actual binding.
+    SetShortcut {
+        name: String,
+        shortcut: Option<String>,
+    },
     /// Send a line directly into a specific tab, bypassing the filter
     /// machinery. Used by `blight.output_to(name, ...)`.
     OutputTo { name: String, line: Line },
@@ -108,6 +115,16 @@ pub enum Event {
     StopMusic,
     StopSFX,
     TopLine(Option<String>),
+    /// Mutate fields on an existing top row (built-in or Lua-added).
+    SetTopRow(TopRowSelector, TopRowOpts),
+    /// Reset a built-in row's body to its dynamic default (host_tags /
+    /// tab_indicator). Lua-added rows are unaffected.
+    ResetTopRow(TopRowSelector),
+    /// Append a new top row. Auto-generates a name when `opts.name` is
+    /// unset.
+    AddTopRow(TopRowOpts),
+    /// Remove a Lua-added top row. Built-ins refuse removal.
+    RemoveTopRow(TopRowSelector),
     TTSEnabled(bool),
     TTSEvent(TTSEvent),
     TimedEvent(u32),
@@ -170,15 +187,36 @@ impl EventHandler {
     /// future scroll-back), and `gag_main=true` tabs suppress the line
     /// from main entirely.
     fn route_and_print(&self, line: &Line, screen: &mut Box<dyn UserInterface>) {
-        let render = if let Ok(mut tab_set) = self.session.tab_set.lock() {
-            tab_set.route(line).render_to_screen
+        let (render, indicator_snapshot) = if let Ok(mut tab_set) = self.session.tab_set.lock() {
+            let r = tab_set.route(line);
+            // When a non-active tab received the line, the indicator's
+            // unread count changed and we need to repaint it.
+            let snap = if r.indicator_dirty {
+                Some(tab_set.list())
+            } else {
+                None
+            };
+            (r.render_to_screen, snap)
         } else {
             // If the tab set is poisoned (very unusual), fall back to
             // rendering — better to show too much than too little.
-            true
+            (true, None)
         };
         if render {
             screen.print_output(line);
+        }
+        if let Some(snap) = indicator_snapshot {
+            // Indicator update is best-effort; don't bubble errors here.
+            let _ = screen.set_tab_indicator(snap);
+        }
+    }
+
+    /// Push a fresh tabs snapshot to the screen indicator. Called after
+    /// any TabCommand mutation (Create / Switch / SetLabel / OutputTo)
+    /// that changes user-visible state.
+    fn refresh_tab_indicator(&self, screen: &mut Box<dyn UserInterface>) {
+        if let Ok(tab_set) = self.session.tab_set.lock() {
+            let _ = screen.set_tab_indicator(tab_set.list());
         }
     }
 
@@ -481,8 +519,10 @@ impl EventHandler {
                 if let Ok(mut tab_set) = self.session.tab_set.lock() {
                     if let Err(err) = tab_set.create(&name, opts) {
                         screen.print_error(&format!("create_tab({name}): {err}"));
+                        return Ok(());
                     }
                 }
+                self.refresh_tab_indicator(screen);
                 Ok(())
             }
             TabCommand::AddFilter { name, pattern } => {
@@ -491,6 +531,7 @@ impl EventHandler {
                         screen.print_error(&format!("add_tab_filter({name}): {err}"));
                     }
                 }
+                // Visual state unchanged — no indicator refresh needed.
                 Ok(())
             }
             TabCommand::AddExclude { name, pattern } => {
@@ -506,8 +547,20 @@ impl EventHandler {
                 if let Ok(mut tab_set) = self.session.tab_set.lock() {
                     if let Err(err) = tab_set.set_label(&name, &label) {
                         screen.print_error(&format!("set_tab_label({name}): {err}"));
+                        return Ok(());
                     }
                 }
+                self.refresh_tab_indicator(screen);
+                Ok(())
+            }
+            TabCommand::SetShortcut { name, shortcut } => {
+                if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                    if let Err(err) = tab_set.set_shortcut(&name, shortcut) {
+                        screen.print_error(&format!("set_tab_shortcut({name}): {err}"));
+                        return Ok(());
+                    }
+                }
+                self.refresh_tab_indicator(screen);
                 Ok(())
             }
             TabCommand::Switch { name } => {
@@ -532,16 +585,17 @@ impl EventHandler {
                 };
                 if let Ok(mut tab_set) = self.session.tab_set.lock() {
                     if let Err(err) = tab_set.complete_switch(old_history) {
-                        screen
-                            .print_error(&format!("switch_tab({name}): complete failed: {err}"));
+                        screen.print_error(&format!("switch_tab({name}): complete failed: {err}"));
+                        return Ok(());
                     }
                 }
+                self.refresh_tab_indicator(screen);
                 Ok(())
             }
             TabCommand::OutputTo { name, line } => {
-                let render_to_screen = match self.session.tab_set.lock() {
+                let (render_to_screen, indicator_dirty) = match self.session.tab_set.lock() {
                     Ok(mut tab_set) => match tab_set.output_to(&name, &line) {
-                        Ok(active) => active,
+                        Ok(active) => (active, !active),
                         Err(err) => {
                             screen.print_error(&format!("output_to({name}): {err}"));
                             return Ok(());
@@ -551,6 +605,9 @@ impl EventHandler {
                 };
                 if render_to_screen {
                     screen.print_output(&line);
+                }
+                if indicator_dirty {
+                    self.refresh_tab_indicator(screen);
                 }
                 Ok(())
             }

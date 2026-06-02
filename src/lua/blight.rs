@@ -1,8 +1,10 @@
 use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::{Event, QuitMethod, TabCommand};
-use crate::tabs::TabOpts;
+use crate::io::SaveData;
+use crate::tabs::{TabOpts, TabSet};
+use crate::ui::{TopPrefix, TopPrefixStyle, TopRowBody, TopRowOpts, TopRowSelector};
 use crate::{
-    model::{Line, TagMask},
+    model::{self, Line, TagMask},
     tools::printable_chars::PrintableCharsIterator,
     PROJECT_NAME, VERSION,
 };
@@ -11,6 +13,7 @@ use mlua::{
     AnyUserData, FromLua, Function, Result as LuaResult, Table, UserData, UserDataMethods, Variadic,
 };
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, FromLua)]
 pub struct Blight {
@@ -23,6 +26,9 @@ pub struct Blight {
     pub _tts_enabled: bool,
     tag_mask: TagMask,
     history_capacity: usize,
+    /// Reference to the session's TabSet for read-only Lua access via
+    /// `blight.tabs()` / `blight.active_tab()`. None in unit tests.
+    tab_set: Option<Arc<Mutex<TabSet>>>,
 }
 
 impl Blight {
@@ -37,7 +43,19 @@ impl Blight {
             _tts_enabled: false,
             tag_mask: TagMask::default(),
             history_capacity: 32768,
+            tab_set: None,
         }
+    }
+
+    pub fn set_tab_set(&mut self, tab_set: Arc<Mutex<TabSet>>) {
+        self.tab_set = Some(tab_set);
+    }
+
+    /// Internal helper for `LuaScript::reset` so the new Lua state can
+    /// inherit the same `TabSet` reference without going through the
+    /// builder chain again.
+    pub fn tab_set_ref(&self) -> Option<Arc<Mutex<TabSet>>> {
+        self.tab_set.clone()
     }
 
     pub fn core_mode(&mut self, mode: bool) {
@@ -54,6 +72,87 @@ impl Blight {
         let events = self.ui_events.clone();
         self.ui_events.clear();
         events
+    }
+}
+
+/// Accept either a Lua integer (0-based row index) or a string (row name)
+/// as a row selector.
+fn top_row_selector_from_lua(value: &mlua::Value) -> LuaResult<TopRowSelector> {
+    match value {
+        mlua::Value::Integer(i) => Ok(TopRowSelector::Index((*i).max(0) as usize)),
+        mlua::Value::Number(n) => Ok(TopRowSelector::Index((*n).max(0.0) as usize)),
+        mlua::Value::String(s) => Ok(TopRowSelector::Name(s.to_str()?.to_string())),
+        other => Err(mlua::Error::FromLuaConversionError {
+            from: other.type_name(),
+            to: "TopRowSelector".to_string(),
+            message: Some("expected integer index or string name".to_string()),
+        }),
+    }
+}
+
+/// Parse a Lua table into [`TopRowOpts`]. Recognized fields:
+///   - `name`: string — rename the row
+///   - `bar_char`: string (single char) — bar fill character
+///   - `prefix`: nil | string | table — `nil` clears, string ⇒ Plain style;
+///     table `{text, style}` for full control
+///   - `body`: nil | string — `nil` ⇒ Empty, string ⇒ Text
+///   - `visible`: boolean — show / hide the row
+fn top_row_opts_from_lua(table: &mlua::Table) -> LuaResult<TopRowOpts> {
+    let mut opts = TopRowOpts::default();
+    if let Ok(name) = table.get::<String>("name") {
+        opts.name = Some(name);
+    }
+    if let Ok(c) = table.get::<String>("bar_char") {
+        let ch = c.chars().next().ok_or_else(|| {
+            mlua::Error::RuntimeError("bar_char must be a single character".to_string())
+        })?;
+        opts.bar_char = Some(ch);
+    }
+    if table.contains_key("prefix")? {
+        let value: mlua::Value = table.get("prefix")?;
+        opts.prefix = Some(top_prefix_from_lua(&value)?);
+    }
+    if table.contains_key("body")? {
+        let value: mlua::Value = table.get("body")?;
+        opts.body = Some(match value {
+            mlua::Value::Nil => TopRowBody::Empty,
+            mlua::Value::String(s) => TopRowBody::Text(s.to_str()?.to_string()),
+            other => {
+                return Err(mlua::Error::FromLuaConversionError {
+                    from: other.type_name(),
+                    to: "TopRowBody".to_string(),
+                    message: Some("expected nil or string".to_string()),
+                });
+            }
+        });
+    }
+    if let Ok(v) = table.get::<bool>("visible") {
+        opts.visible = Some(v);
+    }
+    Ok(opts)
+}
+
+fn top_prefix_from_lua(value: &mlua::Value) -> LuaResult<Option<TopPrefix>> {
+    match value {
+        mlua::Value::Nil => Ok(None),
+        mlua::Value::String(s) => Ok(Some(TopPrefix {
+            text: s.to_str()?.to_string(),
+            style: TopPrefixStyle::Plain,
+        })),
+        mlua::Value::Table(t) => {
+            let text: String = t.get("text").unwrap_or_default();
+            let style: String = t.get("style").unwrap_or_else(|_| "plain".to_string());
+            let style = match style.as_str() {
+                "brand" | "Brand" => TopPrefixStyle::Brand,
+                _ => TopPrefixStyle::Plain,
+            };
+            Ok(Some(TopPrefix { text, style }))
+        }
+        other => Err(mlua::Error::FromLuaConversionError {
+            from: other.type_name(),
+            to: "TopPrefix".to_string(),
+            message: Some("expected nil, string, or table {text, style}".to_string()),
+        }),
     }
 }
 
@@ -142,6 +241,46 @@ impl UserData for Blight {
             let this = this_aux.borrow::<Blight>()?;
             this.main_writer.send(Event::TopLine(line)).unwrap();
             Ok(())
+        });
+        methods.add_function(
+            "set_top_row",
+            |ctx, (selector, opts): (mlua::Value, mlua::Table)| {
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                let sel = top_row_selector_from_lua(&selector)?;
+                let opts = top_row_opts_from_lua(&opts)?;
+                this.main_writer.send(Event::SetTopRow(sel, opts)).unwrap();
+                Ok(())
+            },
+        );
+        methods.add_function("reset_top_row", |ctx, selector: mlua::Value| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            let sel = top_row_selector_from_lua(&selector)?;
+            this.main_writer.send(Event::ResetTopRow(sel)).unwrap();
+            Ok(())
+        });
+        methods.add_function("add_top_row", |ctx, opts: mlua::Table| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            let opts = top_row_opts_from_lua(&opts)?;
+            this.main_writer.send(Event::AddTopRow(opts)).unwrap();
+            Ok(())
+        });
+        methods.add_function("remove_top_row", |ctx, selector: mlua::Value| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            let sel = top_row_selector_from_lua(&selector)?;
+            this.main_writer.send(Event::RemoveTopRow(sel)).unwrap();
+            Ok(())
+        });
+        methods.add_function("top_rows", |ctx, _: ()| -> LuaResult<Table> {
+            // Built-in row names are always present and stable. Lua-added
+            // rows are tracked by the script itself.
+            let arr = ctx.create_table()?;
+            arr.push("tab_indicator")?;
+            arr.push("host_status")?;
+            Ok(arr)
         });
         methods.add_function("version", |_, _: ()| -> LuaResult<(&str, &str)> {
             Ok((PROJECT_NAME, VERSION))
@@ -294,7 +433,11 @@ impl UserData for Blight {
                 let tab_opts = if let Some(t) = opts {
                     TabOpts {
                         label: t.get::<Option<String>>("label").unwrap_or(None),
-                        gag_main: t.get::<Option<bool>>("gag_main").unwrap_or(None).unwrap_or(false),
+                        shortcut: t.get::<Option<String>>("shortcut").unwrap_or(None),
+                        gag_main: t
+                            .get::<Option<bool>>("gag_main")
+                            .unwrap_or(None)
+                            .unwrap_or(false),
                     }
                 } else {
                     TabOpts::default()
@@ -359,6 +502,24 @@ impl UserData for Blight {
             },
         );
 
+        // Set or clear the keyboard-shortcut hint shown in the tab
+        // indicator. Pass `nil` (or no second arg) to clear an existing
+        // hint. Display-only — Blightmud does NOT bind the key for you.
+        methods.add_function(
+            "set_tab_shortcut",
+            |ctx, (name, shortcut): (String, Option<String>)| -> mlua::Result<()> {
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                this.main_writer
+                    .send(Event::TabCommand(TabCommand::SetShortcut {
+                        name,
+                        shortcut,
+                    }))
+                    .map_err(mlua::Error::external)?;
+                Ok(())
+            },
+        );
+
         methods.add_function(
             "output_to",
             |ctx, (name, strings): (String, Variadic<String>)| -> mlua::Result<()> {
@@ -367,6 +528,79 @@ impl UserData for Blight {
                 let line = Line::from(strings.join(" "));
                 this.main_writer
                     .send(Event::TabCommand(TabCommand::OutputTo { name, line }))
+                    .map_err(mlua::Error::external)?;
+                Ok(())
+            },
+        );
+
+        // Read-only introspection: snapshot of the current tab set.
+        // Returns an array of tables: { {name, label, unread, active}, ... }
+        methods.add_function("tabs", |ctx, _: ()| -> mlua::Result<mlua::Table> {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            let arr = ctx.create_table()?;
+            if let Some(ts) = &this.tab_set {
+                if let Ok(set) = ts.lock() {
+                    for (i, tab) in set.list().into_iter().enumerate() {
+                        let entry = ctx.create_table()?;
+                        entry.set("name", tab.name)?;
+                        entry.set("label", tab.label)?;
+                        // `shortcut` may be nil — set unconditionally; mlua maps
+                        // Option<String> → Lua nil when None.
+                        entry.set("shortcut", tab.shortcut)?;
+                        entry.set("unread", tab.unread)?;
+                        entry.set("active", tab.active)?;
+                        arr.set(i + 1, entry)?;
+                    }
+                }
+            }
+            Ok(arr)
+        });
+
+        // Returns the name of the currently-active tab, or "main" if no
+        // tab set is bound (defensive — should only happen in unit tests).
+        methods.add_function("active_tab", |ctx, _: ()| -> mlua::Result<String> {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            if let Some(ts) = &this.tab_set {
+                if let Ok(set) = ts.lock() {
+                    return Ok(set.active_name().to_string());
+                }
+            }
+            Ok("main".to_string())
+        });
+
+        // Switch tab indicator placement.
+        //   "row"    — dedicated indicator row above the host topbar (default)
+        //   "inline" — tabs render alongside `host:port [tags]` on the topbar,
+        //              reclaiming the dedicated row
+        // Persists to settings.ron (equivalent to setting `tab_indicator_inline`
+        // via `/set`) and triggers an immediate layout refresh.
+        methods.add_function(
+            "set_tab_indicator_position",
+            |ctx, position: String| -> mlua::Result<()> {
+                let inline = match position.as_str() {
+                    "inline" => true,
+                    "row" => false,
+                    other => {
+                        return Err(mlua::Error::external(format!(
+                            "set_tab_indicator_position: expected \"row\" or \"inline\", got \"{other}\""
+                        )));
+                    }
+                };
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                let mut settings =
+                    model::Settings::try_load().map_err(mlua::Error::external)?;
+                settings
+                    .set(model::TAB_INDICATOR_INLINE, inline)
+                    .map_err(mlua::Error::external)?;
+                settings.save();
+                this.main_writer
+                    .send(Event::SettingChanged(
+                        model::TAB_INDICATOR_INLINE.to_string(),
+                        inline,
+                    ))
                     .map_err(mlua::Error::external)?;
                 Ok(())
             },

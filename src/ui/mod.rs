@@ -7,6 +7,7 @@ pub use self::{
     history::History,
     reader_screen::ReaderScreen,
     split_screen::SplitScreen,
+    top_area::{TopPrefix, TopPrefixStyle, TopRowBody, TopRowOpts, TopRowSelector},
     ui_wrapper::UiWrapper,
     user_interface::{wrap_line, UserInterface},
 };
@@ -22,5 +23,6 @@ mod history;
 mod reader_screen;
 mod scroll_data;
 mod split_screen;
+mod top_area;
 mod ui_wrapper;
 mod user_interface;

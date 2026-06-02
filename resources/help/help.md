@@ -41,9 +41,11 @@ Available topics:
 - spellcheck
 - status_area
 - storage
+- tabs
 - tags
 - tasks
 - timers
+- top_area
 - trigger
 - tts
 - ttype

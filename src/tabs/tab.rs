@@ -12,6 +12,12 @@ pub struct TabOpts {
     /// Display label rendered on the tab indicator. Falls back to the tab
     /// name if `None`.
     pub label: Option<String>,
+    /// Optional keyboard-shortcut hint rendered in the tab indicator. When
+    /// `Some("F2")`, the tab is shown as `[F2 - chat]` (active) or
+    /// `(F2 - chat·3)` (inactive with unread). This is a *display* hint
+    /// only — Blightmud does not bind the key for you. Use `blight.bind`
+    /// in tandem (see `/help tabs`).
+    pub shortcut: Option<String>,
     /// When `true`, lines that match THIS tab's filter are NOT mirrored to
     /// the `main` tab — they appear ONLY in this tab's scrollback. Default
     /// `false` (mirror).
@@ -56,6 +62,8 @@ impl std::error::Error for TabError {}
 pub struct TabInfo {
     pub name: String,
     pub label: String,
+    /// Display-only keyboard hint (e.g. `"F2"`). `None` when unset.
+    pub shortcut: Option<String>,
     pub unread: u32,
     pub active: bool,
 }
@@ -72,6 +80,8 @@ pub struct TabInfo {
 pub struct Tab {
     pub name: String,
     pub label: String,
+    /// Optional keyboard-shortcut hint shown in the tab indicator.
+    pub shortcut: Option<String>,
     pub gag_main: bool,
     pub filters: Vec<Regex>,
     /// Regex patterns that, when matched, veto routing into this tab even
@@ -92,6 +102,7 @@ impl Tab {
         Self {
             name,
             label,
+            shortcut: opts.shortcut,
             gag_main: opts.gag_main,
             filters: Vec::new(),
             excludes: Vec::new(),
@@ -106,6 +117,7 @@ impl Tab {
             MAIN_TAB,
             TabOpts {
                 label: Some(MAIN_TAB.to_string()),
+                shortcut: None,
                 gag_main: false,
             },
         )

@@ -276,9 +276,53 @@ function BlightLib.status_height(height) end
 ---@param line string
 function BlightLib.status_line(index, line) end
 ---
----Sets the content of the top bar line.
----@param line string  The content to display. nil will reset to default content.
+---Sets the content of the top bar line. Sugar for
+---`set_top_row("host_status", { body = line })`. Pass `nil` to restore
+---the default `host:port [tags]` content; pass `""` for an unbroken bar.
+---@param line string  The content to display. nil resets to default.
 function BlightLib.top_line(line) end
+
+---@class TopRowPrefix
+---@field text string
+---@field style string  "plain" or "brand"
+
+---@class TopRowOpts
+---@field name? string
+---@field bar_char? string  Single character.
+---@field prefix? string|TopRowPrefix|nil  nil clears.
+---@field body? string|nil  nil ⇒ Empty (unbroken bar).
+---@field visible? boolean
+
+---
+---Mutate fields on an existing top row. Selector is a row name
+---(`"tab_indicator"` / `"host_status"` / user-supplied) or a 0-based
+---index. See `/help top_area` for the full field reference.
+---@param selector string|integer
+---@param opts TopRowOpts
+function BlightLib.set_top_row(selector, opts) end
+
+---
+---Reset a built-in row's body to its dynamic default (host:port [tags]
+---for `host_status`, the styled tabs segment for `tab_indicator`).
+---Lua-added rows are unaffected.
+---@param selector string|integer
+function BlightLib.reset_top_row(selector) end
+
+---
+---Append a new top row. Auto-generates a name when `opts.name` is unset.
+---@param opts TopRowOpts
+function BlightLib.add_top_row(opts) end
+
+---
+---Remove a Lua-added top row. Built-ins (`tab_indicator`, `host_status`)
+---refuse removal.
+---@param selector string|integer
+function BlightLib.remove_top_row(selector) end
+
+---
+---Returns the built-in top row names in display order.
+---@return string[]
+function BlightLib.top_rows() end
 
 ---Gets or sets whether tag rendering is enabled. When enabled, each output
 ---line is prefixed with the line's tag symbol and color (or two spaces if no

@@ -24,7 +24,7 @@ audio = ["rodio"]
 [dependencies]
 libmudtelnet = "2.0.2"
 termion = "4"
-log = "0.4.31"
+log = "0.4.32"
 simple-logging = "2.0.2"
 chrono = "0.4.45"
 signal-hook = "0.4.4"

@@ -158,15 +158,22 @@ function TriggerGroup:check_line(line)
     if not self.enabled then
         return
     end
-    local toRemove = {}
+    local triggersToProcess = {}
     for _, trigger in pairs(self.triggers) do
-        trigger:check_line(line)
-        if trigger.count == 0 then
-            toRemove[#toRemove + 1] = trigger.id
+        triggersToProcess[#triggersToProcess + 1] = trigger
+    end
+
+    local toRemove = {}
+    for _, trigger in ipairs(triggersToProcess) do
+        if self.triggers[trigger.id] then
+            trigger:check_line(line)
+            if trigger.count == 0 then
+                toRemove[#toRemove + 1] = trigger.id
+            end
         end
     end
-    for _, trigger in ipairs(toRemove) do
-        self:remove(trigger)
+    for _, trigger_id in ipairs(toRemove) do
+        self:remove(trigger_id)
     end
 end
 

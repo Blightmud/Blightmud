@@ -163,17 +163,30 @@ end
 
 timer.on_tick(function(millis)
     local somethingRan = false
+    local tasksToProcess = {}
     for task, timespec in pairs(tasks) do
-        if timespec.time < os.time() and not timespec.idle then
+        tasksToProcess[#tasksToProcess + 1] = { task = task, timespec = timespec}
+    end
+
+    for _, entry in ipairs(tasksToProcess) do
+        local task = entry.task
+        local timespec = entry.timespec
+        if tasks[task] and timespec.time < os.time() and not timespec.idle then
             somethingRan = true
             run_task(task)
         end
     end
     if not somethingRan then
+        local idleTasks = {}
         for task, timespec in pairs(tasks) do
             if timespec.idle then
+                idleTasks[#idleTasks + 1] = task
+            end
+        end
+        for _, task in ipairs(idleTasks) do
+            if tasks[task] then
                 run_task(task)
-                timespec.idle = nil
+                tasks[task].idle = nil
             end
         end
     end

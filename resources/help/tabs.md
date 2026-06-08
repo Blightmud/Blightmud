@@ -25,9 +25,17 @@ Create a new named tab.
                             will appear ONLY in this tab — they're
                             suppressed from `main`. Default `false`
                             (mirror).
+    - `history_lines` (number) Approximate scrollback capacity for this tab,
+                            in lines. Omit to keep the same depth as `main`
+                            (~32k lines). A smaller value bounds the tab's
+                            peak memory — e.g. `2000` caps a busy tab to
+                            ~2k lines. Each tab's scrollback grows on demand,
+                            so an idle tab costs almost nothing regardless of
+                            this setting.
 
 ```lua
 blight.create_tab("chat",   { label = "chat",   shortcut = "F2" })
+blight.create_tab("spam",   { gag_main = true,  history_lines = 2000 })
 blight.create_tab("combat", { label = "combat", shortcut = "F3" })
 ```
 

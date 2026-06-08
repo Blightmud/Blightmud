@@ -438,6 +438,10 @@ impl UserData for Blight {
                             .get::<Option<bool>>("gag_main")
                             .unwrap_or(None)
                             .unwrap_or(false),
+                        history_lines: t
+                            .get::<Option<u64>>("history_lines")
+                            .unwrap_or(None)
+                            .map(|n| n as usize),
                     }
                 } else {
                     TabOpts::default()

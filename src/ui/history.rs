@@ -21,6 +21,28 @@ impl History {
         }
     }
 
+    /// History for a secondary tab. Unlike [`new`](Self::new), the `inner` and
+    /// `visible` Vecs start empty and grow on demand — there is no eager
+    /// `Vec::with_capacity`. The drain ceiling (`capacity`) still bounds depth,
+    /// so scrollback length matches `new()` when `drain_length == 1024`; pass a
+    /// smaller `drain_length` for a shorter tab.
+    ///
+    /// `new()` reserves `2 * 32 * 1024 * size_of::<Line>()` (~9.5 MiB) up front,
+    /// which is wasteful for a tab that is frequently idle or only ever holds a
+    /// handful of lines. Growing on demand keeps an unused tab at ~zero heap
+    /// while preserving the same maximum depth and eviction semantics.
+    pub fn for_tab(drain_length: usize) -> Self {
+        let drain_length = drain_length.max(1);
+        let capacity = 32 * drain_length;
+        Self {
+            inner: Vec::new(),
+            visible: Vec::new(),
+            tag_mask: TagMask::default(),
+            capacity,
+            drain_length,
+        }
+    }
+
     fn rebuild_visible(&mut self) {
         self.visible = self
             .inner
@@ -582,5 +604,42 @@ mod test {
         for i in 0..history.visible.len() {
             assert!(!history.visible[i].is_masked(&history.tag_mask));
         }
+    }
+
+    #[test]
+    fn for_tab_does_not_preallocate() {
+        let h = History::for_tab(1024);
+        // Same drain ceiling / depth as new()...
+        assert_eq!(h.capacity, 32 * 1024);
+        assert_eq!(h.drain_length, 1024);
+        // ...but the backing store is empty until lines actually arrive.
+        assert_eq!(h.inner.capacity(), 0);
+        assert_eq!(h.visible.capacity(), 0);
+    }
+
+    #[test]
+    fn new_preallocates_full_backing() {
+        let h = History::new();
+        assert!(h.inner.capacity() >= 32 * 1024);
+        assert!(h.visible.capacity() >= 32 * 1024);
+    }
+
+    #[test]
+    fn for_tab_drains_at_capacity() {
+        // capacity = 32 * 2 = 64, drain_length = 2.
+        let mut h = History::for_tab(2);
+        for _ in 0..64 {
+            h.append("x");
+        }
+        // On reaching capacity the oldest drain_length lines are evicted.
+        assert_eq!(h.len(), 62);
+        assert_eq!(h.inner.len(), 62);
+    }
+
+    #[test]
+    fn for_tab_clamps_zero_drain_length() {
+        let h = History::for_tab(0);
+        assert_eq!(h.drain_length, 1);
+        assert_eq!(h.capacity, 32);
     }
 }

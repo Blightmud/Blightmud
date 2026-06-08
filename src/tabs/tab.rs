@@ -22,6 +22,11 @@ pub struct TabOpts {
     /// the `main` tab — they appear ONLY in this tab's scrollback. Default
     /// `false` (mirror).
     pub gag_main: bool,
+    /// Approximate scrollback capacity for this tab, in lines. `None` keeps
+    /// the same depth as the `main` scrollback (~32k lines). A smaller value
+    /// bounds the tab's peak memory — e.g. `Some(2000)` caps a busy tab to
+    /// ~2k lines. Mapped to the history's drain length as `(lines / 32).max(1)`.
+    pub history_lines: Option<usize>,
 }
 
 /// Errors returned from [`TabSet`] mutation operations.
@@ -99,6 +104,12 @@ impl Tab {
     pub fn new(name: impl Into<String>, opts: TabOpts) -> Self {
         let name = name.into();
         let label = opts.label.unwrap_or_else(|| name.clone());
+        // `history_lines` is an approximate line capacity; a History retains
+        // ~`32 * drain_length` lines, so map lines -> drain_length. `None`
+        // defaults to 1024 (≈32k-line depth, matching the main scrollback).
+        // `for_tab` grows the backing store on demand instead of reserving it
+        // up front, so an idle tab costs ~zero heap regardless of depth.
+        let drain_length = opts.history_lines.map(|n| (n / 32).max(1)).unwrap_or(1024);
         Self {
             name,
             label,
@@ -106,7 +117,7 @@ impl Tab {
             gag_main: opts.gag_main,
             filters: Vec::new(),
             excludes: Vec::new(),
-            history: Some(History::new()),
+            history: Some(History::for_tab(drain_length)),
             unread: 0,
         }
     }
@@ -119,6 +130,7 @@ impl Tab {
                 label: Some(MAIN_TAB.to_string()),
                 shortcut: None,
                 gag_main: false,
+                history_lines: None,
             },
         )
     }
@@ -174,6 +186,7 @@ mod tests {
                 label: Some("Chat".into()),
                 shortcut: Some("F2".into()),
                 gag_main: true,
+                history_lines: None,
             },
         );
         assert_eq!(labeled.label, "Chat");
@@ -200,5 +213,44 @@ mod tests {
         // An exclude vetoes an otherwise-matching line.
         tab.excludes.push(Regex::new("^Bob").unwrap());
         assert!(!tab.matches("Bob tells you: hi"));
+    }
+
+    #[test]
+    fn history_lines_maps_to_capacity() {
+        let tab = Tab::new(
+            "chat",
+            TabOpts {
+                history_lines: Some(2000),
+                ..Default::default()
+            },
+        );
+        let h = tab.history.as_ref().expect("inactive tab has a history");
+        // 2000 / 32 = 62 -> capacity 32 * 62 = 1984.
+        assert_eq!(h.drain_length, 62);
+        assert_eq!(h.capacity, 1984);
+    }
+
+    #[test]
+    fn default_tab_keeps_main_depth() {
+        let tab = Tab::new("chat", TabOpts::default());
+        let h = tab.history.as_ref().expect("inactive tab has a history");
+        // No history_lines -> same drain ceiling as the main scrollback.
+        assert_eq!(h.drain_length, 1024);
+        assert_eq!(h.capacity, 32 * 1024);
+    }
+
+    #[test]
+    fn tiny_history_lines_clamps_to_one_drain() {
+        let tab = Tab::new(
+            "chat",
+            TabOpts {
+                history_lines: Some(5),
+                ..Default::default()
+            },
+        );
+        let h = tab.history.as_ref().unwrap();
+        // 5 / 32 = 0 -> clamped to drain_length 1, capacity 32.
+        assert_eq!(h.drain_length, 1);
+        assert_eq!(h.capacity, 32);
     }
 }

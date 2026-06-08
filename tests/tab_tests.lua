@@ -11,7 +11,7 @@ end)
 
 -- ---- Tab creation + configuration -------------------------------------
 blight.create_tab("chat", { label = "Chat", shortcut = "F2" })
-blight.create_tab("combat", { gag_main = true })
+blight.create_tab("combat", { gag_main = true, history_lines = 2000 })
 blight.add_tab_filter("chat", "tells you")
 blight.add_tab_exclude_filter("chat", "^He ")
 blight.set_tab_label("combat", "Combat")

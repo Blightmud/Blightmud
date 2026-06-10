@@ -37,14 +37,18 @@ impl History {
 
     pub fn set_capacity(&mut self, new_capacity: usize) {
         self.capacity = new_capacity;
-        while self.inner.len() > self.capacity {
-            let drained = self.inner.remove(0);
-            if !drained.is_masked(&self.tag_mask) {
-                if !self.visible.is_empty() {
-                    self.visible.remove(0);
+        if self.inner.len() > self.capacity {
+            let excess = self.inner.len() - self.capacity;
+            let drained: Vec<Line> = self.inner.drain(0..excess).collect();
+            let visible_drain_count = drained
+                .iter()
+                .filter(|l| !l.is_masked(&self.tag_mask))
+                .count();
+            if visible_drain_count > 0 {
+                if visible_drain_count <= self.visible.len() {
+                    self.visible.drain(0..visible_drain_count);
                 } else {
                     self.rebuild_visible();
-                    return;
                 }
             }
         }
@@ -52,7 +56,8 @@ impl History {
 
     pub fn drain(&mut self) {
         if self.inner.len() >= self.capacity {
-            let drained: Vec<Line> = self.inner.drain(0..self.drain_length).collect();
+            let drain_len = self.drain_length.min(self.inner.len());
+            let drained: Vec<Line> = self.inner.drain(0..drain_len).collect();
             let visible_drain_count = drained
                 .iter()
                 .filter(|l| !l.is_masked(&self.tag_mask))

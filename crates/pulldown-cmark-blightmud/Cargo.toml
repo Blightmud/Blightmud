@@ -40,7 +40,7 @@ similar-asserts = "2"
 syntect = { version = "5", features = ["default-syntaxes"] }
 temp-env = { version = "0.3.6", default-features = false }
 insta = "1"
-regex = { version = "1.10.6", default-features = false }
+regex = { version = "1.12.4", default-features = false }
 
 [build-dependencies]
 syntect = { version = "5", features = ["plist-load", "dump-create"] }

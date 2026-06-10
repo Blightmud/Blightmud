@@ -577,4 +577,31 @@ mod test_blight {
             .unwrap();
         assert_eq!(height, 1);
     }
+
+    #[test]
+    fn test_history_capacity() {
+        let (lua, reader) = get_lua_state();
+
+        // Default value
+        let cap = lua
+            .load("return blight.history_capacity()")
+            .call::<usize>(())
+            .unwrap();
+        assert_eq!(cap, 32768);
+
+        // Set new value
+        let cap = lua
+            .load("return blight.history_capacity(5000)")
+            .call::<usize>(())
+            .unwrap();
+        assert_eq!(cap, 5000);
+        assert_eq!(reader.recv(), Ok(Event::SetHistoryCapacity(5000)));
+
+        // Getter reflects update
+        let cap = lua
+            .load("return blight.history_capacity()")
+            .call::<usize>(())
+            .unwrap();
+        assert_eq!(cap, 5000);
+    }
 }

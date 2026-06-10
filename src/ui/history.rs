@@ -522,4 +522,65 @@ mod test {
             assert!(!history.visible[i].is_masked(&history.tag_mask));
         }
     }
+
+    #[test]
+    fn test_drain_with_small_capacity_clamps_drain_length() {
+        let mut history = History::new();
+        history.set_capacity(5);
+        for i in 0..10 {
+            history.append(&format!("line {}", i));
+        }
+        // capacity is 5, drain_length is 1024 but should be clamped
+        assert!(history.inner.len() <= 5);
+        assert!(history.visible.len() <= history.inner.len());
+    }
+
+    #[test]
+    fn test_set_capacity_zero() {
+        let mut history = History::new();
+        for i in 0..100 {
+            history.append(&format!("line {}", i));
+        }
+        history.set_capacity(0);
+        assert_eq!(history.capacity, 0);
+        assert_eq!(history.inner.len(), 0);
+        assert_eq!(history.visible.len(), 0);
+    }
+
+    #[test]
+    fn test_set_capacity_one() {
+        let mut history = History::new();
+        for i in 0..100 {
+            history.append(&format!("line {}", i));
+        }
+        history.set_capacity(1);
+        assert_eq!(history.capacity, 1);
+        assert_eq!(history.inner.len(), 1);
+        assert_eq!(history.visible.len(), 1);
+    }
+
+    #[test]
+    fn test_set_capacity_visible_inner_consistency() {
+        let mut history = History::new();
+        let mask = TagMask {
+            key: Some("combat".to_string()),
+            ..Default::default()
+        };
+        history.set_tag_mask(mask);
+
+        for i in 0..1000 {
+            let mut line = Line::from(&format!("line {}", i));
+            if i % 3 == 0 {
+                line.tag.key = "combat".to_string();
+            }
+            history.append_line(line);
+        }
+
+        history.set_capacity(200);
+        assert_eq!(history.inner.len(), 200);
+        // Verify visible is a proper subset of inner
+        for i in 0..history.visible.len() {
+            assert!(!history.visible[i].is_masked(&history.tag_mask));
+        }
+    }
 }

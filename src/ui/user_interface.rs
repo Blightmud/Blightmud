@@ -59,6 +59,7 @@ pub trait UserInterface {
     fn set_status_area_height(&mut self, height: u16) -> Result<()>;
     fn set_show_tags(&mut self, show: bool) -> Result<()>;
     fn set_tag_mask(&mut self, mask: TagMask);
+    fn set_history_capacity(&mut self, capacity: usize);
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()>;
     fn set_top_line(&mut self, info: Option<String>) -> Result<()>;
     fn flush(&mut self);

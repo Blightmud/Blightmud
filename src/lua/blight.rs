@@ -21,6 +21,7 @@ pub struct Blight {
     pub reader_mode: bool,
     pub _tts_enabled: bool,
     tag_mask: TagMask,
+    history_capacity: usize,
 }
 
 impl Blight {
@@ -34,6 +35,7 @@ impl Blight {
             reader_mode: false,
             _tts_enabled: false,
             tag_mask: TagMask::default(),
+            history_capacity: 32768,
         }
     }
 
@@ -245,6 +247,17 @@ impl UserData for Blight {
                 .send(Event::SetTagMask(this.tag_mask.clone()))
                 .unwrap();
             Ok(())
+        });
+        methods.add_function("history_capacity", |ctx, capacity: Option<usize>| {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let mut this = this_aux.borrow_mut::<Blight>()?;
+            if let Some(capacity) = capacity {
+                this.history_capacity = capacity;
+                this.main_writer
+                    .send(Event::SetHistoryCapacity(capacity))
+                    .unwrap();
+            }
+            Ok(this.history_capacity)
         });
         methods.add_function("find_backward", |ctx, re: Regex| {
             let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
@@ -569,5 +582,32 @@ mod test_blight {
             .call::<u16>(())
             .unwrap();
         assert_eq!(height, 1);
+    }
+
+    #[test]
+    fn test_history_capacity() {
+        let (lua, reader) = get_lua_state();
+
+        // Default value
+        let cap = lua
+            .load("return blight.history_capacity()")
+            .call::<usize>(())
+            .unwrap();
+        assert_eq!(cap, 32768);
+
+        // Set new value
+        let cap = lua
+            .load("return blight.history_capacity(5000)")
+            .call::<usize>(())
+            .unwrap();
+        assert_eq!(cap, 5000);
+        assert_eq!(reader.recv(), Ok(Event::SetHistoryCapacity(5000)));
+
+        // Getter reflects update
+        let cap = lua
+            .load("return blight.history_capacity()")
+            .call::<usize>(())
+            .unwrap();
+        assert_eq!(cap, 5000);
     }
 }

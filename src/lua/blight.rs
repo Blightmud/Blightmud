@@ -93,9 +93,9 @@ fn top_row_selector_from_lua(value: &mlua::Value) -> LuaResult<TopRowSelector> {
 /// Parse a Lua table into [`TopRowOpts`]. Recognized fields:
 ///   - `name`: string — rename the row
 ///   - `bar_char`: string (single char) — bar fill character
-///   - `prefix`: nil | string | table — `nil` clears, string ⇒ Plain style;
+///   - `prefix`: string | table — `""` clears, non-empty string ⇒ Plain style;
 ///     table `{text, style}` for full control
-///   - `body`: nil | string — `nil` ⇒ Empty, string ⇒ Text
+///   - `body`: string — `""` ⇒ Empty (bar only), non-empty ⇒ Text
 ///   - `visible`: boolean — show / hide the row
 fn top_row_opts_from_lua(table: &mlua::Table) -> LuaResult<TopRowOpts> {
     let mut opts = TopRowOpts::default();
@@ -115,13 +115,23 @@ fn top_row_opts_from_lua(table: &mlua::Table) -> LuaResult<TopRowOpts> {
     if table.contains_key("body")? {
         let value: mlua::Value = table.get("body")?;
         opts.body = Some(match value {
-            mlua::Value::Nil => TopRowBody::Empty,
-            mlua::Value::String(s) => TopRowBody::Text(s.to_str()?.to_string()),
+            // An explicit empty string clears the body back to just a bar. A
+            // `nil` value can't reach here — a nil-valued key doesn't exist in
+            // Lua, so `contains_key("body")` would be false — hence the
+            // empty-string sentinel rather than a `Value::Nil` arm.
+            mlua::Value::String(s) => {
+                let text = s.to_str()?;
+                if text.is_empty() {
+                    TopRowBody::Empty
+                } else {
+                    TopRowBody::Text(text.to_string())
+                }
+            }
             other => {
                 return Err(mlua::Error::FromLuaConversionError {
                     from: other.type_name(),
                     to: "TopRowBody".to_string(),
-                    message: Some("expected nil or string".to_string()),
+                    message: Some("expected string".to_string()),
                 });
             }
         });
@@ -135,10 +145,20 @@ fn top_row_opts_from_lua(table: &mlua::Table) -> LuaResult<TopRowOpts> {
 fn top_prefix_from_lua(value: &mlua::Value) -> LuaResult<Option<TopPrefix>> {
     match value {
         mlua::Value::Nil => Ok(None),
-        mlua::Value::String(s) => Ok(Some(TopPrefix {
-            text: s.to_str()?.to_string(),
-            style: TopPrefixStyle::Plain,
-        })),
+        // An explicit empty string clears the prefix. As with `body`, a `nil`
+        // value can't reach here via the `contains_key("prefix")` guard, so
+        // `""` is the clear sentinel.
+        mlua::Value::String(s) => {
+            let text = s.to_str()?;
+            if text.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(TopPrefix {
+                    text: text.to_string(),
+                    style: TopPrefixStyle::Plain,
+                }))
+            }
+        }
         mlua::Value::Table(t) => {
             let text: String = t.get("text").unwrap_or_default();
             let style: String = t.get("style").unwrap_or_else(|_| "plain".to_string());
@@ -274,7 +294,7 @@ impl UserData for Blight {
             this.main_writer.send(Event::RemoveTopRow(sel)).unwrap();
             Ok(())
         });
-        methods.add_function("top_rows", |ctx, _: ()| -> LuaResult<Table> {
+        methods.add_function("builtin_top_rows", |ctx, _: ()| -> LuaResult<Table> {
             // Built-in row names are always present and stable. Lua-added
             // rows are tracked by the script itself.
             let arr = ctx.create_table()?;
@@ -461,6 +481,17 @@ impl UserData for Blight {
             let this = this_aux.borrow::<Blight>()?;
             this.main_writer
                 .send(Event::TabCommand(TabCommand::Switch { name }))
+                .map_err(mlua::Error::external)?;
+            Ok(())
+        });
+
+        // Remove a tab. `main` is reserved; removing the active tab returns you
+        // to `main` first. The removed tab's scrollback is discarded.
+        methods.add_function("remove_tab", |ctx, name: String| -> mlua::Result<()> {
+            let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+            let this = this_aux.borrow::<Blight>()?;
+            this.main_writer
+                .send(Event::TabCommand(TabCommand::Remove { name }))
                 .map_err(mlua::Error::external)?;
             Ok(())
         });

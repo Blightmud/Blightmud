@@ -53,6 +53,20 @@ blight.bind("f3", function() blight.switch_tab("combat") end)
 
 ##
 
+***blight.remove_tab(name)***
+Remove a tab. The `main` tab is reserved and cannot be removed. Removing the
+currently-active tab switches you back to `main` first; the removed tab's
+scrollback is discarded. Removing a non-existent tab (or `main`) prints an
+error and is otherwise a no-op.
+
+```lua
+blight.create_tab("scratch", {})
+-- …use it for a while…
+blight.remove_tab("scratch")   -- gone; returned to main if it was active
+```
+
+##
+
 ***blight.add_tab_filter(name, pattern)***
 Append a regex-string filter to a tab. Inbound MUD lines whose
 ANSI-stripped text matches `pattern` are routed into this tab in
@@ -63,7 +77,7 @@ addition to `main` (subject to the tab's `gag_main` setting).
               they OR together.
 
 ```lua
-blight.add_tab_filter("chat",   "tells you|^%S+ shouts|^%S+ chats")
+blight.add_tab_filter("chat",   "tells you|^\\S+ shouts|^\\S+ chats")
 blight.add_tab_filter("combat", "####### Combat Summary|staggers and falls")
 ```
 
@@ -287,7 +301,7 @@ blight.create_tab("chat",   { label = "chat",   shortcut = "F2" })
 blight.create_tab("combat", { label = "combat", shortcut = "F3" })
 blight.set_tab_shortcut("main", "F1")
 
-blight.add_tab_filter("chat",   "tells you|^%S+ shouts|^%S+ chats|^%S+ gossips")
+blight.add_tab_filter("chat",   "tells you|^\\S+ shouts|^\\S+ chats|^\\S+ gossips")
 blight.add_tab_filter("combat", "####### Combat Summary|staggers and falls")
 
 blight.bind("f1", function() blight.switch_tab("main")   end)

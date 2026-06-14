@@ -275,6 +275,34 @@ impl TabSet {
         self.active = dest_idx;
         Ok(())
     }
+
+    /// Remove a tab by name. `main` is reserved and cannot be removed.
+    ///
+    /// The caller MUST ensure the tab is not the active one before calling —
+    /// the active tab's [`History`] lives in the screen, not here, so the event
+    /// layer switches to `main` first (which moves the History back into this
+    /// set), then calls `remove`. Removing an inactive tab drops it and its
+    /// scrollback.
+    ///
+    /// [`History`]: crate::ui::History
+    pub fn remove(&mut self, name: &str) -> Result<(), TabError> {
+        if name == MAIN_TAB {
+            return Err(TabError::Reserved(name.to_string()));
+        }
+        let idx = self
+            .idx_of(name)
+            .ok_or_else(|| TabError::Missing(name.to_string()))?;
+        debug_assert!(
+            idx != self.active,
+            "active tab must be switched away before remove()"
+        );
+        self.tabs.remove(idx);
+        // Keep `active` pointing at the same tab after the removal shift.
+        if self.active > idx {
+            self.active -= 1;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -538,5 +566,45 @@ mod tests {
             res.indicator_dirty,
             "inactive main mirror dirties the indicator"
         );
+    }
+
+    #[test]
+    fn remove_inactive_tab() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        ts.create("combat", TabOpts::default()).unwrap();
+        // main is active; remove an inactive tab.
+        ts.remove("chat").unwrap();
+        let names: Vec<_> = ts.list().into_iter().map(|t| t.name).collect();
+        assert_eq!(names, vec![MAIN_TAB.to_string(), "combat".to_string()]);
+        assert_eq!(ts.active_name(), MAIN_TAB);
+    }
+
+    #[test]
+    fn remove_main_is_reserved() {
+        let mut ts = fresh();
+        assert!(matches!(ts.remove(MAIN_TAB), Err(TabError::Reserved(_))));
+    }
+
+    #[test]
+    fn remove_missing_is_error() {
+        let mut ts = fresh();
+        assert!(matches!(ts.remove("nope"), Err(TabError::Missing(_))));
+    }
+
+    #[test]
+    fn remove_fixes_up_active_index() {
+        let mut ts = fresh();
+        ts.create("chat", TabOpts::default()).unwrap();
+        ts.create("combat", TabOpts::default()).unwrap();
+        // Make combat (index 2) active, then remove chat (index 1), which sits
+        // before it — `active` must follow combat to its new index.
+        let _ = ts.take_for_switch("combat").unwrap().unwrap();
+        ts.complete_switch(History::new()).unwrap();
+        assert_eq!(ts.active_name(), "combat");
+        ts.remove("chat").unwrap();
+        assert_eq!(ts.active_name(), "combat");
+        let names: Vec<_> = ts.list().into_iter().map(|t| t.name).collect();
+        assert_eq!(names, vec![MAIN_TAB.to_string(), "combat".to_string()]);
     }
 }

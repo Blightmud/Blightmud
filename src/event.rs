@@ -6,7 +6,7 @@ use crate::{
     model::{Connection, Line, PromptMask, TagMask},
     net::{spawn_network_thread, WakingSender},
     session::Session,
-    tabs::TabOpts,
+    tabs::{TabOpts, MAIN_TAB},
     tts::TTSEvent,
     ui::{TopRowOpts, TopRowSelector, UserInterface},
 };
@@ -58,6 +58,10 @@ pub enum TabCommand {
     /// Send a line directly into a specific tab, bypassing the filter
     /// machinery. Used by `blight.output_to(name, ...)`.
     OutputTo { name: String, line: Line },
+    /// Remove a tab. `main` cannot be removed. Removing the active tab
+    /// switches back to `main` first, then drops it (its scrollback is
+    /// discarded). Used by `blight.remove_tab(name)`.
+    Remove { name: String },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -609,6 +613,52 @@ impl EventHandler {
                 if indicator_dirty {
                     self.refresh_tab_indicator(screen);
                 }
+                Ok(())
+            }
+            TabCommand::Remove { name } => {
+                // If removing the active tab, switch back to `main` first so the
+                // tab's History returns from the screen into the set, where
+                // `remove` can drop it. Reuses the switch protocol.
+                let is_active = match self.session.tab_set.lock() {
+                    Ok(tab_set) => name == tab_set.active_name(),
+                    Err(_) => return Ok(()),
+                };
+                if is_active {
+                    let dest_history = match self.session.tab_set.lock() {
+                        Ok(mut tab_set) => match tab_set.take_for_switch(MAIN_TAB) {
+                            Ok(history) => history,
+                            Err(err) => {
+                                screen.print_error(&format!("remove_tab({name}): {err}"));
+                                return Ok(());
+                            }
+                        },
+                        Err(_) => return Ok(()),
+                    };
+                    if let Some(dest_history) = dest_history {
+                        let old_history = match screen.swap_history(dest_history) {
+                            Ok(h) => h,
+                            Err(err) => {
+                                screen.print_error(&format!(
+                                    "remove_tab({name}): swap failed: {err}"
+                                ));
+                                return Ok(());
+                            }
+                        };
+                        if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                            if let Err(err) = tab_set.complete_switch(old_history) {
+                                screen.print_error(&format!("remove_tab({name}): {err}"));
+                                return Ok(());
+                            }
+                        }
+                    }
+                }
+                if let Ok(mut tab_set) = self.session.tab_set.lock() {
+                    if let Err(err) = tab_set.remove(&name) {
+                        screen.print_error(&format!("remove_tab({name}): {err}"));
+                        return Ok(());
+                    }
+                }
+                self.refresh_tab_indicator(screen);
                 Ok(())
             }
         }

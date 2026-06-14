@@ -57,9 +57,9 @@ blight.top_line("")         -- unbroken bar
 
 -- Full control over any row by index (0-based) or name.
 blight.set_top_row("host_status", {
-    body = "HP 80/100",   -- nil ⇒ Empty, string ⇒ Text
+    body = "HP 80/100",   -- "" ⇒ Empty (bar only), string ⇒ Text
     bar_char = "═",       -- any single character
-    prefix = nil,         -- nil ⇒ no prefix, string ⇒ plain green
+    prefix = "",          -- "" ⇒ no prefix, string ⇒ plain green, table ⇒ styled
     visible = true,       -- show / hide
     name = "host_status", -- rename (rare)
 })
@@ -81,7 +81,7 @@ blight.add_top_row({
 blight.remove_top_row("vitals")
 
 -- Built-in row names, in display order.
-local names = blight.top_rows()  -- { "tab_indicator", "host_status" }
+local names = blight.builtin_top_rows()  -- { "tab_indicator", "host_status" }
 ```
 
 ### Field reference
@@ -92,10 +92,10 @@ local names = blight.top_rows()  -- { "tab_indicator", "host_status" }
 |------------|-----------------------|-----------------------------------------|
 | `name`     | string                | Rename the row.                         |
 | `bar_char` | string (1 char)       | Fill character. Default `═`.            |
-| `prefix`   | nil / string / table  | nil clears; string ⇒ Plain green badge; |
+| `prefix`   | string / table        | `""` clears; string ⇒ Plain green badge;|
 |            |                       | table `{text, style="plain"|"brand"}`.  |
-| `body`     | nil / string          | nil ⇒ Empty (unbroken bar);             |
-|            |                       | string ⇒ literal text content.          |
+| `body`     | string                | `""` ⇒ Empty (unbroken bar);            |
+|            |                       | non-empty string ⇒ literal text.        |
 | `visible`  | boolean               | Show / hide the row.                    |
 
 ##

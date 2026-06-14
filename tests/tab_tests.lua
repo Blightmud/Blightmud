@@ -18,6 +18,12 @@ blight.set_tab_label("combat", "Combat")
 blight.set_tab_shortcut("combat", "F3")
 blight.set_tab_shortcut("combat", nil)   -- clear an existing hint
 blight.output_to("chat", "Bob tells you: hello")
+
+-- ---- Tab removal: create a throwaway, make it active, then remove it -----
+blight.create_tab("scratch", {})
+blight.switch_tab("scratch")   -- exercise removing the *active* tab
+blight.remove_tab("scratch")   -- returns to main, drops scratch + its history
+
 blight.switch_tab("chat")
 
 -- ---- Top-area rows ----------------------------------------------------
@@ -34,8 +40,8 @@ blight.reset_top_row("host_status")                   -- name selector
 blight.reset_top_row(0)                               -- index selector
 blight.remove_top_row("vitals")
 
--- top_rows() reports the stable built-in row names synchronously.
-assert(#blight.top_rows() == 2, "top_rows returns the two built-ins")
+-- builtin_top_rows() reports the stable built-in row names synchronously.
+assert(#blight.builtin_top_rows() == 2, "builtin_top_rows returns the two built-ins")
 
 -- ---- Deferred introspection (queued events have drained by now) -------
 timer.add(1, 1, function ()
@@ -49,6 +55,10 @@ timer.add(1, 1, function ()
     assert(chat ~= nil, "chat tab should exist")
     assert(chat.label == "Chat", "chat label comes from create opts")
     assert(chat.shortcut == "F2", "chat shortcut comes from create opts")
+
+    for _, t in ipairs(tabs) do
+        assert(t.name ~= "scratch", "removed tab must not reappear")
+    end
 
     assert(#blight.active_tab() > 0, "active_tab returns a name")
 

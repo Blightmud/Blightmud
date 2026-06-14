@@ -289,8 +289,8 @@ function BlightLib.top_line(line) end
 ---@class TopRowOpts
 ---@field name? string
 ---@field bar_char? string  Single character.
----@field prefix? string|TopRowPrefix|nil  nil clears.
----@field body? string|nil  nil ⇒ Empty (unbroken bar).
+---@field prefix? string|TopRowPrefix  "" clears.
+---@field body? string  "" ⇒ Empty (unbroken bar).
 ---@field visible? boolean
 
 ---
@@ -322,7 +322,84 @@ function BlightLib.remove_top_row(selector) end
 ---
 ---Returns the built-in top row names in display order.
 ---@return string[]
-function BlightLib.top_rows() end
+function BlightLib.builtin_top_rows() end
+
+---@class TabOpts
+---@field label? string  Display label; defaults to the tab name.
+---@field shortcut? string  Keyboard-shortcut hint shown in the indicator (e.g. "F2"). Display-only.
+---@field gag_main? boolean  When true, matching lines appear only in this tab, not in main.
+---@field history_lines? integer  Approximate scrollback capacity. Omit for the main depth (~32k).
+
+---@class TabInfo
+---@field name string
+---@field label string
+---@field shortcut? string
+---@field unread integer
+---@field active boolean
+
+---
+---Create a new named tab. `name` cannot be `"main"` (reserved).
+---@param name string
+---@param opts? TabOpts
+function BlightLib.create_tab(name, opts) end
+
+---
+---Switch the active tab; the screen redraws with that tab's scrollback.
+---@param name string
+function BlightLib.switch_tab(name) end
+
+---
+---Remove a tab. `main` is reserved. Removing the active tab returns you to
+---`main` first; the removed tab's scrollback is discarded.
+---@param name string
+function BlightLib.remove_tab(name) end
+
+---
+---Append a Rust-regex include filter to a tab. Matching inbound lines are
+---routed into the tab (in addition to main, unless `gag_main`).
+---@param name string
+---@param pattern string  A Rust regex string.
+function BlightLib.add_tab_filter(name, pattern) end
+
+---
+---Append a Rust-regex exclude to a tab. A line matching the exclude is not
+---routed into the tab even when an include filter also matches.
+---@param name string
+---@param pattern string  A Rust regex string.
+function BlightLib.add_tab_exclude_filter(name, pattern) end
+
+---
+---Update a tab's display label.
+---@param name string
+---@param label string
+function BlightLib.set_tab_label(name, label) end
+
+---
+---Set or clear a tab's display-only shortcut hint. Pass nil to clear.
+---@param name string
+---@param shortcut? string
+function BlightLib.set_tab_shortcut(name, shortcut) end
+
+---
+---Send strings as a Line directly into a named tab, bypassing filters.
+---@param name string
+---@param ... string
+function BlightLib.output_to(name, ...) end
+
+---
+---Return a snapshot of all tabs as an array of TabInfo tables.
+---@return TabInfo[]
+function BlightLib.tabs() end
+
+---
+---Return the name of the currently-active tab.
+---@return string
+function BlightLib.active_tab() end
+
+---
+---Choose where the tab indicator lives: "row" (default) or "inline".
+---@param position string  "row" or "inline".
+function BlightLib.set_tab_indicator_position(position) end
 
 ---Gets or sets whether tag rendering is enabled. When enabled, each output
 ---line is prefixed with the line's tag symbol and color (or two spaces if no

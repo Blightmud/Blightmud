@@ -203,6 +203,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "blight" => "blight.md",
         "bindings" => "bindings.md",
         "core" => "core.md",
+        "command_line" => "command_line.md",
         #[cfg(feature = "tts")]
         "tts" => "tts.md",
         #[cfg(not(feature = "tts"))]

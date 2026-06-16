@@ -11,6 +11,7 @@ Available topics:
 - blight
 - changes
 - colors
+- command_line
 - config_scripts
 - core
 - fs

@@ -107,6 +107,9 @@ function TriggerGroup.new(id)
     ret.id = id
     ret.enabled = true
     ret.triggers = {}
+    ret.busy = false
+    ret.pending_inserts = {}
+    ret.pending_removals = {}
 
     return ret
 end
@@ -118,7 +121,11 @@ function TriggerGroup:add(regex_or_trigger, options, callback)
     else
         trigger = Trigger.new(regex_or_trigger, options, callback)
     end
-    self.triggers[trigger.id] = trigger
+    if self.busy then
+        self.pending_inserts[trigger.id] = trigger
+    else
+        self.triggers[trigger.id] = trigger
+    end
     return trigger
 end
 
@@ -131,7 +138,12 @@ function TriggerGroup:get_triggers()
 end
 
 function TriggerGroup:remove(id)
-    self.triggers[id] = nil
+    if self.busy then
+        self.triggers[id].enabled = false
+        self.pending_removals[id] = true
+    else
+        self.triggers[id] = nil
+    end
 end
 
 function TriggerGroup:clear()
@@ -158,23 +170,26 @@ function TriggerGroup:check_line(line)
     if not self.enabled then
         return
     end
-    local triggersToProcess = {}
-    for _, trigger in pairs(self.triggers) do
-        triggersToProcess[#triggersToProcess + 1] = trigger
-    end
-
+    self.busy = true
     local toRemove = {}
-    for _, trigger in ipairs(triggersToProcess) do
-        if self.triggers[trigger.id] then
-            trigger:check_line(line)
-            if trigger.count == 0 then
-                toRemove[#toRemove + 1] = trigger.id
-            end
+    for _, trigger in pairs(self.triggers) do
+        trigger:check_line(line)
+        if trigger.count == 0 then
+            toRemove[#toRemove + 1] = trigger.id
         end
     end
     for _, trigger_id in ipairs(toRemove) do
         self:remove(trigger_id)
     end
+    self.busy = false
+    for id, trigger in pairs(self.pending_inserts) do
+        self.triggers[id] = trigger
+    end
+    self.pending_inserts = {}
+    for id, _ in pairs(self.pending_removals) do
+        self.triggers[id] = nil
+    end
+    self.pending_removals = {}
 end
 
 --------------------------------------------------------------------------------

@@ -13,6 +13,11 @@ fn test_script(script: &str) {
 }
 
 #[test]
+fn test_dynamic_triggers() {
+    test_script("tests/test_dynamic_triggers.lua");
+}
+
+#[test]
 fn test_server() {
     test_script("tests/test_server.lua");
 }

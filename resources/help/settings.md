@@ -50,7 +50,14 @@ Available settings are:
 - `scroll_lock`         Set scroll position at start of text when showing long help files.
 - `tts_enabled`         Enable tts (only if compiled with TTS).
 - `reader_mode`         Switches to a screen reader friendly TUI. (Does not support `status area`).
-- `hide_topbar`         Toggles the topbar. To customise the content, see `/help top_line`.
+- `hide_topbar`         Toggles the topbar. To customise the content, see `/help top_area`.
+- `tab_indicator_visible` Show the tab indicator at the top when 2+ tabs are configured. See `/help tabs`.
+- `tab_indicator_brand`   When `true` (default), the dedicated tab indicator row is prefixed
+                          with `═══ Blightmud ══`. Ignored when `tab_indicator_inline=true`.
+- `tab_indicator_inline`  When `true`, tabs render alongside the `host:port [tags]` topbar
+                          on a single row instead of occupying their own row at the top.
+                          Default `false`. The Lua wrapper `blight.set_tab_indicator_position(\"inline\"|\"row\")`
+                          toggles this from scripts.
 - `echo_input`          Toggles whether user input is echoed on-screen with a `> ` prefix.
 - `last_command`        Toggles whether last command is persisted for easy repeat submission.
 

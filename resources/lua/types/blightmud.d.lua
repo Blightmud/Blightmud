@@ -276,9 +276,130 @@ function BlightLib.status_height(height) end
 ---@param line string
 function BlightLib.status_line(index, line) end
 ---
----Sets the content of the top bar line.
----@param line string  The content to display. nil will reset to default content.
+---Sets the content of the top bar line. Sugar for
+---`set_top_row("host_status", { body = line })`. Pass `nil` to restore
+---the default `host:port [tags]` content; pass `""` for an unbroken bar.
+---@param line string  The content to display. nil resets to default.
 function BlightLib.top_line(line) end
+
+---@class TopRowPrefix
+---@field text string
+---@field style string  "plain" or "brand"
+
+---@class TopRowOpts
+---@field name? string
+---@field bar_char? string  Single character.
+---@field prefix? string|TopRowPrefix  "" clears.
+---@field body? string  "" ⇒ Empty (unbroken bar).
+---@field visible? boolean
+
+---
+---Mutate fields on an existing top row. Selector is a row name
+---(`"tab_indicator"` / `"host_status"` / user-supplied) or a 0-based
+---index. See `/help top_area` for the full field reference.
+---@param selector string|integer
+---@param opts TopRowOpts
+function BlightLib.set_top_row(selector, opts) end
+
+---
+---Reset a built-in row's body to its dynamic default (host:port [tags]
+---for `host_status`, the styled tabs segment for `tab_indicator`).
+---Lua-added rows are unaffected.
+---@param selector string|integer
+function BlightLib.reset_top_row(selector) end
+
+---
+---Append a new top row. Auto-generates a name when `opts.name` is unset.
+---@param opts TopRowOpts
+function BlightLib.add_top_row(opts) end
+
+---
+---Remove a Lua-added top row. Built-ins (`tab_indicator`, `host_status`)
+---refuse removal.
+---@param selector string|integer
+function BlightLib.remove_top_row(selector) end
+
+---
+---Returns the built-in top row names in display order.
+---@return string[]
+function BlightLib.builtin_top_rows() end
+
+---@class TabOpts
+---@field label? string  Display label; defaults to the tab name.
+---@field shortcut? string  Keyboard-shortcut hint shown in the indicator (e.g. "F2"). Display-only.
+---@field gag_main? boolean  When true, matching lines appear only in this tab, not in main.
+---@field history_lines? integer  Approximate scrollback capacity. Omit for the main depth (~32k).
+
+---@class TabInfo
+---@field name string
+---@field label string
+---@field shortcut? string
+---@field unread integer
+---@field active boolean
+
+---
+---Create a new named tab. `name` cannot be `"main"` (reserved).
+---@param name string
+---@param opts? TabOpts
+function BlightLib.create_tab(name, opts) end
+
+---
+---Switch the active tab; the screen redraws with that tab's scrollback.
+---@param name string
+function BlightLib.switch_tab(name) end
+
+---
+---Remove a tab. `main` is reserved. Removing the active tab returns you to
+---`main` first; the removed tab's scrollback is discarded.
+---@param name string
+function BlightLib.remove_tab(name) end
+
+---
+---Append a Rust-regex include filter to a tab. Matching inbound lines are
+---routed into the tab (in addition to main, unless `gag_main`).
+---@param name string
+---@param pattern string  A Rust regex string.
+function BlightLib.add_tab_filter(name, pattern) end
+
+---
+---Append a Rust-regex exclude to a tab. A line matching the exclude is not
+---routed into the tab even when an include filter also matches.
+---@param name string
+---@param pattern string  A Rust regex string.
+function BlightLib.add_tab_exclude_filter(name, pattern) end
+
+---
+---Update a tab's display label.
+---@param name string
+---@param label string
+function BlightLib.set_tab_label(name, label) end
+
+---
+---Set or clear a tab's display-only shortcut hint. Pass nil to clear.
+---@param name string
+---@param shortcut? string
+function BlightLib.set_tab_shortcut(name, shortcut) end
+
+---
+---Send strings as a Line directly into a named tab, bypassing filters.
+---@param name string
+---@param ... string
+function BlightLib.output_to(name, ...) end
+
+---
+---Return a snapshot of all tabs as an array of TabInfo tables.
+---@return TabInfo[]
+function BlightLib.tabs() end
+
+---
+---Return the name of the currently-active tab.
+---@return string
+function BlightLib.active_tab() end
+
+---
+---Choose where the tab indicator lives: "row" (default) or "inline".
+---@param position string  "row" or "inline".
+function BlightLib.set_tab_indicator_position(position) end
 
 ---Gets or sets whether tag rendering is enabled. When enabled, each output
 ---line is prefixed with the line's tag symbol and color (or two spaces if no

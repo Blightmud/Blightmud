@@ -191,6 +191,26 @@ impl UserInterface for UiWrapper {
         self.screen.set_top_line(info)
     }
 
+    fn set_top_row(
+        &mut self,
+        selector: super::TopRowSelector,
+        opts: super::TopRowOpts,
+    ) -> Result<()> {
+        self.screen.set_top_row(selector, opts)
+    }
+
+    fn reset_top_row(&mut self, selector: super::TopRowSelector) -> Result<()> {
+        self.screen.reset_top_row(selector)
+    }
+
+    fn add_top_row(&mut self, opts: super::TopRowOpts) -> Result<()> {
+        self.screen.add_top_row(opts)
+    }
+
+    fn remove_top_row(&mut self, selector: super::TopRowSelector) -> Result<()> {
+        self.screen.remove_top_row(selector)
+    }
+
     fn flush(&mut self) {
         self.screen.flush();
     }
@@ -205,5 +225,13 @@ impl UserInterface for UiWrapper {
 
     fn destroy(self: Box<Self>) -> Result<(Box<dyn Write>, History)> {
         self.screen.destroy()
+    }
+
+    fn swap_history(&mut self, new: History) -> Result<History> {
+        self.screen.swap_history(new)
+    }
+
+    fn set_tab_indicator(&mut self, tabs: Vec<crate::tabs::TabInfo>) -> Result<()> {
+        self.screen.set_tab_indicator(tabs)
     }
 }

@@ -23,6 +23,11 @@ fn test_lua_script() {
 }
 
 #[test]
+fn test_tabs() {
+    test_script("tests/tab_tests.lua");
+}
+
+#[test]
 fn test_exec() {
     test_script("tests/exec_tests.lua");
 }

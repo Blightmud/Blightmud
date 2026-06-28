@@ -20,6 +20,7 @@ use log::{debug, info};
 use mlua::{AnyUserData, FromLua, Lua, Result as LuaResult, UserData, UserDataMethods, Value};
 use std::io::prelude::*;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use std::{fs::File, sync::mpsc::Sender};
 
 /// Connection information passed to mud.on_connect callbacks.
@@ -59,6 +60,10 @@ pub struct LuaScriptBuilder {
     dimensions: (u16, u16),
     reader_mode: bool,
     tts_enabled: bool,
+    /// Optional reference to the session's TabSet — used by Blight Lua
+    /// userdata to expose `blight.tabs()` / `blight.active_tab()`. None
+    /// in unit tests that don't construct a full Session.
+    tab_set: Option<Arc<Mutex<crate::tabs::TabSet>>>,
 }
 
 impl LuaScriptBuilder {
@@ -68,6 +73,7 @@ impl LuaScriptBuilder {
             dimensions: (0, 0),
             reader_mode: false,
             tts_enabled: false,
+            tab_set: None,
         }
     }
 
@@ -83,6 +89,11 @@ impl LuaScriptBuilder {
 
     pub fn dimensions(mut self, dimensions: (u16, u16)) -> Self {
         self.dimensions = dimensions;
+        self
+    }
+
+    pub fn tab_set(mut self, tab_set: Arc<Mutex<crate::tabs::TabSet>>) -> Self {
+        self.tab_set = Some(tab_set);
         self
     }
 
@@ -140,6 +151,9 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
 
     let backend = Backend::new(writer.clone());
     let mut blight = Blight::new(writer.clone());
+    if let Some(ts) = builder.tab_set.clone() {
+        blight.set_tab_set(ts);
+    }
     let store = match store {
         Some(store) => store,
         None => Store::new(),
@@ -259,11 +273,20 @@ impl LuaScript {
 
     pub fn reset(&mut self, dimensions: (u16, u16)) -> Result<()> {
         let store = self.state.globals().get(Store::LUA_GLOBAL_NAME)?;
+        // Pull the existing tab_set ref out of the live Blight userdata so
+        // the new Lua state keeps the same introspection target after reset.
+        let tab_set = self
+            .state
+            .globals()
+            .get::<AnyUserData>("blight")
+            .ok()
+            .and_then(|ud| ud.borrow::<Blight>().ok().and_then(|b| b.tab_set_ref()));
         let builder = LuaScriptBuilder {
             writer: self.writer.clone(),
             dimensions,
             tts_enabled: self.tts_enabled,
             reader_mode: self.reader_mode,
+            tab_set,
         };
         self.state = create_default_lua_state(builder, store);
         Ok(())

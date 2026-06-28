@@ -26,8 +26,11 @@ pub const LAST_COMMAND: &str = "last_command";
 
 pub const KEEPALIVE_ENABLED: &str = "keepalive_enabled";
 pub const LOG_TIMESTAMPS: &str = "log_timestamps";
+pub const TAB_INDICATOR_VISIBLE: &str = "tab_indicator_visible";
+pub const TAB_INDICATOR_BRAND: &str = "tab_indicator_brand";
+pub const TAB_INDICATOR_INLINE: &str = "tab_indicator_inline";
 
-pub const SETTINGS: [&str; 15] = [
+pub const SETTINGS: [&str; 18] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
@@ -43,6 +46,9 @@ pub const SETTINGS: [&str; 15] = [
     LAST_COMMAND,
     KEEPALIVE_ENABLED,
     LOG_TIMESTAMPS,
+    TAB_INDICATOR_VISIBLE,
+    TAB_INDICATOR_BRAND,
+    TAB_INDICATOR_INLINE,
 ];
 
 impl Settings {
@@ -82,6 +88,9 @@ impl Default for Settings {
         settings.insert(LAST_COMMAND.to_string(), true);
         settings.insert(KEEPALIVE_ENABLED.to_string(), true);
         settings.insert(LOG_TIMESTAMPS.to_string(), false);
+        settings.insert(TAB_INDICATOR_VISIBLE.to_string(), true);
+        settings.insert(TAB_INDICATOR_BRAND.to_string(), true);
+        settings.insert(TAB_INDICATOR_INLINE.to_string(), false);
         Self { settings }
     }
 }

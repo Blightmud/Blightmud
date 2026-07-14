@@ -142,7 +142,7 @@ jobs:
         run: sed -i "s/pkgver=.*/pkgver=${{ steps.version.outputs.VERSION }}/" pkgbuild/PKGBUILD
 
       - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
+        uses: KSXGitHub/github-actions-deploy-aur@v4.2.0
         with:
           pkgname: blightmud
           pkgbuild: ./pkgbuild/PKGBUILD

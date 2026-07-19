@@ -4,6 +4,16 @@ use std::str::{CharIndices, Chars};
 use unicode_width::UnicodeWidthChar;
 use vte::{Parser, Perform};
 
+const TAB_STOP_WIDTH: usize = 8;
+
+pub(crate) fn char_display_width(c: char, column: usize) -> usize {
+    if c == '\t' {
+        TAB_STOP_WIDTH - (column % TAB_STOP_WIDTH)
+    } else {
+        c.width().unwrap_or(0)
+    }
+}
+
 pub(crate) trait PrintableCharsIterator<'a> {
     fn printable_chars(&self) -> PrintableChars<'a>;
     fn printable_char_indices(&self) -> PrintableCharIndices<'a>;
@@ -26,14 +36,13 @@ impl<'a> PrintableCharsIterator<'a> for &'a str {
 
     fn display_width(&self) -> usize {
         self.printable_chars()
-            .map(|c: char| c.width().unwrap_or(0))
-            .sum()
+            .fold(0, |width, c| width + char_display_width(c, width))
     }
 
     fn byte_index_at_display_width(&self, target_width: usize) -> (usize, usize) {
         let mut width = 0;
         for (i, c) in self.printable_char_indices() {
-            let char_width = c.width().unwrap_or(0);
+            let char_width = char_display_width(c, width);
             if width + char_width > target_width {
                 return (i, width);
             }
@@ -56,6 +65,12 @@ impl Performer {
 impl Perform for Performer {
     fn print(&mut self, c: char) {
         self.c = Some(c)
+    }
+
+    fn execute(&mut self, byte: u8) {
+        if byte == b'\t' {
+            self.c = Some('\t');
+        }
     }
 }
 
@@ -193,6 +208,15 @@ mod test_printable_chars {
         // Wide chars with ANSI
         let ansi_wide = format!("{}中文{}", ANSI_RED, ANSI_OFF);
         assert_eq!(ansi_wide.as_str().display_width(), 4);
+
+        // Tabs advance to the next 8-column terminal tab stop
+        assert_eq!("\t".display_width(), 8);
+        assert_eq!("a\t".display_width(), 8);
+        assert_eq!("12345678\t".display_width(), 16);
+
+        // ANSI bytes do not change the column used to calculate tab stops
+        let ansi_tab = format!("{}abc\tdef{}", ANSI_RED, ANSI_OFF);
+        assert_eq!(ansi_tab.as_str().display_width(), 11);
     }
 
     #[test]
@@ -220,5 +244,10 @@ mod test_printable_chars {
         let (idx, width) = input.byte_index_at_display_width(6);
         assert_eq!(idx, 8); // 6 bytes for 中文 + 2 bytes for "te"
         assert_eq!(width, 6);
+
+        // A tab only fits when its next tab stop is within the target width
+        let input = "abc\tdef";
+        assert_eq!(input.byte_index_at_display_width(7), (3, 3));
+        assert_eq!(input.byte_index_at_display_width(8), (4, 8));
     }
 }

@@ -5,7 +5,7 @@ use mockall::automock;
 
 use crate::model::{Line, Regex, TagMask};
 use crate::tabs::TabInfo;
-use crate::tools::printable_chars::PrintableCharsIterator;
+use crate::tools::printable_chars::{char_display_width, PrintableCharsIterator};
 
 use anyhow::Result;
 
@@ -103,39 +103,59 @@ pub fn wrap_line(line: &str, width: usize, padding: usize) -> Vec<&str> {
         }
 
         let mut last_cut: usize = 0;
-        let mut last_space: usize = 0;
-        let mut print_length = 0;
-        let mut print_length_since_space = 0;
-        for (length, c) in line.printable_char_indices() {
-            // Keep track of printable line length
-            print_length += 1;
+        let printable_chars = line.printable_char_indices().collect::<Vec<_>>();
 
-            // Keep track of last occurence of <space> and how many printable
-            // characters followed it
-            print_length_since_space += 1;
-            if c == ' ' && print_length < width {
-                last_space = length;
-                print_length_since_space = 0;
-            }
+        while last_cut < line.len() {
+            let mut print_width = 0;
+            let mut last_space = None;
+            let mut did_cut = false;
+            let first_printable =
+                printable_chars.partition_point(|(byte_index, _)| *byte_index < last_cut);
 
-            // Split the line if it's print length reaches screen width
-            if print_length >= width {
-                // Cut from last space if there is any. Otherwise just cut.
-                if last_cut < last_space {
-                    lines.push(&line[last_cut..last_space]);
-                    print_length = print_length_since_space;
-                    last_cut = last_space + 1;
-                } else {
-                    lines.push(&line[last_cut..length + c.len_utf8()]);
-                    print_length = 0;
-                    last_cut = length + c.len_utf8();
+            for &(byte_index, c) in &printable_chars[first_printable..] {
+                let char_width = char_display_width(c, print_width);
+
+                if print_width + char_width > width {
+                    if let Some(space_index) = last_space {
+                        lines.push(&line[last_cut..space_index]);
+                        last_cut = space_index + 1;
+                    } else if byte_index > last_cut {
+                        lines.push(&line[last_cut..byte_index]);
+                        last_cut = byte_index;
+                    } else {
+                        let next_index = byte_index + c.len_utf8();
+                        lines.push(&line[last_cut..next_index]);
+                        last_cut = next_index;
+                    }
+                    did_cut = true;
+                    break;
+                }
+
+                print_width += char_width;
+                if c == ' ' && byte_index > last_cut && print_width < width {
+                    last_space = Some(byte_index);
+                }
+
+                if print_width == width {
+                    if let Some(space_index) = last_space {
+                        lines.push(&line[last_cut..space_index]);
+                        last_cut = space_index + 1;
+                    } else {
+                        let next_index = byte_index + c.len_utf8();
+                        lines.push(&line[last_cut..next_index]);
+                        last_cut = next_index;
+                    }
+                    did_cut = true;
+                    break;
                 }
             }
-        }
 
-        // Push the rest of the line if there is anything left
-        if last_cut < line.len() && !line[last_cut..].trim().is_empty() {
-            lines.push(&line[last_cut..]);
+            if !did_cut {
+                if !line[last_cut..].trim().is_empty() {
+                    lines.push(&line[last_cut..]);
+                }
+                break;
+            }
         }
     }
     lines
@@ -170,6 +190,19 @@ mod tests {
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0], "hello");
         assert_eq!(lines[1], "world!!");
+    }
+
+    #[test]
+    fn test_wrap_line_with_tabs_at_different_columns() {
+        assert_eq!(wrap_line("\tab", 8, 0), vec!["\t", "ab"]);
+        assert_eq!(wrap_line("abc\tdef", 10, 0), vec!["abc\tde", "f"]);
+        assert_eq!(wrap_line("12345678\tz", 12, 0), vec!["12345678", "\tz"]);
+    }
+
+    #[test]
+    fn test_wrap_line_with_tabs_and_mixed_content() {
+        let line = "\x1b[31mab\t中x\x1b[0m";
+        assert_eq!(wrap_line(line, 10, 0), vec!["\x1b[31mab\t中", "x\x1b[0m"]);
     }
 
     #[test]

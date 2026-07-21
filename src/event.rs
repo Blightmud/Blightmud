@@ -463,7 +463,10 @@ impl EventHandler {
                     lua_ctx.set_prompt_mask_content(updated_mask_table);
                     let mut prompt_input = self.session.prompt_input.lock().unwrap();
                     *prompt_input = command_buffer.get_masked_buffer();
-                    screen.print_prompt_input(&prompt_input, command_buffer.get_pos());
+                    // Masked string, masked cursor. `get_pos` indexes the raw
+                    // buffer and would point into the wrong place as soon as a
+                    // mask inserts anything before the cursor.
+                    screen.print_prompt_input(&prompt_input, command_buffer.get_masked_pos());
                 }
                 Ok(())
             }
@@ -475,7 +478,10 @@ impl EventHandler {
                     }
                     let mut prompt_input = self.session.prompt_input.lock().unwrap();
                     *prompt_input = command_buffer.get_masked_buffer();
-                    screen.print_prompt_input(&prompt_input, command_buffer.get_pos());
+                    // The mask was just cleared, so this is the identity — but
+                    // it is spelled the same way as the branch above so the
+                    // pairing stays obviously correct.
+                    screen.print_prompt_input(&prompt_input, command_buffer.get_masked_pos());
                 }
                 Ok(())
             }

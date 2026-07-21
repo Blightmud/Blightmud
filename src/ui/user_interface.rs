@@ -59,6 +59,15 @@ pub trait UserInterface {
     fn remove_tag(&mut self, proto: &str) -> Result<()>;
     fn clear_tags(&mut self) -> Result<()>;
     fn set_status_area_height(&mut self, height: u16) -> Result<()>;
+    fn set_input_height(&mut self, height: u16) -> Result<()>;
+    /// The number of rows the input area *actually* occupies.
+    ///
+    /// Deliberately a report rather than an echo of what Lua requested.
+    /// The two diverge on a terminal too short to honour the request, and
+    /// in reader mode, where the setter is a no-op — and NAWS reports this
+    /// to the MUD, so an echo would corrupt server-side wrapping for
+    /// precisely the users who hear the artifacts read aloud.
+    fn input_height(&self) -> u16;
     fn set_show_tags(&mut self, show: bool) -> Result<()>;
     fn set_tag_mask(&mut self, mask: TagMask);
     fn set_history_capacity(&mut self, capacity: usize);

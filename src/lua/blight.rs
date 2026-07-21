@@ -2,7 +2,10 @@ use super::{constants::*, regex::Regex, ui_event::UiEvent};
 use crate::event::{Event, QuitMethod, TabCommand};
 use crate::io::SaveData;
 use crate::tabs::{TabOpts, TabSet};
-use crate::ui::{TopPrefix, TopPrefixStyle, TopRowBody, TopRowOpts, TopRowSelector};
+use crate::ui::{
+    TopPrefix, TopPrefixStyle, TopRowBody, TopRowOpts, TopRowSelector, INPUT_HEIGHT_MAX,
+    INPUT_HEIGHT_MIN,
+};
 use crate::{
     model::{self, Line, TagMask},
     tools::printable_chars::PrintableCharsIterator,
@@ -245,6 +248,19 @@ impl UserData for Blight {
                 height
             } else {
                 ctx.named_registry_value(STATUS_AREA_HEIGHT)?
+            };
+            Ok(height)
+        });
+        methods.add_function("input_height", |ctx, requested: Option<u16>| {
+            let height: u16 = if let Some(height) = requested {
+                let height = height.clamp(INPUT_HEIGHT_MIN, INPUT_HEIGHT_MAX);
+                let this_aux = ctx.globals().get::<AnyUserData>("blight")?;
+                let this = this_aux.borrow::<Blight>()?;
+                this.main_writer.send(Event::InputHeight(height)).unwrap();
+                ctx.set_named_registry_value(INPUT_HEIGHT, height)?;
+                height
+            } else {
+                ctx.named_registry_value(INPUT_HEIGHT)?
             };
             Ok(height)
         });
@@ -655,7 +671,8 @@ mod test_blight {
     use super::Blight;
     use crate::lua::constants::{
         BLIGHT_ON_DIMENSIONS_CHANGE_LISTENER_TABLE, BLIGHT_ON_QUIT_LISTENER_TABLE,
-        COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE, SHOW_TAGS, STATUS_AREA_HEIGHT,
+        COMMAND_BINDING_TABLE, COMPLETION_CALLBACK_TABLE, INPUT_HEIGHT, SHOW_TAGS,
+        STATUS_AREA_HEIGHT,
     };
     use crate::{PROJECT_NAME, VERSION};
 
@@ -677,6 +694,7 @@ mod test_blight {
             .unwrap();
         lua.set_named_registry_value(COMMAND_BINDING_TABLE, lua.create_table().unwrap())
             .unwrap();
+        lua.set_named_registry_value(INPUT_HEIGHT, 1u16).unwrap();
         lua.set_named_registry_value(STATUS_AREA_HEIGHT, 1u16)
             .unwrap();
         lua.set_named_registry_value(SHOW_TAGS, false).unwrap();
@@ -919,6 +937,21 @@ mod test_blight {
             .call::<bool>(())
             .unwrap();
         assert!(!val);
+    }
+
+    #[test]
+    fn test_input_height() {
+        let (lua, _reader) = get_lua_state();
+        let get = |lua: &Lua, src: &str| lua.load(src).call::<u16>(()).unwrap();
+
+        assert_eq!(get(&lua, "return blight.input_height()"), 1);
+        assert_eq!(get(&lua, "return blight.input_height(3)"), 3);
+        assert_eq!(get(&lua, "return blight.input_height()"), 3);
+
+        // Clamped at both ends: zero would leave nowhere to type, and the
+        // upper bound keeps the output region renderable.
+        assert_eq!(get(&lua, "return blight.input_height(0)"), 1);
+        assert_eq!(get(&lua, "return blight.input_height(500)"), 10);
     }
 
     #[test]

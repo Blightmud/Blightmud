@@ -15,10 +15,11 @@ local function network_dimensions(width, height)
 end
 
 local function send_dimensions(width, height)
-    -- We must adjust the height to just the writable area, subtracting
-    -- the size by 2 for the input/prompt area, and by the size of the status
-    -- area.
-    height = height - 2 - blight.status_height()
+    -- Adjust the height to just the writable area: one row for the MUD's
+    -- own prompt, however many rows the input area occupies, and the size of
+    -- the status area. The input area used to be assumed to be one row, which
+    -- is why this was a literal 2.
+    height = height - 1 - blight.input_height() - blight.status_height()
     core.subneg_send(NAWS_PROTOCOL, network_dimensions(width, height))
 end
 

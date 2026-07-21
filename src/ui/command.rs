@@ -129,7 +129,14 @@ impl CommandBuffer {
         // Insert history
         let cmd = if !self.buffer.is_empty() {
             let command = self.get_buffer();
-            self.completion_tree.insert(&command);
+            // Each row is submitted as its own command, so completion has to
+            // offer them separately — a candidate containing a newline could
+            // never be typed back in.
+            for row in command.split('\n') {
+                if !row.trim().is_empty() {
+                    self.completion_tree.insert(row);
+                }
+            }
             command
         } else {
             String::new()
@@ -153,6 +160,53 @@ impl CommandBuffer {
         if self.cursor_pos > 0 {
             self.cursor_pos -= 1;
         }
+    }
+
+    /// Start index and length of the `'\n'`-delimited row containing `pos`.
+    fn logical_row_at(&self, pos: usize) -> (usize, usize) {
+        let start = self.buffer[..pos]
+            .iter()
+            .rposition(|c| *c == '\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let end = self.buffer[pos..]
+            .iter()
+            .position(|c| *c == '\n')
+            .map(|i| pos + i)
+            .unwrap_or(self.buffer.len());
+        (start, end - start)
+    }
+
+    /// Move to the same column on the previous logical row.
+    ///
+    /// Rows here are `'\n'`-delimited, *not* visual wrap rows. Visual motion
+    /// would need the terminal width, which is main-thread state this buffer
+    /// cannot reach — and it would break history navigation for reader-mode
+    /// users specifically, since ReaderScreen never wraps: a long line would
+    /// leave the cursor on an invisible second row, so Up would move it
+    /// silently instead of recalling history.
+    fn step_up(&mut self) -> bool {
+        let (start, _) = self.logical_row_at(self.cursor_pos);
+        if start == 0 {
+            return false;
+        }
+        let column = self.cursor_pos - start;
+        let (prev_start, prev_len) = self.logical_row_at(start - 1);
+        self.cursor_pos = prev_start + column.min(prev_len);
+        true
+    }
+
+    /// Move to the same column on the next logical row.
+    fn step_down(&mut self) -> bool {
+        let (start, len) = self.logical_row_at(self.cursor_pos);
+        let end = start + len;
+        if end >= self.buffer.len() {
+            return false;
+        }
+        let column = self.cursor_pos - start;
+        let (next_start, next_len) = self.logical_row_at(end + 1);
+        self.cursor_pos = next_start + column.min(next_len);
+        true
     }
 
     fn step_right(&mut self) {
@@ -334,9 +388,23 @@ fn parse_key_event(
 ) {
     match key {
         Key::Char('\n') => {
-            let mut line = Line::from(buffer.submit());
-            line.flags.source = Some("user".to_string());
-            writer.send(Event::ServerInput(line)).unwrap();
+            // A Line carrying an embedded '\n' would be telnet-sent raw and
+            // would not match aliases, so the buffer fans out into one
+            // ServerInput per row, each running aliases/triggers/logging
+            // independently exactly as if it had been typed on its own.
+            //
+            // An empty buffer still emits exactly one blank line: "".split()
+            // yields [""], and MUD pagers depend on a bare Enter arriving.
+            let submitted = buffer.submit();
+            for (i, row) in submitted.split('\n').enumerate() {
+                let mut line = Line::from(row);
+                line.flags.source = Some("user".to_string());
+                // Only the first row cancels whatever speech is in flight; the
+                // rest queue behind it, so every row of a multi-row submit is
+                // actually heard.
+                line.flags.tts_interrupt = i == 0;
+                writer.send(Event::ServerInput(line)).unwrap();
+            }
             if let Ok(mut script) = script.lock() {
                 script.set_prompt_content(String::new(), 0);
             }
@@ -419,6 +487,12 @@ fn human_key(prefix: &str, c: char) -> String {
     match c {
         '\u{7f}' => out.push_str("backspace"),
         '\u{1b}' => out.push_str("escape"),
+        // Without this, Alt+Enter mints the binding name "alt-\n" — a literal
+        // newline — so blight.bind("alt-enter", ...) would never fire and the
+        // failure would be undiagnosable. Both carriage return and line feed
+        // are accepted because the ESC-prefix branch passes the raw byte
+        // through, and terminals differ on which one they send.
+        '\r' | '\n' => out.push_str("enter"),
         _ => out.push(c),
     }
     out
@@ -472,6 +546,13 @@ fn handle_script_ui_io(
             UiEvent::ScrollTop => writer.send(Event::ScrollTop).unwrap(),
             UiEvent::ScrollBottom => writer.send(Event::ScrollBottom).unwrap(),
             UiEvent::Complete => buffer.tab_complete(),
+            UiEvent::InsertNewline => buffer.push_key('\n'),
+            UiEvent::StepUp => {
+                buffer.step_up();
+            }
+            UiEvent::StepDown => {
+                buffer.step_down();
+            }
             UiEvent::Unknown(_) => {}
         });
         script.set_prompt_content(buffer.get_buffer(), buffer.get_pos());
@@ -750,6 +831,88 @@ mod command_test {
         assert_eq!(human_key("ctrl-", '\u{1b}'), "ctrl-escape");
         assert_eq!(human_key("ctrl-", 'd'), "ctrl-d");
         assert_eq!(human_key("f", 'x'), "fx");
+
+        // Without these, Alt+Enter mints "alt-\n" — a binding name containing a
+        // literal newline, which no user could write and which therefore never
+        // fires. Both forms, because terminals disagree on which byte they
+        // send and the ESC-prefix branch passes the raw byte through.
+        assert_eq!(human_key("alt-", '\r'), "alt-enter");
+        assert_eq!(human_key("alt-", '\n'), "alt-enter");
+        assert_eq!(human_key("ctrl-", '\r'), "ctrl-enter");
+    }
+
+    #[test]
+    fn test_step_up_down_between_logical_rows() {
+        let mut buffer = get_command().0;
+        push_string(&mut buffer, "one\ntwo\nthree");
+        assert_eq!(buffer.get_pos(), 13);
+
+        // Up from the last row keeps the column where the row is long enough.
+        assert!(buffer.step_up());
+        assert_eq!(buffer.get_pos(), 7); // end of "two"
+        assert!(buffer.step_up());
+        assert_eq!(buffer.get_pos(), 3); // clamped to the end of "one"
+
+        // At the first row there is nowhere to go, and the cursor must not
+        // move — that is what lets the binding fall through to history.
+        assert!(!buffer.step_up());
+        assert_eq!(buffer.get_pos(), 3);
+
+        assert!(buffer.step_down());
+        assert_eq!(buffer.get_pos(), 7);
+        assert!(buffer.step_down());
+        assert_eq!(buffer.get_pos(), 11);
+        assert!(!buffer.step_down());
+        assert_eq!(buffer.get_pos(), 11);
+    }
+
+    #[test]
+    fn test_step_up_down_clamps_to_short_rows() {
+        let mut buffer = get_command().0;
+        push_string(&mut buffer, "a\nlonger");
+        // Cursor at the end of "longer", column 6.
+        assert_eq!(buffer.get_pos(), 8);
+        assert!(buffer.step_up());
+        // "a" has only one column, so the cursor clamps to its end.
+        assert_eq!(buffer.get_pos(), 1);
+    }
+
+    #[test]
+    fn test_step_up_down_is_a_noop_without_row_breaks() {
+        let mut buffer = get_command().0;
+        push_string(&mut buffer, "no rows here");
+        let pos = buffer.get_pos();
+        assert!(!buffer.step_up());
+        assert!(!buffer.step_down());
+        assert_eq!(buffer.get_pos(), pos);
+    }
+
+    #[test]
+    fn test_insert_newline_via_push_key() {
+        let mut buffer = get_command().0;
+        push_string(&mut buffer, "ab");
+        buffer.push_key('\n');
+        push_string(&mut buffer, "cd");
+        assert_eq!(buffer.get_buffer(), "ab\ncd");
+        assert_eq!(buffer.get_pos(), 5);
+    }
+
+    /// Each row of a submitted buffer must become its own completion
+    /// candidate; a candidate containing a newline could never be typed back.
+    #[test]
+    fn test_submit_inserts_each_row_into_completions() {
+        let mut buffer = get_command().0;
+        push_string(&mut buffer, "northgate\nsouthgate");
+        buffer.submit();
+
+        push_string(&mut buffer, "north");
+        buffer.tab_complete();
+        assert_eq!(buffer.get_buffer(), "northgate");
+
+        buffer.clear();
+        push_string(&mut buffer, "south");
+        buffer.tab_complete();
+        assert_eq!(buffer.get_buffer(), "southgate");
     }
 
     #[test]

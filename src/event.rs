@@ -114,6 +114,7 @@ pub enum Event {
     SpeakStop,
     StartLogging(String, bool),
     StatusAreaHeight(u16),
+    InputHeight(u16),
     StatusLine(usize, String),
     StopLogging,
     StopMusic,

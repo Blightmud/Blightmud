@@ -1,6 +1,6 @@
 use super::history::History;
 use super::input_layout;
-use super::layout::{ScreenLayout, INPUT_HEIGHT_MIN};
+use super::layout::{ScreenLayout, INPUT_HEIGHT_MAX, INPUT_HEIGHT_MIN};
 use super::scroll_data::ScrollData;
 use super::top_area::{
     self, row_names, TopArea, TopPrefix, TopPrefixStyle, TopRenderContext, TopRowBody,
@@ -9,7 +9,8 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{
-    Settings, HIDE_TOPBAR, TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE, TAB_INDICATOR_VISIBLE,
+    Settings, HIDE_TOPBAR, INPUT_AUTO_EXPAND, TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE,
+    TAB_INDICATOR_VISIBLE,
 };
 use crate::tabs::TabInfo;
 use crate::{
@@ -25,7 +26,6 @@ use termion::cursor;
 use super::UserInterface;
 
 const SCROLL_LIVE_BUFFER_SIZE: u16 = 10;
-const PROMPT_HEIGHT: u16 = 1;
 const STATUS_HEIGHT_MIN: u16 = 0;
 const STATUS_HEIGHT_MAX: u16 = 5;
 
@@ -151,10 +151,13 @@ pub struct SplitScreen {
     /// Cursor row *within* the input area, counted from `prompt_line`. Always
     /// zero while the input area is one row tall.
     cursor_prompt_row: u16,
-    /// Rows granted to the user input area. Pinned at [`INPUT_HEIGHT_MIN`]
-    /// until the height plumbing lands; the multi-row render path below is
-    /// therefore compiled but not yet reachable.
+    /// Rows the input area currently occupies. With auto-expand off this
+    /// equals `input_height_setting`; with it on it grows above it.
     input_height: u16,
+    /// The configured *minimum* row count — what `blight.input_height(n)` set.
+    /// Kept separate from `input_height` so that auto-expand can shrink back
+    /// to the user's floor rather than to one row.
+    input_height_setting: u16,
     /// Whether the input area grows past `input_height` as content requires.
     input_auto_expand: bool,
     history: History,
@@ -232,10 +235,15 @@ impl UserInterface for SplitScreen {
                 height,
                 self.top_area.visible_row_count(),
                 self.status_area.height(),
-                INPUT_HEIGHT_MIN,
+                self.input_height,
             )
             .ok_or(TerminalSizeError)?;
 
+            // The layout is free to grant fewer rows than were requested. Take
+            // what it gave, so `input_height()` reports the truth to NAWS
+            // rather than echoing back what Lua asked for.
+            self.input_height = layout.input_height;
+            self.input_auto_expand = settings.get(INPUT_AUTO_EXPAND)?;
             self.output_start_line = layout.output_start_line;
             self.output_line = layout.output_line;
             self.mud_prompt_line = layout.mud_prompt_line;
@@ -326,6 +334,20 @@ impl UserInterface for SplitScreen {
 
         self.prompt_input = input.to_string();
         self.prompt_input_pos = pos;
+
+        if self.input_auto_expand {
+            let row_count = input_layout::rows(input, self.width).len();
+            let wanted = input_layout::desired_height(row_count, self.input_height_setting, true);
+            if wanted != self.input_height {
+                // Deliberately not `setup()`. That opens with `reset()` —
+                // clear::All plus ResetScrollRegion — then reloads settings
+                // from disk and repaints with a flush in between, i.e. a
+                // blank-then-content two-frame sequence. Acceptable on a
+                // resize; unacceptable on the keystroke that happens to wrap
+                // to a new row, which is when auto-expand fires.
+                self.resize_input_area(wanted).ok();
+            }
+        }
 
         if self.input_height > INPUT_HEIGHT_MIN {
             self.print_prompt_input_rows(input, pos);
@@ -617,12 +639,40 @@ impl UserInterface for SplitScreen {
 
     fn set_status_area_height(&mut self, height: u16) -> Result<()> {
         let height = StatusArea::clamp_height(height) as u16;
-        self.status_area
-            .set_height(height, self.height - height - PROMPT_HEIGHT);
+        // `setup()` recomputes the real start line from the layout a moment
+        // later, so this only has to be in range rather than correct — but it
+        // used to be a raw subtraction, and a status height of 5 on a six-row
+        // terminal drove it negative.
+        self.status_area.set_height(
+            height,
+            self.height
+                .saturating_sub(height)
+                .saturating_sub(self.input_height),
+        );
         self.setup()?;
         let input_str = self.prompt_input.as_str().to_owned();
         self.print_prompt_input(&input_str, self.prompt_input_pos);
         Ok(())
+    }
+
+    fn set_input_height(&mut self, height: u16) -> Result<()> {
+        let height = height.clamp(INPUT_HEIGHT_MIN, INPUT_HEIGHT_MAX);
+        self.input_height_setting = height;
+        if height == self.input_height {
+            return Ok(());
+        }
+        self.input_height = height;
+        self.setup()?;
+        let input_str = self.prompt_input.as_str().to_owned();
+        self.print_prompt_input(&input_str, self.prompt_input_pos);
+        Ok(())
+    }
+
+    fn input_height(&self) -> u16 {
+        // The layout may have granted fewer rows than were asked for, so this
+        // reports what the screen actually has. NAWS depends on the
+        // difference.
+        self.input_height
     }
 
     fn set_show_tags(&mut self, show: bool) -> Result<()> {
@@ -791,6 +841,7 @@ impl SplitScreen {
             cursor_prompt_pos: 1,
             cursor_prompt_row: 0,
             input_height: layout.input_height,
+            input_height_setting: layout.input_height,
             input_auto_expand: false,
             history,
             scroll_data: ScrollData::new(),
@@ -838,12 +889,57 @@ impl SplitScreen {
         }
     }
 
+    /// Re-lay-out for a new input height without going through `setup()`.
+    ///
+    /// Re-emits the scroll region and repaints the regions whose rows changed
+    /// ownership, but never clears the screen and never touches the settings
+    /// file. Returns without drawing anything when the layout cannot honour
+    /// the new height, leaving the previous one in force.
+    fn resize_input_area(&mut self, height: u16) -> Result<()> {
+        let Some(layout) = ScreenLayout::compute(
+            self.height,
+            self.top_area.visible_row_count(),
+            self.status_area.height(),
+            height,
+        ) else {
+            return Ok(());
+        };
+
+        if layout.input_height == self.input_height {
+            return Ok(());
+        }
+
+        self.input_height = layout.input_height;
+        self.output_start_line = layout.output_start_line;
+        self.output_line = layout.output_line;
+        self.mud_prompt_line = layout.mud_prompt_line;
+        self.prompt_line = layout.input_start_line;
+
+        write!(
+            self.screen,
+            "{}{}",
+            ScrollRegion(self.output_start_line, self.output_line),
+            DisableOriginMode
+        )?;
+
+        // Rows moved between the output, status and input regions, so each has
+        // to repaint over whatever the other used to own.
+        self.reset_scroll()?;
+        self.redraw_prompt();
+        self.redraw_status_area()?;
+        Ok(())
+    }
+
     /// The height the input area wants for `row_count` rows of content.
     ///
     /// With auto-expand off this is just the configured height, which is why
     /// wiring it up now changes nothing.
     fn effective_input_height(&self, row_count: usize) -> u16 {
-        input_layout::desired_height(row_count, self.input_height, self.input_auto_expand)
+        input_layout::desired_height(
+            row_count,
+            self.input_height_setting.max(self.input_height),
+            self.input_auto_expand,
+        )
     }
 
     /// Paint the input area as wrapped rows. Used when the area is taller than
@@ -1267,6 +1363,7 @@ mod screen_test {
             cursor_prompt_pos: 1,
             cursor_prompt_row: 0,
             input_height: layout.input_height,
+            input_height_setting: layout.input_height,
             input_auto_expand: false,
             history: History::new(),
             scroll_data: ScrollData::new(),

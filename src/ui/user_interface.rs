@@ -6,6 +6,7 @@ use mockall::automock;
 use crate::model::{Line, Regex, TagMask};
 use crate::tabs::TabInfo;
 use crate::tools::printable_chars::PrintableCharsIterator;
+use unicode_width::UnicodeWidthChar;
 
 use anyhow::Result;
 
@@ -104,31 +105,55 @@ pub fn wrap_line(line: &str, width: usize, padding: usize) -> Vec<&str> {
 
         let mut last_cut: usize = 0;
         let mut last_space: usize = 0;
-        let mut print_length = 0;
-        let mut print_length_since_space = 0;
-        for (length, c) in line.printable_char_indices() {
-            // Keep track of printable line length
-            print_length += 1;
+        let mut pos: usize = 0; // Current position in display width
+        let mut space_pos: usize = 0; // Position of last space in display width
+        let mut space_char_pos: usize = 0; // Byte position of last space
 
-            // Keep track of last occurence of <space> and how many printable
-            // characters followed it
-            print_length_since_space += 1;
-            if c == ' ' && print_length < width {
-                last_space = length;
-                print_length_since_space = 0;
-            }
-
-            // Split the line if it's print length reaches screen width
-            if print_length >= width {
-                // Cut from last space if there is any. Otherwise just cut.
-                if last_cut < last_space {
-                    lines.push(&line[last_cut..last_space]);
-                    print_length = print_length_since_space;
-                    last_cut = last_space + 1;
+        for (byte_pos, c) in line.printable_char_indices() {
+            // Calculate the display width of this character
+            let char_width = if c == '\t' {
+                // For tab characters, calculate width to next tab stop
+                // Standard tab stop is 8 characters
+                let tab_stop = 8;
+                let current_in_tab_stop = pos % tab_stop;
+                if current_in_tab_stop == 0 {
+                    tab_stop
                 } else {
-                    lines.push(&line[last_cut..length + c.len_utf8()]);
-                    print_length = 0;
-                    last_cut = length + c.len_utf8();
+                    tab_stop - current_in_tab_stop
+                }
+            } else {
+                // For all other characters, use their Unicode width
+                c.width().unwrap_or(0)
+            };
+
+            // Check if adding this character would exceed the width
+            if pos + char_width > width {
+                // If we found a space to wrap at, use it
+                if space_char_pos > last_cut && space_pos > 0 {
+                    lines.push(&line[last_cut..space_char_pos]);
+                    // Reset position to what remains after the space
+                    pos = pos - space_pos;
+                    last_cut = space_char_pos + 1;
+                    space_pos = 0;
+                    space_char_pos = 0;
+                } else {
+                    // No space found, wrap before current character
+                    lines.push(&line[last_cut..byte_pos]);
+                    // Reset position for remaining characters (starting with current char)
+                    pos = char_width;
+                    last_cut = byte_pos;
+                    space_pos = 0;
+                    space_char_pos = 0;
+                }
+                // Continue processing the current character in the new line
+            } else {
+                // Character fits, add its width to position
+                pos += char_width;
+
+                // Track space positions for word wrapping
+                if c == ' ' && pos < width {
+                    space_pos = pos;
+                    space_char_pos = byte_pos;
                 }
             }
         }
@@ -242,5 +267,37 @@ mod tests {
         // "abcdefghij" = 10 printable chars; at width 5 it must wrap.
         let lines = wrap_line(line, 5, 0);
         assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn test_wrap_line_tabs() {
+        // Test tab handling - tab should advance to next 8-column boundary
+        let line = "hello\tworld"; // "hello" (5) + tab (to col 8: 3 spaces) + "world" (5) = 13 total
+        // At width 10: should wrap after "hello\t" (position 8)
+        let lines = wrap_line(line, 10, 0);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "hello\t"); // First line: "hello" + tab
+        assert_eq!(lines[1], "world");   // Second line: "world"
+
+        // At width 15: should fit on one line (5 + 3 + 5 = 13 < 15)
+        let lines = wrap_line(line, 15, 0);
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0], "hello\tworld");
+
+        // Test tab at beginning
+        let line = "\tstart"; // tab (to col 8: 8 spaces) + "start" (5) = 13 total
+        // At width 10: should wrap after tab (position 8)
+        let lines = wrap_line(line, 10, 0);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "\t"); // First line: just tab
+        assert_eq!(lines[1], "start"); // Second line: "start"
+
+        // Test multiple tabs
+        let line = "a\tb\tc"; // "a"(1) + tab(to 8:7) + "b"(1) + tab(to 16:7) + "c"(1) = 1+7+1+7+1=17
+        // At width 10: "a\tb" (1+7+1=9) fits, next tab would go to 16>10, so wrap after "b"
+        let lines = wrap_line(line, 10, 0);
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0], "a\tb"); // First line: "a" + tab + "b"
+        assert_eq!(lines[1], "\tc");   // Second line: tab + "c" (tab at pos 0 -> width 8)
     }
 }

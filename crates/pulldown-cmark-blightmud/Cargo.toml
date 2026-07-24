@@ -18,7 +18,7 @@ svg = ["dep:resvg"]
 image-processing = ["dep:image"]
 
 [dependencies]
-base64 = { version = "0.22.1", default-features = false, features = ["std"] }
+base64 = { version = "0.23.0", default-features = false, features = ["std"] }
 anstyle = { version = "1.0.14", default-features = false }
 mime = "0.3"
 pulldown-cmark = "0.13"

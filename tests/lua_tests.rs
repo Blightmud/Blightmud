@@ -13,11 +13,6 @@ fn test_script(script: &str) {
 }
 
 #[test]
-fn test_dynamic_triggers() {
-    test_script("tests/test_dynamic_triggers.lua");
-}
-
-#[test]
 fn test_server() {
     test_script("tests/test_server.lua");
 }
@@ -40,6 +35,26 @@ fn regex_smoke_tests() {
 #[test]
 fn test_line_tags() {
     test_script("tests/tag_tests.lua");
+}
+
+#[test]
+fn test_tasks() {
+    test_script("tests/task_tests.lua");
+}
+
+#[test]
+fn test_task_insertions() {
+    test_script("tests/test_task_insertions.lua");
+}
+
+#[test]
+fn test_triggers() {
+    test_script("tests/trigger_tests.lua");
+}
+
+#[test]
+fn test_trigger_insertions() {
+    test_script("tests/test_trigger_insertions.lua");
 }
 
 #[test]

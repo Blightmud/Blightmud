@@ -18,6 +18,7 @@ mod lua;
 mod model;
 mod net;
 mod session;
+mod tabs;
 mod timer;
 mod tools;
 mod tts;
@@ -27,6 +28,7 @@ use crate::event::{spawn_quit_confirm_timeout_thread, Event, QuitMethod};
 use crate::io::{FSMonitor, SaveData};
 use crate::model::{
     Servers, ECHO_INPUT, HIDE_TOPBAR, LAST_COMMAND, LOG_TIMESTAMPS, READER_MODE, SCROLL_SPLIT,
+    TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE, TAB_INDICATOR_VISIBLE,
 };
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
@@ -383,6 +385,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::AddTag(_)
             | Event::RemoveTag(_)
             | Event::ClearTags
+            | Event::TabCommand(_)
             | Event::UserInputBuffer(_, _)
             | Event::UserInputCursor(_)
             | Event::SetPromptMask(_)
@@ -416,7 +419,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     }
                     screen = Box::new(UiWrapper::new_from(screen, &session, value)?);
                 }
-                HIDE_TOPBAR | SCROLL_SPLIT => {
+                HIDE_TOPBAR
+                | SCROLL_SPLIT
+                | TAB_INDICATOR_VISIBLE
+                | TAB_INDICATOR_BRAND
+                | TAB_INDICATOR_INLINE => {
                     screen.setup()?;
                 }
                 ECHO_INPUT => session.echo_input.store(value, Ordering::Relaxed),
@@ -506,8 +513,13 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
             Event::ShowTags(show) => screen.set_show_tags(show)?,
             Event::SetTagMask(mask) => screen.set_tag_mask(mask),
+            Event::SetHistoryCapacity(capacity) => screen.set_history_capacity(capacity),
             Event::StatusLine(index, info) => screen.set_status_line(index, info)?,
             Event::TopLine(info) => screen.set_top_line(info)?,
+            Event::SetTopRow(sel, opts) => screen.set_top_row(sel, opts)?,
+            Event::ResetTopRow(sel) => screen.reset_top_row(sel)?,
+            Event::AddTopRow(opts) => screen.add_top_row(opts)?,
+            Event::RemoveTopRow(sel) => screen.remove_top_row(sel)?,
             Event::LoadScript(path) => {
                 info!("Loading script: {}", path);
                 let mut lua = session.lua_script.lock().unwrap();

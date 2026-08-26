@@ -18,7 +18,7 @@ svg = ["dep:resvg"]
 image-processing = ["dep:image"]
 
 [dependencies]
-base64 = { version = "0.22.1", default-features = false, features = ["std"] }
+base64 = { version = "0.23.0", default-features = false, features = ["std"] }
 anstyle = { version = "1.0.14", default-features = false }
 mime = "0.3"
 pulldown-cmark = "0.13"
@@ -40,7 +40,7 @@ similar-asserts = "2"
 syntect = { version = "5", features = ["default-syntaxes"] }
 temp-env = { version = "0.3.6", default-features = false }
 insta = "1"
-regex = { version = "1.10.6", default-features = false }
+regex = { version = "1.12.4", default-features = false }
 
 [build-dependencies]
 syntect = { version = "5", features = ["plist-load", "dump-create"] }

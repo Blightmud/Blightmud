@@ -203,6 +203,7 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "blight" => "blight.md",
         "bindings" => "bindings.md",
         "core" => "core.md",
+        "command_line" => "command_line.md",
         #[cfg(feature = "tts")]
         "tts" => "tts.md",
         #[cfg(not(feature = "tts"))]
@@ -240,7 +241,9 @@ fn load_files() -> HashMap<&'static str, &'static str> {
         "prompt_mask" => "prompt_mask.md",
         "history" => "history.md",
         "script_example" => "scripte_example.md",
-        "tags" => "tags.md"
+        "tags" => "tags.md",
+        "tabs" => "tabs.md",
+        "top_area" => "top_area.md"
     }
 }
 

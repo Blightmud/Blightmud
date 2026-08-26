@@ -1,9 +1,15 @@
 use super::history::History;
 use super::scroll_data::ScrollData;
+use super::top_area::{
+    self, row_names, TopArea, TopPrefix, TopPrefixStyle, TopRenderContext, TopRowBody,
+};
 use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
-use crate::model::{Settings, HIDE_TOPBAR};
+use crate::model::{
+    Settings, HIDE_TOPBAR, TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE, TAB_INDICATOR_VISIBLE,
+};
+use crate::tabs::TabInfo;
 use crate::{
     model::Line, model::Regex, model::TagMask, model::ToLine,
     tools::printable_chars::PrintableCharsIterator, ui::ansi::*,
@@ -20,56 +26,6 @@ const SCROLL_LIVE_BUFFER_SIZE: u16 = 10;
 const PROMPT_HEIGHT: u16 = 1;
 const STATUS_HEIGHT_MIN: u16 = 0;
 const STATUS_HEIGHT_MAX: u16 = 5;
-
-fn repeat_char(c: char, n: usize) -> String {
-    let mut s = String::with_capacity(n * c.len_utf8());
-    for _ in 0..n {
-        s.push(c);
-    }
-    s
-}
-
-fn draw_bar(
-    barchar: char,
-    width: usize,
-    line: usize,
-    screen: &mut impl Write,
-    custom_info: &str,
-) -> Result<()> {
-    write!(
-        screen,
-        "{}{}{}",
-        termion::cursor::Goto(1, line as u16),
-        termion::clear::CurrentLine,
-        Fg(color::Green),
-    )?;
-
-    let trimmed = custom_info.trim();
-    let custom_info = if !trimmed.is_empty() {
-        let (max_bytes, _) = trimmed.byte_index_at_display_width(width - 4);
-        format!(
-            "{} {}{}{}{} ",
-            barchar,
-            trimmed.get(0..max_bytes).unwrap_or(trimmed), // If byte index is bad, skip truncation
-            Bg(color::Reset),
-            Fg(color::Reset),
-            Fg(color::Green)
-        )
-    } else {
-        "".to_string()
-    };
-
-    let remainder = width - custom_info.as_str().display_width();
-
-    write!(screen, "{}", &custom_info)?;
-
-    if remainder > 0 {
-        screen.write_all(repeat_char(barchar, remainder).as_bytes())?;
-    }
-
-    write!(screen, "{}", Fg(color::Reset))?;
-    Ok(())
-}
 
 struct StatusArea {
     start_line: u16,
@@ -147,7 +103,7 @@ impl StatusArea {
         }
 
         if line_no == 0 || line_no == self.status_lines.len() - 1 {
-            draw_bar('━', self.width as usize, index, screen, &info)?;
+            top_area::draw_bar('━', self.width as usize, index, screen, &info)?;
         } else {
             self.draw_line(index, screen, &info)?;
         }
@@ -198,7 +154,20 @@ pub struct SplitScreen {
     prompt_input_pos: usize,
     show_tags: bool,
     tag_mask: TagMask,
-    top_line: Option<String>,
+    /// The ordered list of top-area rows. Subsumes the legacy
+    /// `tab_indicator_line` / `topbar_line` / `tab_indicator_brand` /
+    /// `tab_indicator_inline` / `top_line` fields — the visibility,
+    /// prefix style, and body content of each row carry the same
+    /// information in a uniform structure. See [`super::top_area`].
+    top_area: TopArea,
+    /// Snapshot of the current tab set, set by `set_tab_indicator`. The
+    /// `top_area` reads this via the render context. Empty Vec ≡ "only
+    /// the implicit `main` tab" and suppresses the indicator row.
+    tabs_metadata: Vec<TabInfo>,
+    /// Cached at `setup()` from the `tab_indicator_inline` setting. When
+    /// `true` and the topbar is visible, tabs render alongside the
+    /// host_status row's body instead of on a dedicated row above it.
+    inline_tabs_setting: bool,
 }
 
 impl UserInterface for SplitScreen {
@@ -215,7 +184,41 @@ impl UserInterface for SplitScreen {
             self.output_line = height - self.status_area.height() - 2;
             self.mud_prompt_line = height - self.status_area.height() - 1;
             self.prompt_line = height;
-            self.output_start_line = if settings.get(HIDE_TOPBAR)? { 1 } else { 2 };
+
+            // Reconcile built-in top row config with current settings.
+            // Each visible row consumes one screen line above the output
+            // area. Inline tabs mode hides the dedicated indicator row
+            // and decorates the host_status row at render time instead.
+            let hide_topbar = settings.get(HIDE_TOPBAR)?;
+            let brand = settings.get(TAB_INDICATOR_BRAND)?;
+            self.inline_tabs_setting = settings.get(TAB_INDICATOR_INLINE)?;
+            let inline_with_topbar = self.inline_tabs_setting && !hide_topbar;
+            let show_indicator = settings.get(TAB_INDICATOR_VISIBLE)?
+                && self.tabs_metadata.len() > 1
+                && !inline_with_topbar;
+
+            if let Some(idx) = self.top_area.find(row_names::TAB_INDICATOR) {
+                if let Some(row) = self.top_area.get_mut(idx) {
+                    row.visible = show_indicator;
+                    row.prefix = Some(if brand {
+                        TopPrefix {
+                            text: " Blightmud ".to_string(),
+                            style: TopPrefixStyle::Brand,
+                        }
+                    } else {
+                        TopPrefix {
+                            text: String::new(),
+                            style: TopPrefixStyle::Plain,
+                        }
+                    });
+                }
+            }
+            if let Some(idx) = self.top_area.find(row_names::HOST_STATUS) {
+                if let Some(row) = self.top_area.get_mut(idx) {
+                    row.visible = !hide_topbar;
+                }
+            }
+            self.output_start_line = self.top_area.visible_row_count() + 1;
 
             write!(
                 self.screen,
@@ -224,7 +227,7 @@ impl UserInterface for SplitScreen {
                 DisableOriginMode
             )
             .unwrap(); // Set scroll region, non origin mode
-            self.redraw_top_bar()?;
+            self.redraw_top_area()?;
             self.reset_scroll()?;
             self.redraw_status_area()?;
             self.screen.flush()?;
@@ -539,22 +542,22 @@ impl UserInterface for SplitScreen {
         } else {
             None
         };
-        self.redraw_top_bar()
+        self.redraw_top_area()
     }
 
     fn add_tag(&mut self, tag: &str) -> Result<()> {
         self.tags.insert(tag.to_string());
-        self.redraw_top_bar()
+        self.redraw_top_area()
     }
 
     fn remove_tag(&mut self, tag: &str) -> Result<()> {
         self.tags.remove(tag);
-        self.redraw_top_bar()
+        self.redraw_top_area()
     }
 
     fn clear_tags(&mut self) -> Result<()> {
         self.tags.clear();
-        self.redraw_top_bar()
+        self.redraw_top_area()
     }
 
     fn set_status_area_height(&mut self, height: u16) -> Result<()> {
@@ -578,6 +581,10 @@ impl UserInterface for SplitScreen {
         self.setup().ok();
     }
 
+    fn set_history_capacity(&mut self, capacity: usize) {
+        self.history.set_capacity(capacity);
+    }
+
     fn set_status_line(&mut self, line: usize, info: String) -> Result<()> {
         self.status_area.set_status_line(line, info);
         self.status_area.redraw_line(&mut self.screen, line)?;
@@ -586,8 +593,58 @@ impl UserInterface for SplitScreen {
     }
 
     fn set_top_line(&mut self, line: Option<String>) -> Result<()> {
-        self.top_line = line;
-        self.redraw_top_bar()
+        if let Some(idx) = self.top_area.find(row_names::HOST_STATUS) {
+            if let Some(row) = self.top_area.get_mut(idx) {
+                row.body = match line {
+                    Some(s) => TopRowBody::Text(s),
+                    None => TopRowBody::HostTags,
+                };
+            }
+        }
+        self.redraw_top_area()
+    }
+
+    fn set_top_row(
+        &mut self,
+        selector: super::TopRowSelector,
+        opts: super::TopRowOpts,
+    ) -> Result<()> {
+        let Some(idx) = self.top_area.resolve(&selector) else {
+            return Ok(());
+        };
+        let prior_visible_rows = self.top_area.visible_row_count();
+        self.top_area.apply_opts(idx, opts);
+        if self.top_area.visible_row_count() != prior_visible_rows {
+            self.setup()?;
+        } else {
+            self.redraw_top_area()?;
+            self.screen.flush().ok();
+        }
+        Ok(())
+    }
+
+    fn reset_top_row(&mut self, selector: super::TopRowSelector) -> Result<()> {
+        let Some(idx) = self.top_area.resolve(&selector) else {
+            return Ok(());
+        };
+        self.top_area.reset_body(idx);
+        self.redraw_top_area()
+    }
+
+    fn add_top_row(&mut self, opts: super::TopRowOpts) -> Result<()> {
+        self.top_area.add_row(opts);
+        // New row may consume a screen line, so relayout.
+        self.setup()
+    }
+
+    fn remove_top_row(&mut self, selector: super::TopRowSelector) -> Result<()> {
+        let Some(idx) = self.top_area.resolve(&selector) else {
+            return Ok(());
+        };
+        if self.top_area.remove_row(idx) {
+            self.setup()?;
+        }
+        Ok(())
     }
 
     fn flush(&mut self) {
@@ -605,6 +662,49 @@ impl UserInterface for SplitScreen {
     fn destroy(mut self: Box<Self>) -> Result<(Box<dyn Write>, History)> {
         self.reset()?;
         Ok((self.screen, self.history))
+    }
+
+    fn swap_history(&mut self, new: History) -> Result<History> {
+        // Reset the per-history scroll state — scroll_pos is meaningless
+        // against a different buffer.
+        self.scroll_data = ScrollData::new();
+        let old = std::mem::replace(&mut self.history, new);
+        // Re-apply the current tag mask so the new history's `visible`
+        // view is consistent with the screen's filter.
+        self.history.set_tag_mask(self.tag_mask.clone());
+        // Repaint with the new buffer.
+        self.setup()?;
+        Ok(old)
+    }
+
+    fn set_tab_indicator(&mut self, tabs: Vec<TabInfo>) -> Result<()> {
+        // Detect whether the layout's row count is about to change
+        // (the dedicated indicator row's visibility crosses the
+        // "only main" ↔ "multi-tab" or inline-mode boundary). If so,
+        // delegate to setup() so the scroll region shifts correctly.
+        let was_visible_rows = self.top_area.visible_row_count();
+        self.tabs_metadata = tabs;
+        let host_visible = self
+            .top_area
+            .find(row_names::HOST_STATUS)
+            .and_then(|i| self.top_area.get(i))
+            .map(|r| r.visible)
+            .unwrap_or(false);
+        let inline_mode = self.inline_tabs_setting && host_visible;
+        let multi_tab = self.tabs_metadata.len() > 1;
+        let will_be_dedicated_row = multi_tab && !inline_mode;
+        if let Some(idx) = self.top_area.find(row_names::TAB_INDICATOR) {
+            if let Some(row) = self.top_area.get_mut(idx) {
+                row.visible = will_be_dedicated_row;
+            }
+        }
+        if was_visible_rows != self.top_area.visible_row_count() {
+            self.setup()?;
+        } else {
+            self.redraw_top_area()?;
+            self.screen.flush().ok();
+        }
+        Ok(())
     }
 }
 
@@ -639,7 +739,9 @@ impl SplitScreen {
             prompt_input_pos: 0,
             show_tags: false,
             tag_mask: TagMask::default(),
-            top_line: None,
+            top_area: TopArea::new_default(),
+            tabs_metadata: Vec::new(),
+            inline_tabs_setting: false,
         })
     }
 
@@ -706,37 +808,16 @@ impl SplitScreen {
         }
     }
 
-    fn default_top_bar(&self) -> String {
-        let host = if let Some(connection) = &self.connection {
-            connection
-        } else {
-            &String::default() // Empty String
+    fn redraw_top_area(&mut self) -> Result<()> {
+        let ctx = TopRenderContext {
+            width: self.width,
+            connection: self.connection.as_ref(),
+            tags: &self.tags,
+            tabs: &self.tabs_metadata,
+            inline_tabs_active: self.inline_tabs_setting && self.tabs_metadata.len() > 1,
         };
-        let mut tags = self
-            .tags
-            .iter()
-            .map(|s| format!("[{s}]"))
-            .collect::<Vec<String>>();
-        tags.sort();
-        let tags = tags.join("");
-        let mut output = format!("{host} {tags}");
-        if !output.is_empty() {
-            output.push(' ');
-        }
-        output
-    }
-
-    fn redraw_top_bar(&mut self) -> Result<()> {
-        if self.output_start_line > 1 {
-            let mut default_output = String::default();
-            let output = self.top_line.as_ref().unwrap_or_else(|| {
-                default_output = self.default_top_bar();
-                &default_output
-            });
-
-            draw_bar('═', self.width as usize, 1, &mut self.screen, output)?;
-            write!(self.screen, "{}{}", Fg(color::Reset), self.goto_prompt(),)?;
-        }
+        self.top_area.render(1, &mut self.screen, &ctx)?;
+        write!(self.screen, "{}", self.goto_prompt())?;
         Ok(())
     }
 
@@ -967,11 +1048,15 @@ mod screen_test {
         assert_eq!(history.len(), 2);
     }
 
+    // Krendil's draw_bar tests (#1436) — preserved here to keep coverage on
+    // the StatusArea consumer of `top_area::draw_bar`. Equivalent
+    // body-level coverage on the topbar side lives in `top_area::tests`.
+
     #[test]
     fn test_draw_bar_pads_to_length_ignoring_escape_sequences() {
         let mut buf = Vec::<u8>::new();
 
-        draw_bar('━', 10, 1, &mut buf, "test").unwrap();
+        top_area::draw_bar('━', 10, 1, &mut buf, "test").unwrap();
 
         let clean_output = String::from_utf8(buf)
             .unwrap()
@@ -986,7 +1071,7 @@ mod screen_test {
     fn test_draw_bar_is_unbroken_for_empty_string() {
         let mut buf = Vec::<u8>::new();
 
-        draw_bar('━', 10, 1, &mut buf, "").unwrap();
+        top_area::draw_bar('━', 10, 1, &mut buf, "").unwrap();
 
         let clean_output = String::from_utf8(buf)
             .unwrap()
@@ -1001,7 +1086,7 @@ mod screen_test {
     fn test_draw_bar_truncates_long_text() {
         let mut buf = Vec::<u8>::new();
 
-        draw_bar('━', 10, 1, &mut buf, "this text is too long").unwrap();
+        top_area::draw_bar('━', 10, 1, &mut buf, "this text is too long").unwrap();
 
         let clean_output = String::from_utf8(buf)
             .unwrap()

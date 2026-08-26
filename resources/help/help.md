@@ -11,6 +11,7 @@ Available topics:
 - blight
 - changes
 - colors
+- command_line
 - config_scripts
 - core
 - fs
@@ -41,9 +42,11 @@ Available topics:
 - spellcheck
 - status_area
 - storage
+- tabs
 - tags
 - tasks
 - timers
+- top_area
 - trigger
 - tts
 - ttype

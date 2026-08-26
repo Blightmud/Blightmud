@@ -441,11 +441,35 @@ impl UserInterface for ReaderScreen {
 
     fn set_tag_mask(&mut self, _mask: crate::model::TagMask) {}
 
+    fn set_history_capacity(&mut self, capacity: usize) {
+        self.history.set_capacity(capacity);
+    }
+
     fn set_status_line(&mut self, _line: usize, _info: String) -> Result<()> {
         Ok(())
     }
 
     fn set_top_line(&mut self, _info: Option<String>) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn set_top_row(
+        &mut self,
+        _selector: crate::ui::TopRowSelector,
+        _opts: crate::ui::TopRowOpts,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn reset_top_row(&mut self, _selector: crate::ui::TopRowSelector) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn add_top_row(&mut self, _opts: crate::ui::TopRowOpts) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn remove_top_row(&mut self, _selector: crate::ui::TopRowSelector) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -464,5 +488,18 @@ impl UserInterface for ReaderScreen {
     fn destroy(mut self: Box<Self>) -> Result<(Box<dyn Write>, super::history::History)> {
         self.reset()?;
         Ok((self.screen, self.history))
+    }
+
+    fn swap_history(&mut self, new: super::history::History) -> Result<super::history::History> {
+        self.scroll_data = ScrollData::new();
+        let old = std::mem::replace(&mut self.history, new);
+        self.setup()?;
+        Ok(old)
+    }
+
+    fn set_tab_indicator(&mut self, _tabs: Vec<crate::tabs::TabInfo>) -> Result<()> {
+        // Reader mode skips the tab indicator (it's a screen-reader-friendly
+        // single-stream view). The active tab still drives what's read.
+        Ok(())
     }
 }

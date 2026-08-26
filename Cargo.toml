@@ -24,12 +24,12 @@ audio = ["rodio"]
 [dependencies]
 libmudtelnet = "2.0.2"
 termion = "4"
-log = "0.4.31"
+log = "0.4.32"
 simple-logging = "2.0.2"
-chrono = "0.4.44"
+chrono = "0.4.45"
 signal-hook = "0.4.4"
-mlua =  { version = "0.11.6", features = ["lua54", "send", "vendored", "macros"] }
-regex = "1.12.3"
+mlua =  { version = "0.12.0", features = ["lua54", "send", "vendored", "macros"] }
+regex = "1.12.4"
 strip-ansi-escapes = "0.2.1"
 vte = "0.15.0"
 timer = "0.2.0"
@@ -60,7 +60,7 @@ encoding_rs = "0.8"
 unicode-width = "0.2"
 
 [dev-dependencies]
-mockall = "0.14.0"
+mockall = "0.15.0"
 mockall_double = "0.3.1"
 rustls-pemfile = "2.2"
 env_logger = "0.11.10"

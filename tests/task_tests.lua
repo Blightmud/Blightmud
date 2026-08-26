@@ -158,7 +158,7 @@ timer.add(0.5, 1, function()
 end)
 
 -- Wait for tasks to run and assert results
-timer.add(3, 1, function()
+timer.add(2.2, 1, function()
     -- make sure task ran and killed itself first
     local sleep_self_killed_ok, sleep_self_killed_err = pcall(function() self_killed_task:sleep(0) end)
     assert(sleep_self_killed_ok, "Sleeping dead task should be ignored")

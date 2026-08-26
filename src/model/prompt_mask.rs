@@ -1,4 +1,4 @@
-use mlua::{Integer as LuaInt, Lua, Result as LuaResult, String as LuaString, Table as LuaTable};
+use mlua::{Integer as LuaInt, Lua, LuaString, Result as LuaResult, Table as LuaTable};
 use std::collections::BTreeMap;
 use std::ops::{AddAssign, Deref, DerefMut};
 

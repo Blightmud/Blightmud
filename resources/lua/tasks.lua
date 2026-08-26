@@ -82,9 +82,9 @@ function Task:sleep(time)
     end
 
     if data.time < os.time() then
-        data = { time = os.time() + time }
+        data.time = os.time() + time
     else
-        data = { time = data.time + time }
+        data.time = data.time + time
     end
 end
 

@@ -120,13 +120,11 @@ local sleep_task = tasks.spawn(function()
     mud.output("sleep_task resumed")
     test_results.sleep_task_resumed = true
 end)
-test_results.sleep_task_slept = not test_results.sleep_task_resumed
 
 local spawn_later_task = tasks.spawn_later(1, function()
     mud.output("spawn_later_task started")
     test_results.spawn_later_ran = true
 end)
-test_results.spawn_later_waited = not test_results.sleep_task_resumed
 
 local self_killed_task = tasks.spawn(function()
     mud.output("self_killed_task started")
@@ -152,6 +150,13 @@ assert(idle_killed_ok, "Idle dead task should be ignored")
 assert_eq(idle_killed_err, nil)
 
 mud.output(#tasks.get_tasks())
+
+-- Timer at 0.5 seconds to check if slept/spawn_later tasks are still waiting
+timer.add(0.5, 1, function()
+    test_results.sleep_task_slept = not test_results.sleep_task_resumed
+    test_results.spawn_later_waited = not test_results.spawn_later_ran
+end)
+
 -- Wait for tasks to run and assert results
 timer.add(3, 1, function()
     -- make sure task ran and killed itself first
@@ -192,14 +197,14 @@ timer.add(3, 1, function()
     assert(test_results.idle_ran_after_normal, "idle task should run after normal task")
 
     -- Assert sleep task results
-    assert(test_results.sleep_task_slept, "main thread should have resumed before sleep task finished")
+    assert(test_results.sleep_task_slept, "sleep task should still be sleeping at 0.5 second mark")
     assert(test_results.sleep_task_resumed, "sleep task should have executed after sleep period")
 
     -- Assert spawn_later task results
     assert_eq(spawn_later_task.dead, true)
     assert_eq(spawn_later_task.success, true)
     assert_eq(spawn_later_task.error, nil)
-    assert(test_results.spawn_later_waited, "spawn_later task should not have been spawned immediately")
+    assert(test_results.spawn_later_waited, "spawn_later task should still be waiting at 0.5 second mark")
     assert(test_results.spawn_later_ran, "spawn_later task should have executed")
 
     -- Assert self-killed tasks calling sleep or idle

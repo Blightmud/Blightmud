@@ -1,4 +1,4 @@
-use mlua::{Result as LuaResult, String as LuaString, Table, UserData};
+use mlua::{LuaString, Result as LuaResult, Table, UserData};
 use std::ops::Not;
 
 use super::{

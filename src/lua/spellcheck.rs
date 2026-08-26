@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Result};
 use hunspell_rs::{CheckResult, Hunspell};
 use mlua::prelude::LuaError;
-use mlua::{AnyUserData, Result as LuaResult, String as LuaString, Table, UserData};
-use std::rc::Rc;
+use mlua::{AnyUserData, LuaString, Result as LuaResult, Table, UserData};
+use std::sync::{Arc, Mutex};
 
 pub const LUA_GLOBAL_NAME: &str = "spellcheck";
 
@@ -29,7 +29,8 @@ impl Spellchecker {
 
     pub fn check(&self, word: &str) -> Result<bool> {
         self.check_initialized()?;
-        match self.hunspell.as_ref().unwrap().check(word) {
+        let hunspell = self.hunspell.as_ref().unwrap().0.lock().unwrap();
+        match hunspell.check(word) {
             CheckResult::MissingInDictionary => Ok(false),
             _ => Ok(true),
         }
@@ -37,7 +38,8 @@ impl Spellchecker {
 
     pub fn suggest(&self, word: &str) -> Result<Vec<String>> {
         self.check_initialized()?;
-        Ok(self.hunspell.as_ref().unwrap().suggest(word))
+        let hunspell = self.hunspell.as_ref().unwrap().0.lock().unwrap();
+        Ok(hunspell.suggest(word))
     }
 }
 
@@ -79,20 +81,14 @@ impl UserData for Spellchecker {
 }
 
 #[derive(Clone)]
-struct HunspellSafe(Rc<Hunspell>);
+struct HunspellSafe(Arc<Mutex<Hunspell>>);
 
 unsafe impl Send for HunspellSafe {}
-
-impl std::ops::Deref for HunspellSafe {
-    type Target = Hunspell;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+unsafe impl Sync for HunspellSafe {}
 
 impl From<Hunspell> for HunspellSafe {
     fn from(hunspell: Hunspell) -> Self {
-        Self(Rc::new(hunspell))
+        Self(Arc::new(Mutex::new(hunspell)))
     }
 }
 

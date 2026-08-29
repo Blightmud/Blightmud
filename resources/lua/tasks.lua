@@ -1,6 +1,8 @@
 local mod = {}
 
 local tasks = {}
+-- used to prevent adding to tasks while iterating over it
+local pendingTasks = {}
 
 local currentTask = nil
 
@@ -52,19 +54,20 @@ function Task:start()
     if self.dead then
         error("Attempt to start dead task")
     end
-    tasks[self] = { time = 0 }
+    pendingTasks[self] = { time = 0 }
 end
 
 function Task:startLater(time)
     if self.dead then
         error("Attempt to start dead task")
     end
-    tasks[self] = { time = os.time() + time }
+    pendingTasks[self] = { time = os.time() + time }
 end
 
 function Task:kill()
     self.dead = true
     tasks[self] = nil
+    pendingTasks[self] = nil
 end
 
 function Task:send(value)
@@ -72,19 +75,24 @@ function Task:send(value)
 end
 
 function Task:sleep(time)
-    if tasks[self].idle then
+    local data = tasks[self] or pendingTasks[self]
+    if not data or data and data.idle then
+        -- not sure why we don't want to allow adding more of a delay to a task. would allow "run task after x seconds once nothing else is happening"
         return
     end
 
-    if tasks[self].time < os.time() then
-        tasks[self] = { time = os.time() + time }
+    if data.time < os.time() then
+        data.time = os.time() + time
     else
-        tasks[self] = { time = tasks[self].time + time }
+        data.time = data.time + time
     end
 end
 
 function Task:idle()
-    tasks[self].idle = true
+    local data = tasks[self] or pendingTasks[self]
+    if data then
+        data.idle = true
+    end
 end
 
 mod.spawn = Task.spawn
@@ -116,6 +124,10 @@ function mod.get_tasks()
 
     local idx = 1
     for task, _ in pairs(tasks) do
+        ret[idx] = task
+        idx = idx + 1
+    end
+    for task, _ in pairs(pendingTasks) do
         ret[idx] = task
         idx = idx + 1
     end
@@ -163,12 +175,14 @@ end
 
 timer.on_tick(function(millis)
     local somethingRan = false
+
     for task, timespec in pairs(tasks) do
         if timespec.time < os.time() and not timespec.idle then
             somethingRan = true
             run_task(task)
         end
     end
+
     if not somethingRan then
         for task, timespec in pairs(tasks) do
             if timespec.idle then
@@ -176,6 +190,11 @@ timer.on_tick(function(millis)
                 timespec.idle = nil
             end
         end
+    end
+
+    for task, timespec in pairs(pendingTasks) do
+        tasks[task] = timespec
+        pendingTasks[task] = nil
     end
 end)
 

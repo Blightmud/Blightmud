@@ -141,26 +141,23 @@ pub fn wrap_line(line: &str, width: usize, padding: usize) -> Vec<&str> {
     lines
 }
 
-/// Hard-wrap a single line to `width` display columns, **losslessly**.
+/// Hard-wrap a single line to `width` display columns, losslessly.
 ///
-/// This is deliberately a second wrapper rather than an option on
-/// [`wrap_line`]. `wrap_line` is tuned for MUD *output* and is lossy by
-/// design: it breaks on word boundaries and drops the boundary space, and it
-/// discards a trailing segment that is entirely whitespace. That is right for
-/// prose and wrong for an input area, where the wrapped rows have to partition
-/// the buffer exactly — a dropped space shifts every character after it, so
-/// the cursor would render a column away from the text it edits.
+/// This is a second wrapper rather than an option on [`wrap_line`], which is
+/// tuned for MUD output and lossy by design: it breaks on word boundaries and
+/// drops the boundary space, and discards a trailing whitespace-only segment.
+/// An input area needs the wrapped rows to partition the buffer exactly, or
+/// the cursor renders a column away from the text it edits.
 ///
 /// The returned slices concatenate back to `line` byte for byte. Breaks only
-/// ever land on printable-character boundaries, so an escape sequence is never
+/// land on printable-character boundaries, so an escape sequence is never
 /// split; escapes are carried into whatever row they start in and consume no
-/// columns. A consequence, accepted rather than fixed: an SGR run that spans a
-/// break is not re-emitted on the continuation row, so styling stops there.
+/// columns. An SGR run that spans a break is not re-emitted on the
+/// continuation row, so styling stops there.
 ///
-/// `line` must not contain `'\n'`. The vte parser behind
-/// `printable_char_indices` routes `'\n'` to `execute`, not `print`, so it is
-/// invisible here and two logical rows would silently be measured as one.
-/// Split on `'\n'` first, then call this on each segment.
+/// `line` must not contain `'\n'`: the vte parser behind
+/// `printable_char_indices` routes `'\n'` to `execute`, not `print`, so two
+/// logical rows would silently measure as one. Split on `'\n'` first.
 pub fn wrap_line_hard(line: &str, width: usize) -> Vec<&str> {
     debug_assert!(
         !line.contains('\n'),
@@ -305,9 +302,7 @@ mod tests {
         assert_eq!(lines.len(), 2);
     }
 
-    /// The reason a second wrapper exists at all: `wrap_line` is lossy, and an
-    /// input area cannot be. Both properties are asserted side by side so the
-    /// justification cannot quietly stop being true.
+    /// The rows must concatenate back to the input byte for byte.
     #[test]
     fn wrap_line_hard_preserves_all_characters() {
         for line in [
@@ -325,9 +320,8 @@ mod tests {
             }
         }
 
-        // And the contrast: where `wrap_line` takes its word-break path it
-        // drops the boundary space, so it fails the same round-trip. That is
-        // correct for MUD output, and is why it is left alone.
+        // `wrap_line` drops the word-break space, so it fails the same
+        // round-trip.
         let line = "aaa bbb ccc";
         assert_eq!(wrap_line(line, 6, 0), vec!["aaa", "bbb", "ccc"]);
         assert_eq!(wrap_line(line, 6, 0).concat(), "aaabbbccc");
@@ -348,8 +342,8 @@ mod tests {
         }
     }
 
-    /// A double-width glyph in a one-column terminal fits nowhere. The row has
-    /// to overflow rather than the wrap loop spinning forever.
+    /// A double-width glyph in a one-column terminal overflows its row rather
+    /// than spinning the wrap loop.
     #[test]
     fn wrap_line_hard_terminates_on_glyph_wider_than_terminal() {
         let rows = wrap_line_hard("中文", 1);

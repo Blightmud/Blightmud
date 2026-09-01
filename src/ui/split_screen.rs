@@ -332,20 +332,11 @@ impl UserInterface for SplitScreen {
             return;
         }
 
-        // Single-row rendering is kept exactly as it was, horizontal `>`
-        // scrolling included, rather than being folded into the row path. The
-        // two solve different problems — one scrolls a viewport sideways, the
-        // other wraps — and this is the path every user is on today.
+        // Single-row path: scrolls horizontally behind a '>' instead of
+        // wrapping.
         self.cursor_prompt_row = 0;
 
-        // Calculate display width up to cursor position.
-        //
-        // `pos` is a character index, so it is converted by counting
-        // characters. It used to be handed to `byte_index_at_display_width`,
-        // which reads its argument as a column count — the two agree only
-        // while every character is one column wide, so a CJK glyph anywhere
-        // left of the cursor dragged the cursor backwards by one column per
-        // glyph.
+        // `pos` is a character index, not a display column.
         let byte_idx_at_cursor = input
             .char_indices()
             .nth(pos)
@@ -384,11 +375,6 @@ impl UserInterface for SplitScreen {
         self.cursor_prompt_pos = cursor_display_pos as u16 + cursor_offset;
 
         let wrap_indicator = if wrapped { ">" } else { "" };
-        // The `cursor::Save`/`Restore` pair that used to bracket this write is
-        // gone. DECSC provides one save slot per screen buffer, so saving here
-        // destroyed the position `setup()` deliberately stored — and the
-        // restore was unobservable anyway, because `goto_prompt()` overwrites
-        // the cursor position on the very next byte.
         write!(
             self.screen,
             "{}{}{}{}{}{}{}{}",
@@ -769,8 +755,6 @@ impl SplitScreen {
 
         // `setup()` recomputes this from the live top-area row count before
         // anything is drawn; the initial guess only has to be self-consistent.
-        // Deriving it here from the same function `setup()` uses is what keeps
-        // the two from drifting apart.
         let top_rows = TopArea::new_default().visible_row_count();
         let status_area_height = 1;
         let layout = ScreenLayout::compute(height, top_rows, status_area_height, INPUT_HEIGHT_MIN)
@@ -839,9 +823,7 @@ impl SplitScreen {
     }
 
     /// The height the input area wants for `row_count` rows of content.
-    ///
-    /// With auto-expand off this is just the configured height, which is why
-    /// wiring it up now changes nothing.
+    /// With auto-expand off this is just the configured height.
     fn effective_input_height(&self, row_count: usize) -> u16 {
         input_layout::desired_height(row_count, self.input_height, self.input_auto_expand)
     }
@@ -955,12 +937,8 @@ impl SplitScreen {
             self.scroll_data.split = true;
             let scroll_range = self.scroll_range();
 
-            // The divider sits directly below the frozen scrollback rows; the
-            // live region starts on the row after it. Spelling that as a
-            // literal `3` was only correct while `output_start_line` was
-            // pinned at 2 — it moves as soon as a top row is hidden or the tab
-            // indicator appears, putting the divider *inside* the scroll
-            // region, where the next MUD line scrolls it away.
+            // The divider sits directly below the frozen scrollback rows;
+            // the live region starts on the row after it.
             let divider_line = scroll_range + self.output_start_line;
             write!(self.screen, "{ResetScrollRegion}")?;
             write!(
@@ -1027,11 +1005,7 @@ impl SplitScreen {
     ///
     /// The split reserves `SCROLL_LIVE_BUFFER_SIZE` rows at the bottom of the
     /// output region for live output, so it is only possible when the output
-    /// region has more rows than that. The old guard tested the *terminal*
-    /// height instead, which says nothing about how many rows the output
-    /// region was actually left with once the top, status and input areas took
-    /// their share — so the subtraction below wrapped to ~65530 and was handed
-    /// straight to DECSTBM.
+    /// region has more rows than that.
     fn scroll_range(&self) -> u16 {
         if self.scroll_data.allow_split && self.output_range() > SCROLL_LIVE_BUFFER_SIZE {
             self.output_range() - SCROLL_LIVE_BUFFER_SIZE
@@ -1231,9 +1205,7 @@ mod screen_test {
     // ---- Input area rendering -------------------------------------------
     //
     // `SplitScreen::new` needs a real terminal, so these build the struct
-    // directly against a capturing writer. That is the only way to get the
-    // render path itself under test rather than testing a reimplementation of
-    // it beside the code that ships.
+    // directly against a capturing writer.
 
     #[derive(Clone)]
     struct SharedBuf(Arc<Mutex<Vec<u8>>>);
@@ -1287,8 +1259,7 @@ mod screen_test {
         String::from_utf8(sink.lock().unwrap().clone()).unwrap()
     }
 
-    /// The default configuration must not take the row path at all — this is
-    /// the guard that the refactor left every existing user where they were.
+    /// The default configuration must not take the row path at all.
     #[test]
     fn single_row_input_keeps_the_horizontal_scroll_path() {
         let (mut screen, sink) = test_screen(20, 1);

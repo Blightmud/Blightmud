@@ -27,10 +27,6 @@ impl PromptMask {
                 return masked_buf.iter().collect();
             }
             masked_buf.splice(adjusted_idx..adjusted_idx, mask.chars());
-            // `masked_buf` is a `Vec<char>`, so the splice grew it by the
-            // mask's *character* count. `mask.len()` is its byte length, which
-            // only agrees for ASCII masks — any multi-byte mask coming from
-            // Lua pushed every subsequent index too far right.
             offset += mask.chars().count();
         }
 
@@ -40,20 +36,14 @@ impl PromptMask {
     /// Map a character index in the unmasked buffer to the equivalent index in
     /// the string [`Self::mask_buffer`] produces.
     ///
-    /// Without this the cursor and the text it points at come from different
-    /// coordinate spaces. A mask is not required to be an escape sequence —
-    /// Lua may supply any string, and printable masks are the documented use
-    /// (`"this is *important*, ok"`) — so the shift is real, not notional.
-    ///
-    /// `buf_len` is the unmasked buffer's character count, and exists so this
-    /// reproduces `mask_buffer`'s behaviour exactly: an out-of-range index
-    /// makes it stop applying masks altogether, so this must stop shifting at
-    /// the same point or the two disagree.
+    /// `buf_len` is the unmasked buffer's character count. `mask_buffer` stops
+    /// applying masks at the first out-of-range index, so the mapping must stop
+    /// shifting at the same point.
     pub fn masked_index(&self, unmasked_idx: usize, buf_len: usize) -> usize {
         let mut offset = 0usize;
         for (idx, mask) in self.iter() {
-            // The same cast `mask_buffer` performs, wrap included: a negative
-            // index becomes enormous and trips the bounds check there too.
+            // Same cast as `mask_buffer`: a negative index wraps and trips the
+            // bounds check.
             let idx = *idx as usize;
             if idx > buf_len {
                 break;
@@ -61,7 +51,7 @@ impl PromptMask {
             if idx > unmasked_idx {
                 break;
             }
-            // A mask anchored exactly at the cursor is spliced in *before* it,
+            // A mask anchored exactly at the cursor is spliced in before it,
             // so it pushes the cursor right.
             offset += mask.chars().count();
         }
@@ -189,9 +179,8 @@ mod test_prompt_mask {
         assert_eq!(res, "this is *important, ok");
     }
 
-    /// `offset` used to advance by the mask's byte length while the buffer it
-    /// indexes is a `Vec<char>`. A multi-byte mask therefore over-advanced,
-    /// and every mask after the first landed too far right.
+    /// The buffer being spliced is a `Vec<char>`, so the offset must advance
+    /// by the mask's character count, not its byte length.
     #[test]
     fn mask_with_multibyte_content_keeps_subsequent_indices_aligned() {
         let buf: Vec<char> = "this is important, ok".chars().collect();
@@ -215,24 +204,23 @@ mod test_prompt_mask {
     }
 
     /// The cursor index must be translated into the same coordinate space as
-    /// the string it indexes. Asserted against `mask_buffer` rather than
-    /// hand-written numbers, so the two cannot drift.
+    /// the string it indexes.
     #[test]
     fn masked_index_agrees_with_mask_buffer() {
         let buf: Vec<char> = "this is important, ok".chars().collect();
 
         for mask in [
-            // Printable masks, which shift real columns.
+            // printable
             PromptMask::from(BTreeMap::from([
                 (8, "*".to_string()),
                 (17, "*".to_string()),
             ])),
-            // Escape masks, which shift indices but no columns.
+            // escape sequences (zero columns)
             PromptMask::from(BTreeMap::from([
                 (0, "\x1b[44m".to_string()),
                 (21, "\x1b[0m".to_string()),
             ])),
-            // Multi-byte, multi-char masks.
+            // multi-byte, multi-char
             PromptMask::from(BTreeMap::from([(4, "»«".to_string())])),
             PromptMask::new(),
         ] {
@@ -244,10 +232,6 @@ mod test_prompt_mask {
                     mapped <= masked.len(),
                     "index {mapped} out of range for {masked:?}"
                 );
-                // The cursor must sit immediately before the same character it
-                // sat before in the unmasked buffer. A mask anchored exactly
-                // at the cursor belongs to its left — which is what makes the
-                // boundary `<=` rather than `<`.
                 if pos < buf.len() {
                     assert_eq!(
                         masked[mapped],
@@ -259,13 +243,10 @@ mod test_prompt_mask {
                 }
             }
 
-            // The end of the buffer maps to the end of the masked buffer.
             assert_eq!(mask.masked_index(buf.len(), buf.len()), masked.len());
         }
     }
 
-    /// With no mask the mapping is the identity, which is what keeps the
-    /// ordinary no-mask render path unchanged.
     #[test]
     fn masked_index_is_identity_without_a_mask() {
         let mask = PromptMask::new();
@@ -295,10 +276,8 @@ mod test_prompt_mask {
         assert_eq!(mask.masked_index(buf.len(), buf.len()), masked.len());
     }
 
-    /// Regression pin for PR #742: an out-of-range index must not panic. Note
-    /// the behaviour it pins is that the remaining masks are *silently
-    /// dropped* — the bounds check returns early rather than skipping the one
-    /// bad entry.
+    /// Regression pin for #742: an out-of-range index must not panic — the
+    /// remaining masks are silently dropped.
     #[test]
     fn mask_past_end_drops_remainder_without_panicking() {
         let buf: Vec<char> = "abc".chars().collect();
@@ -308,8 +287,7 @@ mod test_prompt_mask {
             (2, "#".to_string()),
         ]));
 
-        // BTreeMap iterates in key order, so 1 and 2 are applied and the
-        // out-of-range 99 ends the loop with nothing further applied.
+        // BTreeMap iterates in key order: 1 and 2 apply, 99 ends the loop.
         assert_eq!(mask.mask_buffer(&buf), "a*b#c");
     }
 }

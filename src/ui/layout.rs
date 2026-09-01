@@ -138,9 +138,6 @@ impl ScreenLayout {
     }
 
     /// Number of rows in the output region.
-    ///
-    /// `SplitScreen::output_range` is the production spelling of this; it reads
-    /// the boundaries this type produced, so the two cannot disagree.
     #[cfg(test)]
     pub fn output_rows(&self) -> u16 {
         self.output_line - self.output_start_line + 1
@@ -151,14 +148,13 @@ impl ScreenLayout {
 mod layout_test {
     use super::*;
 
-    /// The arithmetic this module replaces, as it stood in `setup()`:
-    ///   output_line     = height - status - 2
-    ///   mud_prompt_line = height - status - 1
-    ///   prompt_line     = height
-    /// with `output_start_line = top_rows + 1`. A single-row input area must
-    /// still produce exactly those numbers.
+    /// A single-row input area must produce exactly:
+    ///   output_line      = height - status - 2
+    ///   mud_prompt_line  = height - status - 1
+    ///   input_start_line = height
+    /// with `output_start_line = top_rows + 1`.
     #[test]
-    fn default_layout_matches_legacy_arithmetic() {
+    fn single_row_input_layout_boundaries() {
         for height in [24_u16, 40, 50, 80] {
             for top_rows in [1_u16, 2] {
                 for status in [0_u16, 1, 3, 5] {
@@ -173,19 +169,17 @@ mod layout_test {
         }
     }
 
-    /// `height - status - 2` underflows once the status area and top rows
-    /// consume the terminal. Previously a debug-build panic.
+    /// A terminal too short for even the minimal layout is rejected.
     #[test]
     fn short_terminal_does_not_underflow() {
-        // Every one of these is a raw-subtraction panic in the old arithmetic.
         assert!(ScreenLayout::compute(3, 1, 1, 1).is_none());
         assert!(ScreenLayout::compute(2, 1, 0, 1).is_none());
         assert!(ScreenLayout::compute(1, 1, 0, 1).is_none());
         assert!(ScreenLayout::compute(0, 0, 0, 1).is_none());
     }
 
-    /// `status_height` clamps to 5, so a 6-row terminal with a full status area
-    /// drove `self.height - height - PROMPT_HEIGHT` negative.
+    /// A 6-row terminal with a full status area must still leave a valid
+    /// output region.
     #[test]
     fn status_height_five_on_six_row_terminal_leaves_output() {
         let layout = ScreenLayout::compute(6, 1, 5, 1).unwrap();

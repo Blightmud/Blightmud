@@ -112,9 +112,8 @@ impl CommandBuffer {
     /// The cursor position expressed in the coordinate space of
     /// [`Self::get_masked_buffer`].
     ///
-    /// `get_pos` indexes the raw buffer, so pairing it with the masked buffer
-    /// hands the renderer two different coordinate spaces — the bug class that
-    /// produced #742. Use this whenever the masked buffer is what gets drawn.
+    /// `get_pos` indexes the raw buffer; use this whenever the masked buffer
+    /// is what gets drawn.
     pub fn get_masked_pos(&self) -> usize {
         self.prompt_mask
             .masked_index(self.cursor_pos, self.buffer.len())

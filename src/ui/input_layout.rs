@@ -1,11 +1,9 @@
 //! Text arithmetic for the user input area: how a buffer divides into rows,
 //! where the cursor lands, and how tall the area wants to be.
 //!
-//! This is separated from [`super::split_screen`] for the same reason
-//! [`super::layout`] is: `SplitScreen::new` requires a real terminal, so
-//! anything computed inside it cannot be exercised in CI. Every piece of
-//! arithmetic lives here, where it is a pure function; the renderer stays a
-//! blitter.
+//! `SplitScreen::new` requires a real terminal, so anything computed inside
+//! it cannot be exercised in CI; the arithmetic lives here as pure functions
+//! instead.
 //!
 //! Two coordinate spaces meet here and must not be confused:
 //!
@@ -27,10 +25,9 @@ use crate::tools::printable_chars::PrintableCharsIterator;
 /// range — they are row separators, not content — so the ranges do not cover
 /// the whole string, but every non-newline byte belongs to exactly one.
 ///
-/// Splitting on `'\n'` before wrapping is required, not stylistic:
-/// `PrintableChars` drives a vte parser whose `Performer` implements only
-/// `print`, so `'\n'` is a C0 control that is silently dropped. Measuring a
-/// buffer containing one would silently fuse two logical rows into one.
+/// The input must be split on `'\n'` before wrapping: `PrintableChars`
+/// drives a vte parser whose `Performer` implements only `print`, so `'\n'`
+/// is silently dropped and two logical rows would measure as one.
 pub fn rows(input: &str, width: u16) -> Vec<Range<usize>> {
     let width = width.max(1) as usize;
     let mut out: Vec<Range<usize>> = Vec::new();
@@ -45,12 +42,9 @@ pub fn rows(input: &str, width: u16) -> Vec<Range<usize>> {
             out.push(off..off + row.len());
             off += row.len();
 
-            // A logical row whose width is a nonzero exact multiple of the
-            // terminal width needs a trailing empty visual row. Without it a
-            // cursor sitting just past the last character addresses a row that
-            // does not exist — and this is precisely where a terminal puts it,
-            // since the cursor wraps to the next line rather than resting one
-            // column off the right edge.
+            // A logical row exactly filling the width needs a trailing empty
+            // visual row: the cursor just past the last character wraps to the
+            // next line rather than resting one column off the right edge.
             if i == last && !row.is_empty() && row.display_width() >= width {
                 out.push(off..off);
             }
@@ -65,11 +59,9 @@ pub fn rows(input: &str, width: u16) -> Vec<Range<usize>> {
 /// Locate the flat **char** index `pos` as a `(row, column)` pair.
 ///
 /// This is a lookup into [`rows`]'s partition rather than an independent
-/// `cumulative_width / width` calculation, and that matters:
-/// `byte_index_at_display_width` pushes a straddling double-width character
-/// forward onto the next row and leaves a hole in the one it left. A parallel
-/// reconstruction disagrees at every such hole by a full row, which renders
-/// the cursor a line away from the character it is editing.
+/// `cumulative_width / width` calculation: `byte_index_at_display_width`
+/// pushes a straddling double-width character onto the next row, and a
+/// parallel reconstruction disagrees by a full row at every such hole.
 pub fn cursor_row_col(input: &str, pos: usize, width: u16) -> (u16, u16) {
     let rows = rows(input, width);
     let byte_off = char_to_byte(input, pos);
@@ -105,9 +97,9 @@ fn char_to_byte(input: &str, pos: usize) -> usize {
 
 /// How many rows the input area wants, given how many the content occupies.
 ///
-/// `configured` is a *minimum*, not a fixed size: with auto-expand off it is
+/// `configured` is a minimum, not a fixed size: with auto-expand off it is
 /// the height, and with it on the area grows past it as content requires and
-/// shrinks back. One number, no mode enum.
+/// shrinks back.
 pub fn desired_height(row_count: usize, configured: u16, auto_expand: bool) -> u16 {
     let configured = configured.clamp(INPUT_HEIGHT_MIN, INPUT_HEIGHT_MAX);
     if auto_expand {
@@ -168,8 +160,8 @@ mod input_layout_test {
         assert_eq!(row_strs("abcdefgh", 3), vec!["abc", "def", "gh"]);
     }
 
-    /// The guard the plan calls out: at an exact multiple of the width there
-    /// must be a row for the cursor to wrap onto.
+    /// At an exact multiple of the width there must be a row for the cursor
+    /// to wrap onto.
     #[test]
     fn exact_multiple_of_width_gets_a_trailing_empty_row() {
         assert_eq!(row_strs("abc", 3), vec!["abc", ""]);
@@ -186,10 +178,8 @@ mod input_layout_test {
         assert_eq!(row_strs("中文中文", 5), vec!["中文", "中文"]);
     }
 
-    /// A glyph wider than the whole area must not spin the wrap loop. Each
-    /// glyph overflows its row by a column, and the trailing empty row still
-    /// appears — the cursor cannot rest in the overflowed column, so it needs
-    /// somewhere to go.
+    /// A glyph wider than the whole area overflows its row rather than
+    /// spinning the wrap loop.
     #[test]
     fn glyph_wider_than_area_terminates() {
         assert_eq!(row_strs("中文", 1), vec!["中", "文", ""]);
@@ -249,10 +239,8 @@ mod input_layout_test {
         }
     }
 
-    /// `cursor_row_col` is asserted against `rows()` rather than hand-written
-    /// expectations, so the two cannot drift apart. Every cursor position in
-    /// every buffer at every width must land on a row that exists, at a column
-    /// that row actually reaches.
+    /// Every cursor position in every buffer at every width must land on a
+    /// row that exists, at a column that row actually reaches.
     #[test]
     fn cursor_is_always_inside_a_real_row() {
         for input in [
@@ -303,8 +291,8 @@ mod input_layout_test {
 
     #[test]
     fn cursor_wraps_onto_the_trailing_empty_row() {
-        // "abc" exactly fills a 3-column area; the cursor after it belongs on
-        // the next row, which is why that row is generated at all.
+        // "abc" exactly fills a 3-column area; the cursor after it belongs
+        // on the next row.
         assert_eq!(cursor_row_col("abc", 3, 3), (1, 0));
         assert_eq!(cursor_row_col("abc", 2, 3), (0, 2));
     }

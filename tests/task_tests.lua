@@ -3,8 +3,8 @@ require("tests.common")
 script.on_reset(function()
     blight.quit()
 end)
-local sleep_period = 0.4 -- we want this to be multiple ticks
-local result_wait = sleep_period + 0.25 -- 1 tick to start sleep_task + sleep_period + 1 tick to resume + a bit more so we are in the next tick
+local sleep_period = 0.5 -- we want this to be multiple ticks
+local result_wait = sleep_period + 0.3 -- 1 tick to start sleep_task + sleep_period + 1 tick to resume + a bit more so we are in the next tick
 
 assert(tasks.is_task(tasks.Task.new(function() end)), "Task.new object should be a task")
 assert(not tasks.is_task({}), "Plain table should not be a task")
@@ -153,8 +153,8 @@ assert_eq(idle_killed_err, nil)
 
 mud.output(#tasks.get_tasks())
 
--- Timer at 1 tick before sleep_period to check if slept/spawn_later tasks are still waiting
-timer.add(sleep_period - 0.1, 1, function()
+-- Timer at 2 ticks before sleep_period to check if slept/spawn_later tasks are still waiting
+timer.add(sleep_period - 0.2, 1, function()
     test_results.sleep_task_slept = not test_results.sleep_task_resumed
     test_results.spawn_later_waited = not test_results.spawn_later_ran
 end)

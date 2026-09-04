@@ -5,6 +5,7 @@ pub use self::{
     headless_screen::HeadlessScreen,
     help_handler::HelpHandler,
     history::History,
+    layout::{INPUT_HEIGHT_MAX, INPUT_HEIGHT_MIN},
     reader_screen::ReaderScreen,
     split_screen::SplitScreen,
     top_area::{TopPrefix, TopPrefixStyle, TopRowBody, TopRowOpts, TopRowSelector},
@@ -20,6 +21,8 @@ mod command;
 mod headless_screen;
 mod help_handler;
 mod history;
+mod input_layout;
+mod layout;
 mod reader_screen;
 mod scroll_data;
 mod split_screen;

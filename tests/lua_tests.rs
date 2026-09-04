@@ -28,6 +28,11 @@ fn test_tabs() {
 }
 
 #[test]
+fn test_input_area() {
+    test_script("tests/input_area_tests.lua");
+}
+
+#[test]
 fn test_exec() {
     test_script("tests/exec_tests.lua");
 }

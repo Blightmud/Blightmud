@@ -242,14 +242,15 @@ function BlightLib.unbind(key) end
 ---Sends a UI command string.
 ---
 ---Navigation: `"step_left"`, `"step_right"`, `"step_to_start"`, `"step_to_end"`,
----`"step_word_left"`, `"step_word_right"`
+---`"step_word_left"`, `"step_word_right"`, `"step_up"`, `"step_down"`
 ---
 ---Deletion: `"delete"`, `"delete_right"`, `"delete_word_left"`, `"delete_word_right"`,
 ---`"delete_to_end"`, `"delete_from_start"`
 ---
 ---Scrolling: `"scroll_up"`, `"scroll_down"`, `"scroll_top"`, `"scroll_bottom"`
 ---
----Other: `"complete"` (tab-completion)
+---Other: `"complete"` (tab-completion), `"insert_newline"` (insert a row
+---break in the input area)
 ---@param cmd string
 function BlightLib.ui(cmd) end
 
@@ -269,6 +270,16 @@ function BlightLib.is_reader_mode() end
 ---@param height? integer  Clamped to 0–5.
 ---@return integer
 function BlightLib.status_height(height) end
+
+---Gets or sets the height, in rows, of the user input area.
+---
+---Returns the height the screen actually has, which is not always what was
+---requested: a terminal too short to honour it gets fewer rows, and reader
+---mode is always 1. With the `input_auto_expand` setting on this is a minimum
+---rather than a fixed height.
+---@param height? integer  Clamped to 1-10.
+---@return integer
+function BlightLib.input_height(height) end
 
 ---Sets the content of a status bar line.
 ---Index is 0-based; out-of-range values default to the last/first line.
@@ -695,6 +706,15 @@ function PromptLib.get_cursor_pos() end
 ---Sets the cursor position in the prompt (1-based).
 ---@param pos integer
 function PromptLib.set_cursor_pos(pos) end
+
+---Returns the row the cursor is on within the input area (1-based).
+---Rows are separated by newlines in the buffer, not by visual wrapping.
+---@return integer
+function PromptLib.cursor_row() end
+
+---Returns the number of newline-separated rows in the input buffer (minimum 1).
+---@return integer
+function PromptLib.row_count() end
 
 ---Registers a callback invoked on every prompt input change.
 ---@param callback fun()
@@ -1689,3 +1709,10 @@ BG_BMAGENTA = "\x1b[105m"
 BG_BCYAN = "\x1b[106m"
 ---@type string
 BG_BWHITE = "\x1b[107m"
+
+---Replaces the set of keys bound to inserting a row break in the input area.
+---
+---`Enter` always submits and is unaffected. Pass an empty table to disable row
+---insertion entirely.
+---@param keys string[]
+function set_newline_keys(keys) end

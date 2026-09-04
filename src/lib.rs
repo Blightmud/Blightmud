@@ -27,8 +27,8 @@ mod ui;
 use crate::event::{spawn_quit_confirm_timeout_thread, Event, QuitMethod};
 use crate::io::{FSMonitor, SaveData};
 use crate::model::{
-    Servers, ECHO_INPUT, HIDE_TOPBAR, LAST_COMMAND, LOG_TIMESTAMPS, READER_MODE, SCROLL_SPLIT,
-    TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE, TAB_INDICATOR_VISIBLE,
+    Servers, ECHO_INPUT, HIDE_TOPBAR, INPUT_AUTO_EXPAND, LAST_COMMAND, LOG_TIMESTAMPS, READER_MODE,
+    SCROLL_SPLIT, TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE, TAB_INDICATOR_VISIBLE,
 };
 use crate::session::{Session, SessionBuilder};
 use crate::timer::{spawn_timer_thread, TimerEvent};
@@ -417,13 +417,22 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     if let Ok(mut lua) = session.lua_script.lock() {
                         lua.set_reader_mode(value);
                     }
+                    // The screen is replaced wholesale here, so a configured
+                    // input height has to be carried across or it is silently
+                    // lost on every reader-mode toggle.
+                    let input_height = screen.input_height();
                     screen = Box::new(UiWrapper::new_from(screen, &session, value)?);
+                    screen.set_input_height(input_height)?;
+                    if let Ok(mut lua) = session.lua_script.lock() {
+                        lua.set_input_height(screen.input_height());
+                    }
                 }
                 HIDE_TOPBAR
                 | SCROLL_SPLIT
                 | TAB_INDICATOR_VISIBLE
                 | TAB_INDICATOR_BRAND
-                | TAB_INDICATOR_INLINE => {
+                | TAB_INDICATOR_INLINE
+                | INPUT_AUTO_EXPAND => {
                     screen.setup()?;
                 }
                 ECHO_INPUT => session.echo_input.store(value, Ordering::Relaxed),
@@ -510,7 +519,23 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
             | Event::FindBackward(_) => {
                 event_handler.handle_scroll_events(event, &mut screen)?;
             }
-            Event::StatusAreaHeight(height) => screen.set_status_area_height(height)?,
+            Event::StatusAreaHeight(height) => {
+                screen.set_status_area_height(height)?;
+                if let Ok(mut script) = session.lua_script.lock() {
+                    // Resizing a region changes the writable area the MUD is
+                    // told about, but the dimension listeners only fired on
+                    // Redraw, so NAWS never re-reported. Pre-existing for the
+                    // status area; fixed here for both.
+                    script.set_dimensions((screen.width(), screen.height()));
+                }
+            }
+            Event::InputHeight(height) => {
+                screen.set_input_height(height)?;
+                if let Ok(mut script) = session.lua_script.lock() {
+                    script.set_input_height(screen.input_height());
+                    script.set_dimensions((screen.width(), screen.height()));
+                }
+            }
             Event::ShowTags(show) => screen.set_show_tags(show)?,
             Event::SetTagMask(mask) => screen.set_tag_mask(mask),
             Event::SetHistoryCapacity(capacity) => screen.set_history_capacity(capacity),
@@ -620,7 +645,11 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     script.set_dimensions((screen.width(), screen.height()));
                 }
                 let prompt_input = session.prompt_input.lock().unwrap();
-                screen.print_prompt_input(&prompt_input, prompt_input.len());
+                // A character index, not a byte length: `.len()` put the
+                // cursor past the end of any non-ASCII buffer, which a
+                // wrapped multi-row input would render as a wrong row.
+                let pos = prompt_input.chars().count();
+                screen.print_prompt_input(&prompt_input, pos);
             }
             Event::Quit(method) => {
                 if Settings::load().get(CONFIRM_QUIT)?

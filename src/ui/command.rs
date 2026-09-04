@@ -109,6 +109,16 @@ impl CommandBuffer {
         self.cursor_pos
     }
 
+    /// The cursor position expressed in the coordinate space of
+    /// [`Self::get_masked_buffer`].
+    ///
+    /// `get_pos` indexes the raw buffer; use this whenever the masked buffer
+    /// is what gets drawn.
+    pub fn get_masked_pos(&self) -> usize {
+        self.prompt_mask
+            .masked_index(self.cursor_pos, self.buffer.len())
+    }
+
     fn submit(&mut self) -> String {
         // If we have no buffer then swap in the last buffer
         if self.last_command_enabled && self.buffer.is_empty() {

@@ -15,7 +15,7 @@
 
           runtimeDeps = with pkgs;
             [ openssl ]
-            ++ lib.optionals stdenv.isLinux [ alsa-lib ];
+            ++ lib.optionals stdenv.hostPlatform.isLinux [ alsa-lib ];
           featureDeps = {
             text-to-speech = with pkgs; [ speechd ];
           };

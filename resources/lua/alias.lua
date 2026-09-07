@@ -56,9 +56,9 @@ function Alias:check_line(line)
     local matches = self.regex:match(str)
     if matches then
         line:matched(true)
-        local startTime = os.time()
+        local startTime = core.time() / 1000
         debug.sethook(function()
-            if os.time() > startTime + 2 then
+            if core.time() / 1000 > startTime + 2 then
                 debug.sethook()
                 error("Alias callback has been running for +2 seconds. Aborting", 2)
             end

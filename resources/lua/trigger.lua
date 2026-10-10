@@ -79,9 +79,9 @@ function Trigger:check_line(line)
             self.count = self.count - 1
         end
 
-        local startTime = os.time()
+        local startTime = core.time() / 1000
         debug.sethook(function()
-            if os.time() > startTime + 2 then
+            if core.time() / 1000 > startTime + 2 then
                 debug.sethook()
                 error("Trigger callback has been running for +2 seconds. Aborting", 2)
             end

@@ -61,7 +61,7 @@ function Task:startLater(time)
     if self.dead then
         error("Attempt to start dead task")
     end
-    pendingTasks[self] = { time = os.time() + time }
+    pendingTasks[self] = { time = (core.time() / 1000) + time }
 end
 
 function Task:kill()
@@ -81,8 +81,8 @@ function Task:sleep(time)
         return
     end
 
-    if data.time < os.time() then
-        data.time = os.time() + time
+    if data.time < core.time() / 1000 then
+        data.time = core.time() / 1000 + time
     else
         data.time = data.time + time
     end
@@ -141,9 +141,9 @@ end
 
 local function run_task(task)
     currentTask = task
-    local startTime = os.time()
+    local startTime = core.time() / 1000
     debug.sethook(task.coro, function()
-        if os.time() > startTime + 2 then
+        if core.time() / 1000 > startTime + 2 then
             debug.sethook()
             error("Task has been running for +2 seconds without yielding. Aborting", 2)
         end
@@ -177,7 +177,7 @@ timer.on_tick(function(millis)
     local somethingRan = false
 
     for task, timespec in pairs(tasks) do
-        if timespec.time < os.time() and not timespec.idle then
+        if timespec.time < core.time() / 1000 and not timespec.idle then
             somethingRan = true
             run_task(task)
         end

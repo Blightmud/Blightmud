@@ -149,9 +149,19 @@ impl TTSController {
         }
     }
 
-    pub fn speak_input(&self, line: &str) {
+    /// Announce a line the user submitted.
+    ///
+    /// `interrupt` exists because a multi-row submit sends one line per row in
+    /// a tight loop. `flush()` is `queue.flush(); tts.stop()`, so flushing on
+    /// every row would enqueue and immediately cancel all but the last — a
+    /// blind user would hear only the final row of what they sent, which
+    /// inverts the compose area's whole benefit into a correctness hazard.
+    /// Only the first row of a batch interrupts; the rest queue behind it.
+    pub fn speak_input(&self, line: &str, interrupt: bool) {
         if self.enabled {
-            self.flush();
+            if interrupt {
+                self.flush();
+            }
             let input = line.trim();
             let speak = if !input.is_empty() {
                 format!("input: {input}")

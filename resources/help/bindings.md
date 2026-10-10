@@ -57,6 +57,9 @@ The following options are available for `cmd`:
 - `"scroll_top"`        : Scroll output view to the top
 - `"scroll_bottom"`     : Scroll the output view to the bottom
 - `"complete"`          : Perform *tab-completion* on the current word
+- `"insert_newline"`    : Insert a row break in the input area
+- `"step_up"`           : Move the cursor to the previous row of the input area
+- `"step_down"`         : Move the cursor to the next row of the input area
 
 What follows is the default configuration that blightmud starts with. You can
 override this as you please using `blight.unbind` and `blight.bind`
@@ -100,9 +103,25 @@ blight.bind("ctrl-s", function()
     tts:stop()
 end)
 
--- History navigation
-blight.bind("up", history.previous_command)
-blight.bind("down", history.next_command)
+-- Insert a row in the input area
+set_newline_keys({ "ctrl-o", "alt-enter", "\x1b\r", "\x1b\n" })
+
+-- History navigation. Up/down move within the input area when there is
+-- somewhere to move to, and fall through to history at the edges.
+blight.bind("up", function()
+    if prompt.cursor_row() > 1 then
+        blight.ui("step_up")
+    else
+        history.previous_command()
+    end
+end)
+blight.bind("down", function()
+    if prompt.cursor_row() < prompt.row_count() then
+        blight.ui("step_down")
+    else
+        history.next_command()
+    end
+end)
 blight.bind("ctrl-p", history.previous_command)
 blight.bind("ctrl-n", history.next_command)
 
@@ -112,3 +131,60 @@ blight.bind("ctrl-t", function()
     blight.show_tags(not blight.show_tags())
 end)
 ```
+
+## Inserting a row in the input area
+
+`Enter` always submits. To compose a multi-row message you insert row breaks
+with a separate key, and several are bound by default:
+
+- `Ctrl-O` — works everywhere with no terminal configuration.
+- `Alt-Enter` — needs Meta enabled; see the macOS notes below.
+- The raw escape forms `\x1b\r` and `\x1b\n`, because some terminal and tmux
+  combinations deliver Option+Enter as unrecognised bytes rather than as an
+  Alt key, in which case the named binding never fires but this one does.
+
+`Ctrl-J` is *not* usable — terminals encode it identically to `Enter`.
+
+***set_newline_keys(keys)***
+Replaces the whole group in one call, so you do not have to know and unbind
+each default individually.
+
+```lua
+set_newline_keys({ "alt-enter" })             -- Alt/Option+Enter only
+set_newline_keys({ "ctrl-o" })                -- macOS-friendly, no Meta needed
+set_newline_keys({ "ctrl-o", "\x1b[13;2u" })   -- and a CSI-u Shift+Enter
+set_newline_keys({})                          -- disable row insertion entirely
+```
+
+## macOS keyboards
+
+Three things about macOS terminals are worth knowing, and they are why
+`Ctrl-O` rather than `Alt-Enter` is the primary binding:
+
+1. **Option is not Meta by default.** Terminal.app and iTerm2 both ship with
+   Option producing accented characters (`Option+a` gives `å`) rather than an
+   ESC prefix. Until you turn it on, Option+Enter sends nothing bindable — and
+   the same applies to the whole default `alt-*` group above.
+   - Terminal.app: Settings → Profiles → Keyboard → **Use Option as Meta key**
+   - iTerm2: Settings → Profiles → Keys → Left/Right Option key → **Esc+**
+2. **Command is invisible to terminals.** No terminal sends a Cmd chord to the
+   foreground process, so `blight.bind("cmd-enter", ...)` can never fire. To use
+   it, map Cmd+Enter to a custom escape sequence in your terminal and bind that.
+3. **Ctrl+Enter is indistinguishable from Enter**, and so is Shift+Enter: legacy
+   terminals encode all three as a carriage return. Only terminals implementing
+   the Kitty keyboard protocol / CSI-u can tell them apart.
+
+If you would rather not change any terminal settings, use `Ctrl-O` — it works
+as shipped in Terminal.app, iTerm2, Ghostty, WezTerm, Alacritty and kitty, and
+inside tmux and screen.
+
+To reach Shift+Enter or Cmd+Enter, configure your terminal to emit a CSI-u
+sequence for it and bind that sequence directly:
+
+```lua
+set_newline_keys({ "ctrl-o", "\x1b[13;2u" })  -- CSI-u Shift+Enter
+```
+
+Blightmud needs no special support for this: unrecognised escape sequences are
+echoed to the output when unbound, so you can press the key, read the bytes
+back, and bind exactly what your terminal sent.

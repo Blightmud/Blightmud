@@ -29,8 +29,12 @@ pub const LOG_TIMESTAMPS: &str = "log_timestamps";
 pub const TAB_INDICATOR_VISIBLE: &str = "tab_indicator_visible";
 pub const TAB_INDICATOR_BRAND: &str = "tab_indicator_brand";
 pub const TAB_INDICATOR_INLINE: &str = "tab_indicator_inline";
+/// Grow the input area past `blight.input_height()` as the content needs
+/// it, and shrink it back. Off by default, so the default render path is
+/// unchanged.
+pub const INPUT_AUTO_EXPAND: &str = "input_auto_expand";
 
-pub const SETTINGS: [&str; 18] = [
+pub const SETTINGS: [&str; 19] = [
     LOGGING_ENABLED,
     TTS_ENABLED,
     MOUSE_ENABLED,
@@ -49,6 +53,7 @@ pub const SETTINGS: [&str; 18] = [
     TAB_INDICATOR_VISIBLE,
     TAB_INDICATOR_BRAND,
     TAB_INDICATOR_INLINE,
+    INPUT_AUTO_EXPAND,
 ];
 
 impl Settings {
@@ -91,6 +96,7 @@ impl Default for Settings {
         settings.insert(TAB_INDICATOR_VISIBLE.to_string(), true);
         settings.insert(TAB_INDICATOR_BRAND.to_string(), true);
         settings.insert(TAB_INDICATOR_INLINE.to_string(), false);
+        settings.insert(INPUT_AUTO_EXPAND.to_string(), false);
         Self { settings }
     }
 }

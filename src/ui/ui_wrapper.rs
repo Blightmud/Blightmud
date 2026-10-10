@@ -106,7 +106,10 @@ impl UserInterface for UiWrapper {
 
     fn print_send(&mut self, send: &crate::model::Line) {
         if let Some(line) = send.print_line() {
-            self.tts_ctrl.lock().unwrap().speak_input(line);
+            self.tts_ctrl
+                .lock()
+                .unwrap()
+                .speak_input(line, send.flags.tts_interrupt);
         }
         self.screen.print_send(send);
     }
@@ -169,6 +172,14 @@ impl UserInterface for UiWrapper {
 
     fn set_status_area_height(&mut self, height: u16) -> Result<()> {
         self.screen.set_status_area_height(height)
+    }
+
+    fn set_input_height(&mut self, height: u16) -> Result<()> {
+        self.screen.set_input_height(height)
+    }
+
+    fn input_height(&self) -> u16 {
+        self.screen.input_height()
     }
 
     fn set_show_tags(&mut self, show: bool) -> Result<()> {

@@ -193,6 +193,7 @@ fn create_default_lua_state(builder: LuaScriptBuilder, store: Option<Store>) -> 
         state.set_named_registry_value(PROMPT_CURSOR_INDEX, 0)?;
         state.set_named_registry_value(PROMPT_INPUT_LISTENER_TABLE, state.create_table()?)?;
         state.set_named_registry_value(STATUS_AREA_HEIGHT, 1)?;
+        state.set_named_registry_value(INPUT_HEIGHT, 1)?;
 
         globals.set("blight", blight)?;
         globals.set("core", Core::new(writer.clone()))?;
@@ -541,6 +542,20 @@ impl LuaScript {
                 let (_, cb) = pair?;
                 cb.call::<()>(dim)?;
             }
+            Ok(())
+        });
+    }
+
+    /// Publish the input area height the screen actually granted.
+    ///
+    /// This is deliberately written from the screen rather than from
+    /// `blight.input_height(n)`, because the two differ: the layout clamps the
+    /// request on a short terminal, and reader mode ignores it entirely. NAWS
+    /// reports this number to the MUD, so an echo of the request would give
+    /// the server a wrong window height.
+    pub fn set_input_height(&mut self, height: u16) {
+        self.exec_lua(&mut || -> LuaResult<()> {
+            self.state.set_named_registry_value(INPUT_HEIGHT, height)?;
             Ok(())
         });
     }

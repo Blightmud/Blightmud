@@ -1,4 +1,6 @@
 use super::history::History;
+use super::input_layout;
+use super::layout::{ScreenLayout, INPUT_HEIGHT_MAX, INPUT_HEIGHT_MIN};
 use super::scroll_data::ScrollData;
 use super::top_area::{
     self, row_names, TopArea, TopPrefix, TopPrefixStyle, TopRenderContext, TopRowBody,
@@ -7,7 +9,8 @@ use super::user_interface::TerminalSizeError;
 use super::wrap_line;
 use crate::io::SaveData;
 use crate::model::{
-    Settings, HIDE_TOPBAR, TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE, TAB_INDICATOR_VISIBLE,
+    Settings, HIDE_TOPBAR, INPUT_AUTO_EXPAND, TAB_INDICATOR_BRAND, TAB_INDICATOR_INLINE,
+    TAB_INDICATOR_VISIBLE,
 };
 use crate::tabs::TabInfo;
 use crate::{
@@ -23,7 +26,6 @@ use termion::cursor;
 use super::UserInterface;
 
 const SCROLL_LIVE_BUFFER_SIZE: u16 = 10;
-const PROMPT_HEIGHT: u16 = 1;
 const STATUS_HEIGHT_MIN: u16 = 0;
 const STATUS_HEIGHT_MAX: u16 = 5;
 
@@ -146,6 +148,18 @@ pub struct SplitScreen {
     prompt_line: u16,
     status_area: StatusArea,
     cursor_prompt_pos: u16,
+    /// Cursor row *within* the input area, counted from `prompt_line`. Always
+    /// zero while the input area is one row tall.
+    cursor_prompt_row: u16,
+    /// Rows the input area currently occupies. With auto-expand off this
+    /// equals `input_height_setting`; with it on it grows above it.
+    input_height: u16,
+    /// The configured *minimum* row count — what `blight.input_height(n)` set.
+    /// Kept separate from `input_height` so that auto-expand can shrink back
+    /// to the user's floor rather than to one row.
+    input_height_setting: u16,
+    /// Whether the input area grows past `input_height` as content requires.
+    input_auto_expand: bool,
     history: History,
     scroll_data: ScrollData,
     connection: Option<String>,
@@ -181,9 +195,6 @@ impl UserInterface for SplitScreen {
         if width > 0 && height > 0 {
             self.width = width;
             self.height = height;
-            self.output_line = height - self.status_area.height() - 2;
-            self.mud_prompt_line = height - self.status_area.height() - 1;
-            self.prompt_line = height;
 
             // Reconcile built-in top row config with current settings.
             // Each visible row consumes one screen line above the output
@@ -218,7 +229,34 @@ impl UserInterface for SplitScreen {
                     row.visible = !hide_topbar;
                 }
             }
-            self.output_start_line = self.top_area.visible_row_count() + 1;
+            // The top area's height is only known once the rows above have
+            // been reconciled, and it is an input to every other boundary.
+            let layout = ScreenLayout::compute(
+                height,
+                self.top_area.visible_row_count(),
+                self.status_area.height(),
+                self.input_height,
+            )
+            .ok_or(TerminalSizeError)?;
+
+            // The layout is free to grant fewer rows than were requested. Take
+            // what it gave, so `input_height()` reports the truth to NAWS
+            // rather than echoing back what Lua asked for.
+            self.input_height = layout.input_height;
+            self.input_auto_expand = settings.get(INPUT_AUTO_EXPAND)?;
+            self.output_start_line = layout.output_start_line;
+            self.output_line = layout.output_line;
+            self.mud_prompt_line = layout.mud_prompt_line;
+            self.prompt_line = layout.input_start_line;
+
+            // The layout may have taken rows away from the status area to keep
+            // the output region renderable.
+            if layout.status_height != self.status_area.height() {
+                self.status_area
+                    .set_height(layout.status_height, self.mud_prompt_line + 1);
+            } else {
+                self.status_area.update_pos(self.mud_prompt_line + 1);
+            }
 
             write!(
                 self.screen,
@@ -297,8 +335,44 @@ impl UserInterface for SplitScreen {
         self.prompt_input = input.to_string();
         self.prompt_input_pos = pos;
 
-        // Calculate display width up to cursor position
-        let (byte_idx_at_cursor, _) = input.byte_index_at_display_width(pos);
+        if self.input_auto_expand {
+            let row_count = input_layout::rows(input, self.width).len();
+            let wanted = input_layout::desired_height(row_count, self.input_height_setting, true);
+            if wanted != self.input_height {
+                // Deliberately not `setup()`. That opens with `reset()` —
+                // clear::All plus ResetScrollRegion — then reloads settings
+                // from disk and repaints with a flush in between, i.e. a
+                // blank-then-content two-frame sequence. Acceptable on a
+                // resize; unacceptable on the keystroke that happens to wrap
+                // to a new row, which is when auto-expand fires.
+                self.resize_input_area(wanted).ok();
+            }
+        }
+
+        if self.input_height > INPUT_HEIGHT_MIN {
+            self.print_prompt_input_rows(input, pos);
+            return;
+        }
+
+        // Single-row rendering is kept exactly as it was, horizontal `>`
+        // scrolling included, rather than being folded into the row path. The
+        // two solve different problems — one scrolls a viewport sideways, the
+        // other wraps — and this is the path every user is on today.
+        self.cursor_prompt_row = 0;
+
+        // Calculate display width up to cursor position.
+        //
+        // `pos` is a character index, so it is converted by counting
+        // characters. It used to be handed to `byte_index_at_display_width`,
+        // which reads its argument as a column count — the two agree only
+        // while every character is one column wide, so a CJK glyph anywhere
+        // left of the cursor dragged the cursor backwards by one column per
+        // glyph.
+        let byte_idx_at_cursor = input
+            .char_indices()
+            .nth(pos)
+            .map(|(idx, _)| idx)
+            .unwrap_or(input.len());
         let mut cursor_display_pos = (&input[..byte_idx_at_cursor]).display_width();
 
         let mut input = input;
@@ -332,10 +406,14 @@ impl UserInterface for SplitScreen {
         self.cursor_prompt_pos = cursor_display_pos as u16 + cursor_offset;
 
         let wrap_indicator = if wrapped { ">" } else { "" };
+        // The `cursor::Save`/`Restore` pair that used to bracket this write is
+        // gone. DECSC provides one save slot per screen buffer, so saving here
+        // destroyed the position `setup()` deliberately stored — and the
+        // restore was unobservable anyway, because `goto_prompt()` overwrites
+        // the cursor position on the very next byte.
         write!(
             self.screen,
-            "{}{}{}{}{}{}{}{}{}{}",
-            termion::cursor::Save,
+            "{}{}{}{}{}{}{}{}",
             termion::cursor::Goto(1, self.prompt_line),
             Fg(termion::color::Reset),
             Bg(termion::color::Reset),
@@ -343,7 +421,6 @@ impl UserInterface for SplitScreen {
             termion::clear::CurrentLine,
             wrap_indicator,
             input,
-            termion::cursor::Restore,
             self.goto_prompt(),
         )
         .unwrap();
@@ -562,12 +639,40 @@ impl UserInterface for SplitScreen {
 
     fn set_status_area_height(&mut self, height: u16) -> Result<()> {
         let height = StatusArea::clamp_height(height) as u16;
-        self.status_area
-            .set_height(height, self.height - height - PROMPT_HEIGHT);
+        // `setup()` recomputes the real start line from the layout a moment
+        // later, so this only has to be in range rather than correct — but it
+        // used to be a raw subtraction, and a status height of 5 on a six-row
+        // terminal drove it negative.
+        self.status_area.set_height(
+            height,
+            self.height
+                .saturating_sub(height)
+                .saturating_sub(self.input_height),
+        );
         self.setup()?;
         let input_str = self.prompt_input.as_str().to_owned();
         self.print_prompt_input(&input_str, self.prompt_input_pos);
         Ok(())
+    }
+
+    fn set_input_height(&mut self, height: u16) -> Result<()> {
+        let height = height.clamp(INPUT_HEIGHT_MIN, INPUT_HEIGHT_MAX);
+        self.input_height_setting = height;
+        if height == self.input_height {
+            return Ok(());
+        }
+        self.input_height = height;
+        self.setup()?;
+        let input_str = self.prompt_input.as_str().to_owned();
+        self.print_prompt_input(&input_str, self.prompt_input_pos);
+        Ok(())
+    }
+
+    fn input_height(&self) -> u16 {
+        // The layout may have granted fewer rows than were asked for, so this
+        // reports what the screen actually has. NAWS depends on the
+        // difference.
+        self.input_height
     }
 
     fn set_show_tags(&mut self, show: bool) -> Result<()> {
@@ -712,25 +817,32 @@ impl SplitScreen {
     pub fn new(screen: Box<dyn Write>, history: History) -> Result<Self> {
         let (width, height) = termion::terminal_size()?;
 
-        let output_start_line = 2;
+        // `setup()` recomputes this from the live top-area row count before
+        // anything is drawn; the initial guess only has to be self-consistent.
+        // Deriving it here from the same function `setup()` uses is what keeps
+        // the two from drifting apart.
+        let top_rows = TopArea::new_default().visible_row_count();
         let status_area_height = 1;
-        let output_line = height - status_area_height - 2;
-        let mud_prompt_line = height - status_area_height - 1;
-        let prompt_line = height;
+        let layout = ScreenLayout::compute(height, top_rows, status_area_height, INPUT_HEIGHT_MIN)
+            .ok_or(TerminalSizeError)?;
 
-        let status_area = StatusArea::new(status_area_height, mud_prompt_line + 1, width);
+        let status_area = StatusArea::new(layout.status_height, layout.mud_prompt_line + 1, width);
 
         Ok(Self {
             screen,
             width,
             height,
-            output_start_line,
-            output_line,
-            mud_prompt_line,
+            output_start_line: layout.output_start_line,
+            output_line: layout.output_line,
+            mud_prompt_line: layout.mud_prompt_line,
             mud_prompt: Line::from(""),
             status_area,
-            prompt_line,
+            prompt_line: layout.input_start_line,
             cursor_prompt_pos: 1,
+            cursor_prompt_row: 0,
+            input_height: layout.input_height,
+            input_height_setting: layout.input_height,
+            input_auto_expand: false,
             history,
             scroll_data: ScrollData::new(),
             connection: None,
@@ -775,6 +887,100 @@ impl SplitScreen {
             )
             .unwrap();
         }
+    }
+
+    /// Re-lay-out for a new input height without going through `setup()`.
+    ///
+    /// Re-emits the scroll region and repaints the regions whose rows changed
+    /// ownership, but never clears the screen and never touches the settings
+    /// file. Returns without drawing anything when the layout cannot honour
+    /// the new height, leaving the previous one in force.
+    fn resize_input_area(&mut self, height: u16) -> Result<()> {
+        let Some(layout) = ScreenLayout::compute(
+            self.height,
+            self.top_area.visible_row_count(),
+            self.status_area.height(),
+            height,
+        ) else {
+            return Ok(());
+        };
+
+        if layout.input_height == self.input_height {
+            return Ok(());
+        }
+
+        self.input_height = layout.input_height;
+        self.output_start_line = layout.output_start_line;
+        self.output_line = layout.output_line;
+        self.mud_prompt_line = layout.mud_prompt_line;
+        self.prompt_line = layout.input_start_line;
+
+        write!(
+            self.screen,
+            "{}{}",
+            ScrollRegion(self.output_start_line, self.output_line),
+            DisableOriginMode
+        )?;
+
+        // Rows moved between the output, status and input regions, so each has
+        // to repaint over whatever the other used to own.
+        self.reset_scroll()?;
+        self.redraw_prompt();
+        self.redraw_status_area()?;
+        Ok(())
+    }
+
+    /// The height the input area wants for `row_count` rows of content.
+    ///
+    /// With auto-expand off this is just the configured height, which is why
+    /// wiring it up now changes nothing.
+    fn effective_input_height(&self, row_count: usize) -> u16 {
+        input_layout::desired_height(
+            row_count,
+            self.input_height_setting.max(self.input_height),
+            self.input_auto_expand,
+        )
+    }
+
+    /// Paint the input area as wrapped rows. Used when the area is taller than
+    /// one row; `print_prompt_input` keeps the horizontal-scroll path for the
+    /// single-row case.
+    fn print_prompt_input_rows(&mut self, input: &str, pos: usize) {
+        let rows = input_layout::rows(input, self.width);
+        let (cursor_row, cursor_col) = input_layout::cursor_row_col(input, pos, self.width);
+        let height = self.effective_input_height(rows.len());
+        let window = input_layout::visible_rows(rows.len(), cursor_row as usize, height);
+
+        self.cursor_prompt_row = (cursor_row as usize).saturating_sub(window.start) as u16;
+        self.cursor_prompt_pos = cursor_col + 1;
+
+        let mut out = String::new();
+        // Erase by *region* extent, not content extent. Terminal cells persist
+        // until something overwrites them, so a clear loop bounded by the row
+        // count never visits the rows the input just gave up — backspacing
+        // past a wrap or submitting would leave the old text sitting below the
+        // live input.
+        for offset in 0..height {
+            let text = window
+                .start
+                .checked_add(offset as usize)
+                .filter(|i| *i < window.end)
+                .map(|i| &input[rows[i].clone()])
+                .unwrap_or("");
+
+            out.push_str(&format!(
+                "{}{}{}{}{}{}",
+                termion::cursor::Goto(1, self.prompt_line + offset),
+                Fg(termion::color::Reset),
+                Bg(termion::color::Reset),
+                termion::style::Reset,
+                termion::clear::CurrentLine,
+                text,
+            ));
+        }
+        out.push_str(&self.goto_prompt());
+
+        write!(self.screen, "{out}").unwrap();
     }
 
     fn clear_prompt(&mut self) {
@@ -832,7 +1038,10 @@ impl SplitScreen {
     fn goto_prompt(&self) -> String {
         format!(
             "{}",
-            termion::cursor::Goto(self.cursor_prompt_pos, self.prompt_line),
+            termion::cursor::Goto(
+                self.cursor_prompt_pos,
+                self.prompt_line + self.cursor_prompt_row
+            ),
         )
     }
 
@@ -841,17 +1050,25 @@ impl SplitScreen {
         if self.scroll_range() < self.output_range() {
             self.scroll_data.split = true;
             let scroll_range = self.scroll_range();
+
+            // The divider sits directly below the frozen scrollback rows; the
+            // live region starts on the row after it. Spelling that as a
+            // literal `3` was only correct while `output_start_line` was
+            // pinned at 2 — it moves as soon as a top row is hidden or the tab
+            // indicator appears, putting the divider *inside* the scroll
+            // region, where the next MUD line scrolls it away.
+            let divider_line = scroll_range + self.output_start_line;
             write!(self.screen, "{ResetScrollRegion}")?;
             write!(
                 self.screen,
                 "{}{}",
-                ScrollRegion(scroll_range + 3, self.output_line),
+                ScrollRegion(divider_line + 1, self.output_line),
                 DisableOriginMode
             )?;
             write!(
                 self.screen,
                 "{}{}{:━<4$}{}",
-                cursor::Goto(1, scroll_range + self.output_start_line),
+                cursor::Goto(1, divider_line),
                 color::Fg(color::Green),
                 "━ (scroll) ",
                 color::Fg(color::Reset),
@@ -902,9 +1119,18 @@ impl SplitScreen {
         Ok(())
     }
 
+    /// Rows of frozen scrollback shown while scrolling.
+    ///
+    /// The split reserves `SCROLL_LIVE_BUFFER_SIZE` rows at the bottom of the
+    /// output region for live output, so it is only possible when the output
+    /// region has more rows than that. The old guard tested the *terminal*
+    /// height instead, which says nothing about how many rows the output
+    /// region was actually left with once the top, status and input areas took
+    /// their share — so the subtraction below wrapped to ~65530 and was handed
+    /// straight to DECSTBM.
     fn scroll_range(&self) -> u16 {
-        if self.scroll_data.allow_split && self.height > SCROLL_LIVE_BUFFER_SIZE * 2 {
-            self.output_line - self.output_start_line - SCROLL_LIVE_BUFFER_SIZE + 1
+        if self.scroll_data.allow_split && self.output_range() > SCROLL_LIVE_BUFFER_SIZE {
+            self.output_range() - SCROLL_LIVE_BUFFER_SIZE
         } else {
             self.output_range()
         }
@@ -918,6 +1144,7 @@ impl SplitScreen {
 #[cfg(test)]
 mod screen_test {
     use super::*;
+    use std::sync::{Arc, Mutex};
 
     #[test]
     fn test_append_history() {
@@ -1095,5 +1322,175 @@ mod screen_test {
             .collect::<String>();
 
         assert_eq!(clean_output, "━ this t ━");
+    }
+
+    // ---- Input area rendering -------------------------------------------
+    //
+    // `SplitScreen::new` needs a real terminal, so these build the struct
+    // directly against a capturing writer. That is the only way to get the
+    // render path itself under test rather than testing a reimplementation of
+    // it beside the code that ships.
+
+    #[derive(Clone)]
+    struct SharedBuf(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for SharedBuf {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    /// A screen `width` columns wide with an `input_height`-row input area
+    /// starting at row `prompt_line`, plus the buffer it renders into.
+    fn test_screen(width: u16, input_height: u16) -> (SplitScreen, Arc<Mutex<Vec<u8>>>) {
+        let sink = Arc::new(Mutex::new(Vec::new()));
+        let height = 24;
+        let layout = ScreenLayout::compute(height, 2, 1, input_height).unwrap();
+        let screen = SplitScreen {
+            screen: Box::new(SharedBuf(sink.clone())),
+            width,
+            height,
+            output_start_line: layout.output_start_line,
+            output_line: layout.output_line,
+            mud_prompt_line: layout.mud_prompt_line,
+            mud_prompt: Line::from(""),
+            status_area: StatusArea::new(layout.status_height, layout.mud_prompt_line + 1, width),
+            prompt_line: layout.input_start_line,
+            cursor_prompt_pos: 1,
+            cursor_prompt_row: 0,
+            input_height: layout.input_height,
+            input_height_setting: layout.input_height,
+            input_auto_expand: false,
+            history: History::new(),
+            scroll_data: ScrollData::new(),
+            connection: None,
+            tags: HashSet::new(),
+            prompt_input: String::new(),
+            prompt_input_pos: 0,
+            show_tags: false,
+            tag_mask: TagMask::default(),
+            top_area: TopArea::new_default(),
+            tabs_metadata: Vec::new(),
+            inline_tabs_setting: false,
+        };
+        (screen, sink)
+    }
+
+    fn rendered(sink: &Arc<Mutex<Vec<u8>>>) -> String {
+        String::from_utf8(sink.lock().unwrap().clone()).unwrap()
+    }
+
+    /// The default configuration must not take the row path at all — this is
+    /// the guard that the refactor left every existing user where they were.
+    #[test]
+    fn single_row_input_keeps_the_horizontal_scroll_path() {
+        let (mut screen, sink) = test_screen(20, 1);
+        assert_eq!(screen.input_height, INPUT_HEIGHT_MIN);
+
+        // Longer than the width, with the cursor at the end: the single-row
+        // path scrolls sideways behind a '>' rather than wrapping.
+        let input = "abcdefghijklmnopqrstuvwxyz";
+        screen.print_prompt_input(input, input.chars().count());
+
+        let out = rendered(&sink);
+        assert!(
+            out.contains('>'),
+            "expected the scroll indicator in {out:?}"
+        );
+        assert_eq!(screen.cursor_prompt_row, 0);
+        // Everything lands on the one input row.
+        assert_eq!(
+            out.matches(&format!("{}", termion::cursor::Goto(1, screen.prompt_line)))
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn multi_row_input_wraps_instead_of_scrolling() {
+        let (mut screen, sink) = test_screen(10, 3);
+        let input = "abcdefghijklmno"; // 15 chars over 10 columns -> 2 rows
+        screen.print_prompt_input(input, input.chars().count());
+
+        let out = rendered(&sink);
+        assert!(!out.contains('>'), "row path must not scroll sideways");
+        assert!(out.contains("abcdefghij"));
+        assert!(out.contains("klmno"));
+        assert_eq!(screen.cursor_prompt_row, 1);
+        assert_eq!(screen.cursor_prompt_pos, 6); // 5 columns in, 1-based
+    }
+
+    /// Newlines start new rows rather than being emitted as raw control
+    /// characters.
+    #[test]
+    fn multi_row_input_renders_logical_rows() {
+        let (mut screen, sink) = test_screen(20, 3);
+        screen.print_prompt_input("one\ntwo", 7);
+
+        let out = rendered(&sink);
+        assert!(out.contains("one"));
+        assert!(out.contains("two"));
+        assert_eq!(screen.cursor_prompt_row, 1);
+        assert_eq!(screen.cursor_prompt_pos, 4);
+    }
+
+    /// The input area is erased by region extent. A content-bounded clear
+    /// leaves the rows the input just gave up still showing their old text.
+    #[test]
+    fn every_input_row_is_erased_even_when_content_shrinks() {
+        let (mut screen, sink) = test_screen(20, 3);
+
+        // Three rows of content, then one.
+        screen.print_prompt_input("a\nb\nc", 5);
+        sink.lock().unwrap().clear();
+        screen.print_prompt_input("a", 1);
+
+        let out = rendered(&sink);
+        for offset in 0..3 {
+            let goto = format!("{}", termion::cursor::Goto(1, screen.prompt_line + offset));
+            assert!(
+                out.contains(&goto),
+                "row {offset} was never visited, so its old content survives"
+            );
+        }
+        assert_eq!(
+            out.matches(&format!("{}", termion::clear::CurrentLine))
+                .count(),
+            3,
+            "each of the three rows must be cleared"
+        );
+    }
+
+    /// Content taller than the area scrolls within it, and the cursor stays
+    /// inside the visible window.
+    #[test]
+    fn content_taller_than_the_area_scrolls_within_it() {
+        let (mut screen, sink) = test_screen(20, 2);
+        let input = "r0\nr1\nr2\nr3";
+        screen.print_prompt_input(input, input.chars().count());
+
+        let out = rendered(&sink);
+        assert!(out.contains("r2") && out.contains("r3"));
+        assert!(!out.contains("r0"), "row 0 has scrolled out of the area");
+        assert!(screen.cursor_prompt_row < screen.input_height);
+    }
+
+    /// `goto_prompt` addresses the cursor's row within the area, not always
+    /// the first row — every other draw path appends it, so a wrong row here
+    /// would misplace the cursor after any redraw.
+    #[test]
+    fn goto_prompt_targets_the_cursor_row() {
+        let (mut screen, _sink) = test_screen(20, 3);
+        screen.print_prompt_input("a\nb\nc", 5);
+
+        assert_eq!(screen.cursor_prompt_row, 2);
+        assert_eq!(
+            screen.goto_prompt(),
+            format!("{}", termion::cursor::Goto(2, screen.prompt_line + 2))
+        );
     }
 }

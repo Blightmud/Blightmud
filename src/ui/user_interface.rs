@@ -161,6 +161,64 @@ pub fn wrap_line(line: &str, width: usize, padding: usize) -> Vec<&str> {
     lines
 }
 
+/// Hard-wrap a single line to `width` display columns, losslessly.
+///
+/// This is a second wrapper rather than an option on [`wrap_line`], which is
+/// tuned for MUD output and lossy by design: it breaks on word boundaries and
+/// drops the boundary space, and discards a trailing whitespace-only segment.
+/// An input area needs the wrapped rows to partition the buffer exactly, or
+/// the cursor renders a column away from the text it edits.
+///
+/// The returned slices concatenate back to `line` byte for byte. Breaks only
+/// land on printable-character boundaries, so an escape sequence is never
+/// split; escapes are carried into whatever row they start in and consume no
+/// columns. An SGR run that spans a break is not re-emitted on the
+/// continuation row, so styling stops there.
+///
+/// `line` must not contain `'\n'`: the vte parser behind
+/// `printable_char_indices` routes `'\n'` to `execute`, not `print`, so two
+/// logical rows would silently measure as one. Split on `'\n'` first.
+pub fn wrap_line_hard(line: &str, width: usize) -> Vec<&str> {
+    debug_assert!(
+        !line.contains('\n'),
+        "wrap_line_hard cannot see '\\n'; split on it first"
+    );
+
+    // A zero width would make every row empty and the loop never advance.
+    let width = width.max(1);
+    let mut rows: Vec<&str> = vec![];
+    let mut start = 0;
+
+    while start < line.len() {
+        let rest = &line[start..];
+        let (mut cut, _) = rest.byte_index_at_display_width(width);
+
+        if cut == 0 {
+            // The next glyph is wider than the whole row — a double-width
+            // character at `width == 1`, say. Nothing fits, but the row must
+            // still consume something or this loop spins forever. Overflow the
+            // row by one character, which is also what a terminal does.
+            cut = match rest.printable_char_indices().next() {
+                Some((idx, c)) => idx + c.len_utf8(),
+                // No printable characters at all (a bare escape sequence);
+                // take the remainder so the bytes are not lost.
+                None => rest.len(),
+            };
+        }
+
+        rows.push(&rest[..cut]);
+        start += cut;
+    }
+
+    // An empty input is one empty row, not zero rows — there is still a row
+    // the cursor sits on.
+    if rows.is_empty() {
+        rows.push(line);
+    }
+
+    rows
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -275,5 +333,88 @@ mod tests {
         // "abcdefghij" = 10 printable chars; at width 5 it must wrap.
         let lines = wrap_line(line, 5, 0);
         assert_eq!(lines.len(), 2);
+    }
+
+    /// The rows must concatenate back to the input byte for byte.
+    #[test]
+    fn wrap_line_hard_preserves_all_characters() {
+        for line in [
+            "the quick brown fox jumps over the lazy dog",
+            "a b c d e f g h i j k l m n o p",
+            "trailing space kept   ",
+            "   leading space kept",
+            "no-spaces-at-all-in-this-very-long-token-here",
+            "",
+            " ",
+        ] {
+            for width in 1..=20usize {
+                let rows = wrap_line_hard(line, width);
+                assert_eq!(rows.concat(), line, "lossy at width {width} for {line:?}");
+            }
+        }
+
+        // `wrap_line` drops the word-break space, so it fails the same
+        // round-trip.
+        let line = "aaa bbb ccc";
+        assert_eq!(wrap_line(line, 6, 0), vec!["aaa", "bbb", "ccc"]);
+        assert_eq!(wrap_line(line, 6, 0).concat(), "aaabbbccc");
+        assert_eq!(wrap_line_hard(line, 6).concat(), line);
+    }
+
+    /// Every row must fit the terminal, except when a single glyph cannot.
+    #[test]
+    fn wrap_line_hard_rows_fit_the_width() {
+        let line = "hello 中文 world";
+        for width in 2..=20usize {
+            for row in wrap_line_hard(line, width) {
+                assert!(
+                    row.display_width() <= width,
+                    "row {row:?} exceeds width {width}"
+                );
+            }
+        }
+    }
+
+    /// A double-width glyph in a one-column terminal overflows its row rather
+    /// than spinning the wrap loop.
+    #[test]
+    fn wrap_line_hard_terminates_on_glyph_wider_than_terminal() {
+        let rows = wrap_line_hard("中文", 1);
+        assert_eq!(rows, vec!["中", "文"]);
+        assert_eq!(rows.concat(), "中文");
+    }
+
+    /// Breaks land on printable-character boundaries, so an escape sequence is
+    /// never cut in half — a split escape would be printed as literal garbage.
+    #[test]
+    fn wrap_line_hard_never_splits_an_escape_sequence() {
+        let line = "\x1b[31mred\x1b[0m and \x1b[32mgreen\x1b[0m";
+        for width in 1..=20usize {
+            let rows = wrap_line_hard(line, width);
+            assert_eq!(rows.concat(), line);
+            for row in rows {
+                // A row holding a partial CSI would have an unterminated
+                // `\x1b[` with no final byte.
+                if let Some(esc) = row.rfind('\x1b') {
+                    assert!(
+                        row[esc..].chars().any(|c| c.is_ascii_alphabetic()),
+                        "row {row:?} ends mid-escape"
+                    );
+                }
+            }
+        }
+    }
+
+    /// Escapes consume no columns, so they must not push text onto a new row.
+    #[test]
+    fn wrap_line_hard_escapes_do_not_consume_columns() {
+        let rows = wrap_line_hard("\x1b[31mabcde\x1b[0m", 5);
+        assert_eq!(rows.len(), 1);
+    }
+
+    /// Empty input is one row, not zero — the cursor still sits somewhere.
+    #[test]
+    fn wrap_line_hard_empty_input_is_one_row() {
+        assert_eq!(wrap_line_hard("", 10), vec![""]);
     }
 }

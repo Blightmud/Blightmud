@@ -90,3 +90,7 @@ After submitting a command it will be displayed in prompt with a background
 color. Typing anything will clear the "last command". Pressing `right`
 (stepping right) or `tab` will *activate* the command in the prompt and you can
 edit it.
+
+- `input_auto_expand` : Grow the input area as the text you are composing needs
+  more rows, and shrink it back. `blight.input_height()` sets the minimum.
+  Off by default.

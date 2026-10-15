@@ -20,6 +20,8 @@ mod command;
 mod headless_screen;
 mod help_handler;
 mod history;
+mod input_layout;
+mod layout;
 mod reader_screen;
 mod scroll_data;
 mod split_screen;

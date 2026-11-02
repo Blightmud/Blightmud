@@ -463,7 +463,7 @@ impl EventHandler {
                     lua_ctx.set_prompt_mask_content(updated_mask_table);
                     let mut prompt_input = self.session.prompt_input.lock().unwrap();
                     *prompt_input = command_buffer.get_masked_buffer();
-                    screen.print_prompt_input(&prompt_input, command_buffer.get_pos());
+                    screen.print_prompt_input(&prompt_input, command_buffer.get_masked_pos());
                 }
                 Ok(())
             }
@@ -475,7 +475,7 @@ impl EventHandler {
                     }
                     let mut prompt_input = self.session.prompt_input.lock().unwrap();
                     *prompt_input = command_buffer.get_masked_buffer();
-                    screen.print_prompt_input(&prompt_input, command_buffer.get_pos());
+                    screen.print_prompt_input(&prompt_input, command_buffer.get_masked_pos());
                 }
                 Ok(())
             }

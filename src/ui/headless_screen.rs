@@ -96,6 +96,14 @@ impl UserInterface for HeadlessScreen {
         Ok(())
     }
 
+    fn set_input_height(&mut self, _height: u16) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn input_height(&self) -> u16 {
+        1
+    }
+
     fn set_show_tags(&mut self, _show: bool) -> anyhow::Result<()> {
         Ok(())
     }

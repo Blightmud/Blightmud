@@ -50,3 +50,9 @@ Return the current prompt mask table (if any).
             previously set with calls to `prompt_mask.set`.
             Each index key will be a character index within the bounds
             of the current prompt input data (1-indexed).
+## Multi-row input
+
+A mask whose escape sequence spans a row break loses its styling on the
+continuation rows: each row is drawn independently and the active SGR state is
+not re-emitted. Masks are used for hiding passwords, which are single-row, so
+this is documented rather than fixed.

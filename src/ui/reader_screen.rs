@@ -225,6 +225,23 @@ impl UserInterface for ReaderScreen {
 
     // This is fancy logic to make 'tdsr' less noisy
     fn print_prompt_input(&mut self, input: &str, pos: usize) {
+        // Row breaks must be substituted *before* the sanitize below. The vte
+        // parser behind `printable_chars` routes '\n' to `execute`, not
+        // `print`, so it is silently dropped and "one\ntwo" would be read out
+        // as "onetwo". This is a fix, not just a guard.
+        //
+        // The substitute is exactly one char of exactly one display column,
+        // because `pos` indexes the pre-substitution buffer and the column
+        // computed below is treated as an absolute terminal column. In reader
+        // mode that column *is* the screen reader's anchor, so a one-column
+        // drift is a mis-announcement rather than a cosmetic glitch. A space
+        // avoids depending on how espeak, macOS `say` or NVDA pronounce a
+        // glyph.
+        const ROW_BREAK: char = ' ';
+        debug_assert_eq!(unicode_width::UnicodeWidthChar::width(ROW_BREAK), Some(1));
+        let input = input.replace('\n', &ROW_BREAK.to_string());
+        let input = input.as_str();
+
         // Reader screens only operate on printable input characters (no term control sequences, e.g. ANSI colour).
         let sanitized_input = input.printable_chars().collect::<String>();
         let input = sanitized_input.as_str();
@@ -435,6 +452,17 @@ impl UserInterface for ReaderScreen {
         Ok(())
     }
 
+    /// Reader mode stays one row tall: a screen reader gains nothing from
+    /// a taller box, and the minimal-diff logic assumes a single-line
+    /// model. Row breaks are rendered as a marker instead.
+    fn set_input_height(&mut self, _height: u16) -> Result<()> {
+        Ok(())
+    }
+
+    fn input_height(&self) -> u16 {
+        1
+    }
+
     fn set_show_tags(&mut self, _show: bool) -> Result<()> {
         Ok(())
     }
@@ -501,5 +529,91 @@ impl UserInterface for ReaderScreen {
         // Reader mode skips the tab indicator (it's a screen-reader-friendly
         // single-stream view). The active tab still drives what's read.
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod reader_screen_test {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    // `ReaderScreen::new` needs a real terminal, but `print_prompt_input` only
+    // needs `&mut self` and a `Box<dyn Write>`, so a capturing writer gets the
+    // diff logic under test without a TTY. Reader mode had no automated
+    // coverage at all before this; an untested path is a second-class path
+    // regardless of intent.
+
+    #[derive(Clone)]
+    struct SharedBuf(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for SharedBuf {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    fn test_screen() -> (ReaderScreen, Arc<Mutex<Vec<u8>>>) {
+        let sink = Arc::new(Mutex::new(Vec::new()));
+        let screen = ReaderScreen {
+            screen: Box::new(SharedBuf(sink.clone())),
+            history: History::new(),
+            scroll_data: ScrollData::new(),
+            output_line: 23,
+            prompt_line: 24,
+            width: 40,
+            height: 24,
+            prompt_input: None,
+        };
+        (screen, sink)
+    }
+
+    fn rendered(sink: &Arc<Mutex<Vec<u8>>>) -> String {
+        String::from_utf8(sink.lock().unwrap().clone()).unwrap()
+    }
+
+    /// vte routes '\n' to `execute`, not `print`, so `printable_chars` drops it
+    /// silently — two rows would run together as one word. The substitution has
+    /// to happen before that sanitize.
+    #[test]
+    fn row_breaks_are_substituted_not_dropped() {
+        let (mut screen, sink) = test_screen();
+        screen.print_prompt_input("one\ntwo", 7);
+
+        let out = rendered(&sink);
+        assert!(
+            out.contains("one two"),
+            "row break was dropped, giving {out:?}"
+        );
+        assert!(!out.contains("onetwo"));
+    }
+
+    /// The substitute must be one character of one column. `pos` indexes the
+    /// pre-substitution buffer and the column below is treated as an absolute
+    /// terminal column, which in reader mode is the screen reader's anchor —
+    /// a one-column drift is a mis-announcement, not a cosmetic glitch.
+    #[test]
+    fn row_break_does_not_shift_the_cursor_column() {
+        let (mut screen, _sink) = test_screen();
+        screen.print_prompt_input("one\ntwo", 7);
+        let (_, with_break) = screen.prompt_input.clone().unwrap();
+
+        let (mut screen, _sink) = test_screen();
+        screen.print_prompt_input("one two", 7);
+        let (_, without_break) = screen.prompt_input.clone().unwrap();
+
+        assert_eq!(with_break, without_break);
+    }
+
+    /// Reader mode stays one row tall whatever is requested, and says so.
+    #[test]
+    fn input_height_is_always_one() {
+        let (mut screen, _sink) = test_screen();
+        assert_eq!(screen.input_height(), 1);
+        screen.set_input_height(5).unwrap();
+        assert_eq!(screen.input_height(), 1);
     }
 }

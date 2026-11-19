@@ -32,6 +32,22 @@ impl UserData for Prompt {
                 result
             }
         });
+        // Both of these are 1-based, matching `get_cursor_pos` above and Lua
+        // convention generally: the first row is row 1.
+        //
+        // They exist rather than having Lua scan `prompt.get()` itself because
+        // `get_cursor_pos` is a *character* index while Lua's `string.sub` is
+        // *byte*-based — a scan would split at the wrong point on any
+        // non-ASCII input.
+        methods.add_function("cursor_row", |ctx, ()| -> mlua::Result<usize> {
+            let content: String = ctx.named_registry_value(PROMPT_CONTENT)?;
+            let pos: usize = ctx.named_registry_value(PROMPT_CURSOR_INDEX)?;
+            Ok(content.chars().take(pos).filter(|c| *c == '\n').count() + 1)
+        });
+        methods.add_function("row_count", |ctx, ()| -> mlua::Result<usize> {
+            let content: String = ctx.named_registry_value(PROMPT_CONTENT)?;
+            Ok(content.chars().filter(|c| *c == '\n').count() + 1)
+        });
         methods.add_function("set_cursor_pos", |ctx, pos: usize| {
             let pos = if pos > 0 { pos - 1 } else { pos };
             let backend: Backend = ctx.named_registry_value(BACKEND)?;
@@ -162,5 +178,96 @@ mod test_prompt {
             .named_registry_value(PROMPT_INPUT_LISTENER_TABLE)
             .unwrap();
         assert_eq!(table.raw_len(), 3);
+    }
+
+    #[test]
+    fn test_prompt_rows_are_one_based() {
+        let (lua, _reader) = setup_lua();
+        lua.set_named_registry_value(PROMPT_CONTENT, "one\ntwo\nthree".to_string())
+            .unwrap();
+
+        // Cursor on the first row.
+        lua.set_named_registry_value(PROMPT_CURSOR_INDEX, 0usize)
+            .unwrap();
+        assert_eq!(
+            lua.load("return prompt.cursor_row()")
+                .call::<usize>(())
+                .unwrap(),
+            1
+        );
+
+        // Just before the first newline is still row 1; just after is row 2.
+        lua.set_named_registry_value(PROMPT_CURSOR_INDEX, 3usize)
+            .unwrap();
+        assert_eq!(
+            lua.load("return prompt.cursor_row()")
+                .call::<usize>(())
+                .unwrap(),
+            1
+        );
+        lua.set_named_registry_value(PROMPT_CURSOR_INDEX, 4usize)
+            .unwrap();
+        assert_eq!(
+            lua.load("return prompt.cursor_row()")
+                .call::<usize>(())
+                .unwrap(),
+            2
+        );
+
+        assert_eq!(
+            lua.load("return prompt.row_count()")
+                .call::<usize>(())
+                .unwrap(),
+            3
+        );
+    }
+
+    /// The common case: no row breaks means one row, so the up/down bindings
+    /// fall straight through to history exactly as they did before.
+    #[test]
+    fn test_prompt_rows_without_newlines() {
+        let (lua, _reader) = setup_lua();
+        lua.set_named_registry_value(PROMPT_CONTENT, "plain".to_string())
+            .unwrap();
+        lua.set_named_registry_value(PROMPT_CURSOR_INDEX, 3usize)
+            .unwrap();
+        assert_eq!(
+            lua.load("return prompt.cursor_row()")
+                .call::<usize>(())
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            lua.load("return prompt.row_count()")
+                .call::<usize>(())
+                .unwrap(),
+            1
+        );
+    }
+
+    /// cursor_row counts characters, not bytes — a byte-based scan in Lua
+    /// would split multi-byte input at the wrong point.
+    #[test]
+    fn test_prompt_cursor_row_counts_characters() {
+        let (lua, _reader) = setup_lua();
+        lua.set_named_registry_value(PROMPT_CONTENT, "\u{4e2d}\u{6587}\nx".to_string())
+            .unwrap();
+        // Two CJK characters then the newline: char index 2 is still row 1.
+        lua.set_named_registry_value(PROMPT_CURSOR_INDEX, 2usize)
+            .unwrap();
+        assert_eq!(
+            lua.load("return prompt.cursor_row()")
+                .call::<usize>(())
+                .unwrap(),
+            1
+        );
+        lua.set_named_registry_value(PROMPT_CURSOR_INDEX, 3usize)
+            .unwrap();
+        assert_eq!(
+            lua.load("return prompt.cursor_row()")
+                .call::<usize>(())
+                .unwrap(),
+            2
+        );
     }
 }

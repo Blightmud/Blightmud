@@ -17,6 +17,9 @@ pub enum UiEvent {
     ScrollTop,
     ScrollBottom,
     Complete,
+    InsertNewline,
+    StepUp,
+    StepDown,
     Unknown(String),
 }
 
@@ -40,6 +43,9 @@ impl From<&str> for UiEvent {
             "scroll_top" => UiEvent::ScrollTop,
             "scroll_bottom" => UiEvent::ScrollBottom,
             "complete" => UiEvent::Complete,
+            "insert_newline" => UiEvent::InsertNewline,
+            "step_up" => UiEvent::StepUp,
+            "step_down" => UiEvent::StepDown,
             _ => UiEvent::Unknown(s.to_string()),
         }
     }

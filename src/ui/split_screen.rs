@@ -297,39 +297,8 @@ impl UserInterface for SplitScreen {
         self.prompt_input = input.to_string();
         self.prompt_input_pos = pos;
 
-        // Calculate display width up to cursor position
-        let (byte_idx_at_cursor, _) = input.byte_index_at_display_width(pos);
-        let mut cursor_display_pos = (&input[..byte_idx_at_cursor]).display_width();
-
-        let mut input = input;
-        let width = self.width as usize;
-        let mut wrapped = false;
-
-        // Scroll the view when cursor goes past the visible width
-        while input.display_width() >= width && cursor_display_pos >= width {
-            wrapped = true;
-            let (byte_idx, skipped_width) = input.byte_index_at_display_width(width);
-            if byte_idx < input.len() {
-                input = input.split_at(byte_idx).1;
-                cursor_display_pos -= skipped_width;
-            } else {
-                input = "";
-                cursor_display_pos = 0;
-            }
-        }
-
-        // When wrapped, reserve 1 column for the '>' indicator
-        let effective_width = if wrapped { width - 1 } else { width };
-
-        // Truncate input if it's still too wide for the display
-        if input.display_width() >= effective_width {
-            let (byte_idx, _) = input.byte_index_at_display_width(effective_width);
-            input = input.split_at(byte_idx).0;
-        }
-
-        // Adjust cursor position for the wrap indicator
-        let cursor_offset = if wrapped { 2 } else { 1 };
-        self.cursor_prompt_pos = cursor_display_pos as u16 + cursor_offset;
+        let (input, cursor_col, wrapped) = prompt_view(input, pos, self.width as usize);
+        self.cursor_prompt_pos = cursor_col;
 
         let wrap_indicator = if wrapped { ">" } else { "" };
         write!(
@@ -912,6 +881,89 @@ impl SplitScreen {
 
     fn output_range(&self) -> u16 {
         self.output_line - self.output_start_line + 1
+    }
+}
+
+/// Computes the visible part of the prompt input, the 1-based cursor column and
+/// whether the view was scrolled (shown with a leading `>` indicator).
+///
+/// `pos` is a character index into `input` (the command buffer is a `Vec<char>`),
+/// not a display width, so it has to be mapped to a byte index before measuring
+/// the display width. Wide characters (e.g. CJK) take two columns.
+fn prompt_view(input: &str, pos: usize, width: usize) -> (&str, u16, bool) {
+    let byte_idx_at_cursor = input
+        .char_indices()
+        .nth(pos)
+        .map(|(i, _)| i)
+        .unwrap_or(input.len());
+    let mut cursor_display_pos = (&input[..byte_idx_at_cursor]).display_width();
+
+    let mut input = input;
+    let mut wrapped = false;
+
+    // Scroll the view when cursor goes past the visible width
+    while input.display_width() >= width && cursor_display_pos >= width {
+        wrapped = true;
+        let (byte_idx, skipped_width) = input.byte_index_at_display_width(width);
+        if byte_idx < input.len() {
+            input = input.split_at(byte_idx).1;
+            cursor_display_pos -= skipped_width;
+        } else {
+            input = "";
+            cursor_display_pos = 0;
+        }
+    }
+
+    // When wrapped, reserve 1 column for the '>' indicator
+    let effective_width = if wrapped { width - 1 } else { width };
+
+    // Truncate input if it's still too wide for the display
+    if input.display_width() >= effective_width {
+        let (byte_idx, _) = input.byte_index_at_display_width(effective_width);
+        input = input.split_at(byte_idx).0;
+    }
+
+    // Adjust cursor position for the wrap indicator
+    let cursor_offset = if wrapped { 2 } else { 1 };
+    (input, cursor_display_pos as u16 + cursor_offset, wrapped)
+}
+
+#[cfg(test)]
+mod prompt_view_test {
+    use super::prompt_view;
+
+    #[test]
+    fn ascii_cursor() {
+        assert_eq!(prompt_view("hello", 5, 80), ("hello", 6, false));
+        assert_eq!(prompt_view("hello", 2, 80), ("hello", 3, false));
+    }
+
+    #[test]
+    fn wide_chars_cursor() {
+        // 5 Hangul syllables, each two columns wide
+        let input = "가나다라마";
+        assert_eq!(prompt_view(input, 5, 80), (input, 11, false));
+        assert_eq!(prompt_view(input, 2, 80), (input, 5, false));
+        assert_eq!(prompt_view(input, 0, 80), (input, 1, false));
+    }
+
+    #[test]
+    fn mixed_width_cursor() {
+        // "ab" (2) + "가나" (4) + " c" (2)
+        let input = "ab가나 c";
+        assert_eq!(prompt_view(input, 4, 80), (input, 7, false));
+        assert_eq!(prompt_view(input, 6, 80), (input, 9, false));
+    }
+
+    #[test]
+    fn wide_chars_scroll() {
+        // 30 columns of Hangul in a 20 column prompt, cursor at the end
+        let input = "가나다라마바사아자차카타파하가";
+        let (view, col, wrapped) = prompt_view(input, 15, 20);
+        assert!(wrapped);
+        // the first 20 columns scroll out, leaving 10 columns after '>'
+        assert_eq!(view, "카타파하가");
+        assert_eq!(col, 2 + 10);
     }
 }
 

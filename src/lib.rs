@@ -620,7 +620,7 @@ For more info: https://github.com/LiquidityC/Blightmud/issues/173"#;
                     script.set_dimensions((screen.width(), screen.height()));
                 }
                 let prompt_input = session.prompt_input.lock().unwrap();
-                screen.print_prompt_input(&prompt_input, prompt_input.len());
+                screen.print_prompt_input(&prompt_input, prompt_input.chars().count());
             }
             Event::Quit(method) => {
                 if Settings::load().get(CONFIRM_QUIT)?

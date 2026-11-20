@@ -367,7 +367,7 @@ pub fn format_tabs_segment(tabs: &[TabInfo]) -> (String, usize) {
     for (i, tab) in tabs.iter().enumerate() {
         if i > 0 {
             tabs_styled.push_str(&format!("{}{}{}", Fg(color::Green), sep, Fg(color::Reset)));
-            tabs_visible_width += sep.chars().count();
+            tabs_visible_width += sep.display_width();
         }
         let body = if let Some(sc) = tab.shortcut.as_ref() {
             format!("{sc} - {}", tab.label)
@@ -395,7 +395,7 @@ pub fn format_tabs_segment(tabs: &[TabInfo]) -> (String, usize) {
             (styled, plain)
         };
         tabs_styled.push_str(&styled);
-        tabs_visible_width += plain.chars().count();
+        tabs_visible_width += plain.as_str().display_width();
     }
     (tabs_styled, tabs_visible_width)
 }
@@ -410,7 +410,7 @@ fn render_prefix(prefix: &Option<TopPrefix>, bar_char: char) -> (String, usize) 
         TopPrefixStyle::Plain => {
             // `═══ {text} ` — text with a leading triple-bar and trailing space.
             let lead = repeat_char(bar_char, 3);
-            let visible = 3 + p.text.chars().count() + 1;
+            let visible = 3 + p.text.as_str().display_width() + 1;
             let styled = format!(
                 "{}{}{}{} ",
                 Fg(color::Green),
@@ -424,7 +424,7 @@ fn render_prefix(prefix: &Option<TopPrefix>, bar_char: char) -> (String, usize) 
             // `═══ {bold light-white text} ══ ` — the canonical brand badge.
             let lead = repeat_char(bar_char, 3);
             let trail = repeat_char(bar_char, 2);
-            let visible = 3 + p.text.chars().count() + 2 + 1;
+            let visible = 3 + p.text.as_str().display_width() + 2 + 1;
             let styled = format!(
                 "{}{}{}{}{}{}{}{}{}{} ",
                 Fg(color::Green),
@@ -458,10 +458,10 @@ pub fn render_row(
     // decoration on the host_status row.
     let (body_styled, body_visible_width) = match &row.body {
         TopRowBody::Empty => (String::new(), 0_usize),
-        TopRowBody::Text(s) => (s.clone(), s.chars().count()),
+        TopRowBody::Text(s) => (s.clone(), s.as_str().display_width()),
         TopRowBody::HostTags => {
             let s = format_host_tags(ctx);
-            let n = s.chars().count();
+            let n = s.as_str().display_width();
             (s, n)
         }
         TopRowBody::TabIndicator => format_tabs_segment(ctx.tabs),
@@ -615,6 +615,45 @@ mod tests {
         area.rows_mut()[0].visible = true;
         assert_eq!(area.screen_line(0, 1), 1);
         assert_eq!(area.screen_line(1, 1), 2);
+    }
+
+    // Body and prefix widths are display widths: ANSI escapes take no
+    // columns and wide (CJK) characters take two.
+
+    #[test]
+    fn text_body_with_ansi_pads_to_width() {
+        let row = TopRow {
+            name: row_names::HOST_STATUS.to_string(),
+            bar_char: '═',
+            prefix: Some(TopPrefix {
+                text: " HP ".to_string(),
+                style: TopPrefixStyle::Plain,
+            }),
+            body: TopRowBody::Text("\x1b[31mred\x1b[0m ok".to_string()),
+            visible: true,
+        };
+        let tags = empty_tags();
+        let tabs: [TabInfo; 0] = [];
+        let out = render_to_string(&row, &ctx(30, None, &tags, &tabs));
+        assert_eq!(out.as_str().display_width(), 30);
+    }
+
+    #[test]
+    fn wide_body_and_prefix_pad_to_width() {
+        let row = TopRow {
+            name: row_names::HOST_STATUS.to_string(),
+            bar_char: '─',
+            prefix: Some(TopPrefix {
+                text: " 파티 ".to_string(),
+                style: TopPrefixStyle::Brand,
+            }),
+            body: TopRowBody::Text("전사 269/269".to_string()),
+            visible: true,
+        };
+        let tags = empty_tags();
+        let tabs: [TabInfo; 0] = [];
+        let out = render_to_string(&row, &ctx(40, None, &tags, &tabs));
+        assert_eq!(out.as_str().display_width(), 40);
     }
 
     // Krendil's draw_bar test ports — Text body matches the bare-bar style.

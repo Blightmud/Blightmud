@@ -3,6 +3,8 @@ require("tests.common")
 script.on_reset(function()
     blight.quit()
 end)
+local sleep_period = 0.5 -- we want this to be multiple ticks
+local result_wait = sleep_period + 0.3 -- 1 tick to start sleep_task + sleep_period + 1 tick to resume + a bit more so we are in the next tick
 
 assert(tasks.is_task(tasks.Task.new(function() end)), "Task.new object should be a task")
 assert(not tasks.is_task({}), "Plain table should not be a task")
@@ -26,7 +28,7 @@ assert_eq(unstarted_task.args[2], 20)
 assert_eq(tasks.get_current(), nil)
 assert_eq(tasks.Task.get_current(), nil)
 
-local sleep_ok, sleep_err = pcall(function() tasks.sleep(1) end)
+local sleep_ok, sleep_err = pcall(function() tasks.sleep(sleep_period) end)
 assert(not sleep_ok, "tasks.sleep in main task should fail")
 assert(string.find(sleep_err, "Cannot sleep main task"), "Error should mention 'Cannot sleep main task'")
 
@@ -42,7 +44,7 @@ local start_dead_ok, start_dead_err = pcall(function() dead_task:start() end)
 assert(not start_dead_ok, "Starting dead task should fail")
 assert(string.find(start_dead_err, "Attempt to start dead task"), "Error should mention dead task")
 
-local start_later_dead_ok, start_later_dead_err = pcall(function() dead_task:startLater(1) end)
+local start_later_dead_ok, start_later_dead_err = pcall(function() dead_task:startLater(sleep_period) end)
 assert(not start_later_dead_ok, "StartLater on dead task should fail")
 assert(string.find(start_later_dead_err, "Attempt to start dead task"), "Error should mention dead task")
 
@@ -116,12 +118,12 @@ end)
 
 local sleep_task = tasks.spawn(function()
     mud.output("sleep_task started")
-    tasks.sleep(1)
+    tasks.sleep(sleep_period)
     mud.output("sleep_task resumed")
     test_results.sleep_task_resumed = true
 end)
 
-local spawn_later_task = tasks.spawn_later(1, function()
+local spawn_later_task = tasks.spawn_later(sleep_period, function()
     mud.output("spawn_later_task started")
     test_results.spawn_later_ran = true
 end)
@@ -134,14 +136,14 @@ end)
 
 local killed_task = tasks.spawn(function()
     mud.output("killed_task started")
-    tasks.sleep(1)
+    tasks.sleep(sleep_period)
     mud.output("killed_task resumed")
     test_results.killed_task_resumed = true
 end)
 
 killed_task:kill()
 assert_eq(killed_task.error, nil)
-local sleep_killed_ok, sleep_killed_err = pcall(function() killed_task:sleep(1) end)
+local sleep_killed_ok, sleep_killed_err = pcall(function() killed_task:sleep(sleep_period) end)
 assert(sleep_killed_ok, "Sleeping dead task should be ignored")
 assert_eq(sleep_killed_err, nil)
 
@@ -151,14 +153,14 @@ assert_eq(idle_killed_err, nil)
 
 mud.output(#tasks.get_tasks())
 
--- Timer at 0.5 seconds to check if slept/spawn_later tasks are still waiting
-timer.add(0.5, 1, function()
+-- Timer at 2 ticks before sleep_period to check if slept/spawn_later tasks are still waiting
+timer.add(sleep_period - 0.2, 1, function()
     test_results.sleep_task_slept = not test_results.sleep_task_resumed
     test_results.spawn_later_waited = not test_results.spawn_later_ran
 end)
 
--- Wait for tasks to run and assert results
-timer.add(2.2, 1, function()
+-- Wait for tasks to run and assert results.
+timer.add(result_wait, 1, function()
     -- make sure task ran and killed itself first
     local sleep_self_killed_ok, sleep_self_killed_err = pcall(function() self_killed_task:sleep(0) end)
     assert(sleep_self_killed_ok, "Sleeping dead task should be ignored")
